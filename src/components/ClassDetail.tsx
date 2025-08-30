@@ -16,7 +16,6 @@ function ClassDetail({ classData, onBack }: ClassDetailProps) {
   const [showCSVImport, setShowCSVImport] = useState(false);
   const { updateClass } = useData();
 
-  const saveChanges = () => {
     const updatedClass: Class = {
       ...classData,
       students: students
