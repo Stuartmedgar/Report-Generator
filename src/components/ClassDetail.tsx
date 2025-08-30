@@ -23,9 +23,6 @@ const saveChanges = () => {
   };
   updateClass(updatedClass);
 };
-    };
-    updateClass(updatedClass);
-  };
 
   const handleAddStudent = () => {
     if (!newStudent.firstName.trim() || !newStudent.lastName.trim()) {
