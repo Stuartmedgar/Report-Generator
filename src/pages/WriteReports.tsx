@@ -14,7 +14,6 @@ function WriteReports() {
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
-  const [writeMode, setWriteMode] = useState<'all' | 'selected'>('all');
   const [resumeStudentIndex, setResumeStudentIndex] = useState<number>(0);
 
   // Check for continue editing on page load
