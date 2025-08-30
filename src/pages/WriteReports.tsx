@@ -15,8 +15,9 @@ function WriteReports() {
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [resumeStudentIndex, setResumeStudentIndex] = useState<number>(0);
+const [writeMode, setWriteMode] = useState('all');
 
-  // Check for continue editing on page load
+ 
   useEffect(() => {
     const continueEditingData = sessionStorage.getItem('continueEditing');
     if (continueEditingData) {
