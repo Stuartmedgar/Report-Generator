@@ -24,7 +24,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     console.log('Current hostname:', window.location.hostname);
     
     // Check if we're running locally
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                   window.location.hostname === '127.0.0.1' ||
+                   window.location.hostname.includes('netlify.app');
     
     if (isLocalhost) {
       console.log('Running on localhost - using mock authentication for development');
