@@ -10,6 +10,7 @@ export interface User {
   app_metadata?: {
     roles?: string[];
     plan?: string;
+    teacher_code?: string; // Add this line
   };
   created_at: string;
   updated_at: string;

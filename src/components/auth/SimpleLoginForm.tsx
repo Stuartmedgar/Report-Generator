@@ -3,11 +3,11 @@ import { useAuth } from '../../contexts/AuthContext';
 
 export default function SimpleLoginForm(): React.ReactElement {
   const { signIn } = useAuth();
-  const [password, setPassword] = useState('');
+  const [teacherCode, setTeacherCode] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [showCode, setShowCode] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -15,9 +15,9 @@ export default function SimpleLoginForm(): React.ReactElement {
     setError('');
 
     try {
-      await signIn(email || 'teacher@reportgenerator.com', password);
+      await signIn(email || `${teacherCode}@reportgenerator.com`, teacherCode);
     } catch (err: any) {
-      setError(err.message || 'Invalid password');
+      setError(err.message || 'Invalid teacher code');
     } finally {
       setLoading(false);
     }
@@ -73,7 +73,7 @@ export default function SimpleLoginForm(): React.ReactElement {
             fontSize: '16px',
             color: '#64748b'
           }}>
-            Enter the teacher password to access the Report Generator
+            Enter your personal teacher code to access your workspace
           </p>
         </div>
 
@@ -116,14 +116,14 @@ export default function SimpleLoginForm(): React.ReactElement {
               color: '#374151',
               marginBottom: '6px'
             }}>
-              Teacher Password
+              Teacher Code
             </label>
             <div style={{ position: 'relative' }}>
               <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter teacher password"
+                type={showCode ? 'text' : 'password'}
+                value={teacherCode}
+                onChange={(e) => setTeacherCode(e.target.value)}
+                placeholder="e.g. sarah-smith-2024"
                 required
                 style={{
                   width: '100%',
@@ -139,7 +139,7 @@ export default function SimpleLoginForm(): React.ReactElement {
               />
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
+                onClick={() => setShowCode(!showCode)}
                 style={{
                   position: 'absolute',
                   right: '12px',
@@ -152,7 +152,7 @@ export default function SimpleLoginForm(): React.ReactElement {
                   fontSize: '14px'
                 }}
               >
-                {showPassword ? 'Hide' : 'Show'}
+                {showCode ? 'Hide' : 'Show'}
               </button>
             </div>
           </div>
@@ -173,36 +173,36 @@ export default function SimpleLoginForm(): React.ReactElement {
 
           <button
             type="submit"
-            disabled={loading || !password.trim()}
+            disabled={loading || !teacherCode.trim()}
             style={{
               width: '100%',
-              backgroundColor: loading || !password.trim() ? '#9ca3af' : '#3b82f6',
+              backgroundColor: loading || !teacherCode.trim() ? '#9ca3af' : '#3b82f6',
               color: 'white',
               padding: '14px 24px',
               borderRadius: '8px',
               border: 'none',
               fontSize: '16px',
               fontWeight: '600',
-              cursor: loading || !password.trim() ? 'not-allowed' : 'pointer',
+              cursor: loading || !teacherCode.trim() ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s',
               boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
             }}
             onMouseEnter={(e) => {
-              if (!loading && password.trim()) {
+              if (!loading && teacherCode.trim()) {
                 e.currentTarget.style.backgroundColor = '#2563eb';
                 e.currentTarget.style.transform = 'translateY(-1px)';
                 e.currentTarget.style.boxShadow = '0 6px 10px rgba(0, 0, 0, 0.15)';
               }
             }}
             onMouseLeave={(e) => {
-              if (!loading && password.trim()) {
+              if (!loading && teacherCode.trim()) {
                 e.currentTarget.style.backgroundColor = '#3b82f6';
                 e.currentTarget.style.transform = 'translateY(0)';
                 e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
               }
             }}
           >
-            {loading ? 'Signing In...' : 'Access Report Generator'}
+            {loading ? 'Signing In...' : 'Access My Workspace'}
           </button>
         </form>
 
@@ -219,7 +219,7 @@ export default function SimpleLoginForm(): React.ReactElement {
             color: '#1e293b',
             marginBottom: '12px'
           }}>
-            For Teachers Testing the App:
+            For Teachers:
           </h3>
           <ul style={{
             fontSize: '13px',
@@ -228,11 +228,28 @@ export default function SimpleLoginForm(): React.ReactElement {
             paddingLeft: '16px',
             margin: 0
           }}>
-            <li>Use the teacher password provided by the developer</li>
-            <li>Your work will be saved locally and across sessions</li>
+            <li>Use your personal teacher code (provided by admin)</li>
+            <li>Your data is private and syncs across all your devices</li>
             <li>Email is optional - just for your reference</li>
-            <li>Contact support if you need help accessing the system</li>
+            <li>Contact admin if you need a new teacher code</li>
           </ul>
+          
+          <div style={{
+            marginTop: '16px',
+            padding: '12px',
+            backgroundColor: '#e0f2fe',
+            borderRadius: '6px',
+            border: '1px solid #b3e5fc'
+          }}>
+            <p style={{
+              fontSize: '12px',
+              color: '#01579b',
+              margin: 0,
+              fontWeight: '500'
+            }}>
+              Example codes: sarah-smith-2024, john-doe-2024
+            </p>
+          </div>
         </div>
       </div>
     </div>
