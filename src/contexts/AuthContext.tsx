@@ -5,6 +5,7 @@ import { User, AuthContextType } from '../types/auth';
 declare global {
   interface Window {
     netlifyIdentity: any;
+    netlifyIdentityRetries?: number;
   }
 }
 
@@ -25,10 +26,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     
     // Check if we're running locally
     const isLocalhost = window.location.hostname === 'localhost' || 
-                   window.location.hostname === '127.0.0.1' ||
-                   window.location.hostname.includes('netlify.app');
+                       window.location.hostname === '127.0.0.1' ||
+                       window.location.hostname.includes('netlify.app');
     
-    if (isLocalhost) {
+    if (isLocalhost && window.location.hostname !== 'easyreportgenerator.netlify.app') {
       console.log('Running on localhost - using mock authentication for development');
       // For local development, simulate a logged-in user
       const mockUser: User = {
@@ -59,11 +60,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Initialize Netlify Identity for production
     const initNetlifyIdentity = () => {
       console.log('Trying to initialize Netlify Identity');
+      console.log('Script exists:', typeof window.netlifyIdentity);
+      console.log('Site URL:', window.location.origin);
       
       if (window.netlifyIdentity) {
         console.log('Netlify Identity found, initializing...');
         
+        // Add explicit site URL configuration
         window.netlifyIdentity.init({
+          APIUrl: 'https://easyreportgenerator.netlify.app/.netlify/identity',
           locale: 'en'
         });
 
@@ -72,6 +77,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (currentUser) {
           console.log('Found existing user:', currentUser.email);
           setUser(currentUser);
+          setLoading(false);
+          return;
         }
 
         // Set up event listeners
@@ -86,12 +93,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
         window.netlifyIdentity.on('login', (user: User) => {
           console.log('User logged in:', user.email);
           setUser(user);
+          setLoading(false);
           window.netlifyIdentity.close();
         });
 
         window.netlifyIdentity.on('logout', () => {
           console.log('User logged out');
           setUser(null);
+          setLoading(false);
         });
 
         window.netlifyIdentity.on('error', (err: Error) => {
@@ -99,20 +108,44 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setLoading(false);
         });
 
-        setLoading(false);
+        // Set initial loading to false after setup
+        setTimeout(() => {
+          if (loading) {
+            console.log('Setting loading to false after identity setup');
+            setLoading(false);
+          }
+        }, 2000);
+
       } else {
-        console.log('Netlify Identity not loaded yet, retrying...');
-        // If netlifyIdentity is not loaded yet, wait and try again
-        setTimeout(initNetlifyIdentity, 100);
+        // Check if we've been waiting too long
+        const maxRetries = 50; // 5 seconds total
+        if (!window.netlifyIdentityRetries) {
+          window.netlifyIdentityRetries = 0;
+        }
+        
+        if (window.netlifyIdentityRetries < maxRetries) {
+          console.log(`Netlify Identity not loaded yet, retry ${window.netlifyIdentityRetries + 1}/${maxRetries}`);
+          window.netlifyIdentityRetries++;
+          setTimeout(initNetlifyIdentity, 100);
+        } else {
+          console.error('Netlify Identity failed to load after maximum retries');
+          console.log('Proceeding without authentication - user will need to refresh or check configuration');
+          setLoading(false); // Stop the loading screen
+        }
       }
     };
 
+    // Reset retry counter
+    window.netlifyIdentityRetries = 0;
     initNetlifyIdentity();
   }, []);
 
   const signIn = async (email: string, password: string) => {
     // For localhost, simulate login
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1' ||
+                       (window.location.hostname.includes('netlify.app') && 
+                        window.location.hostname !== 'easyreportgenerator.netlify.app');
     
     if (isLocalhost) {
       console.log('Mock login for localhost');
@@ -125,14 +158,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return;
       }
 
-      window.netlifyIdentity.on('login', (user: User) => {
+      const handleLogin = (user: User) => {
         setUser(user);
+        setLoading(false);
         resolve();
-      });
+      };
 
-      window.netlifyIdentity.on('error', (err: Error) => {
+      const handleError = (err: Error) => {
+        console.error('Login error:', err);
+        setLoading(false);
         reject(err);
-      });
+      };
+
+      // Remove any existing listeners to prevent duplicates
+      window.netlifyIdentity.off('login');
+      window.netlifyIdentity.off('error');
+      
+      // Add new listeners
+      window.netlifyIdentity.on('login', handleLogin);
+      window.netlifyIdentity.on('error', handleError);
 
       // Open the login modal
       window.netlifyIdentity.open('login');
@@ -141,7 +185,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const signUp = async (email: string, password: string, userData?: any) => {
     // For localhost, simulate signup
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1' ||
+                       (window.location.hostname.includes('netlify.app') && 
+                        window.location.hostname !== 'easyreportgenerator.netlify.app');
     
     if (isLocalhost) {
       console.log('Mock signup for localhost');
@@ -154,14 +201,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return;
       }
 
-      window.netlifyIdentity.on('login', (user: User) => {
+      const handleSignup = (user: User) => {
         setUser(user);
+        setLoading(false);
         resolve();
-      });
+      };
 
-      window.netlifyIdentity.on('error', (err: Error) => {
+      const handleError = (err: Error) => {
+        console.error('Signup error:', err);
+        setLoading(false);
         reject(err);
-      });
+      };
+
+      // Remove any existing listeners to prevent duplicates
+      window.netlifyIdentity.off('login');
+      window.netlifyIdentity.off('error');
+      
+      // Add new listeners
+      window.netlifyIdentity.on('login', handleSignup);
+      window.netlifyIdentity.on('error', handleError);
 
       // Open the signup modal
       window.netlifyIdentity.open('signup');
@@ -170,25 +228,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const signOut = async () => {
     // For localhost, simulate logout
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1' ||
+                       (window.location.hostname.includes('netlify.app') && 
+                        window.location.hostname !== 'easyreportgenerator.netlify.app');
     
     if (isLocalhost) {
       console.log('Mock logout for localhost');
       setUser(null);
+      setLoading(false);
       return Promise.resolve();
     }
     
     return new Promise<void>((resolve) => {
-      if (window.netlifyIdentity) {
+      if (window.netlifyIdentity && user) {
         window.netlifyIdentity.logout();
         setUser(null);
+        setLoading(false);
       }
       resolve();
     });
   };
 
   const resetPassword = async (email: string) => {
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1' ||
+                       (window.location.hostname.includes('netlify.app') && 
+                        window.location.hostname !== 'easyreportgenerator.netlify.app');
     
     if (isLocalhost) {
       console.log('Mock password reset for localhost');
@@ -208,7 +274,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const updateProfile = async (userData: any) => {
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1' ||
+                       (window.location.hostname.includes('netlify.app') && 
+                        window.location.hostname !== 'easyreportgenerator.netlify.app');
     
     if (isLocalhost && user) {
       console.log('Mock profile update for localhost');
