@@ -1,136 +1,229 @@
-// src/contexts/SubscriptionContext.tsx
-// Complete subscription context - no usage limits for testing
-
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { loadStripe, Stripe } from '@stripe/stripe-js';
-import { Subscription, Plan, PLANS } from '../types/subscription';
+
+// Types for subscription
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  price: number;
+  currency: string;
+  interval: 'month' | 'year';
+  stripePriceId: string;
+  features: string[];
+}
+
+interface SubscriptionData {
+  hasActiveSubscription: boolean;
+  planId: string;
+  status: string;
+  subscriptionId?: string;
+  currentPeriodEnd?: number;
+  cancelAtPeriodEnd?: boolean;
+}
 
 interface SubscriptionContextType {
-  subscription: Subscription | null;
-  currentPlan: Plan;
-  loading: boolean;
-  createCheckoutSession: (planId: string) => Promise<void>;
-  cancelSubscription: () => Promise<void>;
+  subscription: SubscriptionData;
+  currentPlan: SubscriptionPlan;
+  plans: SubscriptionPlan[];
+  isLoading: boolean;
+  loading: boolean; // Alias for isLoading
+  error: string | null;
+  stripe: Stripe | null;
+  createCheckoutSession: (priceId: string) => Promise<void>;
+  cancelSubscription: (subscriptionId: string) => Promise<void>;
+  refreshSubscription: () => Promise<void>;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
-// Initialize Stripe (replace with your publishable key)
-const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || 'pk_test_your_key');
+// Initialize Stripe
+const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || '');
 
-export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [loading, setLoading] = useState(true);
+// Subscription plans configuration
+const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
+  {
+    id: 'free',
+    name: 'Free Plan',
+    price: 0,
+    currency: 'USD',
+    interval: 'month',
+    stripePriceId: '',
+    features: [
+      'Unlimited reports',
+      'All templates',
+      'All comment types',
+      'Community support'
+    ]
+  },
+  {
+    id: 'teacher_pro_annual',
+    name: 'Teacher Pro (Annual)',
+    price: 12.99,
+    currency: 'USD',
+    interval: 'year',
+    stripePriceId: process.env.REACT_APP_STRIPE_PRICE_TEACHER_PRO_YEARLY || '',
+    features: [
+      'Everything in Free',
+      'PDF export',
+      'Priority support',
+      'Remove branding'
+    ]
+  }
+];
 
-  // Get current user ID (integrate with your auth system when ready)
-  const getCurrentUserId = () => {
-    return localStorage.getItem('userId') || `anonymous_${Date.now()}`;
-  };
+interface SubscriptionProviderProps {
+  children: ReactNode;
+}
 
-  // Get current plan based on subscription
-  const currentPlan = subscription?.status === 'active' 
-    ? PLANS.find(plan => plan.id === subscription.planId) || PLANS[0]
-    : PLANS[0]; // Default to free plan
+export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
+  const [subscription, setSubscription] = useState<SubscriptionData>({
+    hasActiveSubscription: false,
+    planId: 'free',
+    status: 'none'
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [stripe, setStripe] = useState<Stripe | null>(null);
 
-  // Load subscription data
+  // Initialize Stripe
   useEffect(() => {
-    loadUserSubscription();
+    const initStripe = async () => {
+      const stripeInstance = await stripePromise;
+      setStripe(stripeInstance);
+    };
+    initStripe();
   }, []);
 
-  const loadUserSubscription = async () => {
+  // Refresh subscription data
+  const refreshSubscription = async () => {
     try {
-      const userId = getCurrentUserId();
+      setIsLoading(true);
+      setError(null);
       
-      // For now, simulate subscription check (replace with actual API call when ready)
-      const mockSubscription = {
-        id: 'sub_' + userId,
-        userId: userId,
-        planId: 'free', // Start everyone on free plan
-        status: 'active' as const,
-        currentPeriodStart: new Date().toISOString(),
-        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        cancelAtPeriodEnd: false
-      };
+      // For now, just simulate API call since we don't have user authentication yet
+      // In production, this would call your Netlify function to get subscription status
       
-      setSubscription(mockSubscription);
-    } catch (error) {
-      console.error('Failed to load subscription:', error);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // For testing, assume free plan
+      setSubscription({
+        hasActiveSubscription: false,
+        planId: 'free',
+        status: 'none'
+      });
+      
+    } catch (err) {
+      console.error('Error refreshing subscription:', err);
+      setError('Failed to refresh subscription data');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const createCheckoutSession = async (planId: string) => {
+  // Create Stripe checkout session
+  const createCheckoutSession = async (priceId: string) => {
     try {
-      const stripe = await stripePromise;
-      if (!stripe) throw new Error('Stripe failed to load');
+      setIsLoading(true);
+      setError(null);
 
-      const userId = getCurrentUserId();
-      
-      // For testing phase, just show alert
-      if (PLANS.find(p => p.id === planId)?.displayPrice === 'Coming Soon') {
-        alert('Thanks for your interest! We\'ll notify you when pricing is announced and you can upgrade.');
-        return;
+      if (!stripe) {
+        throw new Error('Stripe is not initialized');
       }
-      
+
+      // Call your Netlify function to create checkout session
       const response = await fetch('/.netlify/functions/create-checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, planId })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          priceId,
+          successUrl: `${window.location.origin}/subscription-success?session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${window.location.origin}/pricing`,
+        }),
       });
 
-      if (!response.ok) throw new Error('Network response was not ok');
-
-      const { sessionId } = await response.json();
-      
-      const { error } = await stripe.redirectToCheckout({ sessionId });
-      if (error) {
-        console.error('Stripe checkout error:', error);
-        alert('Failed to start checkout. Please try again.');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create checkout session');
       }
-    } catch (error) {
-      console.error('Failed to create checkout session:', error);
-      alert('Failed to start checkout process. Please try again.');
+
+      const { url } = await response.json();
+
+      // Redirect to Stripe Checkout
+      window.location.href = url;
+
+    } catch (err: any) {
+      console.error('Error creating checkout session:', err);
+      setError(err.message || 'Failed to start checkout process');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const cancelSubscription = async () => {
+  // Cancel subscription
+  const cancelSubscription = async (subscriptionId: string) => {
     try {
-      const userId = getCurrentUserId();
-      
+      setIsLoading(true);
+      setError(null);
+
       const response = await fetch('/.netlify/functions/cancel-subscription', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subscriptionId,
+          cancelImmediately: false, // Cancel at period end
+        }),
       });
 
-      if (response.ok) {
-        await loadUserSubscription(); // Refresh subscription data
-        alert('Subscription cancelled successfully. You can continue using Pro features until the end of your billing period.');
-      } else {
-        throw new Error('Failed to cancel subscription');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to cancel subscription');
       }
-    } catch (error) {
-      console.error('Failed to cancel subscription:', error);
-      alert('Failed to cancel subscription. Please contact support.');
+
+      // Refresh subscription data
+      await refreshSubscription();
+
+    } catch (err: any) {
+      console.error('Error canceling subscription:', err);
+      setError(err.message || 'Failed to cancel subscription');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const value: SubscriptionContextType = {
+  // Load subscription data on component mount
+  useEffect(() => {
+    refreshSubscription();
+  }, []);
+
+  // Get current plan based on subscription
+  const currentPlan = SUBSCRIPTION_PLANS.find(plan => plan.id === subscription.planId) || SUBSCRIPTION_PLANS[0];
+
+  const contextValue: SubscriptionContextType = {
     subscription,
     currentPlan,
-    loading,
+    plans: SUBSCRIPTION_PLANS,
+    isLoading,
+    loading: isLoading, // Alias for components that expect 'loading'
+    error,
+    stripe,
     createCheckoutSession,
-    cancelSubscription
+    cancelSubscription,
+    refreshSubscription
   };
 
   return (
-    <SubscriptionContext.Provider value={value}>
+    <SubscriptionContext.Provider value={contextValue}>
       {children}
     </SubscriptionContext.Provider>
   );
 }
 
+// Custom hook to use subscription context
 export function useSubscription() {
   const context = useContext(SubscriptionContext);
   if (context === undefined) {
