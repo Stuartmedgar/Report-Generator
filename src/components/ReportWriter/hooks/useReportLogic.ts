@@ -22,7 +22,7 @@ export const useReportLogic = ({
   const [isPreviewEditing, setIsPreviewEditing] = useState(false);
   const [editableReportContent, setEditableReportContent] = useState('');
 
-  // Initialize section data when student changes
+  // Initialize section data when student changes - FIXED: Removed template.sections from dependencies
   useEffect(() => {
     if (currentStudent) {
       const existingReport = getReport(currentStudent.id, template.id);
@@ -32,7 +32,7 @@ export const useReportLogic = ({
       } else {
         const initialData: Record<string, any> = {};
         template.sections.forEach((section: any) => {
-          const showHeader = section.data.showHeader !== undefined ? 
+          const showHeader = section.data.showHeader !== undefined ?
             section.data.showHeader : true;
           initialData[section.id] = { 
             showHeader,
@@ -46,7 +46,7 @@ export const useReportLogic = ({
       }
       setHasUnsavedChanges(false);
     }
-  }, [currentStudent, template.id, template.sections, getReport, setDynamicSections]);
+  }, [currentStudent, template.id, getReport, setDynamicSections]); // FIXED: Removed template.sections
 
   // Handle saving the report
   const handleSaveReport = () => {
@@ -98,9 +98,13 @@ export const useReportLogic = ({
     alert('Report saved successfully!');
   };
 
-  // Update section data and handle comment selection
+  // Update section data and handle comment selection - FIXED: Added debugging
   const updateSectionData = useCallback((sectionId: string, data: any) => {
+    console.log('updateSectionData called:', sectionId, data); // DEBUG: Add this line
+    
     setSectionData((prev: Record<string, any>) => {
+      console.log('Previous sectionData:', prev); // DEBUG: Add this line
+      
       const newData = {
         ...prev,
         [sectionId]: { ...prev[sectionId], ...data }
@@ -117,6 +121,7 @@ export const useReportLogic = ({
           const randomIndex = Math.floor(Math.random() * comments.length);
           newData[sectionId].selectedComment = comments[randomIndex];
           newData[sectionId].selectedCommentIndex = randomIndex;
+          console.log('Selected comment:', comments[randomIndex]); // DEBUG: Add this line
         }
       }
 
@@ -128,6 +133,7 @@ export const useReportLogic = ({
           const randomIndex = Math.floor(Math.random() * comments.length);
           newData[sectionId].selectedComment = comments[randomIndex];
           newData[sectionId].selectedCommentIndex = randomIndex;
+          console.log('Selected assessment comment:', comments[randomIndex]); // DEBUG: Add this line
         }
       }
 
@@ -139,6 +145,7 @@ export const useReportLogic = ({
           const randomIndex = Math.floor(Math.random() * comments.length);
           newData[sectionId].selectedComment = comments[randomIndex];
           newData[sectionId].selectedCommentIndex = randomIndex;
+          console.log('Selected personalised comment:', comments[randomIndex]); // DEBUG: Add this line
         }
       }
 
@@ -150,9 +157,11 @@ export const useReportLogic = ({
           const randomIndex = Math.floor(Math.random() * suggestions.length);
           newData[sectionId].selectedSuggestion = suggestions[randomIndex];
           newData[sectionId].selectedSuggestionIndex = randomIndex;
+          console.log('Selected next steps suggestion:', suggestions[randomIndex]); // DEBUG: Add this line
         }
       }
 
+      console.log('New sectionData after update:', newData); // DEBUG: Add this line
       return newData;
     });
     setHasUnsavedChanges(true);
@@ -170,227 +179,87 @@ export const useReportLogic = ({
 
     allSections.forEach((section: any) => {
       const data = sectionData[section.id] || {};
-      const showHeader = data.showHeader !== undefined ? data.showHeader : true;
+      const showHeader = data.showHeader !== undefined ? data.showHeader : section.data?.showHeader !== undefined ? section.data.showHeader : true;
 
-      // FIXED: Check if section is excluded - if so, skip it completely
+      // Skip excluded sections
       if (data.exclude) {
-        console.log(`Section ${section.name} is excluded, skipping`);
         return;
       }
 
       switch (section.type) {
         case 'rated-comment':
-          console.log('Processing rated-comment section');
-          console.log('data.rating:', data.rating);
-          console.log('data.selectedComment:', data.selectedComment);
-          console.log('data.customEditedComment:', data.customEditedComment);
-
+          // Only include if we have a rating and it's not 'no-comment'
           if (data.rating && data.rating !== 'no-comment') {
             if (showHeader && section.name) {
               content += `${section.name}: `;
-              console.log('Added header:', section.name);
             }
-
-            // Use custom edited comment first, then selected comment, then fallback
-            let commentToUse = data.customEditedComment || data.selectedComment;
             
-            if (commentToUse) {
-              let processedComment = commentToUse.replace(/\[Name\]/g, currentStudent.firstName);
-              content += processedComment + ' ';
-              console.log('Added comment:', processedComment, '(source:', data.customEditedComment ? 'custom edit' : 'selected', ')');
-            } else {
-              console.log('No comment available, trying fallback');
-              // Fallback: try to get from template data
-              const comments = section.data?.comments?.[data.rating] || section.data?.ratings?.[data.rating];
-              console.log('Fallback comments found:', comments);
-              
-              if (comments && comments.length > 0) {
-                const randomComment = comments[Math.floor(Math.random() * comments.length)];
-                let processedComment = randomComment.replace(/\[Name\]/g, currentStudent.firstName);
-                content += processedComment + ' ';
-                console.log('Added fallback comment:', processedComment);
-
-                // Store for consistency
-                data.selectedComment = randomComment;
-              }
-            }
-          } else {
-            console.log('No rating selected or rating is no-comment, skipping section');
+            // Use custom edited comment if available, otherwise use selected comment
+            const comment = data.customEditedComment || data.selectedComment || '[No comment selected]';
+            const processedComment = comment.replace(/\[Name\]/g, currentStudent.firstName);
+            content += processedComment + ' ';
+            console.log('Generated rated comment content:', processedComment); // DEBUG
           }
           break;
 
         case 'standard-comment':
-          console.log('Processing standard-comment section');
-          console.log('section.data.content:', section.data?.content);
-          console.log('data.comment (user override):', data.comment);
-          
-          // Add section header if enabled
-          if (showHeader && section.name) {
-            content += `${section.name}: `;
-            console.log('Added header:', section.name);
-          }
-
-          const commentText = data.comment || section.data?.content;
-          if (commentText) {
-            const processedContent = commentText.replace(/\[Name\]/g, currentStudent.firstName);
-            content += processedContent + ' ';
-            console.log('Added standard content:', processedContent);
+          if (data.content && data.content.trim()) {
+            if (showHeader && section.name) {
+              content += `${section.name}: `;
+            }
+            const processedComment = data.content.replace(/\[Name\]/g, currentStudent.firstName);
+            content += processedComment + ' ';
           }
           break;
 
         case 'assessment-comment':
-          console.log('Processing assessment-comment section');
-          console.log('data.performance:', data.performance);
-          console.log('data.selectedComment:', data.selectedComment);
-          console.log('data.customEditedComment:', data.customEditedComment);
-          console.log('data.score:', data.score);
-          console.log('data.scoreType:', data.scoreType);
-          console.log('data.maxScore:', data.maxScore);
-          
           if (data.performance && data.performance !== 'no-comment') {
             if (showHeader && section.name) {
               content += `${section.name}: `;
-              console.log('Added header:', section.name);
             }
-
-            // Use custom edited comment first, then selected comment, then fallback
-            let commentToUse = data.customEditedComment || data.selectedComment;
             
-            if (commentToUse) {
-              let processedComment = commentToUse.replace(/\[Name\]/g, currentStudent.firstName);
-              
-              // FIXED: Format score based on score type
-              if (data.score !== undefined) {
-                const currentScoreType = data.scoreType || section.data?.scoreType || 'outOf';
-                const currentMaxScore = data.maxScore || section.data?.maxScore || 100;
-                
-                let formattedScore = '';
-                if (currentScoreType === 'percentage') {
-                  formattedScore = `${data.score}%`;
-                } else {
-                  // outOf format
-                  formattedScore = `${data.score} out of ${currentMaxScore}`;
-                }
-                
-                processedComment = processedComment.replace(/\[Score\]/g, formattedScore);
-                console.log('Formatted score:', formattedScore);
-              }
-              
-              content += processedComment + ' ';
-              console.log('Added comment:', processedComment, '(source:', data.customEditedComment ? 'custom edit' : 'selected', ')');
-            } else {
-              console.log('No comment available, trying fallback');
-              // Fallback: try to get from template data
-              const comments = section.data?.comments?.[data.performance];
-              console.log('Fallback comments found:', comments);
-              
-              if (comments && comments.length > 0) {
-                const randomComment = comments[Math.floor(Math.random() * comments.length)];
-                let processedComment = randomComment.replace(/\[Name\]/g, currentStudent.firstName);
-                
-                // FIXED: Format score in fallback comments too
-                if (data.score !== undefined) {
-                  const currentScoreType = data.scoreType || section.data?.scoreType || 'outOf';
-                  const currentMaxScore = data.maxScore || section.data?.maxScore || 100;
-                  
-                  let formattedScore = '';
-                  if (currentScoreType === 'percentage') {
-                    formattedScore = `${data.score}%`;
-                  } else {
-                    // outOf format
-                    formattedScore = `${data.score} out of ${currentMaxScore}`;
-                  }
-                  
-                  processedComment = processedComment.replace(/\[Score\]/g, formattedScore);
-                }
-                
-                content += processedComment + ' ';
-                console.log('Added fallback comment:', processedComment);
-
-                // Store for consistency
-                data.selectedComment = randomComment;
+            // Add score if provided
+            if (data.score !== undefined && data.score !== null) {
+              if (data.scoreType === 'percentage') {
+                content += `${data.score}% - `;
+              } else if (data.scoreType === 'outOf' && data.maxScore) {
+                content += `${data.score}/${data.maxScore} - `;
               }
             }
-          } else {
-            console.log('No performance selected or performance is no-comment, skipping section');
+            
+            // Use custom edited comment if available, otherwise use selected comment
+            const comment = data.customEditedComment || data.selectedComment || '[No comment selected]';
+            const processedComment = comment.replace(/\[Name\]/g, currentStudent.firstName);
+            content += processedComment + ' ';
+            console.log('Generated assessment comment content:', processedComment); // DEBUG
           }
           break;
 
         case 'personalised-comment':
-          console.log('Processing personalised-comment section');
-          console.log('data.category:', data.category);
-          console.log('data.selectedComment:', data.selectedComment);
-          console.log('data.customEditedComment:', data.customEditedComment);
-          console.log('data.personalisedInfo:', data.personalisedInfo);
-
           if (data.category) {
             if (showHeader && section.name) {
               content += `${section.name}: `;
-              console.log('Added header:', section.name);
             }
-
-            // Use custom edited comment first, then selected comment, then fallback
-            let commentToUse = data.customEditedComment || data.selectedComment;
             
-            if (commentToUse) {
-              let processedComment = commentToUse.replace(/\[Name\]/g, currentStudent.firstName);
-              
-              // FIXED: Replace [personalised information] with the user's input
-              if (data.personalisedInfo) {
-                processedComment = processedComment.replace(/\[personalised information\]/g, data.personalisedInfo);
-              }
-              
-              content += processedComment + ' ';
-              console.log('Added comment:', processedComment, '(source:', data.customEditedComment ? 'custom edit' : 'selected', ')');
-            } else {
-              console.log('No comment available, trying fallback');
-              // Fallback: try to get from template data
-              const comments = section.data?.categories?.[data.category] || section.data?.comments?.[data.category];
-              console.log('Fallback comments found:', comments);
-              
-              if (comments && comments.length > 0) {
-                const randomComment = comments[Math.floor(Math.random() * comments.length)];
-                let processedComment = randomComment.replace(/\[Name\]/g, currentStudent.firstName);
-                
-                // FIXED: Replace [personalised information] in fallback comments too
-                if (data.personalisedInfo) {
-                  processedComment = processedComment.replace(/\[personalised information\]/g, data.personalisedInfo);
-                }
-                
-                content += processedComment + ' ';
-                console.log('Added fallback comment:', processedComment);
-
-                // Store for consistency
-                data.selectedComment = randomComment;
-              }
-            }
-          } else {
-            console.log('No category selected, skipping personalised-comment section');
+            // Use custom edited comment if available, otherwise use selected comment
+            const comment = data.customEditedComment || data.selectedComment || '[No comment selected]';
+            const processedComment = comment.replace(/\[Name\]/g, currentStudent.firstName);
+            content += processedComment + ' ';
+            console.log('Generated personalised comment content:', processedComment); // DEBUG
           }
           break;
 
         case 'next-steps':
-          console.log('Processing next-steps section');
-          console.log('data.focusArea:', data.focusArea);
-          console.log('data.selectedSuggestion:', data.selectedSuggestion);
-          console.log('data.customEditedSuggestion:', data.customEditedSuggestion);
-
           if (data.focusArea) {
             if (showHeader && section.name) {
               content += `${section.name}: `;
-              console.log('Added header:', section.name);
             }
-
-            // Use custom edited suggestion first, then selected suggestion
-            let suggestionToUse = data.customEditedSuggestion || data.selectedSuggestion;
             
-            if (suggestionToUse) {
-              let processedSuggestion = suggestionToUse.replace(/\[Name\]/g, currentStudent.firstName);
-              content += processedSuggestion + ' ';
-              console.log('Added suggestion:', processedSuggestion, '(source:', data.customEditedSuggestion ? 'custom edit' : 'selected', ')');
-            }
-          } else {
-            console.log('No focus area selected, skipping next-steps section');
+            // Use custom edited suggestion if available, otherwise use selected suggestion
+            const suggestion = data.customEditedSuggestion || data.selectedSuggestion || '[No suggestion selected]';
+            const processedSuggestion = suggestion.replace(/\[Name\]/g, currentStudent.firstName);
+            content += processedSuggestion + ' ';
+            console.log('Generated next steps content:', processedSuggestion); // DEBUG
           }
           break;
 

@@ -16,6 +16,25 @@ export default function ViewReports() {
     return state.reports.filter(report => report.classId === classId).length;
   };
 
+  // Get unique templates used in reports for a class
+  const getTemplatesUsed = (classId: string) => {
+    const classReports = state.reports.filter(report => report.classId === classId);
+    const templateIds = Array.from(new Set(classReports.map(report => report.templateId)));
+    return templateIds.map(id => state.templates.find(t => t.id === id)?.name || 'Unknown Template');
+  };
+
+  // Get last updated date for class reports
+  const getLastUpdated = (classId: string) => {
+    const classReports = state.reports.filter(report => report.classId === classId);
+    if (classReports.length === 0) return null;
+    
+    const mostRecent = classReports.reduce((latest, current) => {
+      return new Date(current.updatedAt) > new Date(latest.updatedAt) ? current : latest;
+    });
+    
+    return new Date(mostRecent.updatedAt);
+  };
+
   const handleDeleteClassReports = (classId: string, className: string) => {
     const reportCount = getReportCount(classId);
     const confirmed = window.confirm(
@@ -36,248 +55,369 @@ export default function ViewReports() {
   };
 
   return (
-    <div style={{ 
-      padding: '20px', 
-      maxWidth: '1000px', 
-      margin: '0 auto',
-      fontFamily: 'Arial, sans-serif'
-    }}>
-      {/* Header */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        marginBottom: '20px'
+    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+      {/* Header with consistent layout */}
+      <header style={{ 
+        backgroundColor: 'white', 
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+        padding: '32px 24px'
       }}>
-        <h1 style={{ 
-          fontSize: '24px', 
-          fontWeight: 'bold', 
-          color: '#1f2937',
-          margin: 0 
-        }}>
-          View Reports
-        </h1>
-        <Link 
-          to="/" 
-          style={{
-            backgroundColor: '#6b7280',
-            color: 'white',
-            padding: '8px 16px',
-            borderRadius: '6px',
-            textDecoration: 'none',
-            fontSize: '14px'
-          }}
-        >
-          Back to Home
-        </Link>
-      </div>
-
-      {/* Instructions */}
-      <div style={{
-        backgroundColor: '#f0f9ff',
-        border: '1px solid #bfdbfe',
-        borderRadius: '8px',
-        padding: '16px',
-        marginBottom: '24px'
-      }}>
-        <h3 style={{ 
-          fontSize: '16px', 
-          fontWeight: '600', 
-          color: '#1e40af',
-          margin: '0 0 8px 0'
-        }}>
-          Select a class to see reports
-        </h3>
-        <p style={{ 
-          color: '#1e40af', 
-          fontSize: '14px',
-          margin: 0
-        }}>
-          Choose a class below to view individual reports or all reports for that class. You can also delete all reports for a class if needed.
-        </p>
-      </div>
-
-      {/* Classes with Reports */}
-      {classesWithReports.length === 0 ? (
         <div style={{
-          backgroundColor: '#f9fafb',
-          border: '2px dashed #d1d5db',
-          borderRadius: '8px',
-          padding: '48px',
+          maxWidth: '1200px',
+          margin: '0 auto',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px'
+        }}>
+          <div>
+            <h1 style={{ 
+              fontSize: '28px', 
+              fontWeight: '600', 
+              color: '#111827',
+              margin: 0
+            }}>
+              View Reports
+            </h1>
+            <p style={{ 
+              color: '#6b7280', 
+              margin: '8px 0 0 0',
+              fontSize: '16px'
+            }}>
+              View, edit, and download completed reports for your classes
+            </p>
+          </div>
+          
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            flexWrap: 'wrap'
+          }}>
+            <Link to="/" style={{ textDecoration: 'none' }}>
+              <button style={{
+                backgroundColor: '#6b7280',
+                color: 'white',
+                padding: '12px 20px',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}>
+                ← Back to Home
+              </button>
+            </Link>
+            
+            <Link to="/write-reports" style={{ textDecoration: 'none' }}>
+              <button style={{
+                backgroundColor: '#10b981',
+                color: 'white',
+                padding: '12px 20px',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}>
+                📝 Write Reports
+              </button>
+            </Link>
+
+            <Link to="/class-management" style={{ textDecoration: 'none' }}>
+              <button style={{
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                padding: '12px 20px',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}>
+                👥 Manage Classes
+              </button>
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <main style={{ 
+        maxWidth: '1200px', 
+        margin: '0 auto', 
+        padding: '32px 24px' 
+      }}>
+
+        {/* Instructions */}
+        <div style={{
+          backgroundColor: '#f0f9ff',
+          border: '2px solid #3b82f6',
+          borderRadius: '12px',
+          padding: '24px',
+          marginBottom: '32px',
           textAlign: 'center'
         }}>
-          <div style={{ 
-            fontSize: '48px', 
-            marginBottom: '16px',
-            color: '#9ca3af'
-          }}>
-            📄
-          </div>
           <h3 style={{ 
             fontSize: '18px', 
             fontWeight: '600', 
-            color: '#374151',
+            color: '#1e40af',
             margin: '0 0 8px 0'
           }}>
-            No Reports Found
+            📊 Report Overview
           </h3>
           <p style={{ 
-            color: '#6b7280', 
+            color: '#1e40af', 
+            fontSize: '14px',
+            margin: 0
+          }}>
+            Select a class below to view individual reports or all reports for that class. You can also manage and delete reports as needed.
+          </p>
+        </div>
+
+        {/* Classes with Reports */}
+        <div style={{
+          backgroundColor: 'white',
+          padding: '32px',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+        }}>
+          <h2 style={{ 
+            fontSize: '20px', 
+            fontWeight: '600', 
+            color: '#111827',
+            marginBottom: '16px'
+          }}>
+            Classes with Reports ({classesWithReports.length})
+          </h2>
+
+          {classesWithReports.length === 0 ? (
+            <div style={{
+              border: '2px dashed #d1d5db',
+              borderRadius: '8px',
+              padding: '48px',
+              textAlign: 'center',
+              color: '#9ca3af'
+            }}>
+              <p style={{ margin: '0 0 8px 0' }}>No reports have been created yet.</p>
+              <p style={{ margin: '0 0 16px 0' }}>Start writing reports to see them here!</p>
+              <Link to="/write-reports" style={{ textDecoration: 'none' }}>
+                <button style={{
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  padding: '12px 24px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}>
+                  Start Writing Reports
+                </button>
+              </Link>
+            </div>
+          ) : (
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+              gap: '16px'
+            }}>
+              {classesWithReports.map((classItem) => {
+                const reportCount = getReportCount(classItem.id);
+                const templatesUsed = getTemplatesUsed(classItem.id);
+                const lastUpdated = getLastUpdated(classItem.id);
+                
+                return (
+                  <div key={classItem.id} style={{
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '12px',
+                    padding: '20px',
+                    backgroundColor: 'white',
+                    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)'
+                  }}>
+                    {/* Class Header */}
+                    <div style={{ marginBottom: '16px' }}>
+                      <h3 style={{ 
+                        fontSize: '18px', 
+                        fontWeight: '600', 
+                        color: '#111827',
+                        margin: '0 0 8px 0'
+                      }}>
+                        {classItem.name}
+                      </h3>
+                      
+                      <div style={{
+                        display: 'flex',
+                        gap: '16px',
+                        fontSize: '14px',
+                        color: '#6b7280',
+                        marginBottom: '8px',
+                        flexWrap: 'wrap'
+                      }}>
+                        <span>📝 {reportCount} reports</span>
+                        <span>👥 {classItem.students.length} students</span>
+                        {lastUpdated && (
+                          <span>⏰ Updated: {lastUpdated.toLocaleDateString()}</span>
+                        )}
+                      </div>
+
+                      {/* Templates used */}
+                      <div style={{
+                        fontSize: '12px',
+                        color: '#6b7280'
+                      }}>
+                        Templates: {templatesUsed.slice(0, 2).join(', ')}
+                        {templatesUsed.length > 2 && ` +${templatesUsed.length - 2} more`}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div style={{ 
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gap: '8px',
+                      marginBottom: '8px'
+                    }}>
+                      <button
+                        onClick={() => handleViewClassReports(classItem.id)}
+                        style={{
+                          backgroundColor: '#3b82f6',
+                          color: 'white',
+                          padding: '12px 16px',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        📊 View All Reports
+                      </button>
+                      
+                      <button
+                        onClick={() => navigate(`/view-reports/${classItem.id}/all`)}
+                        style={{
+                          backgroundColor: '#10b981',
+                          color: 'white',
+                          padding: '12px 16px',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        📄 View Summary
+                      </button>
+                    </div>
+
+                    <div style={{ 
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gap: '8px'
+                    }}>
+                      <button
+                        onClick={() => {
+                          // Navigate to write reports and continue editing
+                          sessionStorage.setItem('continueEditing', JSON.stringify({
+                            classId: classItem.id,
+                            templateId: state.reports.find(r => r.classId === classItem.id)?.templateId,
+                            studentIndex: 0
+                          }));
+                          navigate('/write-reports');
+                        }}
+                        style={{
+                          backgroundColor: '#f59e0b',
+                          color: 'white',
+                          padding: '12px 16px',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ✏️ Continue Writing
+                      </button>
+                      
+                      <button
+                        onClick={() => handleDeleteClassReports(classItem.id, classItem.name)}
+                        style={{
+                          backgroundColor: '#ef4444',
+                          color: 'white',
+                          padding: '12px 16px',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🗑️ Delete Reports
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Help Section */}
+        <div style={{
+          backgroundColor: '#f0f9ff',
+          border: '2px solid #3b82f6',
+          borderRadius: '12px',
+          padding: '20px',
+          textAlign: 'center'
+        }}>
+          <h3 style={{ 
+            fontSize: '18px', 
+            fontWeight: '600', 
+            color: '#1e40af',
+            margin: '0 0 8px 0'
+          }}>
+            💡 Report Viewing Guide
+          </h3>
+          <p style={{ 
+            color: '#1e40af', 
             fontSize: '14px',
             margin: '0 0 16px 0'
           }}>
-            No reports have been created yet. Use "Write Reports" to create some reports first.
+            Click "View All Reports" to see individual student reports, or "View Summary" to see all reports in one document. 
+            You can continue writing more reports or delete existing ones as needed.
           </p>
-          <Link 
-            to="/write-reports"
-            style={{
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              padding: '12px 24px',
-              borderRadius: '6px',
-              textDecoration: 'none',
-              fontSize: '14px',
-              fontWeight: '600'
-            }}
-          >
-            Write Reports
-          </Link>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {classesWithReports.map((classItem) => {
-            const reportCount = getReportCount(classItem.id);
-            const students = classItem.students || [];
-            
-            return (
-              <div key={classItem.id} style={{
-                backgroundColor: 'white',
-                border: '2px solid #e5e7eb',
-                borderRadius: '12px',
-                padding: '24px',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link to="/write-reports" style={{ textDecoration: 'none' }}>
+              <button style={{
+                backgroundColor: '#10b981',
+                color: 'white',
+                padding: '8px 16px',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer'
               }}>
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'flex-start',
-                  marginBottom: '16px'
-                }}>
-                  <div style={{ flex: 1 }}>
-                    <h3 style={{ 
-                      fontSize: '20px', 
-                      fontWeight: '600', 
-                      color: '#111827',
-                      margin: '0 0 8px 0'
-                    }}>
-                      {classItem.name}
-                    </h3>
-                    <div style={{
-                      display: 'flex',
-                      gap: '16px',
-                      fontSize: '14px',
-                      color: '#6b7280',
-                      marginBottom: '12px'
-                    }}>
-                      <span>👥 {students.length} students</span>
-                      <span>📄 {reportCount} reports</span>
-                      <span>📅 Created: {new Date(classItem.createdAt).toLocaleDateString()}</span>
-                    </div>
-                    
-                    {/* Show completion status */}
-                    <div style={{
-                      backgroundColor: reportCount === students.length ? '#dcfce7' : '#fef3c7',
-                      color: reportCount === students.length ? '#166534' : '#92400e',
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      display: 'inline-block'
-                    }}>
-                      {reportCount === students.length ? '✅ All reports complete' : `⚠️ ${students.length - reportCount} reports missing`}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div style={{ 
-                  display: 'flex', 
-                  gap: '12px', 
-                  flexWrap: 'wrap' 
-                }}>
-                  <button
-                    onClick={() => handleViewClassReports(classItem.id)}
-                    style={{
-                      backgroundColor: '#3b82f6',
-                      color: 'white',
-                      padding: '10px 20px',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    👁️ View Reports
-                  </button>
-                  
-                  <button
-                    onClick={() => handleDeleteClassReports(classItem.id, classItem.name)}
-                    style={{
-                      backgroundColor: '#ef4444',
-                      color: 'white',
-                      padding: '10px 20px',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    🗑️ Delete All Reports
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Summary Stats */}
-      {classesWithReports.length > 0 && (
-        <div style={{
-          backgroundColor: '#f8fafc',
-          border: '1px solid #e2e8f0',
-          borderRadius: '8px',
-          padding: '16px',
-          marginTop: '24px'
-        }}>
-          <h4 style={{ 
-            fontSize: '14px', 
-            fontWeight: '600', 
-            color: '#374151',
-            margin: '0 0 8px 0'
-          }}>
-            Report Summary
-          </h4>
-          <div style={{
-            display: 'flex',
-            gap: '24px',
-            fontSize: '14px',
-            color: '#6b7280'
-          }}>
-            <span>📚 {classesWithReports.length} classes with reports</span>
-            <span>📄 {state.reports.length} total reports</span>
-            <span>👥 {classesWithReports.reduce((total, c) => total + (c.students?.length || 0), 0)} total students</span>
+                Write New Reports
+              </button>
+            </Link>
+            <Link to="/class-management" style={{ textDecoration: 'none' }}>
+              <button style={{
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                padding: '8px 16px',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}>
+                Manage Classes
+              </button>
+            </Link>
           </div>
         </div>
-      )}
+      </main>
     </div>
   );
 }

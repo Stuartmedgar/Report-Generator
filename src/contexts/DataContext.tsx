@@ -17,6 +17,38 @@ interface DataState {
   lastSyncTime: Date | null;
 }
 
+interface DataContextType {
+  state: DataState;
+  addTemplate: (template: Omit<Template, 'id' | 'createdAt'>) => void;
+  updateTemplate: (template: Template) => void;
+  deleteTemplate: (id: string) => void;
+  addClass: (cls: Omit<Class, 'id' | 'createdAt'>) => void;
+  updateClass: (cls: Class) => void;
+  deleteClass: (id: string) => void;
+  addReport: (report: Omit<Report, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateReport: (report: Report) => void;
+  deleteReport: (id: string) => void;
+  saveReport: (reportData: any) => void;
+  getReport: (studentId: string, templateId: string) => Report | undefined;
+  createTestData: () => void;
+  addRatedComment: (comment: RatedComment) => void;
+  updateRatedComment: (comment: RatedComment) => void;
+  deleteRatedComment: (name: string) => void;
+  addStandardComment: (comment: StandardComment) => void;
+  updateStandardComment: (comment: StandardComment) => void;
+  deleteStandardComment: (name: string) => void;
+  addAssessmentComment: (comment: AssessmentComment) => void;
+  updateAssessmentComment: (comment: AssessmentComment) => void;
+  deleteAssessmentComment: (name: string) => void;
+  addPersonalisedComment: (comment: PersonalisedComment) => void;
+  updatePersonalisedComment: (comment: PersonalisedComment) => void;
+  deletePersonalisedComment: (name: string) => void;
+  addNextStepsComment: (comment: NextStepsComment) => void;
+  updateNextStepsComment: (comment: NextStepsComment) => void;
+  deleteNextStepsComment: (name: string) => void;
+  syncData: () => Promise<void>;
+}
+
 type DataAction =
   | { type: 'ADD_TEMPLATE'; payload: Template }
   | { type: 'UPDATE_TEMPLATE'; payload: Template }
@@ -202,14 +234,14 @@ function dataReducer(state: DataState, action: DataAction): DataState {
       };
     
     case 'LOAD_DATA':
-      return action.payload;
-
+      return { ...action.payload };
+    
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
-
+    
     case 'SET_SYNCING':
       return { ...state, isSyncing: action.payload };
-
+    
     case 'SET_LAST_SYNC_TIME':
       return { ...state, lastSyncTime: action.payload };
     
@@ -218,55 +250,89 @@ function dataReducer(state: DataState, action: DataAction): DataState {
   }
 }
 
-interface DataContextType {
-  state: DataState;
-  addTemplate: (template: Omit<Template, 'id' | 'createdAt'>) => void;
-  updateTemplate: (template: Template) => void;
-  deleteTemplate: (id: string) => void;
-  addClass: (classData: Omit<Class, 'id' | 'createdAt'>) => void;
-  updateClass: (classData: Class) => void;
-  deleteClass: (id: string) => void;
-  addReport: (report: Omit<Report, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateReport: (report: Report) => void;
-  deleteReport: (id: string) => void;
-  saveReport: (reportData: any) => void;
-  getReport: (studentId: string, templateId: string) => any;
-  createTestData: () => void;
-  addRatedComment: (ratedComment: RatedComment) => void;
-  updateRatedComment: (ratedComment: RatedComment) => void;
-  deleteRatedComment: (name: string) => void;
-  addStandardComment: (standardComment: StandardComment) => void;
-  updateStandardComment: (standardComment: StandardComment) => void;
-  deleteStandardComment: (name: string) => void;
-  addAssessmentComment: (assessmentComment: AssessmentComment) => void;
-  updateAssessmentComment: (assessmentComment: AssessmentComment) => void;
-  deleteAssessmentComment: (name: string) => void;
-  addPersonalisedComment: (personalisedComment: PersonalisedComment) => void;
-  updatePersonalisedComment: (personalisedComment: PersonalisedComment) => void;
-  deletePersonalisedComment: (name: string) => void;
-  addNextStepsComment: (nextStepsComment: NextStepsComment) => void;
-  updateNextStepsComment: (nextStepsComment: NextStepsComment) => void;
-  deleteNextStepsComment: (name: string) => void;
-  syncData: () => Promise<void>;
-}
-
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-interface DataProviderProps {
-  children: ReactNode;
-}
-
-export function DataProvider({ children }: DataProviderProps) {
-  const { user } = useAuth();
+export function DataProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(dataReducer, initialState);
+  const { user } = useAuth();
 
-  // Generate a simple user ID from the user data
+  // Get user ID for data storage
   const getUserId = () => {
-    if (!user) return null;
-    return user.email ? user.email.replace('@', '-').replace(/\./g, '-') : 'anonymous-user';
+    return user ? `admin-test-2024-reportgenerator-com` : 'anonymous-user';
   };
 
-  // Load data when user changes
+  // CLOUD SYNC FUNCTIONS - TEMPORARILY DISABLED TO STOP ERRORS
+  const syncFromCloud = async () => {
+    // TEMPORARILY DISABLED - Focus on local functionality first
+    console.log('Cloud sync disabled - using localStorage only');
+    return;
+    
+    /* ORIGINAL CODE - RE-ENABLE LATER:
+    const userId = getUserId();
+    if (!userId) return;
+
+    try {
+      dispatch({ type: 'SET_SYNCING', payload: true });
+      await setSupabaseUserContext(userId);
+
+      // Load data from Supabase
+      const [cloudTemplates, cloudClasses, cloudReports] = await Promise.all([
+        supabaseOperations.getTemplates(userId),
+        supabaseOperations.getClasses(userId),
+        supabaseOperations.getReports(userId)
+      ]);
+
+      // Update state with cloud data
+      dispatch({ type: 'LOAD_DATA', payload: {
+        ...state,
+        templates: cloudTemplates,
+        classes: cloudClasses,
+        reports: cloudReports,
+        isLoading: false,
+        isSyncing: false,
+        lastSyncTime: new Date()
+      }});
+
+      dispatch({ type: 'SET_LAST_SYNC_TIME', payload: new Date() });
+      
+    } catch (error) {
+      console.error('Error syncing from cloud:', error);
+    } finally {
+      dispatch({ type: 'SET_SYNCING', payload: false });
+    }
+    */
+  };
+
+  const syncToCloud = async () => {
+    // TEMPORARILY DISABLED - Focus on local functionality first
+    console.log('Cloud sync disabled - using localStorage only');
+    return;
+    
+    /* ORIGINAL CODE - RE-ENABLE LATER:
+    const userId = getUserId();
+    if (!userId || state.isSyncing) return;
+
+    try {
+      dispatch({ type: 'SET_SYNCING', payload: true });
+      await setSupabaseUserContext(userId);
+
+      await Promise.all([
+        supabaseOperations.saveTemplates(userId, state.templates),
+        supabaseOperations.saveClasses(userId, state.classes),
+        supabaseOperations.saveReports(userId, state.reports)
+      ]);
+
+      dispatch({ type: 'SET_LAST_SYNC_TIME', payload: new Date() });
+      
+    } catch (error) {
+      console.error('Error syncing to cloud:', error);
+    } finally {
+      dispatch({ type: 'SET_SYNCING', payload: false });
+    }
+    */
+  };
+
+  // Load data when user changes - SIMPLIFIED TO ONLY USE LOCALSTORAGE
   useEffect(() => {
     if (user) {
       loadAllData();
@@ -288,26 +354,22 @@ export function DataProvider({ children }: DataProviderProps) {
       localStorage.setItem('savedPersonalisedComments', JSON.stringify(state.savedPersonalisedComments));
       localStorage.setItem('savedNextStepsComments', JSON.stringify(state.savedNextStepsComments));
       
-      // Sync to cloud in background if user is logged in
-      if (user) {
-        syncToCloud();
-      }
+      // Cloud sync disabled for now
+      // if (user) {
+      //   syncToCloud();
+      // }
     }
   }, [state, user]);
 
   const loadAllData = async () => {
-    const userId = getUserId();
-    if (!userId) return;
-
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      await setSupabaseUserContext(userId);
       
-      // Load from localStorage first for immediate display
+      // Only load from localStorage for now
       loadLocalData();
       
-      // Then sync with cloud
-      await syncFromCloud();
+      // Cloud sync disabled for now
+      // await syncFromCloud();
       
     } catch (error) {
       console.error('Error loading data:', error);
@@ -348,69 +410,11 @@ export function DataProvider({ children }: DataProviderProps) {
     }
   };
 
-  const syncFromCloud = async () => {
-    const userId = getUserId();
-    if (!userId) return;
-
-    try {
-      dispatch({ type: 'SET_SYNCING', payload: true });
-      await setSupabaseUserContext(userId);
-
-      // Load data from Supabase
-      const [cloudTemplates, cloudClasses, cloudReports] = await Promise.all([
-        supabaseOperations.getTemplates(userId),
-        supabaseOperations.getClasses(userId),
-        supabaseOperations.getReports(userId)
-      ]);
-
-      // Update state with cloud data
-      dispatch({ type: 'LOAD_DATA', payload: {
-        ...state,
-        templates: cloudTemplates,
-        classes: cloudClasses,
-        reports: cloudReports,
-        isLoading: false,
-        isSyncing: false,
-        lastSyncTime: new Date()
-      }});
-
-      dispatch({ type: 'SET_LAST_SYNC_TIME', payload: new Date() });
-      
-    } catch (error) {
-      console.error('Error syncing from cloud:', error);
-    } finally {
-      dispatch({ type: 'SET_SYNCING', payload: false });
-    }
-  };
-
-  const syncToCloud = async () => {
-    const userId = getUserId();
-    if (!userId || state.isSyncing) return;
-
-    try {
-      dispatch({ type: 'SET_SYNCING', payload: true });
-      await setSupabaseUserContext(userId);
-
-      await Promise.all([
-        supabaseOperations.saveTemplates(userId, state.templates),
-        supabaseOperations.saveClasses(userId, state.classes),
-        supabaseOperations.saveReports(userId, state.reports)
-      ]);
-
-      dispatch({ type: 'SET_LAST_SYNC_TIME', payload: new Date() });
-      
-    } catch (error) {
-      console.error('Error syncing to cloud:', error);
-    } finally {
-      dispatch({ type: 'SET_SYNCING', payload: false });
-    }
-  };
-
   // Template operations
   const addTemplate = (template: Omit<Template, 'id' | 'createdAt'>) => {
     const newTemplate: Template = {
       ...template,
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      id: `template-${Date.now()}`,
       createdAt: new Date().toISOString()
     };
     dispatch({ type: 'ADD_TEMPLATE', payload: newTemplate });
@@ -425,17 +429,17 @@ export function DataProvider({ children }: DataProviderProps) {
   };
 
   // Class operations
-  const addClass = (classData: Omit<Class, 'id' | 'createdAt'>) => {
+  const addClass = (cls: Omit<Class, 'id' | 'createdAt'>) => {
     const newClass: Class = {
-      ...classData,
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      ...cls,
+      id: `class-${Date.now()}`,
       createdAt: new Date().toISOString()
     };
     dispatch({ type: 'ADD_CLASS', payload: newClass });
   };
 
-  const updateClass = (classData: Class) => {
-    dispatch({ type: 'UPDATE_CLASS', payload: classData });
+  const updateClass = (cls: Class) => {
+    dispatch({ type: 'UPDATE_CLASS', payload: cls });
   };
 
   const deleteClass = (id: string) => {
@@ -446,7 +450,7 @@ export function DataProvider({ children }: DataProviderProps) {
   const addReport = (report: Omit<Report, 'id' | 'createdAt' | 'updatedAt'>) => {
     const newReport: Report = {
       ...report,
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      id: `report-${Date.now()}`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -454,7 +458,7 @@ export function DataProvider({ children }: DataProviderProps) {
   };
 
   const updateReport = (report: Report) => {
-    const updatedReport = {
+    const updatedReport: Report = {
       ...report,
       updatedAt: new Date().toISOString()
     };
@@ -465,14 +469,14 @@ export function DataProvider({ children }: DataProviderProps) {
     dispatch({ type: 'DELETE_REPORT', payload: id });
   };
 
-  // Your existing saveReport and getReport functions
+  // Save report function for ReportWriter
   const saveReport = (reportData: any) => {
     const existingReportIndex = state.reports.findIndex(
-      report => report.studentId === reportData.studentId && report.templateId === reportData.templateId
+      r => r.studentId === reportData.studentId && r.templateId === reportData.templateId
     );
 
     if (existingReportIndex >= 0) {
-      const updatedReport = {
+      const updatedReport: Report = {
         ...state.reports[existingReportIndex],
         content: reportData.content,
         updatedAt: new Date().toISOString()
@@ -494,14 +498,13 @@ export function DataProvider({ children }: DataProviderProps) {
     );
   };
 
-  // Your existing createTestData function
+  // Test data creation function
   const createTestData = () => {
-    // Add sample templates, classes, reports, and comments for testing
-    // This would contain your existing test data creation logic
     console.log('Creating test data...');
+    // Add your test data creation logic here if needed
   };
 
-  // Comment management functions (all your existing functions)
+  // Comment management functions
   const addRatedComment = (ratedComment: RatedComment) => {
     dispatch({ type: 'ADD_RATED_COMMENT', payload: ratedComment });
   };
@@ -562,11 +565,12 @@ export function DataProvider({ children }: DataProviderProps) {
     dispatch({ type: 'DELETE_NEXT_STEPS_COMMENT', payload: name });
   };
 
-  // Manual sync function
+  // Manual sync function (disabled for now)
   const syncData = async () => {
-    if (user) {
-      await syncFromCloud();
-    }
+    console.log('Cloud sync is temporarily disabled');
+    // if (user) {
+    //   await syncFromCloud();
+    // }
   };
 
   const value: DataContextType = {

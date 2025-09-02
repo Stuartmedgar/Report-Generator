@@ -84,7 +84,7 @@ export interface Class {
   createdAt: string;
 }
 
-// Report types
+// Report types - FIXED: Added the missing properties
 export interface Report {
   id: string;
   studentId: string;
@@ -92,6 +92,8 @@ export interface Report {
   classId: string;
   content: string;
   sectionData?: Record<string, any>;  // Added this for saving form state
+  isManuallyEdited?: boolean;         // ADDED: This fixes the TypeScript error
+  manuallyEditedContent?: string;     // ADDED: This fixes the TypeScript error
   createdAt: string;
   updatedAt: string;
 }

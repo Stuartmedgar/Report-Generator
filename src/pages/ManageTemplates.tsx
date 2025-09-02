@@ -142,87 +142,102 @@ export default function ManageTemplates() {
   };
 
   return (
-    <div style={{ 
-      padding: '20px', 
-      maxWidth: '1000px', 
-      margin: '0 auto',
-      fontFamily: 'Arial, sans-serif'
-    }}>
-      {/* Header */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        marginBottom: '20px'
+    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+      {/* Header with consistent layout */}
+      <header style={{ 
+        backgroundColor: 'white', 
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+        padding: '32px 24px'
       }}>
-        <h1 style={{ 
-          fontSize: '24px', 
-          fontWeight: 'bold', 
-          color: '#1f2937',
-          margin: 0 
+        <div style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px'
         }}>
-          Manage Templates
-        </h1>
-        <Link 
-          to="/" 
-          style={{
-            backgroundColor: '#6b7280',
-            color: 'white',
-            padding: '8px 16px',
-            borderRadius: '6px',
-            textDecoration: 'none',
-            fontSize: '14px'
-          }}
-        >
-          Back to Home
-        </Link>
-      </div>
-
-      {/* Import Template Section */}
-      <div style={{
-        backgroundColor: '#f0f9ff',
-        border: '2px solid #3b82f6',
-        borderRadius: '12px',
-        padding: '20px',
-        marginBottom: '24px'
-      }}>
-        <h3 style={{ 
-          fontSize: '18px', 
-          fontWeight: '600', 
-          color: '#1e40af',
-          margin: '0 0 8px 0'
-        }}>
-          📥 Import Template
-        </h3>
-        <p style={{ 
-          color: '#1e40af', 
-          fontSize: '14px',
-          margin: '0 0 16px 0'
-        }}>
-          Import a template file that was shared by someone else. Templates are saved as .json files.
-        </p>
-        
-        <button
-          onClick={handleImportClick}
-          disabled={isImporting}
-          style={{
-            backgroundColor: isImporting ? '#9ca3af' : '#3b82f6',
-            color: 'white',
-            padding: '12px 24px',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '16px',
-            fontWeight: '600',
-            cursor: isImporting ? 'not-allowed' : 'pointer',
+          <div>
+            <h1 style={{ 
+              fontSize: '28px', 
+              fontWeight: '600', 
+              color: '#111827',
+              margin: 0
+            }}>
+              Manage Templates
+            </h1>
+            <p style={{ 
+              color: '#6b7280', 
+              margin: '8px 0 0 0',
+              fontSize: '16px'
+            }}>
+              Edit, share, and organize your report templates
+            </p>
+          </div>
+          
+          <div style={{
             display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          {isImporting ? '⏳ Importing...' : '📁 Select Template File'}
-        </button>
-        
-        {/* Hidden file input */}
+            gap: '12px',
+            flexWrap: 'wrap'
+          }}>
+            <Link to="/" style={{ textDecoration: 'none' }}>
+              <button style={{
+                backgroundColor: '#6b7280',
+                color: 'white',
+                padding: '12px 20px',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}>
+                ← Back to Home
+              </button>
+            </Link>
+            
+            <Link to="/create-template" style={{ textDecoration: 'none' }}>
+              <button style={{
+                backgroundColor: '#10b981',
+                color: 'white',
+                padding: '12px 20px',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}>
+                + Create Template
+              </button>
+            </Link>
+
+            <button
+              onClick={handleImportClick}
+              disabled={isImporting}
+              style={{
+                backgroundColor: isImporting ? '#9ca3af' : '#3b82f6',
+                color: 'white',
+                padding: '12px 20px',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: isImporting ? 'not-allowed' : 'pointer'
+              }}
+            >
+              📥 Import Template
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main style={{ 
+        maxWidth: '1200px', 
+        margin: '0 auto', 
+        padding: '32px 24px' 
+      }}>
+
+        {/* Hidden file input for imports */}
         <input
           ref={fileInputRef}
           type="file"
@@ -230,76 +245,118 @@ export default function ManageTemplates() {
           onChange={handleFileSelect}
           style={{ display: 'none' }}
         />
-      </div>
 
-      {/* Templates List */}
-      <div style={{
-        backgroundColor: 'white',
-        border: '2px solid #e5e7eb',
-        borderRadius: '12px',
-        padding: '24px'
-      }}>
-        <h2 style={{ 
-          fontSize: '20px', 
-          fontWeight: '600', 
-          color: '#111827',
-          marginBottom: '20px'
+        {/* Import Template Section */}
+        <div style={{
+          backgroundColor: '#f0f9ff',
+          border: '2px solid #3b82f6',
+          borderRadius: '12px',
+          padding: '24px',
+          marginBottom: '32px'
         }}>
-          Your Templates ({state.templates.length})
-        </h2>
-
-        {state.templates.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '48px',
-            color: '#9ca3af'
+          <h3 style={{ 
+            fontSize: '18px', 
+            fontWeight: '600', 
+            color: '#1e40af',
+            margin: '0 0 8px 0'
           }}>
-            <div style={{ fontSize: '64px', marginBottom: '16px' }}>📋</div>
-            <h3 style={{ fontSize: '18px', fontWeight: '600', margin: '0 0 8px 0' }}>
-              No Templates Yet
-            </h3>
-            <p style={{ margin: '0 0 24px 0' }}>
-              Create your first template to get started, or import one from a colleague.
-            </p>
-            <Link 
-              to="/create-template"
-              style={{
-                backgroundColor: '#10b981',
-                color: 'white',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                fontSize: '16px',
-                fontWeight: '600'
-              }}
-            >
-              📝 Create Your First Template
-            </Link>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {state.templates.map((template) => (
-              <div key={template.id} style={{
-                border: '2px solid #e5e7eb',
-                borderRadius: '12px',
-                padding: '20px',
-                backgroundColor: '#fafafa'
-              }}>
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'flex-start',
-                  marginBottom: '12px'
+            📥 Import Template
+          </h3>
+          <p style={{ 
+            color: '#1e40af', 
+            fontSize: '14px',
+            margin: '0 0 16px 0'
+          }}>
+            Import a template file that was shared by someone else. Templates are saved as .json files.
+          </p>
+          
+          <button
+            onClick={handleImportClick}
+            disabled={isImporting}
+            style={{
+              backgroundColor: isImporting ? '#9ca3af' : '#3b82f6',
+              color: 'white',
+              padding: '12px 24px',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: isImporting ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            {isImporting ? '⏳ Importing...' : '📁 Select Template File'}
+          </button>
+        </div>
+
+        {/* Templates List */}
+        <div style={{
+          backgroundColor: 'white',
+          padding: '32px',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+        }}>
+          <h2 style={{ 
+            fontSize: '20px', 
+            fontWeight: '600', 
+            color: '#111827',
+            marginBottom: '16px'
+          }}>
+            Your Templates ({state.templates.length})
+          </h2>
+
+          {state.templates.length === 0 ? (
+            <div style={{
+              border: '2px dashed #d1d5db',
+              borderRadius: '8px',
+              padding: '48px',
+              textAlign: 'center',
+              color: '#9ca3af'
+            }}>
+              <p style={{ margin: '0 0 8px 0' }}>No templates created yet.</p>
+              <p style={{ margin: '0 0 16px 0' }}>Create your first template to get started!</p>
+              <Link to="/create-template" style={{ textDecoration: 'none' }}>
+                <button style={{
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  padding: '12px 24px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
                 }}>
-                  <div style={{ flex: 1 }}>
+                  Create Your First Template
+                </button>
+              </Link>
+            </div>
+          ) : (
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+              gap: '16px'
+            }}>
+              {state.templates.map((template) => (
+                <div key={template.id} style={{
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  backgroundColor: 'white',
+                  boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)'
+                }}>
+                  {/* Template Header */}
+                  <div style={{ marginBottom: '16px' }}>
                     <h3 style={{ 
-                      fontSize: '20px', 
+                      fontSize: '18px', 
                       fontWeight: '600', 
                       color: '#111827',
                       margin: '0 0 8px 0'
                     }}>
                       {template.name}
                     </h3>
+                    
                     <div style={{
                       display: 'flex',
                       gap: '16px',
@@ -317,7 +374,7 @@ export default function ManageTemplates() {
                       flexWrap: 'wrap', 
                       gap: '6px'
                     }}>
-                      {template.sections.map((section, index) => (
+                      {template.sections.slice(0, 5).map((section, index) => (
                         <span key={index} style={{
                           backgroundColor: getSectionColor(section.type),
                           color: 'white',
@@ -329,85 +386,153 @@ export default function ManageTemplates() {
                           {getSectionDisplayName(section.type)}
                         </span>
                       ))}
+                      {template.sections.length > 5 && (
+                        <span style={{
+                          backgroundColor: '#6b7280',
+                          color: 'white',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: '500'
+                        }}>
+                          +{template.sections.length - 5} more
+                        </span>
+                      )}
                     </div>
                   </div>
-                </div>
 
-                {/* Action Buttons */}
-                <div style={{ 
-                  display: 'flex', 
-                  gap: '8px', 
-                  flexWrap: 'wrap' 
-                }}>
-                  <button
-                    onClick={() => handleEdit(template)}
-                    style={{
-                      backgroundColor: '#3b82f6',
-                      color: 'white',
-                      padding: '8px 16px',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    ✏️ Edit
-                  </button>
-                  
-                  <button
-                    onClick={() => handleShare(template)}
-                    style={{
-                      backgroundColor: '#10b981',
-                      color: 'white',
-                      padding: '8px 16px',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    📤 Share
-                  </button>
-                  
-                  <button
-                    onClick={() => handleDuplicate(template)}
-                    style={{
-                      backgroundColor: '#f59e0b',
-                      color: 'white',
-                      padding: '8px 16px',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    📋 Duplicate
-                  </button>
-                  
-                  <button
-                    onClick={() => handleDelete(template)}
-                    style={{
-                      backgroundColor: '#ef4444',
-                      color: 'white',
-                      padding: '8px 16px',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    🗑️ Delete
-                  </button>
+                  {/* Action Buttons */}
+                  <div style={{ 
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: '8px' 
+                  }}>
+                    <button
+                      onClick={() => handleEdit(template)}
+                      style={{
+                        backgroundColor: '#3b82f6',
+                        color: 'white',
+                        padding: '8px 16px',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ✏️ Edit
+                    </button>
+                    
+                    <button
+                      onClick={() => handleShare(template)}
+                      style={{
+                        backgroundColor: '#10b981',
+                        color: 'white',
+                        padding: '8px 16px',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      📤 Share
+                    </button>
+                    
+                    <button
+                      onClick={() => handleDuplicate(template)}
+                      style={{
+                        backgroundColor: '#f59e0b',
+                        color: 'white',
+                        padding: '8px 16px',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      📋 Duplicate
+                    </button>
+                    
+                    <button
+                      onClick={() => handleDelete(template)}
+                      style={{
+                        backgroundColor: '#ef4444',
+                        color: 'white',
+                        padding: '8px 16px',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      🗑️ Delete
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Help Section */}
+        <div style={{
+          backgroundColor: '#f0f9ff',
+          border: '2px solid #3b82f6',
+          borderRadius: '12px',
+          padding: '20px',
+          textAlign: 'center'
+        }}>
+          <h3 style={{ 
+            fontSize: '18px', 
+            fontWeight: '600', 
+            color: '#1e40af',
+            margin: '0 0 8px 0'
+          }}>
+            💡 Template Management Tips
+          </h3>
+          <p style={{ 
+            color: '#1e40af', 
+            fontSize: '14px',
+            margin: '0 0 16px 0'
+          }}>
+            Edit templates to customize content, share them with colleagues, or duplicate them to create variations. 
+            You can also import templates that others have shared with you.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link to="/write-reports" style={{ textDecoration: 'none' }}>
+              <button style={{
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                padding: '8px 16px',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}>
+                Start Writing Reports
+              </button>
+            </Link>
+            <Link to="/class-management" style={{ textDecoration: 'none' }}>
+              <button style={{
+                backgroundColor: '#10b981',
+                color: 'white',
+                padding: '8px 16px',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}>
+                Manage Classes
+              </button>
+            </Link>
           </div>
-        )}
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

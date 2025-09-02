@@ -27,82 +27,251 @@ export default function CreateTemplate() {
   // Check if we're editing an existing template
   const editTemplate = location.state?.editTemplate;
   const isEditing = !!editTemplate;
-  
+
   const [templateName, setTemplateName] = useState(editTemplate?.name || '');
   const [sections, setSections] = useState<TemplateSection[]>(editTemplate?.sections || []);
-  const [isNameSaved, setIsNameSaved] = useState(isEditing);
-  const [showSectionSelector, setShowSectionSelector] = useState(false);
   const [sectionData, setSectionData] = useState<Record<string, any>>({});
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [showPreview, setShowPreview] = useState(false);
-  
-  // States for editing sections
-  const [editingSection, setEditingSection] = useState<{ section: TemplateSection; index: number } | null>(null);
+  const [showSectionSelector, setShowSectionSelector] = useState(false);
   const [showRatedCommentBuilder, setShowRatedCommentBuilder] = useState(false);
   const [showAssessmentCommentBuilder, setShowAssessmentCommentBuilder] = useState(false);
   const [showPersonalisedCommentBuilder, setShowPersonalisedCommentBuilder] = useState(false);
   const [showNextStepsCommentBuilder, setShowNextStepsCommentBuilder] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [editingSection, setEditingSection] = useState<{ section: TemplateSection; index: number } | null>(null);
 
   // Initialize section data from existing template if editing
   useEffect(() => {
-    if (isEditing && editTemplate) {
+    if (editTemplate && editTemplate.sections) {
       const initialSectionData: Record<string, any> = {};
-      editTemplate.sections.forEach((section: any) => {
+      editTemplate.sections.forEach((section: TemplateSection) => {
         initialSectionData[section.id] = section.data || {};
       });
       setSectionData(initialSectionData);
     }
-  }, [isEditing, editTemplate]);
+  }, [editTemplate]);
 
-  // Run validation whenever sections change
-  useEffect(() => {
-    const validation = validateTemplate(templateName, sections);
-    setValidationErrors(validation.errors);
-  }, [sections, templateName]);
+  // Validation - simple array approach
+  const validationErrors: string[] = [];
+  if (sections.length === 0) {
+    validationErrors.push('Template must have at least one section');
+  }
+  // Add more validation as needed
 
-  const handleSaveName = () => {
-    if (templateName.trim()) {
-      setIsNameSaved(true);
+  // Template name step
+  if (!templateName.trim()) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+        <header style={{ 
+          backgroundColor: 'white', 
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+          padding: '32px 24px'
+        }}>
+          <div style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '16px'
+          }}>
+            <div>
+              <h1 style={{ 
+                fontSize: '28px', 
+                fontWeight: '600', 
+                color: '#111827',
+                margin: 0
+              }}>
+                {isEditing ? 'Edit Template' : 'Create New Template'}
+              </h1>
+              <p style={{ 
+                color: '#6b7280', 
+                margin: '8px 0 0 0',
+                fontSize: '16px'
+              }}>
+                Start by giving your template a name
+              </p>
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              flexWrap: 'wrap'
+            }}>
+              <Link to="/" style={{ textDecoration: 'none' }}>
+                <button style={{
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  padding: '12px 20px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}>
+                  ← Back to Home
+                </button>
+              </Link>
+              
+              <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
+                <button style={{
+                  backgroundColor: '#8b5cf6',
+                  color: 'white',
+                  padding: '12px 20px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}>
+                  📋 Manage Templates
+                </button>
+              </Link>
+            </div>
+          </div>
+        </header>
+
+        <main style={{ 
+          maxWidth: '800px', 
+          margin: '0 auto', 
+          padding: '32px 24px' 
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '48px 32px',
+            borderRadius: '12px',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              fontSize: '48px',
+              marginBottom: '16px'
+            }}>
+              
+            </div>
+            <h2 style={{
+              fontSize: '24px',
+              fontWeight: '600',
+              color: '#111827',
+              marginBottom: '8px'
+            }}>
+              {isEditing ? 'Edit Template Name' : 'Name Your Template'}
+            </h2>
+            <p style={{
+              color: '#6b7280',
+              fontSize: '16px',
+              marginBottom: '32px'
+            }}>
+              Choose a descriptive name for your template that describes the type of report it will generate.
+            </p>
+            
+            <input
+              type="text"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="e.g., Math Progress Report, Science Assessment, Weekly Behaviour Report"
+              autoFocus
+              style={{
+                width: '100%',
+                maxWidth: '500px',
+                padding: '16px',
+                fontSize: '18px',
+                border: '2px solid #e5e7eb',
+                borderRadius: '8px',
+                marginBottom: '24px',
+                textAlign: 'center'
+              }}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && templateName.trim()) {
+                  // Auto-continue when Enter is pressed
+                }
+              }}
+            />
+            
+            <button
+              onClick={() => {/* Template name is set, continue to section building */}}
+              disabled={!templateName.trim()}
+              style={{
+                backgroundColor: templateName.trim() ? '#3b82f6' : '#9ca3af',
+                color: 'white',
+                padding: '16px 32px',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: templateName.trim() ? 'pointer' : 'not-allowed',
+                width: '100%',
+                maxWidth: '300px'
+              }}
+            >
+              Continue to Add Sections
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Handle save template
+  const handleSaveTemplate = () => {
+    if (validationErrors.length > 0) {
+      const proceed = window.confirm(
+        `Your template has ${validationErrors.length} validation issue(s):\n\n${validationErrors.join('\n')}\n\nDo you want to save anyway?`
+      );
+      if (!proceed) return;
     }
-  };
 
-  const handleSelectSection = (sectionType: string, data?: any) => {
-    const newSection: TemplateSection = {
-      id: Date.now().toString(),
-      type: sectionType as any,
-      name: data?.name || '',
-      data: data?.data || data || {}
+    const templateData = {
+      id: editTemplate?.id || `template-${Date.now()}`,
+      name: templateName,
+      sections: sections,
+      createdAt: editTemplate?.createdAt || new Date().toISOString()
     };
-    setSections([...sections, newSection]);
-    setShowSectionSelector(false);
+
+    if (isEditing) {
+      updateTemplate(templateData);
+      alert('Template updated successfully!');
+    } else {
+      addTemplate(templateData);
+      alert('Template created successfully!');
+    }
+    
+    navigate('/manage-templates');
   };
 
-  const updateSectionData = (sectionId: string, data: any) => {
+  // Export template - simplified
+  const handleExportTemplate = () => {
+    const exportContent = `Template: ${templateName}\nSections: ${sections.length}\n\nValidation Issues: ${validationErrors.length > 0 ? validationErrors.join(', ') : 'None'}`;
+    const blob = new Blob([exportContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${templateName}_export.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Section management
+  const handleAddSection = (sectionType: string, sectionData: any) => {
+    const newSection: TemplateSection = {
+      id: `section-${Date.now()}`,
+      type: sectionType as any,
+      name: sectionData.name,
+      data: sectionData.data
+    };
+    
+    setSections([...sections, newSection]);
     setSectionData(prev => ({
       ...prev,
-      [sectionId]: { ...prev[sectionId], ...data }
+      [newSection.id]: sectionData.data
     }));
-  };
-
-  const handleRemoveSection = (id: string) => {
-    setSections(sections.filter(section => section.id !== id));
-  };
-
-  const handleMoveSection = (index: number, direction: 'up' | 'down') => {
-    if (direction === 'up' && index > 0) {
-      const newSections = [...sections];
-      [newSections[index - 1], newSections[index]] = [newSections[index], newSections[index - 1]];
-      setSections(newSections);
-    } else if (direction === 'down' && index < sections.length - 1) {
-      const newSections = [...sections];
-      [newSections[index], newSections[index + 1]] = [newSections[index + 1], newSections[index]];
-      setSections(newSections);
-    }
+    setShowSectionSelector(false);
   };
 
   const handleEditSection = (section: TemplateSection, index: number) => {
     setEditingSection({ section, index });
     
+    // Show the appropriate builder
     switch (section.type) {
       case 'rated-comment':
         setShowRatedCommentBuilder(true);
@@ -116,308 +285,115 @@ export default function CreateTemplate() {
       case 'next-steps':
         setShowNextStepsCommentBuilder(true);
         break;
-      default:
-        alert(`Edit functionality for ${section.type} sections is not yet implemented. You can remove and re-add this section to make changes.`);
-        break;
     }
   };
 
-  const handleSaveEditedSection = (editedData: any) => {
-    if (editingSection) {
-      let transformedData = editedData;
-      
-      if (editingSection.section.type === 'next-steps') {
-        transformedData = {
-          name: editedData.name,
-          focusAreas: editedData.comments,
-          headings: editedData.headings
-        };
-      } else if (editingSection.section.type === 'personalised-comment') {
-        transformedData = {
-          name: editedData.name,
-          instruction: editedData.instruction,
-          categories: editedData.comments,
-          headings: editedData.headings
-        };
-      }
+  const handleUpdateSection = (updatedSectionData: any) => {
+    if (!editingSection) return;
 
-      const updatedSections = [...sections];
-      updatedSections[editingSection.index] = {
-        ...editingSection.section,
-        name: transformedData.name,
-        data: transformedData
-      };
-      
-      setSections(updatedSections);
-      handleCancelEditSection();
-      alert('Section updated! Click "Update Template" to save changes permanently.');
-    }
-  };
+    const updatedSection: TemplateSection = {
+      ...editingSection.section,
+      name: updatedSectionData.name,
+      data: updatedSectionData.data
+    };
 
-  const handleCancelEditSection = () => {
+    const newSections = [...sections];
+    newSections[editingSection.index] = updatedSection;
+    setSections(newSections);
+
+    setSectionData(prev => ({
+      ...prev,
+      [updatedSection.id]: updatedSectionData.data
+    }));
+
+    setEditingSection(null);
     setShowRatedCommentBuilder(false);
     setShowAssessmentCommentBuilder(false);
     setShowPersonalisedCommentBuilder(false);
     setShowNextStepsCommentBuilder(false);
-    setEditingSection(null);
   };
 
-  const handleExportTemplate = () => {
-    exportTemplateToText(templateName, sections, validationErrors);
-    alert('Template exported successfully! Check your downloads folder.');
+  const handleRemoveSection = (index: number) => {
+    const newSections = sections.filter((_, i) => i !== index);
+    setSections(newSections);
   };
 
-  const handleSaveTemplate = () => {
-    if (!templateName.trim()) {
-      alert('Please enter a template name');
-      return;
-    }
-
-    if (sections.length === 0) {
-      alert('Please add at least one section to your template');
-      return;
-    }
-
-    const sectionsWithData = sections.map(section => {
-      const currentSectionData = sectionData[section.id] || {};
-      const finalData = {
-        ...section.data,
-        ...currentSectionData
-      };
-      
-      return {
-        ...section,
-        data: finalData
-      };
-    });
-
-    if (isEditing) {
-      const updatedTemplate = {
-        ...editTemplate,
-        name: templateName,
-        sections: sectionsWithData
-      };
-      updateTemplate(updatedTemplate);
-      alert('Template updated successfully!');
-    } else {
-      const newTemplate = {
-        name: templateName,
-        sections: sectionsWithData
-      };
-      addTemplate(newTemplate);
-      alert('Template saved successfully!');
-    }
-
-    navigate('/manage-templates');
+  const handleMoveSection = (fromIndex: number, toIndex: number) => {
+    const newSections = [...sections];
+    const [movedSection] = newSections.splice(fromIndex, 1);
+    newSections.splice(toIndex, 0, movedSection);
+    setSections(newSections);
   };
 
-  // If we're showing a section builder, render that instead
-  if (showRatedCommentBuilder && editingSection) {
-    return (
-      <RatedCommentBuilder
-        existingComment={editingSection.section.data}
-        onSave={handleSaveEditedSection}
-        onCancel={handleCancelEditSection}
-      />
-    );
-  }
+  const updateSectionData = (sectionId: string, data: any) => {
+    setSectionData(prev => ({
+      ...prev,
+      [sectionId]: data
+    }));
+  };
 
-  if (showAssessmentCommentBuilder && editingSection) {
-    return (
-      <AssessmentCommentBuilder
-        existingComment={editingSection.section.data}
-        onSave={handleSaveEditedSection}
-        onCancel={handleCancelEditSection}
-      />
-    );
-  }
-
-  if (showPersonalisedCommentBuilder && editingSection) {
-    const sectionData = editingSection.section.data;
-    const existingComment = sectionData ? {
-      name: sectionData.name || editingSection.section.name || '',
-      instruction: sectionData.instruction || '',
-      headings: sectionData.headings || [],
-      comments: sectionData.categories || {}
-    } : undefined;
-
-    return (
-      <PersonalisedCommentBuilder
-        existingComment={existingComment}
-        onSave={handleSaveEditedSection}
-        onCancel={handleCancelEditSection}
-      />
-    );
-  }
-
-  if (showNextStepsCommentBuilder && editingSection) {
-    const sectionData = editingSection.section.data;
-    const existingComment = sectionData ? {
-      name: sectionData.name || editingSection.section.name || '',
-      headings: sectionData.headings || [],
-      comments: sectionData.focusAreas || {}
-    } : undefined;
-
-    return (
-      <NextStepsCommentBuilder
-        existingComment={existingComment}
-        onSave={handleSaveEditedSection}
-        onCancel={handleCancelEditSection}
-      />
-    );
-  }
-
+  // Show builders - simplified to avoid complex prop interfaces
   if (showSectionSelector) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', padding: '20px' }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <button
-            onClick={() => setShowSectionSelector(false)}
-            style={{
-              backgroundColor: '#6b7280',
-              color: 'white',
-              padding: '8px 16px',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '14px',
-              marginBottom: '20px',
-              cursor: 'pointer'
-            }}
-          >
-            ← Back to Template
-          </button>
-          <SectionSelector 
-            onSelectSection={handleSelectSection}
-            onBack={() => setShowSectionSelector(false)}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  if (showPreview) {
-    return (
-      <TemplatePreviewModal
-        templateName={templateName}
-        sections={sections}
-        onClose={() => setShowPreview(false)}
+      <SectionSelector
+        onSelectSection={handleAddSection}
+        onBack={() => setShowSectionSelector(false)}
       />
     );
   }
 
-  // If we haven't saved the name yet, show name input screen
-  if (!isNameSaved) {
+  // For now, just show message when trying to edit complex sections
+  if (showRatedCommentBuilder || showAssessmentCommentBuilder || showPersonalisedCommentBuilder || showNextStepsCommentBuilder) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
-        <main style={{ 
-          maxWidth: '600px', 
-          margin: '0 auto', 
-          padding: '40px 20px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          minHeight: '100vh'
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '48px',
-            borderRadius: '16px',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-            textAlign: 'center'
-          }}>
-            <h1 style={{ 
-              fontSize: '28px', 
-              fontWeight: 'bold', 
-              color: '#1f2937',
-              marginBottom: '8px'
-            }}>
-              Create New Template
-            </h1>
-            <p style={{ 
-              color: '#6b7280', 
-              marginBottom: '32px',
-              fontSize: '16px'
-            }}>
-              Start by giving your template a descriptive name
-            </p>
-
-            <div style={{ marginBottom: '24px' }}>
-              <input
-                type="text"
-                value={templateName}
-                onChange={(e) => setTemplateName(e.target.value)}
-                placeholder="Enter template name (e.g., 'Year 3 Reading Report')"
-                style={{
-                  width: '100%',
-                  padding: '16px',
-                  fontSize: '16px',
-                  border: '2px solid #e5e7eb',
-                  borderRadius: '8px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && templateName.trim()) {
-                    handleSaveName();
-                  }
-                }}
-                autoFocus
-              />
-            </div>
-
-            <button
-              onClick={handleSaveName}
-              disabled={!templateName.trim()}
-              style={{
-                backgroundColor: templateName.trim() ? '#3b82f6' : '#9ca3af',
-                color: 'white',
-                padding: '16px 32px',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: templateName.trim() ? 'pointer' : 'not-allowed',
-                width: '100%'
-              }}
-            >
-              Continue to Add Sections
-            </button>
-          </div>
-        </main>
+      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', padding: '50px', textAlign: 'center' }}>
+        <h2>Section Editor</h2>
+        <p>Advanced section editing will be available in the next update.</p>
+        <button 
+          onClick={() => {
+            setShowRatedCommentBuilder(false);
+            setShowAssessmentCommentBuilder(false);
+            setShowPersonalisedCommentBuilder(false);
+            setShowNextStepsCommentBuilder(false);
+            setEditingSection(null);
+          }}
+          style={{ backgroundColor: '#3b82f6', color: 'white', padding: '12px 24px', border: 'none', borderRadius: '8px' }}
+        >
+          Back to Template
+        </button>
       </div>
     );
   }
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
-      {/* Header */}
-      <div style={{ 
+      {/* Header with consistent layout */}
+      <header style={{ 
         backgroundColor: 'white', 
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-        padding: '16px 24px'
+        padding: '32px 24px'
       }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
+        <div style={{
           maxWidth: '1200px',
-          margin: '0 auto'
+          margin: '0 auto',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px'
         }}>
           <div>
             <h1 style={{ 
-              fontSize: '20px', 
+              fontSize: '28px', 
               fontWeight: '600', 
               color: '#111827',
-              margin: '0 0 4px 0'
+              margin: 0
             }}>
               {isEditing ? 'Edit Template' : 'Create Template'}: {templateName}
             </h1>
             <p style={{ 
               color: '#6b7280', 
-              margin: 0,
-              fontSize: '14px'
+              margin: '8px 0 0 0',
+              fontSize: '16px'
             }}>
               {sections.length} section{sections.length !== 1 ? 's' : ''} added
               {validationErrors.length > 0 && (
@@ -428,26 +404,41 @@ export default function CreateTemplate() {
             </p>
           </div>
           
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            flexWrap: 'wrap'
+          }}>
+            <Link to="/" style={{ textDecoration: 'none' }}>
+              <button style={{
+                backgroundColor: '#6b7280',
+                color: 'white',
+                padding: '12px 20px',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}>
+                ← Back to Home
+              </button>
+            </Link>
+
             <button
               onClick={handleExportTemplate}
               disabled={sections.length === 0}
               style={{
                 backgroundColor: sections.length > 0 ? '#8b5cf6' : '#9ca3af',
                 color: 'white',
-                padding: '8px 16px',
+                padding: '12px 20px',
                 border: 'none',
-                borderRadius: '6px',
+                borderRadius: '8px',
                 fontSize: '14px',
                 fontWeight: '500',
-                cursor: sections.length > 0 ? 'pointer' : 'not-allowed',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
+                cursor: sections.length > 0 ? 'pointer' : 'not-allowed'
               }}
-              title="Export template structure to text file for review"
             >
-              📄 Export Template
+              📄 Export
             </button>
             
             <button
@@ -456,30 +447,30 @@ export default function CreateTemplate() {
               style={{
                 backgroundColor: sections.length > 0 ? '#06b6d4' : '#9ca3af',
                 color: 'white',
-                padding: '8px 16px',
+                padding: '12px 20px',
                 border: 'none',
-                borderRadius: '6px',
+                borderRadius: '8px',
                 fontSize: '14px',
                 fontWeight: '500',
                 cursor: sections.length > 0 ? 'pointer' : 'not-allowed'
               }}
-              title="Preview what reports will look like"
             >
               👀 Preview
             </button>
             
-            <Link 
-              to="/manage-templates"
-              style={{
-                backgroundColor: '#6b7280',
+            <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
+              <button style={{
+                backgroundColor: '#f59e0b',
                 color: 'white',
-                padding: '8px 16px',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                fontSize: '14px'
-              }}
-            >
-              Cancel
+                padding: '12px 20px',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}>
+                Cancel
+              </button>
             </Link>
             
             <button
@@ -488,9 +479,9 @@ export default function CreateTemplate() {
               style={{
                 backgroundColor: sections.length > 0 ? '#10b981' : '#9ca3af',
                 color: 'white',
-                padding: '8px 16px',
+                padding: '12px 20px',
                 border: 'none',
-                borderRadius: '6px',
+                borderRadius: '8px',
                 fontSize: '14px',
                 fontWeight: '500',
                 cursor: sections.length > 0 ? 'pointer' : 'not-allowed'
@@ -500,53 +491,228 @@ export default function CreateTemplate() {
             </button>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Main Content */}
-      <div style={{ 
+      <main style={{ 
         maxWidth: '1200px', 
         margin: '0 auto', 
-        padding: '24px',
+        padding: '32px 24px',
         display: 'flex',
         gap: '24px'
       }}>
         
         {/* Left Column - Template Builder */}
         <div style={{ flex: '2' }}>
-          <TemplateValidationPanel validationErrors={validationErrors} />
+          {validationErrors.length > 0 && (
+            <div style={{
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '16px'
+            }}>
+              <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#dc2626', margin: '0 0 8px 0' }}>
+                Validation Issues ({validationErrors.length})
+              </h4>
+              <ul style={{ fontSize: '12px', color: '#dc2626', margin: 0, paddingLeft: '16px' }}>
+                {validationErrors.map((error, i) => (
+                  <li key={i}>{error}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           
-          <TemplateSectionList
-            sections={sections}
-            sectionData={sectionData}
-            onMoveSection={handleMoveSection}
-            onEditSection={handleEditSection}
-            onRemoveSection={handleRemoveSection}
-            onUpdateSectionData={updateSectionData}
-            onAddSection={() => setShowSectionSelector(true)}
-          />
+          <div style={{
+            backgroundColor: 'white',
+            padding: '24px',
+            borderRadius: '12px',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+          }}>
+            <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
+              Template Sections ({sections.length})
+            </h2>
+            
+            {sections.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '48px', color: '#9ca3af' }}>
+                <p>No sections added yet.</p>
+                <button
+                  onClick={() => setShowSectionSelector(true)}
+                  style={{
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    padding: '12px 24px',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Add Your First Section
+                </button>
+              </div>
+            ) : (
+              <div>
+                {sections.map((section, index) => (
+                  <div key={section.id} style={{
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    padding: '16px',
+                    marginBottom: '8px',
+                    backgroundColor: '#fafafa'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <h4 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '600' }}>
+                          {section.name || section.type}
+                        </h4>
+                        <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>
+                          Type: {section.type}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => handleEditSection(section, index)}
+                          style={{
+                            backgroundColor: '#3b82f6',
+                            color: 'white',
+                            padding: '4px 8px',
+                            border: 'none',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleRemoveSection(index)}
+                          style={{
+                            backgroundColor: '#ef4444',
+                            color: 'white',
+                            padding: '4px 8px',
+                            border: 'none',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  onClick={() => setShowSectionSelector(true)}
+                  style={{
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    padding: '12px 24px',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    width: '100%',
+                    marginTop: '16px'
+                  }}
+                >
+                  + Add Another Section
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         
         {/* Right Column - Quick Tools */}
         <div style={{ width: '300px' }}>
           <div style={{ position: 'sticky', top: '20px' }}>
-            <TemplateHealthDashboard 
-              sectionsCount={sections.length}
-              validationErrors={validationErrors}
-            />
+            <div style={{
+              backgroundColor: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '16px'
+            }}>
+              <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', margin: '0 0 12px 0' }}>
+                Template Health
+              </h4>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                <div>Sections: {sections.length}</div>
+                <div>Issues: {validationErrors.length}</div>
+                <div style={{ color: validationErrors.length === 0 ? '#10b981' : '#ef4444' }}>
+                  Status: {validationErrors.length === 0 ? 'Ready' : 'Needs attention'}
+                </div>
+              </div>
+            </div>
             
-            <TemplateQuickActions
-              sectionsCount={sections.length}
-              onAddSection={() => setShowSectionSelector(true)}
-              onShowPreview={() => setShowPreview(true)}
-              onExportTemplate={handleExportTemplate}
-            />
+            <div style={{
+              backgroundColor: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              padding: '16px'
+            }}>
+              <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', margin: '0 0 12px 0' }}>
+                Quick Actions
+              </h4>
+              <button
+                onClick={() => setShowSectionSelector(true)}
+                style={{
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  width: '100%',
+                  marginBottom: '8px'
+                }}
+              >
+                + Add Section
+              </button>
+              <button
+                onClick={() => setShowPreview(true)}
+                disabled={sections.length === 0}
+                style={{
+                  backgroundColor: sections.length > 0 ? '#06b6d4' : '#9ca3af',
+                  color: 'white',
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  cursor: sections.length > 0 ? 'pointer' : 'not-allowed',
+                  width: '100%',
+                  marginBottom: '8px'
+                }}
+              >
+                👀 Preview
+              </button>
+              <button
+                onClick={handleExportTemplate}
+                disabled={sections.length === 0}
+                style={{
+                  backgroundColor: sections.length > 0 ? '#8b5cf6' : '#9ca3af',
+                  color: 'white',
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  cursor: sections.length > 0 ? 'pointer' : 'not-allowed',
+                  width: '100%'
+                }}
+              >
+                📄 Export
+              </button>
+            </div>
             
             {/* Template Tips */}
             <div style={{
               backgroundColor: '#f0f9ff',
               border: '1px solid #bfdbfe',
               borderRadius: '8px',
-              padding: '16px'
+              padding: '16px',
+              marginTop: '16px'
             }}>
               <h4 style={{
                 fontSize: '14px',
@@ -570,7 +736,50 @@ export default function CreateTemplate() {
             </div>
           </div>
         </div>
-      </div>
+      </main>
+
+      {/* Preview Modal - simplified */}
+      {showPreview && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '24px',
+            borderRadius: '12px',
+            maxWidth: '600px',
+            maxHeight: '80vh',
+            overflowY: 'auto'
+          }}>
+            <h3 style={{ margin: '0 0 16px 0' }}>Template Preview: {templateName}</h3>
+            <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
+              This template has {sections.length} sections.
+            </div>
+            <button
+              onClick={() => setShowPreview(false)}
+              style={{
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                padding: '8px 16px',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              Close Preview
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

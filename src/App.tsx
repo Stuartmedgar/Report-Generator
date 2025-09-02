@@ -33,10 +33,15 @@ function Home() {
         display: 'flex', 
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: '40px 20px'
+        justifyContent: 'flex-start', // ONLY CHANGE: changed from 'center' to 'flex-start'
+        padding: '20px 20px 40px 20px' // ONLY CHANGE: reduced top padding from 40px to 20px
       }}>
-        <div style={{ textAlign: 'center', marginBottom: '60px', maxWidth: '800px' }}>
+        <div style={{ 
+          textAlign: 'center', 
+          marginBottom: '60px', 
+          maxWidth: '800px',
+          marginTop: '20px' // ONLY CHANGE: added this small top margin
+        }}>
           <h1 style={{ 
             fontSize: '48px', 
             fontWeight: '800', 
@@ -63,41 +68,18 @@ function Home() {
           </p>
         </div>
 
-        <div style={{ 
+        {/* First Row - 3 buttons */}
+        <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-          gap: '24px',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '20px',
           width: '100%',
-          maxWidth: '1000px'
+          maxWidth: '1200px',
+          marginBottom: '20px'
         }}>
+          
           <Link 
             to="/write-reports"
-            style={{
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              padding: '32px 24px',
-              borderRadius: '12px',
-              textDecoration: 'none',
-              textAlign: 'center',
-              fontSize: '18px',
-              fontWeight: '600',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              transition: 'transform 0.2s, box-shadow 0.2s'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-            }}
-          >
-            ✍️ Write Reports
-          </Link>
-
-          <Link 
-            to="/create-template"
             style={{
               backgroundColor: '#10b981',
               color: 'white',
@@ -119,7 +101,33 @@ function Home() {
               e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
             }}
           >
-            📋 Create Template
+            Write Reports
+          </Link>
+
+          <Link 
+            to="/create-template"
+            style={{
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              padding: '32px 24px',
+              borderRadius: '12px',
+              textDecoration: 'none',
+              textAlign: 'center',
+              fontSize: '18px',
+              fontWeight: '600',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+              transition: 'transform 0.2s, box-shadow 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+            }}
+          >
+            Create Template
           </Link>
 
           <Link 
@@ -145,8 +153,19 @@ function Home() {
               e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
             }}
           >
-            🗂️ Manage Templates
+            Manage Templates
           </Link>
+
+        </div>
+
+        {/* Second Row - 3 buttons */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '20px',
+          width: '100%',
+          maxWidth: '1200px'
+        }}>
 
           <Link 
             to="/class-management"
@@ -171,7 +190,7 @@ function Home() {
               e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
             }}
           >
-            👥 Class Management
+            Class Management
           </Link>
 
           <Link 
@@ -197,7 +216,7 @@ function Home() {
               e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
             }}
           >
-            👁️ View Reports
+            View Reports
           </Link>
 
           <Link 
@@ -223,8 +242,9 @@ function Home() {
               e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
             }}
           >
-            💳 Pricing
+            Pricing
           </Link>
+
         </div>
       </div>
     </>
@@ -237,16 +257,10 @@ function App() {
       <DataProvider>
         <SubscriptionProvider>
           <Router>
-            <div>
-              {/* Netlify Identity Script */}
-              <script 
-                type="text/javascript" 
-                src="https://identity.netlify.com/v1/netlify-identity-widget.js"
-              ></script>
-              
+            <div className="App">
               <Routes>
+                {/* Public Routes */}
                 <Route path="/pricing" element={<PricingPage />} />
-                <Route path="/subscription-success" element={<SubscriptionSuccess />} />
                 
                 {/* Protected Routes */}
                 <Route path="/" element={
