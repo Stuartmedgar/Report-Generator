@@ -148,32 +148,6 @@ export default function ViewReports() {
         padding: '32px 24px' 
       }}>
 
-        {/* Instructions */}
-        <div style={{
-          backgroundColor: '#f0f9ff',
-          border: '2px solid #3b82f6',
-          borderRadius: '12px',
-          padding: '24px',
-          marginBottom: '32px',
-          textAlign: 'center'
-        }}>
-          <h3 style={{ 
-            fontSize: '18px', 
-            fontWeight: '600', 
-            color: '#1e40af',
-            margin: '0 0 8px 0'
-          }}>
-            📊 Report Overview
-          </h3>
-          <p style={{ 
-            color: '#1e40af', 
-            fontSize: '14px',
-            margin: 0
-          }}>
-            Select a class below to view individual reports or all reports for that class. You can also manage and delete reports as needed.
-          </p>
-        </div>
-
         {/* Classes with Reports */}
         <div style={{
           backgroundColor: 'white',

@@ -225,7 +225,7 @@ export default function ManageTemplates() {
                 cursor: isImporting ? 'not-allowed' : 'pointer'
               }}
             >
-              📥 Import Template
+              Import Template
             </button>
           </div>
         </div>
@@ -246,50 +246,6 @@ export default function ManageTemplates() {
           style={{ display: 'none' }}
         />
 
-        {/* Import Template Section */}
-        <div style={{
-          backgroundColor: '#f0f9ff',
-          border: '2px solid #3b82f6',
-          borderRadius: '12px',
-          padding: '24px',
-          marginBottom: '32px'
-        }}>
-          <h3 style={{ 
-            fontSize: '18px', 
-            fontWeight: '600', 
-            color: '#1e40af',
-            margin: '0 0 8px 0'
-          }}>
-            📥 Import Template
-          </h3>
-          <p style={{ 
-            color: '#1e40af', 
-            fontSize: '14px',
-            margin: '0 0 16px 0'
-          }}>
-            Import a template file that was shared by someone else. Templates are saved as .json files.
-          </p>
-          
-          <button
-            onClick={handleImportClick}
-            disabled={isImporting}
-            style={{
-              backgroundColor: isImporting ? '#9ca3af' : '#3b82f6',
-              color: 'white',
-              padding: '12px 24px',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: '600',
-              cursor: isImporting ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            {isImporting ? '⏳ Importing...' : '📁 Select Template File'}
-          </button>
-        </div>
 
         {/* Templates List */}
         <div style={{

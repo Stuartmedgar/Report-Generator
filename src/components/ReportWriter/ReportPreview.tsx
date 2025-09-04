@@ -129,7 +129,7 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
                 <div style={{
                   color: '#9ca3af',
                   fontStyle: 'italic',
-                  textAlign: 'center',
+                  textAlign: 'left',
                   padding: '40px 20px',
                   fontSize: '14px'
                 }}>
