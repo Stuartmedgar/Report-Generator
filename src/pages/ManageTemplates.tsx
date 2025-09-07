@@ -9,6 +9,9 @@ export default function ManageTemplates() {
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Google Drive folder URL - Replace this with your actual folder URL
+  const TEMPLATE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1Kc0O9QSqpHCBUuDfcMcjk2gAfNtbPPnf?usp=drive_link';
+
   const handleEdit = (template: Template) => {
     // For now, navigate to create template - you might want to add an edit mode
     navigate('/create-template', { state: { editTemplate: template } });
@@ -64,6 +67,10 @@ export default function ManageTemplates() {
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleBrowseTemplates = () => {
+    window.open(TEMPLATE_LIBRARY_URL, '_blank', 'noopener,noreferrer');
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -211,6 +218,27 @@ export default function ManageTemplates() {
               </button>
             </Link>
 
+            {/* NEW: Browse Templates Button */}
+            <button
+              onClick={handleBrowseTemplates}
+              style={{
+                backgroundColor: '#8b5cf6',
+                color: 'white',
+                padding: '12px 20px',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+              title="Browse our template library on Google Drive"
+            >
+              📚 Browse Templates
+            </button>
+
             <button
               onClick={handleImportClick}
               disabled={isImporting}
@@ -246,6 +274,65 @@ export default function ManageTemplates() {
           style={{ display: 'none' }}
         />
 
+        {/* NEW: Template Library Info Section */}
+        <div style={{
+          backgroundColor: '#fefce8',
+          border: '2px solid #facc15',
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: '24px'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            flexWrap: 'wrap'
+          }}>
+            <div style={{ flex: 1, minWidth: '300px' }}>
+              <h3 style={{ 
+                fontSize: '18px', 
+                fontWeight: '600', 
+                color: '#92400e',
+                margin: '0 0 8px 0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                📚 Template Library
+              </h3>
+              <p style={{ 
+                color: '#92400e', 
+                fontSize: '14px',
+                margin: '0 0 16px 0',
+                lineHeight: '1.5'
+              }}>
+                Access our growing collection of ready-made templates for all subjects and year groups. 
+                Find templates for Science, Maths, English, Languages, and more!
+              </p>
+            </div>
+            <div>
+              <button
+                onClick={handleBrowseTemplates}
+                style={{
+                  backgroundColor: '#92400e',
+                  color: 'white',
+                  padding: '12px 24px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                🔗 Open Template Library
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Templates List */}
         <div style={{
@@ -265,167 +352,191 @@ export default function ManageTemplates() {
 
           {state.templates.length === 0 ? (
             <div style={{
-              border: '2px dashed #d1d5db',
-              borderRadius: '8px',
-              padding: '48px',
               textAlign: 'center',
-              color: '#9ca3af'
+              padding: '40px 20px',
+              color: '#6b7280'
             }}>
-              <p style={{ margin: '0 0 8px 0' }}>No templates created yet.</p>
-              <p style={{ margin: '0 0 16px 0' }}>Create your first template to get started!</p>
-              <Link to="/create-template" style={{ textDecoration: 'none' }}>
-                <button style={{
-                  backgroundColor: '#10b981',
-                  color: 'white',
-                  padding: '12px 24px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  fontWeight: '500',
-                  cursor: 'pointer'
-                }}>
-                  Create Your First Template
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>📝</div>
+              <h3 style={{ 
+                fontSize: '18px', 
+                fontWeight: '600', 
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                No templates yet
+              </h3>
+              <p style={{ marginBottom: '24px' }}>
+                Get started by creating your first template or browsing our template library.
+              </p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <Link to="/create-template" style={{ textDecoration: 'none' }}>
+                  <button style={{
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    padding: '12px 24px',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}>
+                    + Create Your First Template
+                  </button>
+                </Link>
+                <button
+                  onClick={handleBrowseTemplates}
+                  style={{
+                    backgroundColor: '#8b5cf6',
+                    color: 'white',
+                    padding: '12px 24px',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Browse Template Library
                 </button>
-              </Link>
+              </div>
             </div>
           ) : (
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+            <div style={{
+              display: 'grid',
               gap: '16px'
             }}>
               {state.templates.map((template) => (
-                <div key={template.id} style={{
-                  border: '2px solid #e5e7eb',
-                  borderRadius: '12px',
-                  padding: '20px',
-                  backgroundColor: 'white',
-                  boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)'
-                }}>
-                  {/* Template Header */}
-                  <div style={{ marginBottom: '16px' }}>
-                    <h3 style={{ 
-                      fontSize: '18px', 
-                      fontWeight: '600', 
-                      color: '#111827',
-                      margin: '0 0 8px 0'
-                    }}>
-                      {template.name}
-                    </h3>
+                <div
+                  key={template.id}
+                  style={{
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    padding: '24px',
+                    backgroundColor: '#f9fafb'
+                  }}
+                >
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    gap: '16px',
+                    flexWrap: 'wrap'
+                  }}>
+                    <div style={{ flex: 1, minWidth: '200px' }}>
+                      <h3 style={{
+                        fontSize: '18px',
+                        fontWeight: '600',
+                        color: '#111827',
+                        marginBottom: '8px'
+                      }}>
+                        {template.name}
+                      </h3>
+                      <p style={{
+                        color: '#6b7280',
+                        fontSize: '14px',
+                        marginBottom: '8px'
+                      }}>
+                        {template.sections.length} sections • Created {new Date(template.createdAt).toLocaleDateString()}
+                      </p>
+                      <div style={{
+                        display: 'flex',
+                        gap: '8px',
+                        flexWrap: 'wrap'
+                      }}>
+                        {template.sections.slice(0, 3).map((section, index) => (
+                          <span
+                            key={index}
+                            style={{
+                              backgroundColor: '#e0e7ff',
+                              color: '#3730a3',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '12px'
+                            }}
+                          >
+                            {section.type.replace('-', ' ')}
+                          </span>
+                        ))}
+                        {template.sections.length > 3 && (
+                          <span style={{
+                            color: '#6b7280',
+                            fontSize: '12px'
+                          }}>
+                            +{template.sections.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
                     
                     <div style={{
                       display: 'flex',
-                      gap: '16px',
-                      fontSize: '14px',
-                      color: '#6b7280',
-                      marginBottom: '8px'
+                      gap: '8px',
+                      flexWrap: 'wrap'
                     }}>
-                      <span>📋 {template.sections.length} sections</span>
-                      <span>📅 Created: {new Date(template.createdAt).toLocaleDateString()}</span>
-                    </div>
-                    
-                    {/* Section types preview */}
-                    <div style={{ 
-                      display: 'flex', 
-                      flexWrap: 'wrap', 
-                      gap: '6px'
-                    }}>
-                      {template.sections.slice(0, 5).map((section, index) => (
-                        <span key={index} style={{
-                          backgroundColor: getSectionColor(section.type),
+                      <button
+                        onClick={() => handleEdit(template)}
+                        style={{
+                          backgroundColor: '#3b82f6',
                           color: 'white',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: '500'
-                        }}>
-                          {getSectionDisplayName(section.type)}
-                        </span>
-                      ))}
-                      {template.sections.length > 5 && (
-                        <span style={{
-                          backgroundColor: '#6b7280',
+                          padding: '8px 16px',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ✏️ Edit
+                      </button>
+                      
+                      <button
+                        onClick={() => handleShare(template)}
+                        style={{
+                          backgroundColor: '#10b981',
                           color: 'white',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: '500'
-                        }}>
-                          +{template.sections.length - 5} more
-                        </span>
-                      )}
+                          padding: '8px 16px',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        📤 Export
+                      </button>
+                      
+                      <button
+                        onClick={() => handleDuplicate(template)}
+                        style={{
+                          backgroundColor: '#f59e0b',
+                          color: 'white',
+                          padding: '8px 16px',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        📋 Duplicate
+                      </button>
+                      
+                      <button
+                        onClick={() => handleDelete(template)}
+                        style={{
+                          backgroundColor: '#ef4444',
+                          color: 'white',
+                          padding: '8px 16px',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🗑️ Delete
+                      </button>
                     </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div style={{ 
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(2, 1fr)',
-                    gap: '8px' 
-                  }}>
-                    <button
-                      onClick={() => handleEdit(template)}
-                      style={{
-                        backgroundColor: '#3b82f6',
-                        color: 'white',
-                        padding: '8px 16px',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      ✏️ Edit
-                    </button>
-                    
-                    <button
-                      onClick={() => handleShare(template)}
-                      style={{
-                        backgroundColor: '#10b981',
-                        color: 'white',
-                        padding: '8px 16px',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      📤 Share
-                    </button>
-                    
-                    <button
-                      onClick={() => handleDuplicate(template)}
-                      style={{
-                        backgroundColor: '#f59e0b',
-                        color: 'white',
-                        padding: '8px 16px',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      📋 Duplicate
-                    </button>
-                    
-                    <button
-                      onClick={() => handleDelete(template)}
-                      style={{
-                        backgroundColor: '#ef4444',
-                        color: 'white',
-                        padding: '8px 16px',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      🗑️ Delete
-                    </button>
                   </div>
                 </div>
               ))}
@@ -439,7 +550,8 @@ export default function ManageTemplates() {
           border: '2px solid #3b82f6',
           borderRadius: '12px',
           padding: '20px',
-          textAlign: 'center'
+          textAlign: 'center',
+          marginTop: '24px'
         }}>
           <h3 style={{ 
             fontSize: '18px', 
@@ -491,31 +603,4 @@ export default function ManageTemplates() {
       </main>
     </div>
   );
-}
-
-// Helper functions for section styling
-function getSectionColor(type: string) {
-  const colors = {
-    'rated-comment': '#3b82f6',
-    'standard-comment': '#10b981',
-    'assessment-comment': '#f59e0b',
-    'personalised-comment': '#8b5cf6',
-    'optional-additional-comment': '#ef4444',
-    'next-steps': '#06b6d4',
-    'new-line': '#6b7280'
-  };
-  return colors[type as keyof typeof colors] || '#6b7280';
-}
-
-function getSectionDisplayName(type: string) {
-  const names = {
-    'rated-comment': 'Rated',
-    'standard-comment': 'Standard',
-    'assessment-comment': 'Assessment',
-    'personalised-comment': 'Personalised',
-    'optional-additional-comment': 'Optional',
-    'next-steps': 'Next Steps',
-    'new-line': 'Line Break'
-  };
-  return names[type as keyof typeof names] || type;
 }

@@ -153,40 +153,31 @@ export default function AllReportsViewer() {
           <button
             onClick={handleCopyAllReports}
             style={{
-              backgroundColor: '#10b981',
+              backgroundColor: '#3b82f6',
               color: 'white',
-              padding: isMobile ? '12px 16px' : '10px 20px',
+              padding: isMobile ? '12px 16px' : '8px 16px',
               border: 'none',
               borderRadius: '6px',
               fontSize: '14px',
               fontWeight: '600',
               cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              minHeight: isMobile ? '44px' : 'auto' // Touch-friendly height
+              width: isMobile ? '100%' : 'auto'
             }}
           >
             📋 Copy All
           </button>
-          
           <button
             onClick={handleDownloadAllReports}
             style={{
-              backgroundColor: '#8b5cf6',
+              backgroundColor: '#10b981',
               color: 'white',
-              padding: isMobile ? '12px 16px' : '10px 20px',
+              padding: isMobile ? '12px 16px' : '8px 16px',
               border: 'none',
               borderRadius: '6px',
               fontSize: '14px',
               fontWeight: '600',
               cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              minHeight: isMobile ? '44px' : 'auto' // Touch-friendly height
+              width: isMobile ? '100%' : 'auto'
             }}
           >
             💾 Download All
@@ -194,23 +185,22 @@ export default function AllReportsViewer() {
         </div>
       </div>
 
-      {/* All Reports Display - MOBILE OPTIMIZED */}
+      {/* Reports Display - FULL WIDTH and LEFT ALIGNED */}
       <div style={{
         backgroundColor: 'white',
         border: '2px solid #e5e7eb',
         borderRadius: isMobile ? '8px' : '12px',
-        padding: isMobile ? '16px' : '32px' // Less padding on mobile for more content space
+        padding: isMobile ? '16px' : '32px'
       }}>
         {reportsWithStudents.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px', color: '#9ca3af' }}>
-              📄
-            </div>
-            <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#374151', margin: '0 0 8px 0' }}>
-              No Reports Available
-            </h3>
-            <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>
-              There are no completed reports for this class yet.
+          <div style={{
+            textAlign: 'center',
+            color: '#6b7280',
+            fontSize: isMobile ? '14px' : '16px',
+            padding: isMobile ? '20px' : '40px'
+          }}>
+            <p style={{ margin: 0 }}>
+              No reports found for this class.
             </p>
           </div>
         ) : (
@@ -236,7 +226,7 @@ export default function AllReportsViewer() {
                   {student.firstName} {student.lastName}
                 </h2>
 
-                {/* Report Content - FULL WIDTH on mobile */}
+                {/* Report Content - FULL WIDTH on mobile and LEFT ALIGNED */}
                 <div style={{
                   fontSize: isMobile ? '14px' : '16px',
                   lineHeight: isMobile ? '1.5' : '1.6',
@@ -244,7 +234,8 @@ export default function AllReportsViewer() {
                   whiteSpace: 'pre-wrap',
                   wordBreak: 'break-word', // Prevent text overflow on mobile
                   maxWidth: '100%', // Ensure full width usage
-                  padding: 0 // No padding to maximize content space
+                  padding: 0, // No padding to maximize content space
+                  textAlign: 'left' // Changed to left-aligned
                 }}>
                   {report!.content}
                 </div>
@@ -294,7 +285,7 @@ export default function AllReportsViewer() {
               <span style={{ fontWeight: '600', color: '#374151', fontSize: isMobile ? '16px' : '18px' }}>
                 {totalWords}
               </span>
-              <span>Words</span>
+              <span>Total Words</span>
             </div>
             <div style={{ 
               display: 'flex', 
@@ -302,11 +293,11 @@ export default function AllReportsViewer() {
               alignItems: 'center',
               minWidth: isMobile ? '70px' : 'auto'
             }}>
-              <span style={{ fontSize: isMobile ? '20px' : '24px', color: '#8b5cf6' }}>📄</span>
+              <span style={{ fontSize: isMobile ? '20px' : '24px', color: '#f59e0b' }}>📊</span>
               <span style={{ fontWeight: '600', color: '#374151', fontSize: isMobile ? '16px' : '18px' }}>
-                ~{reportsWithStudents.length * 2}
+                {Math.round(totalWords / reportsWithStudents.length)}
               </span>
-              <span>Pages</span>
+              <span>Avg Words</span>
             </div>
           </div>
         </div>

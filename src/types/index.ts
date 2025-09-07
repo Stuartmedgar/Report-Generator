@@ -20,6 +20,7 @@ export type SectionType =
   | 'personalised-comment'
   | 'optional-additional-comment'
   | 'next-steps'
+  | 'qualities'
   | 'new-line';
 
 // Rated Comment types
@@ -63,6 +64,13 @@ export interface PersonalisedComment {
 
 // Next Steps types
 export interface NextStepsComment {
+  name: string;
+  headings: string[];
+  comments: { [heading: string]: string[] };
+}
+
+// Qualities types
+export interface QualitiesComment {
   name: string;
   headings: string[];
   comments: { [heading: string]: string[] };

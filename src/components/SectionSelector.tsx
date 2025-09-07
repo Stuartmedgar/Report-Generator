@@ -4,7 +4,8 @@ import StandardCommentSelector from './StandardCommentSelector';
 import AssessmentCommentSelector from './AssessmentCommentSelector';
 import PersonalisedCommentSelector from './PersonalisedCommentSelector';
 import NextStepsCommentSelector from './NextStepsCommentSelector';
-import { RatedComment, StandardComment, AssessmentComment, PersonalisedComment, NextStepsComment } from '../types';
+import QualitiesCommentSelector from './QualitiesCommentSelector';
+import { RatedComment, StandardComment, AssessmentComment, PersonalisedComment, NextStepsComment, QualitiesComment } from '../types';
 
 interface SectionSelectorProps {
   onSelectSection: (sectionType: string, data?: any) => void;
@@ -17,6 +18,7 @@ function SectionSelector({ onSelectSection, onBack }: SectionSelectorProps) {
   const [showAssessmentCommentSelector, setShowAssessmentCommentSelector] = useState(false);
   const [showPersonalisedCommentSelector, setShowPersonalisedCommentSelector] = useState(false);
   const [showNextStepsCommentSelector, setShowNextStepsCommentSelector] = useState(false);
+  const [showQualitiesCommentSelector, setShowQualitiesCommentSelector] = useState(false);
 
   const sections = [
     {
@@ -56,6 +58,12 @@ function SectionSelector({ onSelectSection, onBack }: SectionSelectorProps) {
       color: '#06b6d4'
     },
     {
+      type: 'qualities',
+      title: 'Qualities',
+      description: 'Character traits, personal strengths, and positive qualities',
+      color: '#8b5cf6'
+    },
+    {
       type: 'new-line',
       title: 'New Line',
       description: 'Add spacing between sections for better formatting',
@@ -74,6 +82,8 @@ function SectionSelector({ onSelectSection, onBack }: SectionSelectorProps) {
       setShowPersonalisedCommentSelector(true);
     } else if (sectionType === 'next-steps') {
       setShowNextStepsCommentSelector(true);
+    } else if (sectionType === 'qualities') {
+      setShowQualitiesCommentSelector(true);
     } else {
       // For now, other sections are added without configuration
       onSelectSection(sectionType);
@@ -128,6 +138,29 @@ function SectionSelector({ onSelectSection, onBack }: SectionSelectorProps) {
     onSelectSection('next-steps', sectionData);
     setShowNextStepsCommentSelector(false);
   };
+
+  const handleSelectQualitiesComment = (qualitiesComment: QualitiesComment) => {
+    // Transform the qualities comment data to match template builder expectations
+    const sectionData = {
+      name: qualitiesComment.name,
+      data: {
+        headings: qualitiesComment.headings,
+        comments: qualitiesComment.comments
+      }
+    };
+    onSelectSection('qualities', sectionData);
+    setShowQualitiesCommentSelector(false);
+  };
+
+  // Show qualities selector
+  if (showQualitiesCommentSelector) {
+    return (
+      <QualitiesCommentSelector
+        onSelectComment={handleSelectQualitiesComment}
+        onBack={() => setShowQualitiesCommentSelector(false)}
+      />
+    );
+  }
 
   // Fixed the conditional logic here
   if (showNextStepsCommentSelector) {
@@ -261,7 +294,7 @@ function SectionSelector({ onSelectSection, onBack }: SectionSelectorProps) {
                 margin: '0 0 8px 0'
               }}>
                 {section.title}
-                {(section.type === 'rated-comment' || section.type === 'standard-comment' || section.type === 'assessment-comment' || section.type === 'personalised-comment' || section.type === 'next-steps') && (
+                {(section.type === 'rated-comment' || section.type === 'standard-comment' || section.type === 'assessment-comment' || section.type === 'personalised-comment' || section.type === 'next-steps' || section.type === 'qualities') && (
                   <span style={{ 
                     fontSize: '12px',
                     backgroundColor: '#10b981',

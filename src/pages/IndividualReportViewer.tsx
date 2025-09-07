@@ -180,7 +180,8 @@ export default function IndividualReportViewer() {
                     lineHeight: '1.6',
                     fontFamily: 'inherit',
                     resize: 'vertical',
-                    outline: 'none'
+                    outline: 'none',
+                    textAlign: 'left' // Changed to left-aligned
                   }}
                 />
                 <div style={{
@@ -225,7 +226,8 @@ export default function IndividualReportViewer() {
                 fontSize: '16px',
                 lineHeight: '1.6',
                 color: '#374151',
-                whiteSpace: 'pre-wrap'
+                whiteSpace: 'pre-wrap',
+                textAlign: 'left' // Changed to left-aligned
               }}>
                 {report.content}
               </div>
@@ -257,36 +259,30 @@ export default function IndividualReportViewer() {
               <button
                 onClick={isEditing ? handleCancelEdit : handleStartEdit}
                 style={{
-                  backgroundColor: isEditing ? '#6b7280' : '#3b82f6',
+                  backgroundColor: isEditing ? '#6b7280' : '#f59e0b',
                   color: 'white',
-                  padding: '10px 16px',
+                  padding: '8px 16px',
                   border: 'none',
                   borderRadius: '6px',
                   fontSize: '14px',
                   fontWeight: '600',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
+                  cursor: 'pointer'
                 }}
               >
-                {isEditing ? '❌ Cancel Edit' : '✏️ Edit Report'}
+                {isEditing ? 'Cancel Edit' : '✏️ Edit Report'}
               </button>
               
               <button
                 onClick={handleCopyReport}
                 style={{
-                  backgroundColor: '#10b981',
+                  backgroundColor: '#3b82f6',
                   color: 'white',
-                  padding: '10px 16px',
+                  padding: '8px 16px',
                   border: 'none',
                   borderRadius: '6px',
                   fontSize: '14px',
                   fontWeight: '600',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
+                  cursor: 'pointer'
                 }}
               >
                 📋 Copy Report
@@ -295,20 +291,17 @@ export default function IndividualReportViewer() {
               <button
                 onClick={handleDownloadReport}
                 style={{
-                  backgroundColor: '#8b5cf6',
+                  backgroundColor: '#10b981',
                   color: 'white',
-                  padding: '10px 16px',
+                  padding: '8px 16px',
                   border: 'none',
                   borderRadius: '6px',
                   fontSize: '14px',
                   fontWeight: '600',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
+                  cursor: 'pointer'
                 }}
               >
-                💾 Download
+                💾 Download Report
               </button>
             </div>
           </div>
@@ -326,24 +319,25 @@ export default function IndividualReportViewer() {
               color: '#374151',
               margin: '0 0 16px 0'
             }}>
-              Navigate Reports
+              Navigate Students
             </h3>
             
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
+              alignItems: 'center',
               marginBottom: '16px'
             }}>
               <button
                 onClick={handlePrevious}
                 disabled={currentIndex === 0}
                 style={{
-                  backgroundColor: currentIndex === 0 ? '#d1d5db' : '#6b7280',
-                  color: 'white',
-                  padding: '8px 16px',
+                  backgroundColor: currentIndex === 0 ? '#e5e7eb' : '#3b82f6',
+                  color: currentIndex === 0 ? '#9ca3af' : 'white',
+                  padding: '8px 12px',
                   border: 'none',
                   borderRadius: '6px',
-                  fontSize: '14px',
+                  fontSize: '12px',
                   fontWeight: '600',
                   cursor: currentIndex === 0 ? 'not-allowed' : 'pointer'
                 }}
@@ -354,8 +348,7 @@ export default function IndividualReportViewer() {
               <span style={{
                 fontSize: '14px',
                 color: '#6b7280',
-                display: 'flex',
-                alignItems: 'center'
+                fontWeight: '500'
               }}>
                 {currentIndex + 1} of {studentsWithReports.length}
               </span>
@@ -364,12 +357,12 @@ export default function IndividualReportViewer() {
                 onClick={handleNext}
                 disabled={currentIndex === studentsWithReports.length - 1}
                 style={{
-                  backgroundColor: currentIndex === studentsWithReports.length - 1 ? '#d1d5db' : '#6b7280',
-                  color: 'white',
-                  padding: '8px 16px',
+                  backgroundColor: currentIndex === studentsWithReports.length - 1 ? '#e5e7eb' : '#3b82f6',
+                  color: currentIndex === studentsWithReports.length - 1 ? '#9ca3af' : 'white',
+                  padding: '8px 12px',
                   border: 'none',
                   borderRadius: '6px',
-                  fontSize: '14px',
+                  fontSize: '12px',
                   fontWeight: '600',
                   cursor: currentIndex === studentsWithReports.length - 1 ? 'not-allowed' : 'pointer'
                 }}
@@ -377,36 +370,39 @@ export default function IndividualReportViewer() {
                 Next →
               </button>
             </div>
-
-            {/* Student List */}
+            
+            {/* Quick student list */}
             <div style={{
-              maxHeight: '200px',
-              overflow: 'auto',
-              backgroundColor: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '6px',
-              padding: '8px'
+              fontSize: '12px',
+              color: '#6b7280'
             }}>
-              {studentsWithReports.map((s, index) => (
-                <button
-                  key={s.id}
-                  onClick={() => navigate(`/view-reports/${classId}/student/${s.id}`)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: 'none',
-                    borderRadius: '4px',
-                    fontSize: '13px',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    backgroundColor: s.id === studentId ? '#3b82f6' : 'transparent',
-                    color: s.id === studentId ? 'white' : '#374151',
-                    marginBottom: '4px'
-                  }}
-                >
-                  {index + 1}. {s.firstName} {s.lastName}
-                </button>
-              ))}
+              <div style={{ marginBottom: '8px', fontWeight: '600' }}>Quick Jump:</div>
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                maxHeight: '200px',
+                overflowY: 'auto'
+              }}>
+                {studentsWithReports.map((s, index) => (
+                  <button
+                    key={s.id}
+                    onClick={() => navigate(`/view-reports/${classId}/student/${s.id}`)}
+                    style={{
+                      backgroundColor: s.id === studentId ? '#eff6ff' : 'transparent',
+                      color: s.id === studentId ? '#1d4ed8' : '#6b7280',
+                      border: s.id === studentId ? '1px solid #3b82f6' : '1px solid transparent',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      textAlign: 'left'
+                    }}
+                  >
+                    {index + 1}. {s.firstName} {s.lastName}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

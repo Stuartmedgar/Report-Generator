@@ -109,7 +109,8 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
                 outline: 'none',
                 fontFamily: 'inherit',
                 boxSizing: 'border-box',
-                backgroundColor: 'transparent'
+                backgroundColor: 'transparent',
+                textAlign: 'right' // Changed from default to right-aligned
               }}
               autoCapitalize="sentences"
               autoCorrect="on"
@@ -123,13 +124,14 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
               whiteSpace: 'pre-wrap',
               wordWrap: 'break-word',
               overflowWrap: 'break-word',
-              height: '100%'
+              height: '100%',
+              textAlign: 'right' // Changed from default to right-aligned
             }}>
               {getDisplayContent() || (
                 <div style={{
                   color: '#9ca3af',
                   fontStyle: 'italic',
-                  textAlign: 'left',
+                  textAlign: 'left', // Keep helper text left-aligned for readability
                   padding: '40px 20px',
                   fontSize: '14px'
                 }}>
@@ -225,7 +227,8 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
               fontSize: '14px',
               lineHeight: '1.5',
               padding: 0,
-              outline: 'none'
+              outline: 'none',
+              textAlign: 'left' // Changed from default to right-aligned
             }}
           />
         ) : (
@@ -233,7 +236,8 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
             fontSize: '14px',
             lineHeight: '1.6',
             color: '#374151',
-            whiteSpace: 'pre-wrap'
+            whiteSpace: 'pre-wrap',
+            textAlign: 'left' // Changed from default to right-aligned
           }}>
             {getDisplayContent() || 'Complete the sections to see the report preview...'}
           </div>

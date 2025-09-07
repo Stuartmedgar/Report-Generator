@@ -33,14 +33,14 @@ function Home() {
         display: 'flex', 
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'flex-start', // ONLY CHANGE: changed from 'center' to 'flex-start'
-        padding: '20px 20px 40px 20px' // ONLY CHANGE: reduced top padding from 40px to 20px
+        justifyContent: 'flex-start',
+        padding: '20px 20px 40px 20px'
       }}>
         <div style={{ 
           textAlign: 'center', 
           marginBottom: '60px', 
           maxWidth: '800px',
-          marginTop: '20px' // ONLY CHANGE: added this small top margin
+          marginTop: '20px'
         }}>
           <h1 style={{ 
             fontSize: '48px', 
@@ -61,10 +61,9 @@ function Home() {
           </p>
           <p style={{
             fontSize: '16px',
-            color: '#94a3b8',
-            lineHeight: '1.5'
+            color: '#94a3b8'
           }}>
-            Create templates, manage classes, and generate professional reports in minutes
+            Generate professional reports in minutes, not hours
           </p>
         </div>
 
@@ -77,7 +76,7 @@ function Home() {
           maxWidth: '1200px',
           marginBottom: '20px'
         }}>
-          
+
           <Link 
             to="/write-reports"
             style={{
@@ -158,13 +157,13 @@ function Home() {
 
         </div>
 
-        {/* Second Row - 3 buttons */}
+        {/* Second Row - 2 buttons (Pricing button removed) */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateColumns: 'repeat(2, 1fr)',
           gap: '20px',
           width: '100%',
-          maxWidth: '1200px'
+          maxWidth: '800px'
         }}>
 
           <Link 
@@ -219,6 +218,8 @@ function Home() {
             View Reports
           </Link>
 
+          {/* Pricing button is commented out - can be easily restored later */}
+          {/*
           <Link 
             to="/pricing"
             style={{
@@ -244,6 +245,7 @@ function Home() {
           >
             Pricing
           </Link>
+          */}
 
         </div>
       </div>
@@ -261,6 +263,7 @@ function App() {
               <Routes>
                 {/* Public Routes */}
                 <Route path="/pricing" element={<PricingPage />} />
+                <Route path="/subscription/success" element={<SubscriptionSuccess />} />
                 
                 {/* Protected Routes */}
                 <Route path="/" element={

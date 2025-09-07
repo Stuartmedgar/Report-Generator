@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { NextStepsComment } from '../types';
+import { QualitiesComment } from '../types';
 
-interface NextStepsCommentBuilderProps {
-  onSave: (comment: NextStepsComment) => void;
+interface QualitiesCommentBuilderProps {
+  onSave: (comment: QualitiesComment) => void;
   onCancel: () => void;
-  existingComment?: NextStepsComment;
+  existingComment?: QualitiesComment;
 }
 
-function NextStepsCommentBuilder({ onSave, onCancel, existingComment }: NextStepsCommentBuilderProps) {
+function QualitiesCommentBuilder({ onSave, onCancel, existingComment }: QualitiesCommentBuilderProps) {
   const [commentName, setCommentName] = useState(existingComment?.name || '');
-  const [headings, setHeadings] = useState<string[]>(existingComment?.headings || ['Focus Areas']);
+  const [headings, setHeadings] = useState<string[]>(existingComment?.headings || ['Character Qualities']);
   const [comments, setComments] = useState<{ [heading: string]: string[] }>(
-    existingComment?.comments || { 'Focus Areas': [''] }
+    existingComment?.comments || { 'Character Qualities': [''] }
   );
   const [showBatchInput, setShowBatchInput] = useState<string | null>(null);
   const [batchText, setBatchText] = useState('');
@@ -62,7 +62,7 @@ function NextStepsCommentBuilder({ onSave, onCancel, existingComment }: NextStep
   };
 
   const addHeading = () => {
-    const newHeading = `Focus Area ${headings.length + 1}`;
+    const newHeading = `Quality Area ${headings.length + 1}`;
     setHeadings([...headings, newHeading]);
     setComments(prev => ({ ...prev, [newHeading]: [''] }));
   };
@@ -116,7 +116,7 @@ function NextStepsCommentBuilder({ onSave, onCancel, existingComment }: NextStep
 
   const handleSave = () => {
     if (!commentName.trim()) {
-      alert('Please enter a name for this next steps comment');
+      alert('Please enter a name for this qualities comment');
       return;
     }
 
@@ -126,11 +126,11 @@ function NextStepsCommentBuilder({ onSave, onCancel, existingComment }: NextStep
     );
 
     if (hasEmptyHeadings) {
-      alert('Please add at least one next step for each focus area, or remove empty focus areas');
+      alert('Please add at least one quality for each area, or remove empty areas');
       return;
     }
 
-    const nextStepsComment: NextStepsComment = {
+    const qualitiesComment: QualitiesComment = {
       name: commentName.trim(),
       headings: headings.filter(h => h.trim()),
       comments: Object.fromEntries(
@@ -141,7 +141,7 @@ function NextStepsCommentBuilder({ onSave, onCancel, existingComment }: NextStep
       )
     };
 
-    onSave(nextStepsComment);
+    onSave(qualitiesComment);
   };
 
   return (
@@ -158,7 +158,7 @@ function NextStepsCommentBuilder({ onSave, onCancel, existingComment }: NextStep
           color: '#111827',
           margin: 0
         }}>
-          {existingComment ? 'Edit' : 'Create'} Next Steps Comment
+          {existingComment ? 'Edit' : 'Create'} Qualities Comment
         </h1>
       </header>
 
@@ -201,11 +201,11 @@ function NextStepsCommentBuilder({ onSave, onCancel, existingComment }: NextStep
               color: '#111827',
               marginBottom: '8px'
             }}>
-              Next Steps Comment Name
+              Qualities Comment Name
             </label>
             <input
               type="text"
-              placeholder="e.g. Grade 5 Next Steps, Writing Development, Math Focus Areas..."
+              placeholder="e.g. Grade 5 Character Qualities, Personal Strengths, Social Skills..."
               value={commentName}
               onChange={(e) => setCommentName(e.target.value)}
               style={{
@@ -219,10 +219,10 @@ function NextStepsCommentBuilder({ onSave, onCancel, existingComment }: NextStep
             />
           </div>
 
-          {/* Focus Area Sections */}
+          {/* Quality Area Sections */}
           {headings.map((heading, index) => (
             <div key={index} style={{
-              border: '2px solid #06b6d4',
+              border: '2px solid #8b5cf6',
               borderRadius: '12px',
               padding: '24px',
               marginBottom: '24px'
@@ -235,15 +235,15 @@ function NextStepsCommentBuilder({ onSave, onCancel, existingComment }: NextStep
                   style={{
                     fontSize: '18px',
                     fontWeight: '600',
-                    color: '#06b6d4',
+                    color: '#8b5cf6',
                     border: 'none',
                     backgroundColor: 'transparent',
                     padding: '4px',
-                    borderBottom: '2px dashed #06b6d4',
+                    borderBottom: '2px dashed #8b5cf6',
                     marginBottom: '8px',
                     width: '100%'
                   }}
-                  placeholder="Focus Area Name"
+                  placeholder="Quality Area Name"
                 />
                 {headings.length > 1 && (
                   <button
@@ -258,7 +258,7 @@ function NextStepsCommentBuilder({ onSave, onCancel, existingComment }: NextStep
                       cursor: 'pointer'
                     }}
                   >
-                    Remove Focus Area
+                    Remove Quality Area
                   </button>
                 )}
               </div>
@@ -269,8 +269,8 @@ function NextStepsCommentBuilder({ onSave, onCancel, existingComment }: NextStep
                   onClick={() => setShowBatchInput(heading)}
                   style={{
                     backgroundColor: 'white',
-                    color: '#06b6d4',
-                    border: '2px solid #06b6d4',
+                    color: '#8b5cf6',
+                    border: '2px solid #8b5cf6',
                     borderRadius: '6px',
                     padding: '8px 16px',
                     fontSize: '14px',
@@ -284,7 +284,7 @@ function NextStepsCommentBuilder({ onSave, onCancel, existingComment }: NextStep
                 <button
                   onClick={() => addCommentOption(heading)}
                   style={{
-                    backgroundColor: '#06b6d4',
+                    backgroundColor: '#8b5cf6',
                     color: 'white',
                     border: 'none',
                     borderRadius: '6px',
@@ -361,12 +361,22 @@ function NextStepsCommentBuilder({ onSave, onCancel, existingComment }: NextStep
                   </p>
                   
                   <textarea
-                    placeholder="Paste your next steps comments here..."
+                    placeholder={
+                      separator === 'double-line' ? 
+                        `[Name] demonstrates exceptional leadership qualities and supports their peers.\n\n[Name] shows great kindness and empathy towards others.\n\n[Name] displays strong problem-solving skills and creativity.` :
+                      separator === 'single-line' ?
+                        `[Name] demonstrates exceptional leadership qualities\n[Name] shows great kindness and empathy\n[Name] displays strong problem-solving skills` :
+                      separator === 'semicolon' ?
+                        `[Name] demonstrates exceptional leadership qualities; [Name] shows great kindness and empathy; [Name] displays strong problem-solving skills` :
+                      separator === 'pipe' ?
+                        `[Name] demonstrates exceptional leadership qualities | [Name] shows great kindness and empathy | [Name] displays strong problem-solving skills` :
+                        `[Name] demonstrates exceptional leadership qualities --- [Name] shows great kindness and empathy --- [Name] displays strong problem-solving skills`
+                    }
                     value={batchText}
                     onChange={(e) => setBatchText(e.target.value)}
                     style={{
                       width: '100%',
-                      height: '120px',
+                      height: '200px',
                       padding: '12px',
                       border: '2px solid #bfdbfe',
                       borderRadius: '6px',
@@ -408,7 +418,7 @@ function NextStepsCommentBuilder({ onSave, onCancel, existingComment }: NextStep
                         cursor: batchText.trim() ? 'pointer' : 'not-allowed'
                       }}
                     >
-                      Add Next Steps
+                      Add Qualities
                     </button>
                   </div>
                 </div>
@@ -422,7 +432,7 @@ function NextStepsCommentBuilder({ onSave, onCancel, existingComment }: NextStep
                     marginBottom: '12px'
                   }}>
                     <textarea
-                      placeholder={`Enter next step suggestion ${index + 1}... Use [Name] for student name.`}
+                      placeholder={`Enter quality statement ${index + 1}... Use [Name] for student name.`}
                       value={comment}
                       onChange={(e) => updateCommentOption(heading, index, e.target.value)}
                       style={{
@@ -459,12 +469,12 @@ function NextStepsCommentBuilder({ onSave, onCancel, existingComment }: NextStep
             </div>
           ))}
 
-          {/* Add New Focus Area */}
+          {/* Add New Quality Area */}
           <div style={{ marginBottom: '32px', textAlign: 'center' }}>
             <button
               onClick={addHeading}
               style={{
-                backgroundColor: '#8b5cf6',
+                backgroundColor: '#a855f7',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
@@ -474,7 +484,7 @@ function NextStepsCommentBuilder({ onSave, onCancel, existingComment }: NextStep
                 cursor: 'pointer'
               }}
             >
-              + Add Another Focus Area
+              + Add Another Quality Area
             </button>
           </div>
 
@@ -502,7 +512,7 @@ function NextStepsCommentBuilder({ onSave, onCancel, existingComment }: NextStep
             <button
               onClick={handleSave}
               style={{
-                backgroundColor: '#06b6d4',
+                backgroundColor: '#8b5cf6',
                 color: 'white',
                 padding: '16px 32px',
                 border: 'none',
@@ -512,7 +522,7 @@ function NextStepsCommentBuilder({ onSave, onCancel, existingComment }: NextStep
                 cursor: 'pointer'
               }}
             >
-              Save Next Steps Comment
+              Save Qualities Comment
             </button>
           </div>
 
@@ -522,4 +532,4 @@ function NextStepsCommentBuilder({ onSave, onCancel, existingComment }: NextStep
   );
 }
 
-export default NextStepsCommentBuilder;
+export default QualitiesCommentBuilder;
