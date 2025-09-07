@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { Template, Class, Student, Report, RatedComment, StandardComment, AssessmentComment, PersonalisedComment, NextStepsComment, QualitiesComment } from '../types';
+import { Template, Class, Student, Report, RatedComment, StandardComment, AssessmentComment, PersonalisedComment, NextStepsComment } from '../types';
 import { supabaseOperations, setSupabaseUserContext } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 
@@ -12,7 +12,6 @@ interface DataState {
   savedAssessmentComments: AssessmentComment[];
   savedPersonalisedComments: PersonalisedComment[];
   savedNextStepsComments: NextStepsComment[];
-  savedQualitiesComments: QualitiesComment[];
   isLoading: boolean;
   isSyncing: boolean;
   lastSyncTime: Date | null;
@@ -47,13 +46,24 @@ interface DataContextType {
   addNextStepsComment: (comment: NextStepsComment) => void;
   updateNextStepsComment: (comment: NextStepsComment) => void;
   deleteNextStepsComment: (name: string) => void;
-  addQualitiesComment: (comment: QualitiesComment) => void;
-  updateQualitiesComment: (comment: QualitiesComment) => void;
-  deleteQualitiesComment: (name: string) => void;
   syncData: () => Promise<void>;
 }
 
-type DataAction =
+const initialState: DataState = {
+  templates: [],
+  classes: [],
+  reports: [],
+  savedRatedComments: [],
+  savedStandardComments: [],
+  savedAssessmentComments: [],
+  savedPersonalisedComments: [],
+  savedNextStepsComments: [],
+  isLoading: false,
+  isSyncing: false,
+  lastSyncTime: null
+};
+
+type DataAction = 
   | { type: 'ADD_TEMPLATE'; payload: Template }
   | { type: 'UPDATE_TEMPLATE'; payload: Template }
   | { type: 'DELETE_TEMPLATE'; payload: string }
@@ -78,28 +88,10 @@ type DataAction =
   | { type: 'ADD_NEXT_STEPS_COMMENT'; payload: NextStepsComment }
   | { type: 'UPDATE_NEXT_STEPS_COMMENT'; payload: NextStepsComment }
   | { type: 'DELETE_NEXT_STEPS_COMMENT'; payload: string }
-  | { type: 'ADD_QUALITIES_COMMENT'; payload: QualitiesComment }
-  | { type: 'UPDATE_QUALITIES_COMMENT'; payload: QualitiesComment }
-  | { type: 'DELETE_QUALITIES_COMMENT'; payload: string }
   | { type: 'LOAD_DATA'; payload: DataState }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_SYNCING'; payload: boolean }
   | { type: 'SET_LAST_SYNC_TIME'; payload: Date };
-
-const initialState: DataState = {
-  templates: [],
-  classes: [],
-  reports: [],
-  savedRatedComments: [],
-  savedStandardComments: [],
-  savedAssessmentComments: [],
-  savedPersonalisedComments: [],
-  savedNextStepsComments: [],
-  savedQualitiesComments: [],
-  isLoading: true,
-  isSyncing: false,
-  lastSyncTime: null
-};
 
 function dataReducer(state: DataState, action: DataAction): DataState {
   switch (action.type) {
@@ -109,9 +101,7 @@ function dataReducer(state: DataState, action: DataAction): DataState {
     case 'UPDATE_TEMPLATE':
       return {
         ...state,
-        templates: state.templates.map(t => 
-          t.id === action.payload.id ? action.payload : t
-        )
+        templates: state.templates.map(t => t.id === action.payload.id ? action.payload : t)
       };
     
     case 'DELETE_TEMPLATE':
@@ -126,17 +116,13 @@ function dataReducer(state: DataState, action: DataAction): DataState {
     case 'UPDATE_CLASS':
       return {
         ...state,
-        classes: state.classes.map(c => 
-          c.id === action.payload.id ? action.payload : c
-        )
+        classes: state.classes.map(c => c.id === action.payload.id ? action.payload : c)
       };
     
     case 'DELETE_CLASS':
       return {
         ...state,
-        classes: state.classes.filter(c => c.id !== action.payload),
-        // Also delete all reports for this class
-        reports: state.reports.filter(r => r.classId !== action.payload)
+        classes: state.classes.filter(c => c.id !== action.payload)
       };
     
     case 'ADD_REPORT':
@@ -145,9 +131,7 @@ function dataReducer(state: DataState, action: DataAction): DataState {
     case 'UPDATE_REPORT':
       return {
         ...state,
-        reports: state.reports.map(r => 
-          r.id === action.payload.id ? action.payload : r
-        )
+        reports: state.reports.map(r => r.id === action.payload.id ? action.payload : r)
       };
     
     case 'DELETE_REPORT':
@@ -241,25 +225,8 @@ function dataReducer(state: DataState, action: DataAction): DataState {
         savedNextStepsComments: state.savedNextStepsComments.filter(nsc => nsc.name !== action.payload)
       };
     
-    case 'ADD_QUALITIES_COMMENT':
-      return { ...state, savedQualitiesComments: [...state.savedQualitiesComments, action.payload] };
-    
-    case 'UPDATE_QUALITIES_COMMENT':
-      return {
-        ...state,
-        savedQualitiesComments: state.savedQualitiesComments.map(qc => 
-          qc.name === action.payload.name ? action.payload : qc
-        )
-      };
-    
-    case 'DELETE_QUALITIES_COMMENT':
-      return {
-        ...state,
-        savedQualitiesComments: state.savedQualitiesComments.filter(qc => qc.name !== action.payload)
-      };
-    
     case 'LOAD_DATA':
-      return action.payload;
+      return { ...action.payload };
     
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
@@ -277,45 +244,130 @@ function dataReducer(state: DataState, action: DataAction): DataState {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-interface DataProviderProps {
-  children: ReactNode;
-}
-
-export function DataProvider({ children }: DataProviderProps) {
+export function DataProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(dataReducer, initialState);
   const { user } = useAuth();
 
-  // Load data from localStorage on mount
-  useEffect(() => {
-    loadDataFromLocalStorage();
-  }, []);
+  // Get user ID for data storage
+  const getUserId = () => {
+    return user ? `admin-test-2024-reportgenerator-com` : 'anonymous-user';
+  };
 
-  // Save data to localStorage when state changes
+  // CLOUD SYNC FUNCTIONS - RE-ENABLED
+  const syncFromCloud = async () => {
+    const userId = getUserId();
+    if (!userId) return;
+
+    try {
+      dispatch({ type: 'SET_SYNCING', payload: true });
+      await setSupabaseUserContext(userId);
+
+      // Load data from Supabase
+      const [cloudTemplates, cloudClasses, cloudReports] = await Promise.all([
+        supabaseOperations.getTemplates(userId),
+        supabaseOperations.getClasses(userId),
+        supabaseOperations.getReports(userId)
+      ]);
+
+      // Update state with cloud data
+      dispatch({ type: 'LOAD_DATA', payload: {
+        ...state,
+        templates: cloudTemplates,
+        classes: cloudClasses,
+        reports: cloudReports,
+        isLoading: false,
+        isSyncing: false,
+        lastSyncTime: new Date()
+      }});
+
+      dispatch({ type: 'SET_LAST_SYNC_TIME', payload: new Date() });
+      
+    } catch (error) {
+      console.error('Error syncing from cloud:', error);
+      // Fall back to localStorage if cloud sync fails
+      loadLocalData();
+    } finally {
+      dispatch({ type: 'SET_SYNCING', payload: false });
+    }
+  };
+
+  const syncToCloud = async () => {
+    const userId = getUserId();
+    if (!userId || state.isSyncing) return;
+
+    try {
+      dispatch({ type: 'SET_SYNCING', payload: true });
+      await setSupabaseUserContext(userId);
+
+      await Promise.all([
+        supabaseOperations.saveTemplates(userId, state.templates),
+        supabaseOperations.saveClasses(userId, state.classes),
+        supabaseOperations.saveReports(userId, state.reports)
+      ]);
+
+      dispatch({ type: 'SET_LAST_SYNC_TIME', payload: new Date() });
+      
+    } catch (error) {
+      console.error('Error syncing to cloud:', error);
+    } finally {
+      dispatch({ type: 'SET_SYNCING', payload: false });
+    }
+  };
+
+  // Load data when user changes
+  useEffect(() => {
+    if (user) {
+      loadAllData();
+    } else {
+      // Clear data when user logs out
+      dispatch({ type: 'LOAD_DATA', payload: initialState });
+    }
+  }, [user]);
+
+  // Save to localStorage and cloud whenever state changes
   useEffect(() => {
     if (!state.isLoading) {
-      localStorage.setItem('templates', JSON.stringify(state.templates));
-      localStorage.setItem('classes', JSON.stringify(state.classes));
-      localStorage.setItem('reports', JSON.stringify(state.reports));
+      localStorage.setItem('reportTemplates', JSON.stringify(state.templates));
+      localStorage.setItem('reportClasses', JSON.stringify(state.classes));
+      localStorage.setItem('reportReports', JSON.stringify(state.reports));
       localStorage.setItem('savedRatedComments', JSON.stringify(state.savedRatedComments));
       localStorage.setItem('savedStandardComments', JSON.stringify(state.savedStandardComments));
       localStorage.setItem('savedAssessmentComments', JSON.stringify(state.savedAssessmentComments));
       localStorage.setItem('savedPersonalisedComments', JSON.stringify(state.savedPersonalisedComments));
       localStorage.setItem('savedNextStepsComments', JSON.stringify(state.savedNextStepsComments));
-      localStorage.setItem('savedQualitiesComments', JSON.stringify(state.savedQualitiesComments));
+      
+      // Enable cloud sync
+      if (user) {
+        syncToCloud();
+      }
     }
-  }, [state]);
+  }, [state, user]);
 
-  const loadDataFromLocalStorage = () => {
+  const loadAllData = async () => {
     try {
-      const savedTemplates = localStorage.getItem('templates');
-      const savedClasses = localStorage.getItem('classes');
-      const savedReports = localStorage.getItem('reports');
+      dispatch({ type: 'SET_LOADING', payload: true });
+      
+      // Try cloud sync first, fall back to localStorage
+      await syncFromCloud();
+      
+    } catch (error) {
+      console.error('Error loading data:', error);
+      loadLocalData(); // Fallback to localStorage
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }
+  };
+
+  const loadLocalData = () => {
+    try {
+      const savedTemplates = localStorage.getItem('reportTemplates');
+      const savedClasses = localStorage.getItem('reportClasses');
+      const savedReports = localStorage.getItem('reportReports');
       const savedRatedComments = localStorage.getItem('savedRatedComments');
       const savedStandardComments = localStorage.getItem('savedStandardComments');
       const savedAssessmentComments = localStorage.getItem('savedAssessmentComments');
       const savedPersonalisedComments = localStorage.getItem('savedPersonalisedComments');
       const savedNextStepsComments = localStorage.getItem('savedNextStepsComments');
-      const savedQualitiesComments = localStorage.getItem('savedQualitiesComments');
 
       const loadedState: DataState = {
         templates: savedTemplates ? JSON.parse(savedTemplates) : [],
@@ -326,7 +378,6 @@ export function DataProvider({ children }: DataProviderProps) {
         savedAssessmentComments: savedAssessmentComments ? JSON.parse(savedAssessmentComments) : [],
         savedPersonalisedComments: savedPersonalisedComments ? JSON.parse(savedPersonalisedComments) : [],
         savedNextStepsComments: savedNextStepsComments ? JSON.parse(savedNextStepsComments) : [],
-        savedQualitiesComments: savedQualitiesComments ? JSON.parse(savedQualitiesComments) : [],
         isLoading: false,
         isSyncing: false,
         lastSyncTime: null
@@ -338,11 +389,11 @@ export function DataProvider({ children }: DataProviderProps) {
     }
   };
 
-  // Template operations
+  // Template management
   const addTemplate = (template: Omit<Template, 'id' | 'createdAt'>) => {
     const newTemplate: Template = {
       ...template,
-      id: `template-${Date.now()}`,
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       createdAt: new Date().toISOString()
     };
     dispatch({ type: 'ADD_TEMPLATE', payload: newTemplate });
@@ -356,11 +407,11 @@ export function DataProvider({ children }: DataProviderProps) {
     dispatch({ type: 'DELETE_TEMPLATE', payload: id });
   };
 
-  // Class operations
+  // Class management
   const addClass = (cls: Omit<Class, 'id' | 'createdAt'>) => {
     const newClass: Class = {
       ...cls,
-      id: `class-${Date.now()}`,
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       createdAt: new Date().toISOString()
     };
     dispatch({ type: 'ADD_CLASS', payload: newClass });
@@ -374,11 +425,11 @@ export function DataProvider({ children }: DataProviderProps) {
     dispatch({ type: 'DELETE_CLASS', payload: id });
   };
 
-  // Report operations
+  // Report management
   const addReport = (report: Omit<Report, 'id' | 'createdAt' | 'updatedAt'>) => {
     const newReport: Report = {
       ...report,
-      id: `report-${Date.now()}`,
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -386,7 +437,11 @@ export function DataProvider({ children }: DataProviderProps) {
   };
 
   const updateReport = (report: Report) => {
-    dispatch({ type: 'UPDATE_REPORT', payload: report });
+    const updatedReport = {
+      ...report,
+      updatedAt: new Date().toISOString()
+    };
+    dispatch({ type: 'UPDATE_REPORT', payload: updatedReport });
   };
 
   const deleteReport = (id: string) => {
@@ -399,20 +454,18 @@ export function DataProvider({ children }: DataProviderProps) {
     );
 
     if (existingReport) {
-      const updatedReport = {
+      updateReport({
         ...existingReport,
         content: reportData.content,
-        sectionData: reportData.sectionData,
         updatedAt: new Date().toISOString()
-      };
-      updateReport(updatedReport);
+      });
     } else {
       addReport({
         studentId: reportData.studentId,
-        templateId: reportData.templateId,
         classId: reportData.classId,
-        content: reportData.content,
-        sectionData: reportData.sectionData
+        templateId: reportData.templateId,
+        templateName: reportData.templateName,
+        content: reportData.content
       });
     }
   };
@@ -421,125 +474,77 @@ export function DataProvider({ children }: DataProviderProps) {
     return state.reports.find(r => r.studentId === studentId && r.templateId === templateId);
   };
 
-  // Comment operations
-  const addRatedComment = (ratedComment: RatedComment) => {
-    dispatch({ type: 'ADD_RATED_COMMENT', payload: ratedComment });
+  // Test data creation
+  const createTestData = () => {
+    // Implementation for test data if needed
   };
 
-  const updateRatedComment = (ratedComment: RatedComment) => {
-    dispatch({ type: 'UPDATE_RATED_COMMENT', payload: ratedComment });
+  // Comment management functions
+  const addRatedComment = (comment: RatedComment) => {
+    dispatch({ type: 'ADD_RATED_COMMENT', payload: comment });
+  };
+
+  const updateRatedComment = (comment: RatedComment) => {
+    dispatch({ type: 'UPDATE_RATED_COMMENT', payload: comment });
   };
 
   const deleteRatedComment = (name: string) => {
     dispatch({ type: 'DELETE_RATED_COMMENT', payload: name });
   };
 
-  const addStandardComment = (standardComment: StandardComment) => {
-    dispatch({ type: 'ADD_STANDARD_COMMENT', payload: standardComment });
+  const addStandardComment = (comment: StandardComment) => {
+    dispatch({ type: 'ADD_STANDARD_COMMENT', payload: comment });
   };
 
-  const updateStandardComment = (standardComment: StandardComment) => {
-    dispatch({ type: 'UPDATE_STANDARD_COMMENT', payload: standardComment });
+  const updateStandardComment = (comment: StandardComment) => {
+    dispatch({ type: 'UPDATE_STANDARD_COMMENT', payload: comment });
   };
 
   const deleteStandardComment = (name: string) => {
     dispatch({ type: 'DELETE_STANDARD_COMMENT', payload: name });
   };
 
-  const addAssessmentComment = (assessmentComment: AssessmentComment) => {
-    dispatch({ type: 'ADD_ASSESSMENT_COMMENT', payload: assessmentComment });
+  const addAssessmentComment = (comment: AssessmentComment) => {
+    dispatch({ type: 'ADD_ASSESSMENT_COMMENT', payload: comment });
   };
 
-  const updateAssessmentComment = (assessmentComment: AssessmentComment) => {
-    dispatch({ type: 'UPDATE_ASSESSMENT_COMMENT', payload: assessmentComment });
+  const updateAssessmentComment = (comment: AssessmentComment) => {
+    dispatch({ type: 'UPDATE_ASSESSMENT_COMMENT', payload: comment });
   };
 
   const deleteAssessmentComment = (name: string) => {
     dispatch({ type: 'DELETE_ASSESSMENT_COMMENT', payload: name });
   };
 
-  const addPersonalisedComment = (personalisedComment: PersonalisedComment) => {
-    dispatch({ type: 'ADD_PERSONALISED_COMMENT', payload: personalisedComment });
+  const addPersonalisedComment = (comment: PersonalisedComment) => {
+    dispatch({ type: 'ADD_PERSONALISED_COMMENT', payload: comment });
   };
 
-  const updatePersonalisedComment = (personalisedComment: PersonalisedComment) => {
-    dispatch({ type: 'UPDATE_PERSONALISED_COMMENT', payload: personalisedComment });
+  const updatePersonalisedComment = (comment: PersonalisedComment) => {
+    dispatch({ type: 'UPDATE_PERSONALISED_COMMENT', payload: comment });
   };
 
   const deletePersonalisedComment = (name: string) => {
     dispatch({ type: 'DELETE_PERSONALISED_COMMENT', payload: name });
   };
 
-  const addNextStepsComment = (nextStepsComment: NextStepsComment) => {
-    dispatch({ type: 'ADD_NEXT_STEPS_COMMENT', payload: nextStepsComment });
+  const addNextStepsComment = (comment: NextStepsComment) => {
+    dispatch({ type: 'ADD_NEXT_STEPS_COMMENT', payload: comment });
   };
 
-  const updateNextStepsComment = (nextStepsComment: NextStepsComment) => {
-    dispatch({ type: 'UPDATE_NEXT_STEPS_COMMENT', payload: nextStepsComment });
+  const updateNextStepsComment = (comment: NextStepsComment) => {
+    dispatch({ type: 'UPDATE_NEXT_STEPS_COMMENT', payload: comment });
   };
 
   const deleteNextStepsComment = (name: string) => {
     dispatch({ type: 'DELETE_NEXT_STEPS_COMMENT', payload: name });
   };
 
-  const addQualitiesComment = (qualitiesComment: QualitiesComment) => {
-    dispatch({ type: 'ADD_QUALITIES_COMMENT', payload: qualitiesComment });
-  };
-
-  const updateQualitiesComment = (qualitiesComment: QualitiesComment) => {
-    dispatch({ type: 'UPDATE_QUALITIES_COMMENT', payload: qualitiesComment });
-  };
-
-  const deleteQualitiesComment = (name: string) => {
-    dispatch({ type: 'DELETE_QUALITIES_COMMENT', payload: name });
-  };
-
-  // Test data creation
-  const createTestData = () => {
-    // Add sample templates
-    const testTemplate: Template = {
-      id: 'test-template-1',
-      name: 'Test Template',
-      sections: [
-        {
-          id: 'section-1',
-          type: 'rated-comment',
-          name: 'Test Rated Section',
-          data: {
-            comments: {
-              excellent: ['Excellent work!'],
-              good: ['Good effort!'],
-              satisfactory: ['Satisfactory work.'],
-              needsImprovement: ['Needs improvement.']
-            }
-          }
-        }
-      ],
-      createdAt: new Date().toISOString()
-    };
-
-    dispatch({ type: 'ADD_TEMPLATE', payload: testTemplate });
-
-    // Add sample class
-    const testClass: Class = {
-      id: 'test-class-1',
-      name: 'Test Class',
-      students: [
-        { id: 'student-1', firstName: 'John', lastName: 'Doe' },
-        { id: 'student-2', firstName: 'Jane', lastName: 'Smith' }
-      ],
-      createdAt: new Date().toISOString()
-    };
-
-    dispatch({ type: 'ADD_CLASS', payload: testClass });
-  };
-
-  // Manual sync function (disabled for now)
+  // Manual sync function
   const syncData = async () => {
-    console.log('Cloud sync is temporarily disabled');
-    // if (user) {
-    //   await syncFromCloud();
-    // }
+    if (user) {
+      await syncFromCloud();
+    }
   };
 
   const value: DataContextType = {
@@ -571,9 +576,6 @@ export function DataProvider({ children }: DataProviderProps) {
     addNextStepsComment,
     updateNextStepsComment,
     deleteNextStepsComment,
-    addQualitiesComment,
-    updateQualitiesComment,
-    deleteQualitiesComment,
     syncData
   };
 
