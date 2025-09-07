@@ -250,6 +250,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // Get user ID for data storage
   const getUserId = () => {
+<<<<<<< HEAD
     const userId = user ? `admin-test-2024-reportgenerator-com` : 'anonymous-user';
     console.log('🔍 DEBUG: Getting user ID:', userId, 'User object:', user);
     return userId;
@@ -273,6 +274,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await setSupabaseUserContext(userId);
 
       console.log('📡 DEBUG: Loading data from Supabase...');
+=======
+    return user ? `admin-test-2024-reportgenerator-com` : 'anonymous-user';
+  };
+
+  // CLOUD SYNC FUNCTIONS - RE-ENABLED
+  const syncFromCloud = async () => {
+    const userId = getUserId();
+    if (!userId) return;
+
+    try {
+      dispatch({ type: 'SET_SYNCING', payload: true });
+      await setSupabaseUserContext(userId);
+
+>>>>>>> 58e0f3c971e0c3a39fcea73d57ccb168a8c80650
       // Load data from Supabase
       const [cloudTemplates, cloudClasses, cloudReports] = await Promise.all([
         supabaseOperations.getTemplates(userId),
@@ -280,6 +295,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         supabaseOperations.getReports(userId)
       ]);
 
+<<<<<<< HEAD
       console.log('✅ DEBUG: Cloud data loaded:', {
         templates: cloudTemplates?.length || 0,
         classes: cloudClasses?.length || 0,
@@ -297,17 +313,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
         savedAssessmentComments: state.savedAssessmentComments,
         savedPersonalisedComments: state.savedPersonalisedComments,
         savedNextStepsComments: state.savedNextStepsComments,
+=======
+      // Update state with cloud data
+      dispatch({ type: 'LOAD_DATA', payload: {
+        ...state,
+        templates: cloudTemplates,
+        classes: cloudClasses,
+        reports: cloudReports,
+>>>>>>> 58e0f3c971e0c3a39fcea73d57ccb168a8c80650
         isLoading: false,
         isSyncing: false,
         lastSyncTime: new Date()
       }});
 
       dispatch({ type: 'SET_LAST_SYNC_TIME', payload: new Date() });
+<<<<<<< HEAD
       console.log('✅ DEBUG: Cloud sync completed successfully');
       
     } catch (error) {
       console.error('❌ DEBUG: Error syncing from cloud:', error);
       console.log('🔄 DEBUG: Falling back to localStorage');
+=======
+      
+    } catch (error) {
+      console.error('Error syncing from cloud:', error);
+>>>>>>> 58e0f3c971e0c3a39fcea73d57ccb168a8c80650
       // Fall back to localStorage if cloud sync fails
       loadLocalData();
     } finally {
@@ -317,6 +347,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const syncToCloud = async () => {
     const userId = getUserId();
+<<<<<<< HEAD
     console.log('📤 DEBUG: Starting syncToCloud for user:', userId);
     
     if (!userId || userId === 'anonymous-user' || state.isSyncing) {
@@ -348,6 +379,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
       
     } catch (error) {
       console.error('❌ DEBUG: Error syncing to cloud:', error);
+=======
+    if (!userId || state.isSyncing) return;
+
+    try {
+      dispatch({ type: 'SET_SYNCING', payload: true });
+      await setSupabaseUserContext(userId);
+
+      await Promise.all([
+        supabaseOperations.saveTemplates(userId, state.templates),
+        supabaseOperations.saveClasses(userId, state.classes),
+        supabaseOperations.saveReports(userId, state.reports)
+      ]);
+
+      dispatch({ type: 'SET_LAST_SYNC_TIME', payload: new Date() });
+      
+    } catch (error) {
+      console.error('Error syncing to cloud:', error);
+>>>>>>> 58e0f3c971e0c3a39fcea73d57ccb168a8c80650
     } finally {
       dispatch({ type: 'SET_SYNCING', payload: false });
     }
@@ -355,7 +404,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // Load data when user changes
   useEffect(() => {
+<<<<<<< HEAD
     console.log('👤 DEBUG: User changed:', user ? 'logged in' : 'logged out');
+=======
+>>>>>>> 58e0f3c971e0c3a39fcea73d57ccb168a8c80650
     if (user) {
       loadAllData();
     } else {
@@ -367,7 +419,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // Save to localStorage and cloud whenever state changes
   useEffect(() => {
     if (!state.isLoading) {
+<<<<<<< HEAD
       console.log('💾 DEBUG: Saving to localStorage and attempting cloud sync');
+=======
+>>>>>>> 58e0f3c971e0c3a39fcea73d57ccb168a8c80650
       localStorage.setItem('reportTemplates', JSON.stringify(state.templates));
       localStorage.setItem('reportClasses', JSON.stringify(state.classes));
       localStorage.setItem('reportReports', JSON.stringify(state.reports));
@@ -379,24 +434,35 @@ export function DataProvider({ children }: { children: ReactNode }) {
       
       // Enable cloud sync
       if (user) {
+<<<<<<< HEAD
         console.log('☁️ DEBUG: User is logged in, attempting cloud sync');
         syncToCloud();
       } else {
         console.log('🔒 DEBUG: No user logged in, skipping cloud sync');
+=======
+        syncToCloud();
+>>>>>>> 58e0f3c971e0c3a39fcea73d57ccb168a8c80650
       }
     }
   }, [state, user]);
 
   const loadAllData = async () => {
     try {
+<<<<<<< HEAD
       console.log('📂 DEBUG: Starting loadAllData');
+=======
+>>>>>>> 58e0f3c971e0c3a39fcea73d57ccb168a8c80650
       dispatch({ type: 'SET_LOADING', payload: true });
       
       // Try cloud sync first, fall back to localStorage
       await syncFromCloud();
       
     } catch (error) {
+<<<<<<< HEAD
       console.error('❌ DEBUG: Error loading data:', error);
+=======
+      console.error('Error loading data:', error);
+>>>>>>> 58e0f3c971e0c3a39fcea73d57ccb168a8c80650
       loadLocalData(); // Fallback to localStorage
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
@@ -405,7 +471,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const loadLocalData = () => {
     try {
+<<<<<<< HEAD
       console.log('💽 DEBUG: Loading from localStorage');
+=======
+>>>>>>> 58e0f3c971e0c3a39fcea73d57ccb168a8c80650
       const savedTemplates = localStorage.getItem('reportTemplates');
       const savedClasses = localStorage.getItem('reportClasses');
       const savedReports = localStorage.getItem('reportReports');
@@ -500,7 +569,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ...report,
       updatedAt: new Date().toISOString()
     };
+<<<<<<< HEAD
     console.log('✏️ DEBUG: Updating report:', report.id);
+=======
+>>>>>>> 58e0f3c971e0c3a39fcea73d57ccb168a8c80650
     dispatch({ type: 'UPDATE_REPORT', payload: updatedReport });
   };
 
@@ -603,11 +675,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // Manual sync function
   const syncData = async () => {
+<<<<<<< HEAD
     console.log('🔄 DEBUG: Manual sync triggered');
     if (user) {
       await syncFromCloud();
     } else {
       console.log('❌ DEBUG: Cannot sync - no user logged in');
+=======
+    if (user) {
+      await syncFromCloud();
+>>>>>>> 58e0f3c971e0c3a39fcea73d57ccb168a8c80650
     }
   };
 
