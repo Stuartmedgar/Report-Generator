@@ -53,7 +53,7 @@ export const supabaseOperations = {
           return [];
         }
 
-        console.log('Templates saved successfully:', data?.length || templateData.length);
+        console.log('Templates saved successfully:', templateData.length);
         return data || [];
       }
       
