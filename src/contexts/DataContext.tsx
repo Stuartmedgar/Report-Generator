@@ -287,13 +287,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return user ? `admin-test-2024-reportgenerator-com` : 'anonymous-user';
   };
 
-  // CLOUD SYNC FUNCTIONS - NOW RE-ENABLED
+  // CLOUD SYNC FUNCTIONS - RE-ENABLED WITH RESTORED SUPABASE
   const syncFromCloud = async () => {
     const userId = getUserId();
     if (!userId || userId === 'anonymous-user') return;
 
     try {
-      console.log('🔍 Syncing from cloud for user:', userId);
+      console.log('Syncing from cloud for user:', userId);
       dispatch({ type: 'SET_SYNCING', payload: true });
       await setSupabaseUserContext(userId);
 
@@ -304,11 +304,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         supabaseOperations.getReports(userId)
       ]);
 
-      console.log('📊 Loaded from cloud:', {
-        templates: cloudTemplates.length,
-        classes: cloudClasses.length,
-        reports: cloudReports.length
-      });
+      console.log('Loaded from cloud - Templates:', cloudTemplates.length, 'Classes:', cloudClasses.length, 'Reports:', cloudReports.length);
 
       // Update state with cloud data
       dispatch({ type: 'LOAD_DATA', payload: {
@@ -321,7 +317,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'SET_LAST_SYNC_TIME', payload: new Date() });
       
     } catch (error) {
-      console.error('❌ Error syncing from cloud:', error);
+      console.error('Error syncing from cloud:', error);
       // Fallback to localStorage if cloud sync fails
       loadLocalData();
     } finally {
@@ -334,7 +330,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!userId || userId === 'anonymous-user' || state.isSyncing) return;
 
     try {
-      console.log('☁️ Syncing to cloud for user:', userId);
+      console.log('Syncing to cloud for user:', userId);
       dispatch({ type: 'SET_SYNCING', payload: true });
       await setSupabaseUserContext(userId);
 
@@ -344,11 +340,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         supabaseOperations.saveReports(userId, state.reports)
       ]);
 
-      console.log('✅ Synced to cloud successfully');
+      console.log('Synced to cloud successfully');
       dispatch({ type: 'SET_LAST_SYNC_TIME', payload: new Date() });
       
     } catch (error) {
-      console.error('❌ Error syncing to cloud:', error);
+      console.error('Error syncing to cloud:', error);
     } finally {
       dispatch({ type: 'SET_SYNCING', payload: false });
     }
