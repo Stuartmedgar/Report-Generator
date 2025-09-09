@@ -287,38 +287,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return user ? `admin-test-2024-reportgenerator-com` : 'anonymous-user';
   };
 
-  // CLOUD SYNC RE-ENABLED - Database schema now fixed
+  // CLOUD SYNC - DEBUG VERSION
   const syncFromCloud = async () => {
     const userId = getUserId();
     if (!userId || userId === 'anonymous-user') return;
 
     try {
-      console.log('Syncing from cloud for user:', userId);
+      console.log('Attempting to sync from cloud for user:', userId);
       dispatch({ type: 'SET_SYNCING', payload: true });
 
-      // Load data from Supabase
-      const [cloudTemplates, cloudClasses, cloudReports] = await Promise.all([
-        supabaseOperations.getTemplates(userId),
-        supabaseOperations.getClasses(userId),
-        supabaseOperations.getReports(userId)
-      ]);
+      // Try to load templates only for now
+      const cloudTemplates = await supabaseOperations.getTemplates(userId);
+      
+      console.log('Cloud sync result - Templates:', cloudTemplates.length);
 
-      console.log('Loaded from cloud - Templates:', cloudTemplates.length, 'Classes:', cloudClasses.length, 'Reports:', cloudReports.length);
-
-      // Update state with cloud data
-      dispatch({ type: 'LOAD_DATA', payload: {
-        templates: cloudTemplates || [],
-        classes: cloudClasses || [],
-        reports: cloudReports || [],
-        lastSyncTime: new Date()
-      }});
+      if (cloudTemplates.length > 0) {
+        dispatch({ type: 'LOAD_DATA', payload: {
+          templates: cloudTemplates,
+          lastSyncTime: new Date()
+        }});
+      }
 
       dispatch({ type: 'SET_LAST_SYNC_TIME', payload: new Date() });
       
     } catch (error) {
-      console.error('Error syncing from cloud:', error);
-      // Fallback to localStorage if cloud sync fails
-      loadLocalData();
+      console.error('Error in syncFromCloud:', error);
     } finally {
       dispatch({ type: 'SET_SYNCING', payload: false });
     }
@@ -329,20 +322,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (!userId || userId === 'anonymous-user' || state.isSyncing) return;
 
     try {
-      console.log('Syncing to cloud for user:', userId);
+      console.log('Attempting to sync to cloud for user:', userId);
       dispatch({ type: 'SET_SYNCING', payload: true });
 
-      await Promise.all([
-        supabaseOperations.saveTemplates(userId, state.templates),
-        supabaseOperations.saveClasses(userId, state.classes),
-        supabaseOperations.saveReports(userId, state.reports)
-      ]);
+      // Try to save templates only for now
+      if (state.templates.length > 0) {
+        const result = await supabaseOperations.saveTemplates(userId, state.templates);
+        console.log('Save result:', result);
+      }
 
-      console.log('Synced to cloud successfully');
       dispatch({ type: 'SET_LAST_SYNC_TIME', payload: new Date() });
       
     } catch (error) {
-      console.error('Error syncing to cloud:', error);
+      console.error('Error in syncToCloud:', error);
     } finally {
       dispatch({ type: 'SET_SYNCING', payload: false });
     }
