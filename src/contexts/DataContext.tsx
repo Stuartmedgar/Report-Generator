@@ -287,7 +287,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return user ? `admin-test-2024-reportgenerator-com` : 'anonymous-user';
   };
 
-  // CLOUD SYNC FUNCTIONS - RE-ENABLED WITH RESTORED SUPABASE
+  // CLOUD SYNC RE-ENABLED - Database tables now exist
   const syncFromCloud = async () => {
     const userId = getUserId();
     if (!userId || userId === 'anonymous-user') return;
@@ -295,7 +295,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       console.log('Syncing from cloud for user:', userId);
       dispatch({ type: 'SET_SYNCING', payload: true });
-      await setSupabaseUserContext(userId);
 
       // Load data from Supabase
       const [cloudTemplates, cloudClasses, cloudReports] = await Promise.all([
@@ -332,7 +331,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       console.log('Syncing to cloud for user:', userId);
       dispatch({ type: 'SET_SYNCING', payload: true });
-      await setSupabaseUserContext(userId);
 
       await Promise.all([
         supabaseOperations.saveTemplates(userId, state.templates),
