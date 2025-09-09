@@ -253,37 +253,144 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // Load data from localStorage on mount
   useEffect(() => {
-    const savedData = localStorage.getItem('reportGeneratorData');
-    if (savedData) {
-      try {
-        const parsedData = JSON.parse(savedData);
-        dispatch({ type: 'LOAD_DATA', payload: parsedData });
-      } catch (error) {
-        console.error('Error loading data from localStorage:', error);
+    if (user) {
+      loadAllData();
+    } else {
+      // Load localStorage data when not logged in
+      loadLocalData();
+    }
+  }, [user]);
+
+  // Save data to localStorage whenever state changes (for backup)
+  useEffect(() => {
+    if (!state.isLoading && !state.isSyncing) {
+      localStorage.setItem('reportGeneratorData', JSON.stringify({
+        templates: state.templates,
+        classes: state.classes,
+        reports: state.reports,
+        savedRatedComments: state.savedRatedComments,
+        savedStandardComments: state.savedStandardComments,
+        savedAssessmentComments: state.savedAssessmentComments,
+        savedPersonalisedComments: state.savedPersonalisedComments,
+        savedNextStepsComments: state.savedNextStepsComments,
+      }));
+      
+      // Also sync to cloud if user is logged in
+      if (user) {
+        syncToCloud();
       }
     }
-  }, []);
-
-  // Save data to localStorage whenever state changes
-  useEffect(() => {
-    localStorage.setItem('reportGeneratorData', JSON.stringify(state));
-  }, [state]);
+  }, [state.templates, state.classes, state.reports, state.savedRatedComments, state.savedStandardComments, state.savedAssessmentComments, state.savedPersonalisedComments, state.savedNextStepsComments, user, state.isLoading, state.isSyncing]);
 
   // Get user ID for data storage
   const getUserId = () => {
-    const userId = user ? `admin-test-2024-reportgenerator-com` : 'anonymous-user';
-    return userId;
+    return user ? `admin-test-2024-reportgenerator-com` : 'anonymous-user';
   };
 
-  // CLOUD SYNC FUNCTIONS - DISABLED FOR NOW TO ENSURE STABLE BUILD
+  // CLOUD SYNC FUNCTIONS - NOW RE-ENABLED
   const syncFromCloud = async () => {
-    console.log('Cloud sync disabled - using localStorage only');
-    return;
+    const userId = getUserId();
+    if (!userId || userId === 'anonymous-user') return;
+
+    try {
+      console.log('🔍 Syncing from cloud for user:', userId);
+      dispatch({ type: 'SET_SYNCING', payload: true });
+      await setSupabaseUserContext(userId);
+
+      // Load data from Supabase
+      const [cloudTemplates, cloudClasses, cloudReports] = await Promise.all([
+        supabaseOperations.getTemplates(userId),
+        supabaseOperations.getClasses(userId),
+        supabaseOperations.getReports(userId)
+      ]);
+
+      console.log('📊 Loaded from cloud:', {
+        templates: cloudTemplates.length,
+        classes: cloudClasses.length,
+        reports: cloudReports.length
+      });
+
+      // Update state with cloud data
+      dispatch({ type: 'LOAD_DATA', payload: {
+        templates: cloudTemplates || [],
+        classes: cloudClasses || [],
+        reports: cloudReports || [],
+        lastSyncTime: new Date()
+      }});
+
+      dispatch({ type: 'SET_LAST_SYNC_TIME', payload: new Date() });
+      
+    } catch (error) {
+      console.error('❌ Error syncing from cloud:', error);
+      // Fallback to localStorage if cloud sync fails
+      loadLocalData();
+    } finally {
+      dispatch({ type: 'SET_SYNCING', payload: false });
+    }
   };
 
   const syncToCloud = async () => {
-    console.log('Cloud sync disabled - using localStorage only');
-    return;
+    const userId = getUserId();
+    if (!userId || userId === 'anonymous-user' || state.isSyncing) return;
+
+    try {
+      console.log('☁️ Syncing to cloud for user:', userId);
+      dispatch({ type: 'SET_SYNCING', payload: true });
+      await setSupabaseUserContext(userId);
+
+      await Promise.all([
+        supabaseOperations.saveTemplates(userId, state.templates),
+        supabaseOperations.saveClasses(userId, state.classes),
+        supabaseOperations.saveReports(userId, state.reports)
+      ]);
+
+      console.log('✅ Synced to cloud successfully');
+      dispatch({ type: 'SET_LAST_SYNC_TIME', payload: new Date() });
+      
+    } catch (error) {
+      console.error('❌ Error syncing to cloud:', error);
+    } finally {
+      dispatch({ type: 'SET_SYNCING', payload: false });
+    }
+  };
+
+  const loadAllData = async () => {
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      
+      // First load from localStorage for immediate display
+      loadLocalData();
+      
+      // Then sync from cloud
+      await syncFromCloud();
+      
+    } catch (error) {
+      console.error('Error loading data:', error);
+      loadLocalData(); // Fallback to localStorage
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }
+  };
+
+  const loadLocalData = () => {
+    try {
+      const savedData = localStorage.getItem('reportGeneratorData');
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        dispatch({ type: 'LOAD_DATA', payload: {
+          templates: parsedData.templates || [],
+          classes: parsedData.classes || [],
+          reports: parsedData.reports || [],
+          savedRatedComments: parsedData.savedRatedComments || [],
+          savedStandardComments: parsedData.savedStandardComments || [],
+          savedAssessmentComments: parsedData.savedAssessmentComments || [],
+          savedPersonalisedComments: parsedData.savedPersonalisedComments || [],
+          savedNextStepsComments: parsedData.savedNextStepsComments || [],
+        }});
+      }
+    } catch (error) {
+      console.error('Error loading from localStorage:', error);
+    }
   };
 
   // Template functions
@@ -429,9 +536,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     console.log('Test data creation called');
   };
 
-  // Manual sync function (disabled for now)
+  // Manual sync function
   const syncData = async () => {
-    console.log('Cloud sync is temporarily disabled');
+    if (user) {
+      await syncFromCloud();
+    }
   };
 
   const value: DataContextType = {
