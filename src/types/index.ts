@@ -20,8 +20,8 @@ export type SectionType =
   | 'personalised-comment'
   | 'optional-additional-comment'
   | 'next-steps'
-  | 'qualities'
-  | 'new-line';
+  | 'new-line'
+  | 'qualities-comment'; // Added this if it's used
 
 // Rated Comment types
 export interface RatedComment {
@@ -69,7 +69,7 @@ export interface NextStepsComment {
   comments: { [heading: string]: string[] };
 }
 
-// Qualities types
+// Qualities Comment types - Based on error structure from QualitiesCommentSelector
 export interface QualitiesComment {
   name: string;
   headings: string[];
@@ -92,7 +92,7 @@ export interface Class {
   createdAt: string;
 }
 
-// Report types - FIXED: Added the missing properties
+// Report types
 export interface Report {
   id: string;
   studentId: string;

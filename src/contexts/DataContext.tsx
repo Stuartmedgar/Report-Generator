@@ -49,21 +49,11 @@ interface DataContextType {
   syncData: () => Promise<void>;
 }
 
-const initialState: DataState = {
-  templates: [],
-  classes: [],
-  reports: [],
-  savedRatedComments: [],
-  savedStandardComments: [],
-  savedAssessmentComments: [],
-  savedPersonalisedComments: [],
-  savedNextStepsComments: [],
-  isLoading: false,
-  isSyncing: false,
-  lastSyncTime: null
-};
-
-type DataAction = 
+type DataAction =
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_SYNCING'; payload: boolean }
+  | { type: 'SET_LAST_SYNC_TIME'; payload: Date | null }
+  | { type: 'LOAD_DATA'; payload: Partial<DataState> }
   | { type: 'ADD_TEMPLATE'; payload: Template }
   | { type: 'UPDATE_TEMPLATE'; payload: Template }
   | { type: 'DELETE_TEMPLATE'; payload: string }
@@ -87,156 +77,169 @@ type DataAction =
   | { type: 'DELETE_PERSONALISED_COMMENT'; payload: string }
   | { type: 'ADD_NEXT_STEPS_COMMENT'; payload: NextStepsComment }
   | { type: 'UPDATE_NEXT_STEPS_COMMENT'; payload: NextStepsComment }
-  | { type: 'DELETE_NEXT_STEPS_COMMENT'; payload: string }
-  | { type: 'LOAD_DATA'; payload: DataState }
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_SYNCING'; payload: boolean }
-  | { type: 'SET_LAST_SYNC_TIME'; payload: Date };
+  | { type: 'DELETE_NEXT_STEPS_COMMENT'; payload: string };
+
+const initialState: DataState = {
+  templates: [],
+  classes: [],
+  reports: [],
+  savedRatedComments: [],
+  savedStandardComments: [],
+  savedAssessmentComments: [],
+  savedPersonalisedComments: [],
+  savedNextStepsComments: [],
+  isLoading: false,
+  isSyncing: false,
+  lastSyncTime: null,
+};
 
 function dataReducer(state: DataState, action: DataAction): DataState {
   switch (action.type) {
+    case 'SET_LOADING':
+      return { ...state, isLoading: action.payload };
+    case 'SET_SYNCING':
+      return { ...state, isSyncing: action.payload };
+    case 'SET_LAST_SYNC_TIME':
+      return { ...state, lastSyncTime: action.payload };
+    case 'LOAD_DATA':
+      return { ...state, ...action.payload };
     case 'ADD_TEMPLATE':
       return { ...state, templates: [...state.templates, action.payload] };
-    
     case 'UPDATE_TEMPLATE':
       return {
         ...state,
-        templates: state.templates.map(t => t.id === action.payload.id ? action.payload : t)
+        templates: state.templates.map(t =>
+          t.id === action.payload.id ? action.payload : t
+        ),
       };
-    
     case 'DELETE_TEMPLATE':
       return {
         ...state,
-        templates: state.templates.filter(t => t.id !== action.payload)
+        templates: state.templates.filter(t => t.id !== action.payload),
       };
-    
     case 'ADD_CLASS':
       return { ...state, classes: [...state.classes, action.payload] };
-    
     case 'UPDATE_CLASS':
       return {
         ...state,
-        classes: state.classes.map(c => c.id === action.payload.id ? action.payload : c)
+        classes: state.classes.map(c =>
+          c.id === action.payload.id ? action.payload : c
+        ),
       };
-    
     case 'DELETE_CLASS':
       return {
         ...state,
-        classes: state.classes.filter(c => c.id !== action.payload)
+        classes: state.classes.filter(c => c.id !== action.payload),
       };
-    
     case 'ADD_REPORT':
       return { ...state, reports: [...state.reports, action.payload] };
-    
     case 'UPDATE_REPORT':
       return {
         ...state,
-        reports: state.reports.map(r => r.id === action.payload.id ? action.payload : r)
+        reports: state.reports.map(r =>
+          r.id === action.payload.id ? action.payload : r
+        ),
       };
-    
     case 'DELETE_REPORT':
       return {
         ...state,
-        reports: state.reports.filter(r => r.id !== action.payload)
+        reports: state.reports.filter(r => r.id !== action.payload),
       };
-    
     case 'ADD_RATED_COMMENT':
-      return { ...state, savedRatedComments: [...state.savedRatedComments, action.payload] };
-    
+      return {
+        ...state,
+        savedRatedComments: [...state.savedRatedComments, action.payload],
+      };
     case 'UPDATE_RATED_COMMENT':
       return {
         ...state,
-        savedRatedComments: state.savedRatedComments.map(rc => 
-          rc.name === action.payload.name ? action.payload : rc
-        )
+        savedRatedComments: state.savedRatedComments.map(comment =>
+          comment.name === action.payload.name ? action.payload : comment
+        ),
       };
-    
     case 'DELETE_RATED_COMMENT':
       return {
         ...state,
-        savedRatedComments: state.savedRatedComments.filter(rc => rc.name !== action.payload)
+        savedRatedComments: state.savedRatedComments.filter(
+          comment => comment.name !== action.payload
+        ),
       };
-    
     case 'ADD_STANDARD_COMMENT':
-      return { ...state, savedStandardComments: [...state.savedStandardComments, action.payload] };
-    
+      return {
+        ...state,
+        savedStandardComments: [...state.savedStandardComments, action.payload],
+      };
     case 'UPDATE_STANDARD_COMMENT':
       return {
         ...state,
-        savedStandardComments: state.savedStandardComments.map(sc => 
-          sc.name === action.payload.name ? action.payload : sc
-        )
+        savedStandardComments: state.savedStandardComments.map(comment =>
+          comment.name === action.payload.name ? action.payload : comment
+        ),
       };
-    
     case 'DELETE_STANDARD_COMMENT':
       return {
         ...state,
-        savedStandardComments: state.savedStandardComments.filter(sc => sc.name !== action.payload)
+        savedStandardComments: state.savedStandardComments.filter(
+          comment => comment.name !== action.payload
+        ),
       };
-    
     case 'ADD_ASSESSMENT_COMMENT':
-      return { ...state, savedAssessmentComments: [...state.savedAssessmentComments, action.payload] };
-    
+      return {
+        ...state,
+        savedAssessmentComments: [...state.savedAssessmentComments, action.payload],
+      };
     case 'UPDATE_ASSESSMENT_COMMENT':
       return {
         ...state,
-        savedAssessmentComments: state.savedAssessmentComments.map(ac => 
-          ac.name === action.payload.name ? action.payload : ac
-        )
+        savedAssessmentComments: state.savedAssessmentComments.map(comment =>
+          comment.name === action.payload.name ? action.payload : comment
+        ),
       };
-    
     case 'DELETE_ASSESSMENT_COMMENT':
       return {
         ...state,
-        savedAssessmentComments: state.savedAssessmentComments.filter(ac => ac.name !== action.payload)
+        savedAssessmentComments: state.savedAssessmentComments.filter(
+          comment => comment.name !== action.payload
+        ),
       };
-    
     case 'ADD_PERSONALISED_COMMENT':
-      return { ...state, savedPersonalisedComments: [...state.savedPersonalisedComments, action.payload] };
-    
+      return {
+        ...state,
+        savedPersonalisedComments: [...state.savedPersonalisedComments, action.payload],
+      };
     case 'UPDATE_PERSONALISED_COMMENT':
       return {
         ...state,
-        savedPersonalisedComments: state.savedPersonalisedComments.map(pc => 
-          pc.name === action.payload.name ? action.payload : pc
-        )
+        savedPersonalisedComments: state.savedPersonalisedComments.map(comment =>
+          comment.name === action.payload.name ? action.payload : comment
+        ),
       };
-    
     case 'DELETE_PERSONALISED_COMMENT':
       return {
         ...state,
-        savedPersonalisedComments: state.savedPersonalisedComments.filter(pc => pc.name !== action.payload)
+        savedPersonalisedComments: state.savedPersonalisedComments.filter(
+          comment => comment.name !== action.payload
+        ),
       };
-    
     case 'ADD_NEXT_STEPS_COMMENT':
-      return { ...state, savedNextStepsComments: [...state.savedNextStepsComments, action.payload] };
-    
+      return {
+        ...state,
+        savedNextStepsComments: [...state.savedNextStepsComments, action.payload],
+      };
     case 'UPDATE_NEXT_STEPS_COMMENT':
       return {
         ...state,
-        savedNextStepsComments: state.savedNextStepsComments.map(nsc => 
-          nsc.name === action.payload.name ? action.payload : nsc
-        )
+        savedNextStepsComments: state.savedNextStepsComments.map(comment =>
+          comment.name === action.payload.name ? action.payload : comment
+        ),
       };
-    
     case 'DELETE_NEXT_STEPS_COMMENT':
       return {
         ...state,
-        savedNextStepsComments: state.savedNextStepsComments.filter(nsc => nsc.name !== action.payload)
+        savedNextStepsComments: state.savedNextStepsComments.filter(
+          comment => comment.name !== action.payload
+        ),
       };
-    
-    case 'LOAD_DATA':
-      return { ...action.payload };
-    
-    case 'SET_LOADING':
-      return { ...state, isLoading: action.payload };
-    
-    case 'SET_SYNCING':
-      return { ...state, isSyncing: action.payload };
-    
-    case 'SET_LAST_SYNC_TIME':
-      return { ...state, lastSyncTime: action.payload };
-    
     default:
       return state;
   }
@@ -248,264 +251,97 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(dataReducer, initialState);
   const { user } = useAuth();
 
+  // Load data from localStorage on mount
+  useEffect(() => {
+    const savedData = localStorage.getItem('reportGeneratorData');
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        dispatch({ type: 'LOAD_DATA', payload: parsedData });
+      } catch (error) {
+        console.error('Error loading data from localStorage:', error);
+      }
+    }
+  }, []);
+
+  // Save data to localStorage whenever state changes
+  useEffect(() => {
+    localStorage.setItem('reportGeneratorData', JSON.stringify(state));
+  }, [state]);
+
   // Get user ID for data storage
   const getUserId = () => {
     const userId = user ? `admin-test-2024-reportgenerator-com` : 'anonymous-user';
-    console.log('🔍 DEBUG: Getting user ID:', userId, 'User object:', user);
     return userId;
   };
 
-  // DEBUG LOGGING FOR SYNC FUNCTIONS
+  // CLOUD SYNC FUNCTIONS - DISABLED FOR NOW TO ENSURE STABLE BUILD
   const syncFromCloud = async () => {
-    const userId = getUserId();
-    console.log('🔄 DEBUG: Starting syncFromCloud for user:', userId);
-    
-    if (!userId || userId === 'anonymous-user') {
-      console.log('❌ DEBUG: No valid user ID, skipping cloud sync');
-      return;
-    }
-
-    try {
-      console.log('⏳ DEBUG: Setting syncing to true');
-      dispatch({ type: 'SET_SYNCING', payload: true });
-      
-      console.log('🔐 DEBUG: Setting Supabase user context');
-      await setSupabaseUserContext(userId);
-
-      console.log('📡 DEBUG: Loading data from Supabase...');
-      // Load data from Supabase
-      const [cloudTemplates, cloudClasses, cloudReports] = await Promise.all([
-        supabaseOperations.getTemplates(userId),
-        supabaseOperations.getClasses(userId),
-        supabaseOperations.getReports(userId)
-      ]);
-
-      console.log('✅ DEBUG: Cloud data loaded:', {
-        templates: cloudTemplates?.length || 0,
-        classes: cloudClasses?.length || 0,
-        reports: cloudReports?.length || 0
-      });
-
-      // Update state with cloud data
-      dispatch({ type: 'LOAD_DATA', payload: {
-        ...state,
-        templates: cloudTemplates || [],
-        classes: cloudClasses || [],
-        reports: cloudReports || [],
-        savedRatedComments: state.savedRatedComments, // Keep comments local for now
-        savedStandardComments: state.savedStandardComments,
-        savedAssessmentComments: state.savedAssessmentComments,
-        savedPersonalisedComments: state.savedPersonalisedComments,
-        savedNextStepsComments: state.savedNextStepsComments,
-        isLoading: false,
-        isSyncing: false,
-        lastSyncTime: new Date()
-      }});
-
-      dispatch({ type: 'SET_LAST_SYNC_TIME', payload: new Date() });
-      console.log('✅ DEBUG: Cloud sync completed successfully');
-      
-    } catch (error) {
-      console.error('❌ DEBUG: Error syncing from cloud:', error);
-      console.log('🔄 DEBUG: Falling back to localStorage');
-      // Fall back to localStorage if cloud sync fails
-      loadLocalData();
-    } finally {
-      dispatch({ type: 'SET_SYNCING', payload: false });
-    }
+    console.log('Cloud sync disabled - using localStorage only');
+    return;
   };
 
   const syncToCloud = async () => {
-    const userId = getUserId();
-    console.log('📤 DEBUG: Starting syncToCloud for user:', userId);
-    
-    if (!userId || userId === 'anonymous-user' || state.isSyncing) {
-      console.log('❌ DEBUG: Cannot sync to cloud - invalid user or already syncing');
-      return;
-    }
-
-    try {
-      console.log('⏳ DEBUG: Setting syncing to true for upload');
-      dispatch({ type: 'SET_SYNCING', payload: true });
-      
-      console.log('🔐 DEBUG: Setting Supabase user context for upload');
-      await setSupabaseUserContext(userId);
-
-      console.log('📤 DEBUG: Uploading data to Supabase:', {
-        templates: state.templates?.length || 0,
-        classes: state.classes?.length || 0,
-        reports: state.reports?.length || 0
-      });
-
-      await Promise.all([
-        supabaseOperations.saveTemplates(userId, state.templates || []),
-        supabaseOperations.saveClasses(userId, state.classes || []),
-        supabaseOperations.saveReports(userId, state.reports || [])
-      ]);
-
-      dispatch({ type: 'SET_LAST_SYNC_TIME', payload: new Date() });
-      console.log('✅ DEBUG: Cloud upload completed successfully');
-      
-    } catch (error) {
-      console.error('❌ DEBUG: Error syncing to cloud:', error);
-    } finally {
-      dispatch({ type: 'SET_SYNCING', payload: false });
-    }
+    console.log('Cloud sync disabled - using localStorage only');
+    return;
   };
 
-  // Load data when user changes
-  useEffect(() => {
-    console.log('👤 DEBUG: User changed:', user ? 'logged in' : 'logged out');
-    if (user) {
-      loadAllData();
-    } else {
-      // Clear data when user logs out
-      dispatch({ type: 'LOAD_DATA', payload: initialState });
-    }
-  }, [user]);
-
-  // Save to localStorage and cloud whenever state changes
-  useEffect(() => {
-    if (!state.isLoading) {
-      console.log('💾 DEBUG: Saving to localStorage and attempting cloud sync');
-      localStorage.setItem('reportTemplates', JSON.stringify(state.templates));
-      localStorage.setItem('reportClasses', JSON.stringify(state.classes));
-      localStorage.setItem('reportReports', JSON.stringify(state.reports));
-      localStorage.setItem('savedRatedComments', JSON.stringify(state.savedRatedComments));
-      localStorage.setItem('savedStandardComments', JSON.stringify(state.savedStandardComments));
-      localStorage.setItem('savedAssessmentComments', JSON.stringify(state.savedAssessmentComments));
-      localStorage.setItem('savedPersonalisedComments', JSON.stringify(state.savedPersonalisedComments));
-      localStorage.setItem('savedNextStepsComments', JSON.stringify(state.savedNextStepsComments));
-      
-      // Enable cloud sync
-      if (user) {
-        console.log('☁️ DEBUG: User is logged in, attempting cloud sync');
-        syncToCloud();
-      } else {
-        console.log('🔒 DEBUG: No user logged in, skipping cloud sync');
-      }
-    }
-  }, [state, user]);
-
-  const loadAllData = async () => {
-    try {
-      console.log('📂 DEBUG: Starting loadAllData');
-      dispatch({ type: 'SET_LOADING', payload: true });
-      
-      // Try cloud sync first, fall back to localStorage
-      await syncFromCloud();
-      
-    } catch (error) {
-      console.error('❌ DEBUG: Error loading data:', error);
-      loadLocalData(); // Fallback to localStorage
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
-    }
-  };
-
-  const loadLocalData = () => {
-    try {
-      console.log('💽 DEBUG: Loading from localStorage');
-      const savedTemplates = localStorage.getItem('reportTemplates');
-      const savedClasses = localStorage.getItem('reportClasses');
-      const savedReports = localStorage.getItem('reportReports');
-      const savedRatedComments = localStorage.getItem('savedRatedComments');
-      const savedStandardComments = localStorage.getItem('savedStandardComments');
-      const savedAssessmentComments = localStorage.getItem('savedAssessmentComments');
-      const savedPersonalisedComments = localStorage.getItem('savedPersonalisedComments');
-      const savedNextStepsComments = localStorage.getItem('savedNextStepsComments');
-
-      const loadedState: DataState = {
-        templates: savedTemplates ? JSON.parse(savedTemplates) : [],
-        classes: savedClasses ? JSON.parse(savedClasses) : [],
-        reports: savedReports ? JSON.parse(savedReports) : [],
-        savedRatedComments: savedRatedComments ? JSON.parse(savedRatedComments) : [],
-        savedStandardComments: savedStandardComments ? JSON.parse(savedStandardComments) : [],
-        savedAssessmentComments: savedAssessmentComments ? JSON.parse(savedAssessmentComments) : [],
-        savedPersonalisedComments: savedPersonalisedComments ? JSON.parse(savedPersonalisedComments) : [],
-        savedNextStepsComments: savedNextStepsComments ? JSON.parse(savedNextStepsComments) : [],
-        isLoading: false,
-        isSyncing: false,
-        lastSyncTime: null
-      };
-
-      console.log('✅ DEBUG: Local data loaded:', {
-        templates: loadedState.templates?.length || 0,
-        classes: loadedState.classes?.length || 0,
-        reports: loadedState.reports?.length || 0
-      });
-
-      dispatch({ type: 'LOAD_DATA', payload: loadedState });
-    } catch (error) {
-      console.error('❌ DEBUG: Error loading local data:', error);
-    }
-  };
-
-  // Template management
-  const addTemplate = (template: Omit<Template, 'id' | 'createdAt'>) => {
-    const newTemplate: Template = {
-      ...template,
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString()
+  // Template functions
+  const addTemplate = (templateData: Omit<Template, 'id' | 'createdAt'>) => {
+    const template: Template = {
+      ...templateData,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
     };
-    console.log('➕ DEBUG: Adding template:', newTemplate.name);
-    dispatch({ type: 'ADD_TEMPLATE', payload: newTemplate });
+    dispatch({ type: 'ADD_TEMPLATE', payload: template });
   };
 
   const updateTemplate = (template: Template) => {
-    console.log('✏️ DEBUG: Updating template:', template.name);
     dispatch({ type: 'UPDATE_TEMPLATE', payload: template });
   };
 
   const deleteTemplate = (id: string) => {
-    console.log('🗑️ DEBUG: Deleting template:', id);
     dispatch({ type: 'DELETE_TEMPLATE', payload: id });
   };
 
-  // Class management
-  const addClass = (cls: Omit<Class, 'id' | 'createdAt'>) => {
-    const newClass: Class = {
-      ...cls,
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString()
+  // Class functions
+  const addClass = (classData: Omit<Class, 'id' | 'createdAt'>) => {
+    const cls: Class = {
+      ...classData,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
     };
-    console.log('➕ DEBUG: Adding class:', newClass.name);
-    dispatch({ type: 'ADD_CLASS', payload: newClass });
+    dispatch({ type: 'ADD_CLASS', payload: cls });
   };
 
   const updateClass = (cls: Class) => {
-    console.log('✏️ DEBUG: Updating class:', cls.name);
     dispatch({ type: 'UPDATE_CLASS', payload: cls });
   };
 
   const deleteClass = (id: string) => {
-    console.log('🗑️ DEBUG: Deleting class:', id);
     dispatch({ type: 'DELETE_CLASS', payload: id });
   };
 
-  // Report management
-  const addReport = (report: Omit<Report, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newReport: Report = {
-      ...report,
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+  // Report functions
+  const addReport = (reportData: Omit<Report, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const report: Report = {
+      ...reportData,
+      id: Date.now().toString(),
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
-    console.log('➕ DEBUG: Adding report for student:', report.studentId);
-    dispatch({ type: 'ADD_REPORT', payload: newReport });
+    dispatch({ type: 'ADD_REPORT', payload: report });
   };
 
   const updateReport = (report: Report) => {
     const updatedReport = {
       ...report,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
-    console.log('✏️ DEBUG: Updating report:', report.id);
     dispatch({ type: 'UPDATE_REPORT', payload: updatedReport });
   };
 
   const deleteReport = (id: string) => {
-    console.log('🗑️ DEBUG: Deleting report:', id);
     dispatch({ type: 'DELETE_REPORT', payload: id });
   };
 
@@ -515,100 +351,87 @@ export function DataProvider({ children }: { children: ReactNode }) {
     );
 
     if (existingReport) {
-      updateReport({
-        ...existingReport,
-        content: reportData.content,
-        updatedAt: new Date().toISOString()
-      });
+      updateReport({ ...existingReport, ...reportData });
     } else {
-      addReport({
-        studentId: reportData.studentId,
-        classId: reportData.classId,
-        templateId: reportData.templateId,
-        templateName: reportData.templateName,
-        content: reportData.content
-      });
+      addReport(reportData);
     }
   };
 
   const getReport = (studentId: string, templateId: string): Report | undefined => {
-    return state.reports.find(r => r.studentId === studentId && r.templateId === templateId);
+    return state.reports.find(
+      r => r.studentId === studentId && r.templateId === templateId
+    );
   };
 
-  // Test data creation
-  const createTestData = () => {
-    // Implementation for test data if needed
+  // Comment functions
+  const addRatedComment = (ratedComment: RatedComment) => {
+    dispatch({ type: 'ADD_RATED_COMMENT', payload: ratedComment });
   };
 
-  // Comment management functions
-  const addRatedComment = (comment: RatedComment) => {
-    dispatch({ type: 'ADD_RATED_COMMENT', payload: comment });
-  };
-
-  const updateRatedComment = (comment: RatedComment) => {
-    dispatch({ type: 'UPDATE_RATED_COMMENT', payload: comment });
+  const updateRatedComment = (ratedComment: RatedComment) => {
+    dispatch({ type: 'UPDATE_RATED_COMMENT', payload: ratedComment });
   };
 
   const deleteRatedComment = (name: string) => {
     dispatch({ type: 'DELETE_RATED_COMMENT', payload: name });
   };
 
-  const addStandardComment = (comment: StandardComment) => {
-    dispatch({ type: 'ADD_STANDARD_COMMENT', payload: comment });
+  const addStandardComment = (standardComment: StandardComment) => {
+    dispatch({ type: 'ADD_STANDARD_COMMENT', payload: standardComment });
   };
 
-  const updateStandardComment = (comment: StandardComment) => {
-    dispatch({ type: 'UPDATE_STANDARD_COMMENT', payload: comment });
+  const updateStandardComment = (standardComment: StandardComment) => {
+    dispatch({ type: 'UPDATE_STANDARD_COMMENT', payload: standardComment });
   };
 
   const deleteStandardComment = (name: string) => {
     dispatch({ type: 'DELETE_STANDARD_COMMENT', payload: name });
   };
 
-  const addAssessmentComment = (comment: AssessmentComment) => {
-    dispatch({ type: 'ADD_ASSESSMENT_COMMENT', payload: comment });
+  const addAssessmentComment = (assessmentComment: AssessmentComment) => {
+    dispatch({ type: 'ADD_ASSESSMENT_COMMENT', payload: assessmentComment });
   };
 
-  const updateAssessmentComment = (comment: AssessmentComment) => {
-    dispatch({ type: 'UPDATE_ASSESSMENT_COMMENT', payload: comment });
+  const updateAssessmentComment = (assessmentComment: AssessmentComment) => {
+    dispatch({ type: 'UPDATE_ASSESSMENT_COMMENT', payload: assessmentComment });
   };
 
   const deleteAssessmentComment = (name: string) => {
     dispatch({ type: 'DELETE_ASSESSMENT_COMMENT', payload: name });
   };
 
-  const addPersonalisedComment = (comment: PersonalisedComment) => {
-    dispatch({ type: 'ADD_PERSONALISED_COMMENT', payload: comment });
+  const addPersonalisedComment = (personalisedComment: PersonalisedComment) => {
+    dispatch({ type: 'ADD_PERSONALISED_COMMENT', payload: personalisedComment });
   };
 
-  const updatePersonalisedComment = (comment: PersonalisedComment) => {
-    dispatch({ type: 'UPDATE_PERSONALISED_COMMENT', payload: comment });
+  const updatePersonalisedComment = (personalisedComment: PersonalisedComment) => {
+    dispatch({ type: 'UPDATE_PERSONALISED_COMMENT', payload: personalisedComment });
   };
 
   const deletePersonalisedComment = (name: string) => {
     dispatch({ type: 'DELETE_PERSONALISED_COMMENT', payload: name });
   };
 
-  const addNextStepsComment = (comment: NextStepsComment) => {
-    dispatch({ type: 'ADD_NEXT_STEPS_COMMENT', payload: comment });
+  const addNextStepsComment = (nextStepsComment: NextStepsComment) => {
+    dispatch({ type: 'ADD_NEXT_STEPS_COMMENT', payload: nextStepsComment });
   };
 
-  const updateNextStepsComment = (comment: NextStepsComment) => {
-    dispatch({ type: 'UPDATE_NEXT_STEPS_COMMENT', payload: comment });
+  const updateNextStepsComment = (nextStepsComment: NextStepsComment) => {
+    dispatch({ type: 'UPDATE_NEXT_STEPS_COMMENT', payload: nextStepsComment });
   };
 
   const deleteNextStepsComment = (name: string) => {
     dispatch({ type: 'DELETE_NEXT_STEPS_COMMENT', payload: name });
   };
 
-  // Manual sync function
+  // Test data function
+  const createTestData = () => {
+    console.log('Test data creation called');
+  };
+
+  // Manual sync function (disabled for now)
   const syncData = async () => {
-    console.log('🔄 DEBUG: Manual sync triggered');
-    if (user) {
-      await syncFromCloud();
-    } else {
-      console.log('❌ DEBUG: Cannot sync - no user logged in');
-    }
+    console.log('Cloud sync is temporarily disabled');
   };
 
   const value: DataContextType = {
