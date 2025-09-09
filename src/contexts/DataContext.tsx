@@ -541,10 +541,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     console.log('Test data creation called');
   };
 
-  // Manual sync function - COMPLETELY DISABLED
+  // Manual sync function - RE-ENABLED
   const syncData = async () => {
-    console.log('Manual sync disabled for debugging');
-    return;
+    if (user) {
+      await syncFromCloud();
+    }
   };
 
   const value: DataContextType = {
