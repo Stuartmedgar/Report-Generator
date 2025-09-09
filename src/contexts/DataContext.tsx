@@ -369,8 +369,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const loadLocalData = () => {
     try {
       const savedData = localStorage.getItem('reportGeneratorData');
+      console.log('Loading from localStorage:', savedData ? 'Data found' : 'No data found');
+      
       if (savedData) {
         const parsedData = JSON.parse(savedData);
+        console.log('Parsed localStorage data:', {
+          templates: parsedData.templates?.length || 0,
+          classes: parsedData.classes?.length || 0,
+          reports: parsedData.reports?.length || 0
+        });
+        
         dispatch({ type: 'LOAD_DATA', payload: {
           templates: parsedData.templates || [],
           classes: parsedData.classes || [],
@@ -381,6 +389,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
           savedPersonalisedComments: parsedData.savedPersonalisedComments || [],
           savedNextStepsComments: parsedData.savedNextStepsComments || [],
         }});
+        console.log('Data loaded from localStorage successfully');
+      } else {
+        console.log('No localStorage data to load - starting fresh');
       }
     } catch (error) {
       console.error('Error loading from localStorage:', error);
