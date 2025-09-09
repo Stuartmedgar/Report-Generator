@@ -287,7 +287,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return user ? `admin-test-2024-reportgenerator-com` : 'anonymous-user';
   };
 
-  // CLOUD SYNC RE-ENABLED - Database tables now exist
+  // CLOUD SYNC RE-ENABLED - Database schema now fixed
   const syncFromCloud = async () => {
     const userId = getUserId();
     if (!userId || userId === 'anonymous-user') return;

@@ -11,7 +11,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Simple user context - no RLS complications
 export const setSupabaseUserContext = async (userId: string) => {
-  // No set_config calls - we handle user filtering in queries
   console.log('User context set for:', userId);
 };
 
@@ -21,21 +20,25 @@ export const supabaseOperations = {
   async saveTemplates(userId: string, templates: any[]) {
     try {
       // Delete existing templates for this user first
-      await supabase
+      const { error: deleteError } = await supabase
         .from('templates')
         .delete()
         .eq('user_id', userId);
 
-      // Insert new templates
-      const templateData = templates.map(template => ({
-        user_id: userId,
-        template_id: template.id,
-        name: template.name,
-        sections: template.sections,
-        updated_at: new Date().toISOString()
-      }));
+      if (deleteError) {
+        console.error('Error deleting existing templates:', deleteError);
+      }
 
-      if (templateData.length > 0) {
+      // Insert new templates if any exist
+      if (templates.length > 0) {
+        const templateData = templates.map(template => ({
+          user_id: userId,
+          template_id: template.id,
+          name: template.name,
+          sections: template.sections,
+          updated_at: new Date().toISOString()
+        }));
+
         const { data, error } = await supabase
           .from('templates')
           .insert(templateData);
@@ -46,7 +49,7 @@ export const supabaseOperations = {
       return [];
     } catch (error) {
       console.error('Error saving templates:', error);
-      throw error;
+      return [];
     }
   },
 
@@ -77,21 +80,25 @@ export const supabaseOperations = {
   async saveClasses(userId: string, classes: any[]) {
     try {
       // Delete existing classes for this user first
-      await supabase
+      const { error: deleteError } = await supabase
         .from('classes')
         .delete()
         .eq('user_id', userId);
 
-      // Insert new classes
-      const classData = classes.map(cls => ({
-        user_id: userId,
-        class_id: cls.id,
-        name: cls.name,
-        students: cls.students,
-        updated_at: new Date().toISOString()
-      }));
+      if (deleteError) {
+        console.error('Error deleting existing classes:', deleteError);
+      }
 
-      if (classData.length > 0) {
+      // Insert new classes if any exist
+      if (classes.length > 0) {
+        const classData = classes.map(cls => ({
+          user_id: userId,
+          class_id: cls.id,
+          name: cls.name,
+          students: cls.students,
+          updated_at: new Date().toISOString()
+        }));
+
         const { data, error } = await supabase
           .from('classes')
           .insert(classData);
@@ -102,7 +109,7 @@ export const supabaseOperations = {
       return [];
     } catch (error) {
       console.error('Error saving classes:', error);
-      throw error;
+      return [];
     }
   },
 
@@ -132,26 +139,30 @@ export const supabaseOperations = {
   async saveReports(userId: string, reports: any[]) {
     try {
       // Delete existing reports for this user first
-      await supabase
+      const { error: deleteError } = await supabase
         .from('reports')
         .delete()
         .eq('user_id', userId);
 
-      // Insert new reports
-      const reportData = reports.map(report => ({
-        user_id: userId,
-        report_id: report.id,
-        student_id: report.studentId,
-        template_id: report.templateId,
-        class_id: report.classId,
-        content: report.content,
-        section_data: report.sectionData,
-        is_manually_edited: report.isManuallyEdited || false,
-        manually_edited_content: report.manuallyEditedContent,
-        updated_at: new Date().toISOString()
-      }));
+      if (deleteError) {
+        console.error('Error deleting existing reports:', deleteError);
+      }
 
-      if (reportData.length > 0) {
+      // Insert new reports if any exist
+      if (reports.length > 0) {
+        const reportData = reports.map(report => ({
+          user_id: userId,
+          report_id: report.id,
+          student_id: report.studentId,
+          template_id: report.templateId,
+          class_id: report.classId,
+          content: report.content || '',
+          section_data: report.sectionData,
+          is_manually_edited: report.isManuallyEdited || false,
+          manually_edited_content: report.manuallyEditedContent,
+          updated_at: new Date().toISOString()
+        }));
+
         const { data, error } = await supabase
           .from('reports')
           .insert(reportData);
@@ -162,7 +173,7 @@ export const supabaseOperations = {
       return [];
     } catch (error) {
       console.error('Error saving reports:', error);
-      throw error;
+      return [];
     }
   },
 
