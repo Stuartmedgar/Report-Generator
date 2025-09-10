@@ -15,6 +15,7 @@ interface DataState {
   isLoading: boolean;
   isSyncing: boolean;
   lastSyncTime: Date | null;
+  lastLocalSave: Date | null; // Add this to track when we last saved locally
 }
 
 interface DataContextType {
@@ -53,6 +54,7 @@ type DataAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_SYNCING'; payload: boolean }
   | { type: 'SET_LAST_SYNC_TIME'; payload: Date | null }
+  | { type: 'SET_LAST_LOCAL_SAVE'; payload: Date | null }
   | { type: 'LOAD_DATA'; payload: Partial<DataState> }
   | { type: 'ADD_TEMPLATE'; payload: Template }
   | { type: 'UPDATE_TEMPLATE'; payload: Template }
@@ -91,6 +93,7 @@ const initialState: DataState = {
   isLoading: false,
   isSyncing: false,
   lastSyncTime: null,
+  lastLocalSave: null,
 };
 
 function dataReducer(state: DataState, action: DataAction): DataState {
@@ -101,6 +104,8 @@ function dataReducer(state: DataState, action: DataAction): DataState {
       return { ...state, isSyncing: action.payload };
     case 'SET_LAST_SYNC_TIME':
       return { ...state, lastSyncTime: action.payload };
+    case 'SET_LAST_LOCAL_SAVE':
+      return { ...state, lastLocalSave: action.payload };
     case 'LOAD_DATA':
       return { ...state, ...action.payload };
     case 'ADD_TEMPLATE':
@@ -251,20 +256,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(dataReducer, initialState);
   const { user } = useAuth();
 
-  // Load data from localStorage on mount
+  // Load data from localStorage on mount and when user changes
   useEffect(() => {
     if (user) {
       loadAllData();
     } else {
-      // Load localStorage data when not logged in
       loadLocalData();
     }
   }, [user]);
 
-  // Save data to localStorage whenever state changes (for backup)
+  // Save to localStorage when data changes (but avoid triggering infinite sync)
   useEffect(() => {
     if (!state.isLoading && !state.isSyncing) {
-      localStorage.setItem('reportGeneratorData', JSON.stringify({
+      const dataToSave = {
         templates: state.templates,
         classes: state.classes,
         reports: state.reports,
@@ -273,10 +277,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
         savedAssessmentComments: state.savedAssessmentComments,
         savedPersonalisedComments: state.savedPersonalisedComments,
         savedNextStepsComments: state.savedNextStepsComments,
-      }));
+      };
       
-      // Also sync to cloud if user is logged in
-      if (user) {
+      localStorage.setItem('reportGeneratorData', JSON.stringify(dataToSave));
+      dispatch({ type: 'SET_LAST_LOCAL_SAVE', payload: new Date() });
+      
+      // Only sync to cloud if it's been more than 2 seconds since last sync
+      // This prevents infinite sync loops
+      const now = new Date();
+      const timeSinceLastSync = state.lastSyncTime ? now.getTime() - state.lastSyncTime.getTime() : Infinity;
+      
+      if (user && timeSinceLastSync > 2000 && (dataToSave.templates.length > 0 || dataToSave.classes.length > 0 || dataToSave.reports.length > 0)) {
+        console.log('Data changed and enough time passed - syncing to cloud');
         syncToCloud();
       }
     }
@@ -287,7 +299,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return user ? `admin-test-2024-reportgenerator-com` : 'anonymous-user';
   };
 
-  // CLOUD SYNC - CLEAN VERSION WITHOUT RLS
+  // Cloud sync functions
   const syncFromCloud = async () => {
     const userId = getUserId();
     if (!userId || userId === 'anonymous-user') return;
@@ -296,7 +308,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       console.log('Syncing from cloud for user:', userId);
       dispatch({ type: 'SET_SYNCING', payload: true });
 
-      // Load all data from Supabase
       const [cloudTemplates, cloudClasses, cloudReports] = await Promise.all([
         supabaseOperations.getTemplates(userId),
         supabaseOperations.getClasses(userId),
@@ -305,12 +316,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       console.log('Loaded from cloud - Templates:', cloudTemplates.length, 'Classes:', cloudClasses.length, 'Reports:', cloudReports.length);
 
-      // Update state with cloud data
       dispatch({ type: 'LOAD_DATA', payload: {
         templates: cloudTemplates || [],
         classes: cloudClasses || [],
         reports: cloudReports || [],
-        lastSyncTime: new Date()
       }});
 
       dispatch({ type: 'SET_LAST_SYNC_TIME', payload: new Date() });
@@ -331,7 +340,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       console.log('Syncing to cloud for user:', userId);
       dispatch({ type: 'SET_SYNCING', payload: true });
 
-      // Save all data to Supabase
       await Promise.all([
         supabaseOperations.saveTemplates(userId, state.templates),
         supabaseOperations.saveClasses(userId, state.classes),
@@ -360,7 +368,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       
     } catch (error) {
       console.error('Error loading data:', error);
-      loadLocalData(); // Fallback to localStorage
+      loadLocalData();
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -369,16 +377,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const loadLocalData = () => {
     try {
       const savedData = localStorage.getItem('reportGeneratorData');
-      console.log('Loading from localStorage:', savedData ? 'Data found' : 'No data found');
-      
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        console.log('Parsed localStorage data:', {
-          templates: parsedData.templates?.length || 0,
-          classes: parsedData.classes?.length || 0,
-          reports: parsedData.reports?.length || 0
-        });
-        
         dispatch({ type: 'LOAD_DATA', payload: {
           templates: parsedData.templates || [],
           classes: parsedData.classes || [],
@@ -390,8 +390,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
           savedNextStepsComments: parsedData.savedNextStepsComments || [],
         }});
         console.log('Data loaded from localStorage successfully');
-      } else {
-        console.log('No localStorage data to load - starting fresh');
       }
     } catch (error) {
       console.error('Error loading from localStorage:', error);
@@ -541,7 +539,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     console.log('Test data creation called');
   };
 
-  // Manual sync function - RE-ENABLED
+  // Manual sync function
   const syncData = async () => {
     if (user) {
       await syncFromCloud();
