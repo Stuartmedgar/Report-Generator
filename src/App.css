@@ -517,3 +517,93 @@
   }
 
 }
+/* =================================================================
+   HOMEPAGE BUTTON OVERRIDE - Add this to the END of your App.css file
+   ================================================================= */
+
+/* Homepage button overrides - MOBILE ONLY */
+@media (max-width: 768px) {
+  
+  /* Target homepage navigation links specifically */
+  a[href="/write-reports"],
+  a[href="/create-template"], 
+  a[href="/manage-templates"],
+  a[href="/class-management"],
+  a[href="/view-reports"] {
+    padding: 32px 24px !important;
+    min-height: auto !important;
+    height: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+  }
+  
+  /* Override any other button rules that might interfere */
+  div[style*="minHeight: 'calc(100vh - 73px)"] a,
+  div[style*="minHeight: '100vh'"] a {
+    padding: 32px 24px !important;
+  }
+
+}
+/* =================================================================
+   WRITE REPORTS HEADER OPTIMIZATION - Add this to your App.css file
+   ================================================================= */
+
+/* Target the ReportWriter white header specifically - MOBILE ONLY */
+@media (max-width: 768px) {
+  
+  /* Make the main ReportWriter header much more compact */
+  div[style*="backgroundColor: 'white'"][style*="boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'"][style*="padding: '16px 24px'"] {
+    padding: 8px 16px !important;
+  }
+  
+  /* Target the inner content container */
+  div[style*="maxWidth: '1200px'"][style*="margin: '0 auto'"][style*="display: 'flex'"][style*="justifyContent: 'space-between'"] {
+    max-width: 100% !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    gap: 12px !important;
+  }
+  
+  /* Hide the Back button completely on mobile */
+  div[style*="display: 'flex'"][style*="alignItems: 'center'"][style*="gap: '16px'"] button:first-child {
+    display: none !important;
+  }
+  
+  /* Transform the button container to show "Write Reports" title + home icon */
+  div[style*="display: 'flex'"][style*="alignItems: 'center'"][style*="gap: '16px'"]::before {
+    content: "Write Reports" !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    color: #111827 !important;
+    margin-right: auto !important;
+  }
+  
+  /* Make home button smaller and icon-only */
+  div[style*="display: 'flex'"][style*="alignItems: 'center'"][style*="gap: '16px'"] button {
+    padding: 6px 8px !important;
+    font-size: 14px !important;
+    min-width: auto !important;
+    border-radius: 4px !important;
+    margin-left: auto !important;
+  }
+  
+  /* Remove button text, keep only icon */
+  div[style*="display: 'flex'"][style*="alignItems: 'center'"][style*="gap: '16px'"] button {
+    font-size: 16px !important;
+  }
+  
+}
+
+/* Alternative simpler approach - reduce header padding dramatically */
+@media (max-width: 768px) {
+  
+  /* Target any white header with shadow (likely the ReportWriter header) */
+  header[style*="backgroundColor: 'white'"],
+  div[style*="backgroundColor: 'white'"][style*="boxShadow"][style*="padding"] {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+  
+}

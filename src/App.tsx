@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { DataProvider } from './contexts/DataContext';
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
@@ -24,57 +24,211 @@ import AuthHeader from './components/auth/AuthHeader';
 import './App.css';
 
 function Home() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [showMenu, setShowMenu] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <>
-      <AuthHeader />
+      {/* Small hamburger menu in top right */}
+      <div style={{
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        zIndex: 1000
+      }}>
+        <button
+          onClick={() => setShowMenu(!showMenu)}
+          style={{
+            width: '40px',
+            height: '40px',
+            backgroundColor: 'white',
+            border: '2px solid #e5e7eb',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '18px',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+            transition: 'all 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#f9fafb';
+            e.currentTarget.style.borderColor = '#d1d5db';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'white';
+            e.currentTarget.style.borderColor = '#e5e7eb';
+          }}
+        >
+          ☰
+        </button>
+        
+        {/* Dropdown menu */}
+        {showMenu && (
+          <div style={{
+            position: 'absolute',
+            top: '45px',
+            right: '0',
+            backgroundColor: 'white',
+            border: '2px solid #e5e7eb',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+            minWidth: '150px',
+            overflow: 'hidden'
+          }}>
+            <button
+              onClick={() => {
+                // Add account/profile logic here
+                alert('Account details coming soon!');
+                setShowMenu(false);
+              }}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                fontSize: '14px',
+                borderBottom: '1px solid #f3f4f6'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#f9fafb';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              👤 Account
+            </button>
+            <button
+              onClick={() => {
+                // Add settings logic here
+                alert('Settings coming soon!');
+                setShowMenu(false);
+              }}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                fontSize: '14px',
+                borderBottom: '1px solid #f3f4f6'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#f9fafb';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              ⚙️ Settings
+            </button>
+            <button
+              onClick={() => {
+                // Add logout logic here
+                if (window.confirm('Are you sure you want to logout?')) {
+                  // You'll need to implement actual logout functionality
+                  alert('Logout functionality to be implemented');
+                }
+                setShowMenu(false);
+              }}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                fontSize: '14px',
+                color: '#ef4444'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#fef2f2';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              🚪 Logout
+            </button>
+          </div>
+        )}
+      </div>
+
       <div style={{ 
-        minHeight: 'calc(100vh - 73px)', 
+        minHeight: '100vh', 
         backgroundColor: '#f8fafc', 
         display: 'flex', 
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'flex-start',
-        padding: '20px 20px 40px 20px'
+        padding: isMobile ? '20px 16px 40px 16px' : '60px 20px 40px 20px'
       }}>
+        
+        {/* Title - Inline with hamburger on mobile */}
         <div style={{ 
-          textAlign: 'center', 
-          marginBottom: '60px', 
-          maxWidth: '800px',
-          marginTop: '20px'
+          textAlign: isMobile ? 'left' : 'center', 
+          marginBottom: isMobile ? '40px' : '60px', 
+          maxWidth: isMobile ? '100%' : '800px',
+          marginTop: isMobile ? '0' : '20px',
+          width: isMobile ? '100%' : 'auto',
+          display: isMobile ? 'flex' : 'block',
+          alignItems: isMobile ? 'center' : 'initial',
+          paddingRight: isMobile ? '60px' : '0'
         }}>
           <h1 style={{ 
-            fontSize: '48px', 
+            fontSize: isMobile ? '24px' : '48px', 
             fontWeight: '800', 
             color: '#1e293b',
-            marginBottom: '20px',
-            lineHeight: '1.2'
+            marginBottom: isMobile ? '0' : '20px',
+            lineHeight: '1.2',
+            margin: isMobile ? '0' : '0 0 20px 0'
           }}>
             Report Generator
           </h1>
-          <p style={{
-            fontSize: '20px',
-            color: '#64748b',
-            lineHeight: '1.6',
-            marginBottom: '20px'
-          }}>
-            Streamline your report writing process with our powerful template system
-          </p>
-          <p style={{
-            fontSize: '16px',
-            color: '#94a3b8'
-          }}>
-            Generate professional reports in minutes, not hours
-          </p>
+          
+          {/* Only show subtitle and description on desktop */}
+          {!isMobile && (
+            <>
+              <p style={{
+                fontSize: '20px',
+                color: '#64748b',
+                lineHeight: '1.6',
+                marginBottom: '20px'
+              }}>
+                Streamline your report writing process with our powerful template system
+              </p>
+              <p style={{
+                fontSize: '16px',
+                color: '#94a3b8'
+              }}>
+                Generate professional reports in minutes, not hours
+              </p>
+            </>
+          )}
         </div>
 
-        {/* First Row - 3 buttons */}
+        {/* First Row - 3 buttons on desktop, stacked on mobile */}
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '20px',
-          width: '100%',
-          maxWidth: '1200px',
-          marginBottom: '20px'
+          display: isMobile ? 'flex' : 'grid',
+          flexDirection: isMobile ? 'column' : undefined,
+          gridTemplateColumns: isMobile ? undefined : 'repeat(3, 1fr)',
+          gap: isMobile ? '16px' : '20px',
+          width: isMobile ? 'calc(100% - 32px)' : '100%',
+          maxWidth: isMobile ? 'none' : '800px',
+          marginBottom: isMobile ? '0' : '20px'
         }}>
 
           <Link 
@@ -82,22 +236,31 @@ function Home() {
             style={{
               backgroundColor: '#10b981',
               color: 'white',
-              padding: '32px 24px',
-              borderRadius: '12px',
+              padding: isMobile ? '64px 24px' : '32px 24px',
+              borderRadius: isMobile ? '8px' : '12px',
               textDecoration: 'none',
               textAlign: 'center',
               fontSize: '18px',
               fontWeight: '600',
               boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              transition: 'transform 0.2s, box-shadow 0.2s'
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              width: isMobile ? '100%' : 'auto',
+              boxSizing: 'border-box',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
+              if (!isMobile) {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
+              }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+              if (!isMobile) {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+              }
             }}
           >
             Write Reports
@@ -108,22 +271,31 @@ function Home() {
             style={{
               backgroundColor: '#3b82f6',
               color: 'white',
-              padding: '32px 24px',
-              borderRadius: '12px',
+              padding: isMobile ? '64px 24px' : '32px 24px',
+              borderRadius: isMobile ? '8px' : '12px',
               textDecoration: 'none',
               textAlign: 'center',
               fontSize: '18px',
               fontWeight: '600',
               boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              transition: 'transform 0.2s, box-shadow 0.2s'
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              width: isMobile ? '100%' : 'auto',
+              boxSizing: 'border-box',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
+              if (!isMobile) {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
+              }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+              if (!isMobile) {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+              }
             }}
           >
             Create Template
@@ -134,36 +306,45 @@ function Home() {
             style={{
               backgroundColor: '#f59e0b',
               color: 'white',
-              padding: '32px 24px',
-              borderRadius: '12px',
+              padding: isMobile ? '64px 24px' : '32px 24px',
+              borderRadius: isMobile ? '8px' : '12px',
               textDecoration: 'none',
               textAlign: 'center',
               fontSize: '18px',
               fontWeight: '600',
               boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              transition: 'transform 0.2s, box-shadow 0.2s'
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              width: isMobile ? '100%' : 'auto',
+              boxSizing: 'border-box',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
+              if (!isMobile) {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
+              }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+              if (!isMobile) {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+              }
             }}
           >
             Manage Templates
           </Link>
-
         </div>
 
-        {/* Second Row - 2 buttons (Pricing button removed) */}
+        {/* Second Row - 2 buttons on desktop, continues stacking on mobile */}
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '20px',
-          width: '100%',
-          maxWidth: '800px'
+          display: isMobile ? 'flex' : 'grid',
+          flexDirection: isMobile ? 'column' : undefined,
+          gridTemplateColumns: isMobile ? undefined : 'repeat(2, 1fr)',
+          gap: isMobile ? '16px' : '20px',
+          width: isMobile ? 'calc(100% - 32px)' : '100%',
+          maxWidth: isMobile ? 'none' : '800px'
         }}>
 
           <Link 
@@ -171,22 +352,31 @@ function Home() {
             style={{
               backgroundColor: '#8b5cf6',
               color: 'white',
-              padding: '32px 24px',
-              borderRadius: '12px',
+              padding: isMobile ? '64px 24px' : '32px 24px',
+              borderRadius: isMobile ? '8px' : '12px',
               textDecoration: 'none',
               textAlign: 'center',
               fontSize: '18px',
               fontWeight: '600',
               boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              transition: 'transform 0.2s, box-shadow 0.2s'
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              width: isMobile ? '100%' : 'auto',
+              boxSizing: 'border-box',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
+              if (!isMobile) {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
+              }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+              if (!isMobile) {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+              }
             }}
           >
             Class Management
@@ -197,22 +387,31 @@ function Home() {
             style={{
               backgroundColor: '#ef4444',
               color: 'white',
-              padding: '32px 24px',
-              borderRadius: '12px',
+              padding: isMobile ? '64px 24px' : '32px 24px',
+              borderRadius: isMobile ? '8px' : '12px',
               textDecoration: 'none',
               textAlign: 'center',
               fontSize: '18px',
               fontWeight: '600',
               boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              transition: 'transform 0.2s, box-shadow 0.2s'
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              width: isMobile ? '100%' : 'auto',
+              boxSizing: 'border-box',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
+              if (!isMobile) {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
+              }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+              if (!isMobile) {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+              }
             }}
           >
             View Reports
@@ -273,49 +472,41 @@ function App() {
                 } />
                 <Route path="/write-reports" element={
                   <ProtectedRoute>
-                    <AuthHeader />
                     <WriteReports />
                   </ProtectedRoute>
                 } />
                 <Route path="/create-template" element={
                   <ProtectedRoute>
-                    <AuthHeader />
                     <CreateTemplate />
                   </ProtectedRoute>
                 } />
                 <Route path="/manage-templates" element={
                   <ProtectedRoute>
-                    <AuthHeader />
                     <ManageTemplates />
                   </ProtectedRoute>
                 } />
                 <Route path="/class-management" element={
                   <ProtectedRoute>
-                    <AuthHeader />
                     <ClassManagement />
                   </ProtectedRoute>
                 } />
                 <Route path="/view-reports" element={
                   <ProtectedRoute>
-                    <AuthHeader />
                     <ViewReports />
                   </ProtectedRoute>
                 } />
                 <Route path="/view-reports/:classId" element={
                   <ProtectedRoute>
-                    <AuthHeader />
                     <ClassReports />
                   </ProtectedRoute>
                 } />
                 <Route path="/view-reports/:classId/student/:studentId" element={
                   <ProtectedRoute>
-                    <AuthHeader />
                     <IndividualReportViewer />
                   </ProtectedRoute>
                 } />
                 <Route path="/view-reports/:classId/all" element={
                   <ProtectedRoute>
-                    <AuthHeader />
                     <AllReportsViewer />
                   </ProtectedRoute>
                 } />
