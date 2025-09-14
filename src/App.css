@@ -1,3 +1,8 @@
+/* =================================================================
+   CLEAN APP.CSS - Mobile Optimized Report Generator
+   ================================================================= */
+
+/* Base App Styles */
 .App {
   text-align: center;
 }
@@ -36,30 +41,55 @@
     transform: rotate(360deg);
   }
 }
+
 /* =================================================================
-   MOBILE OPTIMIZATION CSS - ADD TO YOUR EXISTING App.css FILE
+   MOBILE OPTIMIZATION
    ================================================================= */
 
-/* Mobile-First Responsive Design - ONLY affects screens 768px and below */
 @media (max-width: 768px) {
   
-  /* Make all buttons larger and touch-friendly */
+  /* HIDE ALL HEADERS ON MOBILE */
+  header {
+    display: none !important;
+  }
+  
+  /* Hide header-like divs */
+  div[style*="backgroundColor: 'white'"][style*="boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'"][style*="padding: '12px 16px'"],
+  div[style*="backgroundColor: 'white'"][style*="boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'"][style*="padding: '32px 24px'"] {
+    display: none !important;
+  }
+  
+  /* Hide MobileReportWriter header completely */
+  div[data-mobile-writer] div[style*="position: sticky"] {
+    display: none !important;
+  }
+  
+  /* Hide MobileReportWriter footer completely */
+  div[data-mobile-writer] div[style*="position: fixed"][style*="bottom: 0"] {
+    display: none !important;
+  }
+  
+  /* Adjust MobileReportWriter content to fill full screen without header/footer */
+  div[data-mobile-writer] div[style*="flex: 1"][style*="overflow: hidden"] {
+    padding-bottom: 0 !important;
+  }
+  
+  /* Remove bottom padding from sections and preview that expected footer space */
+  div[data-mobile-writer] div[style*="paddingBottom: '120px'"] {
+    padding-bottom: 16px !important;
+  }
+  
+  /* TOUCH-FRIENDLY BUTTONS */
   button {
-    min-height: 44px !important; /* Apple's recommended touch target */
+    min-height: 44px !important;
     min-width: 44px !important;
     padding: 12px 16px !important;
-    font-size: 16px !important; /* Prevents zoom on iOS */
+    font-size: 16px !important;
     border-radius: 8px !important;
     cursor: pointer !important;
   }
-
-  /* Larger text for mobile readability */
-  body {
-    font-size: 16px !important;
-    line-height: 1.5 !important;
-  }
-
-  /* Form inputs optimized for mobile */
+  
+  /* MOBILE-FRIENDLY FORMS */
   input, textarea, select {
     min-height: 44px !important;
     font-size: 16px !important; /* Prevents zoom on iOS */
@@ -69,230 +99,145 @@
     box-sizing: border-box !important;
     border: 1px solid #d1d5db !important;
   }
-
-  /* Textarea specific */
+  
   textarea {
     min-height: 100px !important;
     resize: vertical !important;
     font-family: inherit !important;
   }
-
-  /* Better spacing for mobile - all containers */
-  div[style*="border"] {
-    margin-bottom: 20px !important;
-    padding: 16px !important;
+  
+  /* BETTER MOBILE TEXT */
+  body {
+    font-size: 16px !important;
+    line-height: 1.5 !important;
   }
-
-  /* Improve section headers */
+  
   h1, h2, h3, h4, h5, h6 {
     font-size: 1.25em !important;
     margin-bottom: 16px !important;
     line-height: 1.3 !important;
   }
-
+  
   h1 {
     font-size: 1.5em !important;
   }
-
-  /* Better checkbox sizing for mobile */
+  
+  /* MOBILE SPACING */
+  div[style*="border"] {
+    margin-bottom: 20px !important;
+    padding: 16px !important;
+  }
+  
+  /* Adjust content that was expecting header space */
+  main[style*="padding: '16px'"],
+  main[style*="padding: '32px 24px'"] {
+    padding-top: 16px !important;
+  }
+  
+  div[style*="minHeight: '100vh'"] {
+    padding-top: 0 !important;
+  }
+  
+  /* CHECKBOXES */
   input[type="checkbox"] {
     min-width: 20px !important;
     min-height: 20px !important;
-    margin-right: 8px !important;
   }
-
-  /* Improve label clicking area */
-  label {
-    cursor: pointer !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 8px !important;
-    padding: 8px !important;
-    font-size: 14px !important;
-  }
-
-  /* Student navigation improvements */
-  .student-navigation, div[style*="student"] {
-    padding: 16px !important;
-    margin-bottom: 16px !important;
-  }
-
-  /* Navigation buttons specifically */
-  button[style*="Previous"], button[style*="Next"], 
-  button:contains("Previous"), button:contains("Next"),
-  button[onclick*="Previous"], button[onclick*="Next"] {
-    min-width: 120px !important;
-    padding: 12px 20px !important;
-    margin: 8px !important;
-  }
-
-  /* Report preview optimizations */
-  .report-preview, div[style*="preview"] {
-    font-size: 16px !important;
-    line-height: 1.6 !important;
-    padding: 16px !important;
-    margin: 16px 0 !important;
-  }
-
-  /* Modal/popup sizing for mobile */
-  .modal, .popup, div[style*="modal"], div[style*="popup"] {
-    width: 95vw !important;
-    max-width: 95vw !important;
-    margin: 20px auto !important;
-    padding: 20px !important;
-  }
-
-  /* Number inputs for scores */
-  input[type="number"] {
-    text-align: center !important;
-    font-weight: bold !important;
-  }
-
-  /* Better spacing for flex containers */
-  div[style*="flex"] {
-    gap: 12px !important;
-    flex-wrap: wrap !important;
-  }
-
-  /* Improve grid layouts */
-  div[style*="grid"] {
-    gap: 12px !important;
-  }
-
-  /* Alert and confirm dialogs */
-  .alert, .confirm {
-    font-size: 16px !important;
-    padding: 20px !important;
-  }
-
-  /* Links and clickable text */
-  a, span[onclick], div[onclick] {
-    min-height: 44px !important;
-    display: flex !important;
-    align-items: center !important;
-    padding: 8px !important;
-  }
-
-  /* Tables - make scrollable */
-  table {
-    font-size: 14px !important;
-    overflow-x: auto !important;
-    display: block !important;
-    white-space: nowrap !important;
-    width: 100% !important;
-  }
-
-  /* Table cells */
-  td, th {
-    padding: 12px 8px !important;
-    min-width: 100px !important;
-  }
-
-  /* Loading states and disabled elements */
-  button:disabled {
+  
+  /* DISABLED ELEMENTS */
+  button:disabled,
+  input:disabled,
+  select:disabled {
     opacity: 0.6 !important;
     cursor: not-allowed !important;
   }
-
-  /* Error messages */
-  .error, div[style*="red"], span[style*="red"] {
-    padding: 12px !important;
-    border-radius: 8px !important;
-    margin: 8px 0 !important;
-  }
-
-  /* Success messages */
-  .success, div[style*="green"], span[style*="green"] {
-    padding: 12px !important;
-    border-radius: 8px !important;
-    margin: 8px 0 !important;
-  }
-
-  /* Improve page headers */
-  header, .header, div[style*="header"] {
-    padding: 20px 16px !important;
-    text-align: center !important;
-  }
-
-  /* Navigation menu improvements */
-  nav, .nav, div[style*="nav"] {
-    padding: 16px !important;
-  }
-
-  /* Footer improvements */
-  footer, .footer {
-    padding: 20px 16px !important;
-    text-align: center !important;
-  }
-
-  /* Card-like containers */
-  div[style*="shadow"], div[style*="card"] {
-    border-radius: 12px !important;
-    padding: 16px !important;
-    margin: 16px 0 !important;
-  }
-
-  /* Improve scrolling areas */
+  
+  /* SCROLLING */
   div[style*="overflow"], div[style*="scroll"] {
     -webkit-overflow-scrolling: touch !important;
   }
-
-  /* Better focus states for accessibility */
+  
+  /* FOCUS STATES */
   button:focus, input:focus, textarea:focus, select:focus {
     outline: 2px solid #3b82f6 !important;
     outline-offset: 2px !important;
   }
-
 }
 
-/* Landscape mobile optimization (phones in landscape) */
-@media (max-width: 968px) and (orientation: landscape) {
+/* =================================================================
+   HOMEPAGE BUTTONS
+   ================================================================= */
+
+@media (max-width: 768px) {
+  /* Homepage navigation links */
+  a[href="/write-reports"],
+  a[href="/create-template"], 
+  a[href="/manage-templates"],
+  a[href="/class-management"],
+  a[href="/view-reports"] {
+    padding: 32px 24px !important;
+    min-height: auto !important;
+    height: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    margin-bottom: 16px !important; /* Ensure consistent gap between ALL buttons */
+  }
   
-  /* Adjust button sizes for landscape */
-  button {
-    padding: 8px 12px !important;
-    font-size: 14px !important;
+  /* Fix homepage title positioning */
+  div[style*="minHeight: '100vh'"] h1[style*="fontSize: isMobile ? '24px'"] {
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    text-align: center !important;
   }
-
-  /* Reduce header sizes in landscape */
-  h1, h2, h3 {
-    font-size: 1.1em !important;
-    margin-bottom: 12px !important;
-  }
-
-  /* More compact spacing */
-  div[style*="border"] {
-    padding: 12px !important;
-    margin-bottom: 12px !important;
-  }
-
-}
-
-/* Tablet optimization (769px - 1024px) */
-@media (min-width: 769px) and (max-width: 1024px) {
   
-  /* Slightly larger buttons than mobile but smaller than desktop */
-  button {
-    min-height: 40px !important;
-    padding: 10px 14px !important;
-    font-size: 15px !important;
+  /* Ensure homepage title container doesn't overflow */
+  div[style*="display: 'flex'"][style*="alignItems: 'center'"][style*="justifyContent: 'space-between'"] {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 12px !important;
   }
-
-  /* Tablet-friendly text sizes */
-  body {
-    font-size: 15px !important;
+  
+  /* Fix hamburger menu positioning */
+  div[style*="position: 'absolute'"] {
+    position: fixed !important;
+    top: 16px !important;
+    right: 16px !important;
   }
-
-  /* Form inputs for tablet */
-  input, textarea, select {
-    min-height: 40px !important;
-    font-size: 15px !important;
-    padding: 10px !important;
-  }
-
 }
 
-/* Common utilities that work across all screen sizes */
+/* =================================================================
+   REPORTWRITER MOBILE LAYOUT
+   ================================================================= */
+
+@media (max-width: 768px) {
+  /* Only apply these rules to DESKTOP ReportWriter that becomes mobile, NOT MobileReportWriter component */
+  div[style*="display: flex"][style*="gap: 20px"][style*="maxWidth: 1200px"]:not([data-mobile-writer]) {
+    flex-direction: column !important;
+    gap: 16px !important;
+    padding: 16px !important;
+  }
+
+  div[style*="flex: 1"]:not([data-mobile-writer] *) {
+    flex: none !important;
+    width: 100% !important;
+    order: 2 !important;
+  }
+
+  div[style*="width: 400px"][style*="position: sticky"]:not([data-mobile-writer] *) {
+    width: 100% !important;
+    position: static !important;
+    top: auto !important;
+    order: 1 !important;
+    margin-bottom: 20px !important;
+  }
+}
+
+/* =================================================================
+   UTILITY CLASSES
+   ================================================================= */
+
 .mobile-only {
   display: none;
 }
@@ -307,7 +252,10 @@
   }
 }
 
-/* Accessibility improvements */
+/* =================================================================
+   ACCESSIBILITY
+   ================================================================= */
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
@@ -317,7 +265,6 @@
   }
 }
 
-/* High contrast mode support */
 @media (prefers-contrast: high) {
   button {
     border-width: 2px !important;
@@ -327,283 +274,45 @@
     border-width: 2px !important;
   }
 }
-/* Add this to your App.css file - Mobile ReportWriter Layout Optimization */
 
-/* Mobile Layout for Report Writer - Stack columns vertically */
-@media (max-width: 768px) {
-  
-  /* Main ReportWriter container - stack vertically on mobile */
-  div[style*="display: flex"][style*="gap: 20px"][style*="maxWidth: 1200px"] {
-    flex-direction: column !important;
-    gap: 16px !important;
-    padding: 16px !important;
-  }
+/* =================================================================
+   TABLET OPTIMIZATION
+   ================================================================= */
 
-  /* Left column (sections) - full width on mobile */
-  div[style*="flex: 1"] {
-    flex: none !important;
-    width: 100% !important;
-    order: 2 !important; /* Move sections below preview on mobile */
-  }
-
-  /* Right column (preview) - full width and move to top */
-  div[style*="width: 400px"][style*="position: sticky"] {
-    width: 100% !important;
-    position: static !important;
-    top: auto !important;
-    order: 1 !important; /* Preview appears first on mobile */
-    margin-bottom: 20px !important;
-  }
-
-  /* Student navigation - make it sticky on mobile */
-  div[style*="student"] {
-    position: sticky !important;
-    top: 0 !important;
-    background: white !important;
-    z-index: 100 !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-    margin-bottom: 16px !important;
-    padding: 16px !important;
-    border-radius: 0 !important;
-  }
-
-  /* Report sections - better mobile spacing */
-  div[style*="Report Sections"] {
-    margin-bottom: 20px !important;
-  }
-
-  /* Section containers - full width and better spacing */
-  div[style*="border"][style*="padding: 16px"] {
-    margin-bottom: 16px !important;
-    border-radius: 12px !important;
-  }
-
-  /* Header buttons - stack on mobile */
-  div[style*="justifyContent: space-between"][style*="alignItems: center"] {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 12px !important;
-  }
-
-  /* Action buttons in headers - full width on mobile */
-  button[style*="Save as New Template"],
-  button[style*="Save Report"] {
-    width: 100% !important;
-    justify-content: center !important;
-  }
-
-  /* Navigation buttons - larger and better spaced */
-  button[style*="Previous"],
-  button[style*="Next"],
-  button[onclick*="Previous"],
-  button[onclick*="Next"] {
-    min-height: 48px !important;
-    padding: 12px 24px !important;
-    font-size: 16px !important;
-    margin: 8px 4px !important;
-    flex: 1 !important;
-  }
-
-  /* Student counter text - center on mobile */
-  span[style*="Student"] {
-    text-align: center !important;
-    font-size: 16px !important;
-    font-weight: 600 !important;
-    margin: 8px 0 !important;
-    display: block !important;
-  }
-
-  /* Fix any overlapping content */
-  * {
-    box-sizing: border-box !important;
-  }
-
-  /* Improve tap targets for navigation */
-  div[style*="navigation"] button {
-    min-height: 44px !important;
-    min-width: 44px !important;
-    touch-action: manipulation !important;
-  }
-
-  /* Better modal/dialog sizing */
-  div[role="dialog"],
-  div[style*="modal"],
-  div[style*="popup"] {
-    width: 95vw !important;
-    max-width: 95vw !important;
-    margin: 10px auto !important;
-    max-height: 90vh !important;
-    overflow-y: auto !important;
-  }
-
-  /* Improve form elements in sections */
-  input[type="number"],
-  input[type="text"],
-  select,
-  textarea {
-    font-size: 16px !important; /* Prevents zoom on iOS */
-    padding: 12px !important;
-    border-radius: 8px !important;
-    border: 1px solid #d1d5db !important;
-  }
-
-  /* Section headers - larger and more prominent */
-  h2[style*="Report Sections"],
-  h3[style*="color: #"] {
-    font-size: 20px !important;
-    margin-bottom: 16px !important;
-  }
-
-  /* Better spacing for section content */
-  div[style*="marginBottom: 8px"] {
-    margin-bottom: 12px !important;
-  }
-
-  /* Improve rating button grids */
-  div[style*="display: flex"][style*="gap: 8px"] {
-    gap: 12px !important;
-    flex-wrap: wrap !important;
-  }
-
-  /* Performance buttons - better mobile layout */
-  button[style*="color: white"],
-  button[style*="border: 2px solid"] {
-    min-height: 44px !important;
-    padding: 12px 16px !important;
-    font-size: 14px !important;
-    flex: 1 1 calc(50% - 6px) !important;
-    margin-bottom: 8px !important;
-  }
-
-}
-
-/* Landscape mobile - optimize for horizontal space */
-@media (max-width: 968px) and (orientation: landscape) {
-  
-  /* In landscape, keep some two-column layout but with better proportions */
-  div[style*="display: flex"][style*="gap: 20px"][style*="maxWidth: 1200px"] {
-    flex-direction: row !important;
-  }
-
-  /* Adjust column sizes for landscape */
-  div[style*="flex: 1"] {
-    flex: 1.5 !important;
-  }
-
-  div[style*="width: 400px"] {
-    width: 300px !important;
-    flex: 1 !important;
-  }
-
-  /* Smaller preview in landscape */
-  div[style*="maxHeight: 60vh"] {
-    max-height: 40vh !important;
-  }
-
-}
-
-/* Tablet optimization */
 @media (min-width: 769px) and (max-width: 1024px) {
-  
-  /* Tablet - keep two columns but adjust sizes */
-  div[style*="width: 400px"] {
-    width: 350px !important;
-  }
-
-  /* Slightly larger touch targets for tablet */
   button {
     min-height: 40px !important;
     padding: 10px 14px !important;
+    font-size: 15px !important;
   }
-
+  
+  body {
+    font-size: 15px !important;
+  }
+  
+  input, textarea, select {
+    min-height: 40px !important;
+    font-size: 15px !important;
+  }
 }
+
 /* =================================================================
-   HOMEPAGE BUTTON OVERRIDE - Add this to the END of your App.css file
+   LANDSCAPE MOBILE
    ================================================================= */
 
-/* Homepage button overrides - MOBILE ONLY */
-@media (max-width: 768px) {
-  
-  /* Target homepage navigation links specifically */
-  a[href="/write-reports"],
-  a[href="/create-template"], 
-  a[href="/manage-templates"],
-  a[href="/class-management"],
-  a[href="/view-reports"] {
-    padding: 32px 24px !important;
-    min-height: auto !important;
-    height: auto !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    box-sizing: border-box !important;
-  }
-  
-  /* Override any other button rules that might interfere */
-  div[style*="minHeight: 'calc(100vh - 73px)"] a,
-  div[style*="minHeight: '100vh'"] a {
-    padding: 32px 24px !important;
-  }
-
-}
-/* =================================================================
-   WRITE REPORTS HEADER OPTIMIZATION - Add this to your App.css file
-   ================================================================= */
-
-/* Target the ReportWriter white header specifically - MOBILE ONLY */
-@media (max-width: 768px) {
-  
-  /* Make the main ReportWriter header much more compact */
-  div[style*="backgroundColor: 'white'"][style*="boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'"][style*="padding: '16px 24px'"] {
-    padding: 8px 16px !important;
-  }
-  
-  /* Target the inner content container */
-  div[style*="maxWidth: '1200px'"][style*="margin: '0 auto'"][style*="display: 'flex'"][style*="justifyContent: 'space-between'"] {
-    max-width: 100% !important;
-    justify-content: flex-start !important;
-    align-items: center !important;
-    gap: 12px !important;
-  }
-  
-  /* Hide the Back button completely on mobile */
-  div[style*="display: 'flex'"][style*="alignItems: 'center'"][style*="gap: '16px'"] button:first-child {
-    display: none !important;
-  }
-  
-  /* Transform the button container to show "Write Reports" title + home icon */
-  div[style*="display: 'flex'"][style*="alignItems: 'center'"][style*="gap: '16px'"]::before {
-    content: "Write Reports" !important;
-    font-size: 18px !important;
-    font-weight: 600 !important;
-    color: #111827 !important;
-    margin-right: auto !important;
-  }
-  
-  /* Make home button smaller and icon-only */
-  div[style*="display: 'flex'"][style*="alignItems: 'center'"][style*="gap: '16px'"] button {
-    padding: 6px 8px !important;
+@media (max-width: 968px) and (orientation: landscape) {
+  button {
+    padding: 8px 12px !important;
     font-size: 14px !important;
-    min-width: auto !important;
-    border-radius: 4px !important;
-    margin-left: auto !important;
   }
   
-  /* Remove button text, keep only icon */
-  div[style*="display: 'flex'"][style*="alignItems: 'center'"][style*="gap: '16px'"] button {
-    font-size: 16px !important;
+  h1, h2, h3 {
+    font-size: 1.1em !important;
+    margin-bottom: 12px !important;
   }
   
-}
-
-/* Alternative simpler approach - reduce header padding dramatically */
-@media (max-width: 768px) {
-  
-  /* Target any white header with shadow (likely the ReportWriter header) */
-  header[style*="backgroundColor: 'white'"],
-  div[style*="backgroundColor: 'white'"][style*="boxShadow"][style*="padding"] {
-    padding-top: 8px !important;
-    padding-bottom: 8px !important;
+  div[style*="border"] {
+    padding: 12px !important;
+    margin-bottom: 12px !important;
   }
-  
 }

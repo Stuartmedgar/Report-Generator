@@ -211,113 +211,126 @@ function TemplateSelection({
 
         {/* MOBILE: Template Selection Only */}
         {isMobile ? (
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-            overflow: 'hidden'
-          }}>
+          <div>
+            {/* Back to Home button - top left */}
+            <Link to="/" style={{ textDecoration: 'none', display: 'inline-block', marginBottom: '16px' }}>
+              <button style={{
+                backgroundColor: '#6b7280',
+                color: 'white',
+                padding: '8px 12px',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                ← Home
+              </button>
+            </Link>
+
             <div style={{
-              padding: '16px',
-              borderBottom: '1px solid #e5e7eb',
-              backgroundColor: '#f9fafb'
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+              overflow: 'hidden'
             }}>
-              <h3 style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#111827',
-                margin: 0
+              <div style={{
+                padding: '16px',
+                borderBottom: '1px solid #e5e7eb',
+                backgroundColor: '#f9fafb'
               }}>
-                Choose a Template ({state.templates.length})
-              </h3>
-            </div>
-            
-            {state.templates.length === 0 ? (
-              <div style={{ 
-                textAlign: 'center', 
-                padding: '32px 16px'
-              }}>
-                <p style={{ 
-                  color: '#6b7280', 
-                  marginBottom: '16px',
-                  fontSize: '14px'
+                <h3 style={{
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  color: '#111827',
+                  margin: 0
                 }}>
-                  No templates found
-                </p>
-                <Link to="/create-template" style={{ textDecoration: 'none' }}>
-                  <button style={{
-                    backgroundColor: '#3b82f6',
-                    color: 'white',
-                    padding: '12px 20px',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    cursor: 'pointer'
-                  }}>
-                    Create Your First Template
-                  </button>
-                </Link>
+                  Select a Template for your reports
+                </h3>
               </div>
-            ) : (
-              state.templates.map((template, index) => (
-                <div
-                  key={template.id}
-                  onClick={() => onTemplateSelect(template)}
-                  style={{
-                    padding: '16px',
-                    borderBottom: index < state.templates.length - 1 ? '1px solid #f3f4f6' : 'none',
-                    cursor: 'pointer',
-                    backgroundColor: 'white',
-                    transition: 'background-color 0.2s'
-                  }}
-                  onTouchStart={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f9fafb';
-                  }}
-                  onTouchEnd={(e) => {
-                    setTimeout(() => {
-                      e.currentTarget.style.backgroundColor = 'white';
-                    }, 150);
-                  }}
-                >
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
+              
+              {state.templates.length === 0 ? (
+                <div style={{ 
+                  textAlign: 'center', 
+                  padding: '32px 16px'
+                }}>
+                  <p style={{ 
+                    color: '#6b7280', 
+                    marginBottom: '16px',
+                    fontSize: '14px'
                   }}>
-                    <div>
-                      <div style={{
-                        fontSize: '16px',
-                        fontWeight: '600',
-                        color: '#111827',
-                        marginBottom: '4px'
-                      }}>
-                        {template.name}
-                      </div>
-                      <div style={{
-                        fontSize: '13px',
-                        color: '#6b7280',
-                        marginBottom: '2px'
-                      }}>
-                        {template.sections.length} sections
-                      </div>
-                      <div style={{
-                        fontSize: '12px',
-                        color: '#9ca3af'
-                      }}>
-                        {new Date(template.createdAt).toLocaleDateString()}
-                      </div>
-                    </div>
-                    <div style={{
-                      fontSize: '18px',
-                      color: '#3b82f6'
+                    No templates found
+                  </p>
+                  <Link to="/create-template" style={{ textDecoration: 'none' }}>
+                    <button style={{
+                      backgroundColor: '#3b82f6',
+                      color: 'white',
+                      padding: '12px 20px',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: 'pointer'
                     }}>
-                      →
+                      Create Your First Template
+                    </button>
+                  </Link>
+                </div>
+              ) : (
+                state.templates.map((template, index) => (
+                  <div
+                    key={template.id}
+                    onClick={() => onTemplateSelect(template)}
+                    style={{
+                      padding: '16px',
+                      borderBottom: index < state.templates.length - 1 ? '1px solid #f3f4f6' : 'none',
+                      cursor: 'pointer',
+                      backgroundColor: 'white',
+                      transition: 'background-color 0.2s'
+                    }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <div>
+                        <div style={{
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          color: '#111827',
+                          marginBottom: '4px'
+                        }}>
+                          {template.name}
+                        </div>
+                        <div style={{
+                          fontSize: '13px',
+                          color: '#6b7280',
+                          marginBottom: '2px'
+                        }}>
+                          {template.sections.length} sections
+                        </div>
+                        <div style={{
+                          fontSize: '12px',
+                          color: '#9ca3af'
+                        }}>
+                          {new Date(template.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <div style={{
+                        fontSize: '18px',
+                        color: '#3b82f6'
+                      }}>
+                        →
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
         ) : (
           /* DESKTOP: Template and Class Selection Grid */
@@ -662,7 +675,7 @@ function TemplateSelection({
               fontSize: '14px',
               margin: '0 0 16px 0'
             }}>
-              Choose a template above to get started. Need to create templates or classes first?
+              Choose a template above to get started. Need to create templates first?
             </p>
             <div style={{
               display: 'flex',
@@ -682,20 +695,6 @@ function TemplateSelection({
                   cursor: 'pointer'
                 }}>
                   Create Template
-                </button>
-              </Link>
-              <Link to="/class-management" style={{ textDecoration: 'none' }}>
-                <button style={{
-                  backgroundColor: '#10b981',
-                  color: 'white',
-                  padding: '8px 12px',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  cursor: 'pointer'
-                }}>
-                  Create Class
                 </button>
               </Link>
             </div>

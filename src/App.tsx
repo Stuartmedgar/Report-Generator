@@ -177,17 +177,17 @@ function Home() {
         padding: isMobile ? '20px 16px 40px 16px' : '60px 20px 40px 20px'
       }}>
         
-        {/* Title - Inline with hamburger on mobile */}
-        <div style={{ 
-          textAlign: isMobile ? 'left' : 'center', 
-          marginBottom: isMobile ? '40px' : '60px', 
-          maxWidth: isMobile ? '100%' : '800px',
-          marginTop: isMobile ? '0' : '20px',
-          width: isMobile ? '100%' : 'auto',
-          display: isMobile ? 'flex' : 'block',
-          alignItems: isMobile ? 'center' : 'initial',
-          paddingRight: isMobile ? '60px' : '0'
-        }}>
+{/* Title - Inline with hamburger on mobile */}
+<div style={{ 
+  textAlign: isMobile ? 'center' : 'center',  // Center on both mobile and desktop
+  marginBottom: isMobile ? '40px' : '60px', 
+  maxWidth: isMobile ? '100%' : '800px',
+  marginTop: isMobile ? '0' : '20px',
+  width: isMobile ? '100%' : 'auto',
+  display: isMobile ? 'block' : 'block',  // Remove flex on mobile
+  alignItems: isMobile ? 'center' : 'initial',
+  paddingRight: '0'  // Remove padding completely
+}}>
           <h1 style={{ 
             fontSize: isMobile ? '24px' : '48px', 
             fontWeight: '800', 

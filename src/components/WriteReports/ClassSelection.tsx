@@ -108,24 +108,45 @@ function ClassSelection({ selectedTemplate, onClassSelect, onBack }: ClassSelect
           </div>
         </div>
 
-        {/* Back Button */}
-        <button 
-          onClick={onBack}
-          style={{
-            backgroundColor: '#6b7280',
-            color: 'white',
-            padding: '12px 16px',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            marginBottom: '20px',
-            width: '100%'
-          }}
-        >
-          ← Change Template
-        </button>
+{/* Back Button and Home Button - Same Line */}
+<div style={{
+  display: 'flex',
+  gap: '8px',
+  marginBottom: '16px'
+}}>
+  <button 
+    onClick={onBack}
+    style={{
+      backgroundColor: '#6b7280',
+      color: 'white',
+      padding: '12px 16px',
+      border: 'none',
+      borderRadius: '8px',
+      fontSize: '14px',
+      fontWeight: '500',
+      cursor: 'pointer',
+      flex: 1
+    }}
+  >
+    ← Back
+  </button>
+  
+  <Link to="/" style={{ textDecoration: 'none', flex: 1 }}>
+    <button style={{
+      backgroundColor: '#3b82f6',
+      color: 'white',
+      padding: '12px 16px',
+      border: 'none',
+      borderRadius: '8px',
+      fontSize: '14px',
+      fontWeight: '500',
+      cursor: 'pointer',
+      width: '100%'
+    }}>
+      Home
+    </button>
+  </Link>
+</div>
 
         {/* Classes List */}
         <div style={{
@@ -145,7 +166,7 @@ function ClassSelection({ selectedTemplate, onClassSelect, onBack }: ClassSelect
               color: '#111827',
               margin: 0
             }}>
-              Choose a Class ({state.classes.length})
+              Select a Class for your reports 
             </h3>
           </div>
           
@@ -188,14 +209,7 @@ function ClassSelection({ selectedTemplate, onClassSelect, onBack }: ClassSelect
                   backgroundColor: 'white',
                   transition: 'background-color 0.2s'
                 }}
-                onTouchStart={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f9fafb';
-                }}
-                onTouchEnd={(e) => {
-                  setTimeout(() => {
-                    e.currentTarget.style.backgroundColor = 'white';
-                  }, 150);
-                }}
+
               >
                 <div style={{
                   display: 'flex',
@@ -236,6 +250,53 @@ function ClassSelection({ selectedTemplate, onClassSelect, onBack }: ClassSelect
             ))
           )}
         </div>
+
+        {/* Need Help Section */}
+<div style={{
+  backgroundColor: '#f0fdf4',
+  border: '2px solid #10b981',
+  borderRadius: '8px',
+  padding: '16px',
+  textAlign: 'center',
+  marginTop: '20px'
+}}>
+  <h3 style={{ 
+    fontSize: '16px', 
+    fontWeight: '600', 
+    color: '#059669',
+    margin: '0 0 8px 0'
+  }}>
+    Need Help?
+  </h3>
+  <p style={{ 
+    color: '#059669', 
+    fontSize: '14px',
+    margin: '0 0 16px 0'
+  }}>
+    Don't see your class above? Create a new class to get started.
+  </p>
+  <div style={{
+    display: 'flex',
+    gap: '8px',
+    justifyContent: 'center',
+    flexWrap: 'wrap'
+  }}>
+    <Link to="/class-management" style={{ textDecoration: 'none' }}>
+      <button style={{
+        backgroundColor: '#10b981',
+        color: 'white',
+        padding: '8px 12px',
+        border: 'none',
+        borderRadius: '6px',
+        fontSize: '12px',
+        fontWeight: '500',
+        cursor: 'pointer'
+      }}>
+        Create Class
+      </button>
+    </Link>
+  </div>
+</div>
       </main>
     </div>
   );

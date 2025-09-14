@@ -46,7 +46,7 @@ export const useReportLogic = ({
       }
       setHasUnsavedChanges(false);
     }
-  }, [currentStudent, template.id, getReport, setDynamicSections]); // FIXED: Removed template.sections
+  }, [currentStudent]); // FIXED: Only currentStudent dependency
 
   // Handle saving the report
   const handleSaveReport = () => {
@@ -172,23 +172,18 @@ export const useReportLogic = ({
     return [...template.sections, ...dynamicSections];
   };
 
-  // Generate report content from section data
-  const generateReportContent = () => {
+  // Generate report content from section data - FIXED: Memoized with useCallback
+  const generateReportContent = useCallback(() => {
     let content = '';
     const allSections = getAllSections();
 
     allSections.forEach((section: any) => {
       const data = sectionData[section.id] || {};
-      const showHeader = data.showHeader !== undefined ? data.showHeader : section.data?.showHeader !== undefined ? section.data.showHeader : true;
-
-      // Skip excluded sections
-      if (data.exclude) {
-        return;
-      }
+      const showHeader = data.showHeader !== undefined ? data.showHeader : section.data?.showHeader !== undefined ?
+        section.data.showHeader : true;
 
       switch (section.type) {
         case 'rated-comment':
-          // Only include if we have a rating and it's not 'no-comment'
           if (data.rating && data.rating !== 'no-comment') {
             if (showHeader && section.name) {
               content += `${section.name}: `;
@@ -201,30 +196,11 @@ export const useReportLogic = ({
             console.log('Generated rated comment content:', processedComment); // DEBUG
           }
           break;
-
-        case 'standard-comment':
-          if (data.content && data.content.trim()) {
-            if (showHeader && section.name) {
-              content += `${section.name}: `;
-            }
-            const processedComment = data.content.replace(/\[Name\]/g, currentStudent.firstName);
-            content += processedComment + ' ';
-          }
-          break;
-
+          
         case 'assessment-comment':
           if (data.performance && data.performance !== 'no-comment') {
             if (showHeader && section.name) {
               content += `${section.name}: `;
-            }
-            
-            // Add score if provided
-            if (data.score !== undefined && data.score !== null) {
-              if (data.scoreType === 'percentage') {
-                content += `${data.score}% - `;
-              } else if (data.scoreType === 'outOf' && data.maxScore) {
-                content += `${data.score}/${data.maxScore} - `;
-              }
             }
             
             // Use custom edited comment if available, otherwise use selected comment
@@ -273,6 +249,22 @@ export const useReportLogic = ({
           }
           break;
 
+        case 'standard-comment':
+          if (data.content && data.content.trim()) {
+            if (showHeader && section.name) {
+              content += `${section.name}: `;
+            }
+            const processedComment = data.content.replace(/\[Name\]/g, currentStudent.firstName);
+            content += processedComment + ' ';
+          } else if (section.data?.content) {
+            if (showHeader && section.name) {
+              content += `${section.name}: `;
+            }
+            const processedComment = section.data.content.replace(/\[Name\]/g, currentStudent.firstName);
+            content += processedComment + ' ';
+          }
+          break;
+
         case 'new-line':
           content += '\n\n';
           break;
@@ -283,7 +275,7 @@ export const useReportLogic = ({
     });
 
     return content.trim();
-  };
+  }, [sectionData, currentStudent, template.sections, dynamicSections]); // FIXED: Added dependencies
 
   // Dynamic section handlers
   const handleAddDynamicSection = (sectionType: string) => {
