@@ -88,6 +88,17 @@
     border-radius: 8px !important;
     cursor: pointer !important;
   }
+
+  /* EXCEPTION: Allow MobileSectionCard buttons to be compact */
+  [data-mobile-writer] button {
+  min-height: auto !important;
+  min-width: auto !important;
+  padding: 6px 8px !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  border-width: 1px !important;
+}
+}
   
   /* MOBILE-FRIENDLY FORMS */
   input, textarea, select {
@@ -162,7 +173,7 @@
     outline: 2px solid #3b82f6 !important;
     outline-offset: 2px !important;
   }
-}
+
 
 /* =================================================================
    HOMEPAGE BUTTONS
