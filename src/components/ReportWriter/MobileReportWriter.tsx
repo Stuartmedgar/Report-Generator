@@ -144,6 +144,11 @@ export const MobileReportWriter: React.FC<MobileReportWriterProps> = ({
                 section={section}
                 sectionData={currentSectionData}
                 updateSectionData={reportLogic.updateSectionData}
+                isFirstSection={index === 0}
+                isLastSection={index === reportLogic.getAllSections().length - 1}
+                navigationHandlers={navigationHandlers}
+                currentStudentIndex={currentStudentIndex}
+                studentsLength={students.length}
               />
             ))}
           </div>

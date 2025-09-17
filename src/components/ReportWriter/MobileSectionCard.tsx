@@ -4,9 +4,32 @@ interface MobileSectionCardProps {
   section: any;
   sectionData: any;
   updateSectionData: (sectionId: string, data: any) => void;
+  // Navigation props - ONLY ADDITION
+  isFirstSection?: boolean;
+  isLastSection?: boolean;
+  navigationHandlers?: {
+    handlePreviousStudent: () => void;
+    handleNextStudent: () => void;
+    handleSaveReport: () => void;
+    handleHome: () => void;
+    handleFinish: () => void;
+    handleViewAllReports: () => void;
+  };
+  currentStudentIndex?: number;
+  studentsLength?: number;
 }
 
-const MobileSectionCard: React.FC<MobileSectionCardProps> = ({ section, sectionData, updateSectionData }) => {
+const MobileSectionCard: React.FC<MobileSectionCardProps> = ({ 
+  section, 
+  sectionData, 
+  updateSectionData,
+  // Navigation props - ONLY ADDITION
+  isFirstSection = false,
+  isLastSection = false,
+  navigationHandlers,
+  currentStudentIndex = 0,
+  studentsLength = 1
+}) => {
   const data = sectionData[section.id] || {};
 
   // State for all editing functionality - moved to component level
@@ -27,6 +50,133 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({ section, sectionD
     // Update optional comment state when data changes
     setShowOptionalComment(!!data.comment);
   }, [data.selectedComment, data.customEditedComment, data.selectedSuggestion, data.customEditedSuggestion, data.comment]);
+
+  // Top Navigation Buttons - ONLY ADDITION
+  const renderTopNavigationButtons = () => {
+    if (!isFirstSection || !navigationHandlers) return null;
+    
+    return (
+      <div style={{
+        display: 'flex',
+        gap: '8px',
+        marginBottom: '16px',
+        paddingTop: '8px'
+      }}>
+        <button
+          onClick={navigationHandlers.handleHome}
+          style={{
+            flex: 1,
+            backgroundColor: '#6b7280',
+            color: 'white',
+            padding: '12px 16px',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            cursor: 'pointer',
+            fontWeight: '600'
+          }}
+        >
+          🏠 Home
+        </button>
+        <button
+          onClick={navigationHandlers.handleSaveReport}
+          style={{
+            flex: 1,
+            backgroundColor: '#10b981',
+            color: 'white',
+            padding: '12px 16px',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            cursor: 'pointer',
+            fontWeight: '600'
+          }}
+        >
+          💾 Save Report
+        </button>
+        <button
+          onClick={navigationHandlers.handleViewAllReports}
+          style={{
+            flex: 1,
+            backgroundColor: '#6366f1',
+            color: 'white',
+            padding: '12px 16px',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            cursor: 'pointer',
+            fontWeight: '600'
+          }}
+        >
+          📋 View Reports
+        </button>
+      </div>
+    );
+  };
+
+  // Bottom Navigation Buttons - ONLY ADDITION
+  const renderBottomNavigationButtons = () => {
+    if (!isLastSection || !navigationHandlers) return null;
+    
+    return (
+      <div style={{
+        display: 'flex',
+        gap: '8px',
+        marginTop: '16px',
+        marginBottom: '80px'
+      }}>
+        <button
+          onClick={navigationHandlers.handlePreviousStudent}
+          disabled={currentStudentIndex === 0}
+          style={{
+            flex: 1,
+            backgroundColor: currentStudentIndex === 0 ? '#9ca3af' : '#6b7280',
+            color: 'white',
+            padding: '12px 16px',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            cursor: currentStudentIndex === 0 ? 'not-allowed' : 'pointer',
+            fontWeight: '600'
+          }}
+        >
+          ← Previous
+        </button>
+        <button
+          onClick={navigationHandlers.handleSaveReport}
+          style={{
+            flex: 1,
+            backgroundColor: '#10b981',
+            color: 'white',
+            padding: '12px 16px',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            cursor: 'pointer',
+            fontWeight: '600'
+          }}
+        >
+          💾 Save Report
+        </button>
+        <button
+          onClick={currentStudentIndex === studentsLength - 1 ? navigationHandlers.handleFinish : navigationHandlers.handleNextStudent}
+          style={{
+            flex: 1,
+            backgroundColor: currentStudentIndex === studentsLength - 1 ? '#ef4444' : '#3b82f6',
+            color: 'white',
+            padding: '12px 16px',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            cursor: 'pointer',
+            fontWeight: '600'
+          }}
+        >
+          {currentStudentIndex === studentsLength - 1 ? '✅ Finish' : 'Next →'}
+        </button>
+      </div>
+    );
+  };
 
   const getSectionColor = (type: string) => {
     switch (type) {
@@ -625,87 +775,95 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({ section, sectionD
   }
 
   return (
-    <div style={{
-      backgroundColor: colors.bg,
-      border: `1px solid ${colors.border}`,
-      borderRadius: '6px',
-      padding: '8px',
-      marginBottom: '6px'
-    }}>
-      {/* Section Header */}
+    <div>
+      {/* Top Navigation Buttons (only for first section) - ONLY ADDITION */}
+      {renderTopNavigationButtons()}
+
       <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        marginBottom: '6px',
-        justifyContent: 'space-between'
+        backgroundColor: colors.bg,
+        border: `1px solid ${colors.border}`,
+        borderRadius: '6px',
+        padding: '8px',
+        marginBottom: '6px'
       }}>
-        <h3 style={{
-          fontSize: '11px',
-          fontWeight: '600',
-          color: colors.text,
-          margin: 0,
-          textAlign: 'left'
+        {/* Section Header */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          marginBottom: '6px',
+          justifyContent: 'space-between'
         }}>
-          {section.name}
-        </h3>
-        
-        {/* Only show Header and Exclude toggles for non-optional sections */}
-        {section.type !== 'optional-additional-comment' && (
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              fontSize: '8px',
-              color: colors.text,
-              cursor: 'pointer'
-            }}>
-              <input
-                type="checkbox"
-                checked={data.showHeader !== false}
-                onChange={(e) => updateSectionData(section.id, { showHeader: e.target.checked })}
-                style={{ marginRight: '2px', transform: 'scale(0.6)' }}
-              />
-              Header
-            </label>
-            
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              fontSize: '8px',
-              color: '#6b7280',
-              cursor: 'pointer'
-            }}>
-              <input
-                type="checkbox"
-                checked={
-                  (section.type === 'rated-comment' && data.rating === 'no-comment') ||
-                  (section.type === 'assessment-comment' && data.performance === 'no-comment') ||
-                  (section.type === 'personalised-comment' && data.category === null) ||
-                  (section.type === 'next-steps' && data.focusArea === null)
-                }
-                onChange={(e) => {
-                  if (section.type === 'rated-comment') {
-                    updateSectionData(section.id, { rating: e.target.checked ? 'no-comment' : null });
-                  } else if (section.type === 'assessment-comment') {
-                    updateSectionData(section.id, { performance: e.target.checked ? 'no-comment' : null });
-                  } else if (section.type === 'personalised-comment') {
-                    const firstCategory = Object.keys(section.data?.categories || section.data?.comments || {})[0];
-                    updateSectionData(section.id, { category: e.target.checked ? null : firstCategory });
-                  } else if (section.type === 'next-steps') {
-                    const firstArea = Object.keys(section.data?.focusAreas || section.data?.comments || {})[0];
-                    updateSectionData(section.id, { focusArea: e.target.checked ? null : firstArea });
+          <h3 style={{
+            fontSize: '11px',
+            fontWeight: '600',
+            color: colors.text,
+            margin: 0,
+            textAlign: 'left'
+          }}>
+            {section.name}
+          </h3>
+          
+          {/* Only show Header and Exclude toggles for non-optional sections */}
+          {section.type !== 'optional-additional-comment' && (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                fontSize: '8px',
+                color: colors.text,
+                cursor: 'pointer'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={data.showHeader !== false}
+                  onChange={(e) => updateSectionData(section.id, { showHeader: e.target.checked })}
+                  style={{ marginRight: '2px', transform: 'scale(0.6)' }}
+                />
+                Header
+              </label>
+              
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                fontSize: '8px',
+                color: '#6b7280',
+                cursor: 'pointer'
+              }}>
+                <input
+                  type="checkbox"
+                  checked={
+                    (section.type === 'rated-comment' && data.rating === 'no-comment') ||
+                    (section.type === 'assessment-comment' && data.performance === 'no-comment') ||
+                    (section.type === 'personalised-comment' && data.category === null) ||
+                    (section.type === 'next-steps' && data.focusArea === null)
                   }
-                }}
-                style={{ marginRight: '2px', transform: 'scale(0.6)' }}
-              />
-              Exclude
-            </label>
-          </div>
-        )}
+                  onChange={(e) => {
+                    if (section.type === 'rated-comment') {
+                      updateSectionData(section.id, { rating: e.target.checked ? 'no-comment' : null });
+                    } else if (section.type === 'assessment-comment') {
+                      updateSectionData(section.id, { performance: e.target.checked ? 'no-comment' : null });
+                    } else if (section.type === 'personalised-comment') {
+                      const firstCategory = Object.keys(section.data?.categories || section.data?.comments || {})[0];
+                      updateSectionData(section.id, { category: e.target.checked ? null : firstCategory });
+                    } else if (section.type === 'next-steps') {
+                      const firstArea = Object.keys(section.data?.focusAreas || section.data?.comments || {})[0];
+                      updateSectionData(section.id, { focusArea: e.target.checked ? null : firstArea });
+                    }
+                  }}
+                  style={{ marginRight: '2px', transform: 'scale(0.6)' }}
+                />
+                Exclude
+              </label>
+            </div>
+          )}
+        </div>
+
+        {/* Section Content */}
+        {renderSectionContent()}
       </div>
 
-      {/* Section Content */}
-      {renderSectionContent()}
+      {/* Bottom Navigation Buttons (only for last section) - ONLY ADDITION */}
+      {renderBottomNavigationButtons()}
     </div>
   );
 };
