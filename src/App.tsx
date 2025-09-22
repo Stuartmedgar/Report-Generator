@@ -208,13 +208,13 @@ function Home() {
                 lineHeight: '1.6',
                 marginBottom: '20px'
               }}>
-                Streamline your report writing process with our powerful template system
+                
               </p>
               <p style={{
                 fontSize: '16px',
                 color: '#94a3b8'
               }}>
-                Generate professional reports in minutes, not hours
+                
               </p>
             </>
           )}

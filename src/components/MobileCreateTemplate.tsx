@@ -7,8 +7,6 @@ import RatedCommentBuilder from '../components/RatedCommentBuilder';
 import AssessmentCommentBuilder from '../components/AssessmentCommentBuilder';
 import PersonalisedCommentBuilder from '../components/PersonalisedCommentBuilder';
 import NextStepsCommentBuilder from '../components/NextStepsCommentBuilder';
-import { TemplateValidationPanel } from '../components/CreateTemplate/TemplateValidationPanel';
-import { validateTemplate } from '../utils/templateValidation';
 
 const MobileCreateTemplate: React.FC = () => {
   const { state, addTemplate, updateTemplate } = useData();
@@ -39,10 +37,6 @@ const MobileCreateTemplate: React.FC = () => {
   // Standard comment editor state
   const [standardCommentName, setStandardCommentName] = useState('');
   const [standardCommentContent, setStandardCommentContent] = useState('');
-
-  // Get validation errors
-  const validationResult = validateTemplate(templateName, sections);
-  const validationErrors = validationResult.errors;
 
   // Handle naming step
   const handleContinueFromNaming = () => {
@@ -263,11 +257,11 @@ const MobileCreateTemplate: React.FC = () => {
               Continue to Add Sections
             </button>
             <Link
-              to="/manage-templates"
+              to="/"
               style={{
                 padding: '14px 24px',
-                backgroundColor: '#f3f4f6',
-                color: '#374151',
+                backgroundColor: '#6b7280',
+                color: 'white',
                 textDecoration: 'none',
                 borderRadius: '8px',
                 fontWeight: '600',
@@ -275,7 +269,7 @@ const MobileCreateTemplate: React.FC = () => {
                 fontSize: '14px'
               }}
             >
-              Cancel
+              ← Back to Home
             </Link>
           </div>
         </div>
@@ -516,11 +510,6 @@ const MobileCreateTemplate: React.FC = () => {
             </div>
           )}
         </div>
-
-        {/* Validation Panel - Mobile */}
-        <TemplateValidationPanel 
-          validationErrors={validationErrors} 
-        />
       </main>
 
       {/* Section Selector Modal */}

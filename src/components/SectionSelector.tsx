@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import RatedCommentSelector from './RatedCommentSelector';
 import StandardCommentSelector from './StandardCommentSelector';
 import AssessmentCommentSelector from './AssessmentCommentSelector';
@@ -10,9 +10,22 @@ import { RatedComment, StandardComment, AssessmentComment, PersonalisedComment, 
 interface SectionSelectorProps {
   onSelectSection: (sectionType: string, data?: any) => void;
   onBack: () => void;
+  isMobile?: boolean;
 }
 
-function SectionSelector({ onSelectSection, onBack }: SectionSelectorProps) {
+function SectionSelector({ onSelectSection, onBack, isMobile: propIsMobile }: SectionSelectorProps) {
+  // Mobile detection
+  const [isMobile, setIsMobile] = useState(propIsMobile || window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [showRatedCommentSelector, setShowRatedCommentSelector] = useState(false);
   const [showStandardCommentSelector, setShowStandardCommentSelector] = useState(false);
   const [showAssessmentCommentSelector, setShowAssessmentCommentSelector] = useState(false);
@@ -72,106 +85,175 @@ function SectionSelector({ onSelectSection, onBack }: SectionSelectorProps) {
   ];
 
   const handleSectionClick = (sectionType: string) => {
-    if (sectionType === 'rated-comment') {
-      setShowRatedCommentSelector(true);
-    } else if (sectionType === 'standard-comment') {
-      setShowStandardCommentSelector(true);
-    } else if (sectionType === 'assessment-comment') {
-      setShowAssessmentCommentSelector(true);
-    } else if (sectionType === 'personalised-comment') {
-      setShowPersonalisedCommentSelector(true);
-    } else if (sectionType === 'next-steps') {
-      setShowNextStepsCommentSelector(true);
-    } else if (sectionType === 'qualities') {
-      setShowQualitiesCommentSelector(true);
-    } else {
-      // For now, other sections are added without configuration
-      onSelectSection(sectionType);
+    switch(sectionType) {
+      case 'rated-comment':
+        setShowRatedCommentSelector(true);
+        break;
+      case 'standard-comment':
+        setShowStandardCommentSelector(true);
+        break;
+      case 'assessment-comment':
+        setShowAssessmentCommentSelector(true);
+        break;
+      case 'personalised-comment':
+        setShowPersonalisedCommentSelector(true);
+        break;
+      case 'next-steps':
+        setShowNextStepsCommentSelector(true);
+        break;
+      case 'qualities':
+        setShowQualitiesCommentSelector(true);
+        break;
+      case 'optional-additional-comment':
+        onSelectSection(sectionType, { name: 'Optional Additional Comment' });
+        break;
+      case 'new-line':
+        onSelectSection(sectionType, { name: 'New Line' });
+        break;
+      default:
+        console.log('Unknown section type:', sectionType);
     }
   };
 
-  const handleSelectRatedComment = (ratedComment: RatedComment) => {
-    onSelectSection('rated-comment', ratedComment);
-    setShowRatedCommentSelector(false);
+  const handleSelectRatedComment = (comment: RatedComment) => {
+    console.log('Selected rated comment:', comment);
+    onSelectSection('rated-comment', comment);
   };
 
-  const handleSelectStandardComment = (standardComment: StandardComment) => {
-    // Transform the standard comment data to match template builder expectations
-    const sectionData = {
-      name: standardComment.name,
-      data: {
-        content: standardComment.comment
-      }
-    };
-    onSelectSection('standard-comment', sectionData);
-    setShowStandardCommentSelector(false);
+  const handleSelectStandardComment = (comment: StandardComment) => {
+    console.log('Selected standard comment:', comment);
+    onSelectSection('standard-comment', comment);
   };
 
-  const handleSelectAssessmentComment = (assessmentComment: AssessmentComment) => {
-    onSelectSection('assessment-comment', assessmentComment);
-    setShowAssessmentCommentSelector(false);
+  const handleSelectAssessmentComment = (comment: AssessmentComment) => {
+    console.log('Selected assessment comment:', comment);
+    onSelectSection('assessment-comment', comment);
   };
 
-  const handleSelectPersonalisedComment = (personalisedComment: PersonalisedComment) => {
-    // Transform the personalised comment data to match template builder expectations
-    const sectionData = {
-      name: personalisedComment.name,
-      data: {
-        instruction: personalisedComment.instruction,
-        categories: personalisedComment.comments, // This maps headings->comments to categories
-        headings: personalisedComment.headings
-      }
-    };
-    onSelectSection('personalised-comment', sectionData);
-    setShowPersonalisedCommentSelector(false);
+  const handleSelectPersonalisedComment = (comment: PersonalisedComment) => {
+    console.log('Selected personalised comment:', comment);
+    onSelectSection('personalised-comment', comment);
   };
 
-  const handleSelectNextStepsComment = (nextStepsComment: NextStepsComment) => {
-    // Transform the next steps comment data to match template builder expectations
-    const sectionData = {
-      name: nextStepsComment.name,
-      data: {
-        focusAreas: nextStepsComment.comments, // This maps focus areas->comments to focusAreas
-        headings: nextStepsComment.headings
-      }
-    };
-    onSelectSection('next-steps', sectionData);
-    setShowNextStepsCommentSelector(false);
+  const handleSelectNextStepsComment = (comment: NextStepsComment) => {
+    console.log('Selected next steps comment:', comment);
+    onSelectSection('next-steps', comment);
   };
 
-  const handleSelectQualitiesComment = (qualitiesComment: QualitiesComment) => {
-    // Transform the qualities comment data to match template builder expectations
-    const sectionData = {
-      name: qualitiesComment.name,
-      data: {
-        headings: qualitiesComment.headings,
-        comments: qualitiesComment.comments
-      }
-    };
-    onSelectSection('qualities', sectionData);
-    setShowQualitiesCommentSelector(false);
+  const handleSelectQualitiesComment = (comment: QualitiesComment) => {
+    console.log('Selected qualities comment:', comment);
+    onSelectSection('qualities', comment);
   };
 
-  // Show qualities selector
-  if (showQualitiesCommentSelector) {
-    return (
-      <QualitiesCommentSelector
-        onSelectComment={handleSelectQualitiesComment}
-        onBack={() => setShowQualitiesCommentSelector(false)}
-      />
-    );
-  }
+  // CSS styles as JavaScript objects to avoid App.css conflicts
+  const styles = {
+    container: {
+      minHeight: '100vh',
+      backgroundColor: '#f9fafb',
+    },
+    header: {
+      backgroundColor: 'white',
+      boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+      padding: isMobile ? '16px' : '32px 24px',
+      textAlign: 'center' as const,
+      display: 'block', // Force display to override App.css
+      position: 'static' as const, // Override any positioning
+    },
+    title: {
+      fontSize: isMobile ? '20px' : '28px',
+      fontWeight: '600',
+      color: '#111827',
+      margin: 0,
+    },
+    subtitle: {
+      color: '#6b7280',
+      margin: '8px 0 0 0',
+      fontSize: isMobile ? '14px' : '16px',
+    },
+    main: {
+      maxWidth: isMobile ? 'none' : '800px',
+      margin: '0 auto',
+      padding: isMobile ? '16px' : '32px 24px',
+    },
+    backButton: {
+      backgroundColor: '#6b7280',
+      color: 'white',
+      padding: isMobile ? '10px 16px' : '12px 24px',
+      border: 'none',
+      borderRadius: '8px',
+      fontSize: isMobile ? '14px' : '16px',
+      fontWeight: '500',
+      cursor: 'pointer',
+      marginBottom: isMobile ? '16px' : '24px',
+      width: isMobile ? '100%' : 'auto',
+      minHeight: 'auto', // Override App.css button styles
+      minWidth: 'auto', // Override App.css button styles
+    },
+    grid: {
+      display: 'grid',
+      gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(350px, 1fr))',
+      gap: isMobile ? '12px' : '16px',
+    },
+    sectionButton: {
+      backgroundColor: 'white',
+      borderRadius: isMobile ? '8px' : '12px',
+      padding: isMobile ? '16px' : '24px',
+      textAlign: 'left' as const,
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+      width: '100%',
+      minHeight: 'auto', // Override App.css
+      minWidth: 'auto', // Override App.css
+      display: 'block',
+      position: 'relative' as const,
+    },
+    sectionTitle: {
+      fontSize: isMobile ? '16px' : '18px',
+      fontWeight: '600',
+      margin: '0 0 8px 0',
+      display: 'flex',
+      alignItems: 'center',
+      flexWrap: 'wrap' as const,
+      gap: '8px',
+    },
+    configurableBadge: {
+      fontSize: '12px',
+      backgroundColor: '#10b981',
+      color: 'white',
+      padding: '2px 6px',
+      borderRadius: '4px',
+      fontWeight: '500',
+    },
+    sectionDescription: {
+      fontSize: isMobile ? '13px' : '14px',
+      margin: 0,
+      opacity: 0.8,
+      lineHeight: '1.4',
+    },
+    mobileHelp: {
+      backgroundColor: '#f0f9ff',
+      border: '2px solid #3b82f6',
+      borderRadius: '8px',
+      padding: '16px',
+      marginTop: '24px',
+      textAlign: 'center' as const,
+    },
+    helpTitle: {
+      fontSize: '14px',
+      fontWeight: '600',
+      color: '#1e40af',
+      margin: '0 0 8px 0',
+    },
+    helpText: {
+      color: '#1e40af',
+      fontSize: '13px',
+      margin: 0,
+      lineHeight: '1.4',
+    },
+  };
 
-  // Fixed the conditional logic here
-  if (showNextStepsCommentSelector) {
-    return (
-      <NextStepsCommentSelector
-        onSelectComment={handleSelectNextStepsComment}
-        onBack={() => setShowNextStepsCommentSelector(false)}
-      />
-    );
-  }
-
+  // Show specific comment selectors
   if (showRatedCommentSelector) {
     return (
       <RatedCommentSelector
@@ -208,116 +290,110 @@ function SectionSelector({ onSelectSection, onBack }: SectionSelectorProps) {
     );
   }
 
+  if (showNextStepsCommentSelector) {
+    return (
+      <NextStepsCommentSelector
+        onSelectComment={handleSelectNextStepsComment}
+        onBack={() => setShowNextStepsCommentSelector(false)}
+      />
+    );
+  }
+
+  if (showQualitiesCommentSelector) {
+    return (
+      <QualitiesCommentSelector
+        onSelectComment={handleSelectQualitiesComment}
+        onBack={() => setShowQualitiesCommentSelector(false)}
+      />
+    );
+  }
+
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
-      <header style={{ 
-        backgroundColor: 'white', 
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-        padding: '32px 24px',
-        textAlign: 'center'
-      }}>
-        <h1 style={{ 
-          fontSize: '28px', 
-          fontWeight: '600', 
-          color: '#111827',
-          margin: 0
-        }}>
-          Add Section
-        </h1>
-        <p style={{ 
-          color: '#6b7280', 
-          margin: '8px 0 0 0',
-          fontSize: '16px'
-        }}>
+    <div style={styles.container}>
+      <div style={styles.header}>
+        <h1 style={styles.title}>Add Section</h1>
+        <p style={styles.subtitle}>
           Choose the type of section to add to your template
         </p>
-      </header>
+      </div>
 
-      <main style={{ 
-        maxWidth: '800px', 
-        margin: '0 auto', 
-        padding: '32px 24px' 
-      }}>
-        
-        <button 
-          onClick={onBack}
-          style={{
-            backgroundColor: '#6b7280',
-            color: 'white',
-            padding: '12px 24px',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '16px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            marginBottom: '24px'
-          }}>
+      <div style={styles.main}>
+        <button onClick={onBack} style={styles.backButton}>
           ← Back to Template Builder
         </button>
 
-        {/* Section Options */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', 
-          gap: '16px' 
-        }}>
+        {/* Section Options - Responsive Grid */}
+        <div style={styles.grid}>
           {sections.map((section) => (
             <button
               key={section.type}
               onClick={() => handleSectionClick(section.type)}
               style={{
-                backgroundColor: 'white',
+                ...styles.sectionButton,
                 border: `2px solid ${section.color}`,
-                borderRadius: '12px',
-                padding: '24px',
-                textAlign: 'left',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = section.color;
-                e.currentTarget.style.color = 'white';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                if (!isMobile) {
+                  const target = e.currentTarget as HTMLButtonElement;
+                  target.style.backgroundColor = section.color;
+                  target.style.color = 'white';
+                  target.style.transform = 'translateY(-2px)';
+                  target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'white';
-                e.currentTarget.style.color = '#111827';
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+                if (!isMobile) {
+                  const target = e.currentTarget as HTMLButtonElement;
+                  target.style.backgroundColor = 'white';
+                  target.style.color = '#111827';
+                  target.style.transform = 'translateY(0)';
+                  target.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)';
+                }
+              }}
+              // Mobile touch feedback
+              onTouchStart={(e) => {
+                if (isMobile) {
+                  const target = e.currentTarget as HTMLButtonElement;
+                  target.style.backgroundColor = section.color;
+                  target.style.color = 'white';
+                }
+              }}
+              onTouchEnd={(e) => {
+                if (isMobile) {
+                  const target = e.currentTarget as HTMLButtonElement;
+                  setTimeout(() => {
+                    target.style.backgroundColor = 'white';
+                    target.style.color = '#111827';
+                  }, 150);
+                }
               }}
             >
-              <h3 style={{ 
-                fontSize: '18px', 
-                fontWeight: '600', 
-                margin: '0 0 8px 0'
-              }}>
+              <h3 style={styles.sectionTitle}>
                 {section.title}
-                {(section.type === 'rated-comment' || section.type === 'standard-comment' || section.type === 'assessment-comment' || section.type === 'personalised-comment' || section.type === 'next-steps' || section.type === 'qualities') && (
-                  <span style={{ 
-                    fontSize: '12px',
-                    backgroundColor: '#10b981',
-                    color: 'white',
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    marginLeft: '8px'
-                  }}>
-                    Configurable
-                  </span>
+                {(section.type === 'rated-comment' || 
+                  section.type === 'standard-comment' || 
+                  section.type === 'assessment-comment' || 
+                  section.type === 'personalised-comment' || 
+                  section.type === 'next-steps' || 
+                  section.type === 'qualities') && (
+                  <span style={styles.configurableBadge}>Configurable</span>
                 )}
               </h3>
-              <p style={{ 
-                fontSize: '14px', 
-                margin: 0,
-                opacity: 0.8
-              }}>
-                {section.description}
-              </p>
+              <p style={styles.sectionDescription}>{section.description}</p>
             </button>
           ))}
         </div>
-      </main>
+
+        {/* Mobile Help Text */}
+        {isMobile && (
+          <div style={styles.mobileHelp}>
+            <h3 style={styles.helpTitle}>💡 Tip</h3>
+            <p style={styles.helpText}>
+              Sections with "Configurable" badges can be customized with your own comments and options. Others are ready to use immediately.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

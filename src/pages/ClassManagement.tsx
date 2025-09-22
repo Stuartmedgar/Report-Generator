@@ -1,14 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import CreateClass from '../components/CreateClass';
 import ClassDetail from '../components/ClassDetail';
+import MobileClassManagement from '../components/MobileClassManagement';
 
 export default function ClassManagement() {
   const navigate = useNavigate();
   const { state, deleteClass } = useData();
   const [showCreateClass, setShowCreateClass] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleCreateClassComplete = () => {
     setShowCreateClass(false);
@@ -94,6 +105,17 @@ export default function ClassManagement() {
     }
   }
 
+  // Mobile view
+  if (isMobile) {
+    return (
+      <MobileClassManagement 
+        onViewClass={handleViewClass}
+        onCreateClass={() => setShowCreateClass(true)}
+      />
+    );
+  }
+
+  // Desktop view - PRESERVED EXACTLY AS ORIGINAL
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       {/* Header with consistent layout */}

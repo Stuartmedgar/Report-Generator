@@ -1,16 +1,34 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { Template } from '../types';
+import MobileManageTemplates from '../components/MobileManageTemplates';
 
 export default function ManageTemplates() {
   const navigate = useNavigate();
   const { state, deleteTemplate, addTemplate } = useData();
   const [isImporting, setIsImporting] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Google Drive folder URL - Replace this with your actual folder URL
   const TEMPLATE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1Kc0O9QSqpHCBUuDfcMcjk2gAfNtbPPnf?usp=drive_link';
+
+  // Mobile detection
+  useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    checkIfMobile();
+    window.addEventListener('resize', checkIfMobile);
+    return () => window.removeEventListener('resize', checkIfMobile);
+  }, []);
+
+  // If mobile, render the dedicated mobile component
+  if (isMobile) {
+    return <MobileManageTemplates />;
+  }
 
   const handleEdit = (template: Template) => {
     // For now, navigate to create template - you might want to add an edit mode
@@ -218,7 +236,6 @@ export default function ManageTemplates() {
               </button>
             </Link>
 
-            {/* NEW: Browse Templates Button */}
             <button
               onClick={handleBrowseTemplates}
               style={{
@@ -236,7 +253,7 @@ export default function ManageTemplates() {
               }}
               title="Browse our template library on Google Drive"
             >
-              📚 Browse Templates
+              Browse Templates
             </button>
 
             <button
@@ -262,7 +279,7 @@ export default function ManageTemplates() {
       <main style={{ 
         maxWidth: '1200px', 
         margin: '0 auto', 
-        padding: '32px 24px' 
+        padding: '32px 24px'
       }}>
 
         {/* Hidden file input for imports */}
@@ -273,66 +290,6 @@ export default function ManageTemplates() {
           onChange={handleFileSelect}
           style={{ display: 'none' }}
         />
-
-        {/* NEW: Template Library Info Section */}
-        <div style={{
-          backgroundColor: '#fefce8',
-          border: '2px solid #facc15',
-          borderRadius: '12px',
-          padding: '20px',
-          marginBottom: '24px'
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            flexWrap: 'wrap'
-          }}>
-            <div style={{ flex: 1, minWidth: '300px' }}>
-              <h3 style={{ 
-                fontSize: '18px', 
-                fontWeight: '600', 
-                color: '#92400e',
-                margin: '0 0 8px 0',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                📚 Template Library
-              </h3>
-              <p style={{ 
-                color: '#92400e', 
-                fontSize: '14px',
-                margin: '0 0 16px 0',
-                lineHeight: '1.5'
-              }}>
-                Access our growing collection of ready-made templates for all subjects and year groups. 
-                Find templates for Science, Maths, English, Languages, and more!
-              </p>
-            </div>
-            <div>
-              <button
-                onClick={handleBrowseTemplates}
-                style={{
-                  backgroundColor: '#92400e',
-                  color: 'white',
-                  padding: '12px 24px',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                🔗 Open Template Library
-              </button>
-            </div>
-          </div>
-        </div>
 
         {/* Templates List */}
         <div style={{
@@ -366,7 +323,7 @@ export default function ManageTemplates() {
                 No templates yet
               </h3>
               <p style={{ marginBottom: '24px' }}>
-                Get started by creating your first template or browsing our template library.
+                Get started by creating your first template or browse our template library.
               </p>
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <Link to="/create-template" style={{ textDecoration: 'none' }}>
@@ -467,7 +424,7 @@ export default function ManageTemplates() {
                         )}
                       </div>
                     </div>
-                    
+
                     <div style={{
                       display: 'flex',
                       gap: '8px',
@@ -502,7 +459,7 @@ export default function ManageTemplates() {
                           cursor: 'pointer'
                         }}
                       >
-                        📤 Export
+                        📤 Share
                       </button>
                       
                       <button
@@ -570,7 +527,7 @@ export default function ManageTemplates() {
             You can also import templates that others have shared with you.
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link to="/write-reports" style={{ textDecoration: 'none' }}>
+            <Link to="/create-template" style={{ textDecoration: 'none' }}>
               <button style={{
                 backgroundColor: '#3b82f6',
                 color: 'white',
@@ -581,21 +538,7 @@ export default function ManageTemplates() {
                 fontWeight: '500',
                 cursor: 'pointer'
               }}>
-                Start Writing Reports
-              </button>
-            </Link>
-            <Link to="/class-management" style={{ textDecoration: 'none' }}>
-              <button style={{
-                backgroundColor: '#10b981',
-                color: 'white',
-                padding: '8px 16px',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '14px',
-                fontWeight: '500',
-                cursor: 'pointer'
-              }}>
-                Manage Classes
+                Create New Template
               </button>
             </Link>
           </div>

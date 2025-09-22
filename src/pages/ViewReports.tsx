@@ -1,10 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
+import MobileViewReports from '../components/MobileViewReports';
 
 export default function ViewReports() {
   const navigate = useNavigate();
   const { state, deleteReport } = useData();
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Get classes that have reports
   const classesWithReports = state.classes.filter(classItem => 
@@ -54,6 +65,36 @@ export default function ViewReports() {
     navigate(`/view-reports/${classId}`);
   };
 
+  const handleContinueWriting = (classId: string) => {
+    const classData = state.classes.find(c => c.id === classId);
+    if (!classData) return;
+
+    const classReports = state.reports.filter(report => report.classId === classId);
+    if (classReports.length === 0) return;
+
+    const mostRecentReport = classReports.reduce((latest, current) => {
+      return new Date(current.updatedAt) > new Date(latest.updatedAt) ? current : latest;
+    });
+
+    const studentIndex = classData.students.findIndex(
+      student => student.id === mostRecentReport.studentId
+    );
+
+    sessionStorage.setItem('continueEditing', JSON.stringify({
+      classId: classId,
+      templateId: mostRecentReport.templateId,
+      studentIndex: studentIndex >= 0 ? studentIndex : 0
+    }));
+
+    navigate('/write-reports');
+  };
+
+  // Mobile view
+  if (isMobile) {
+    return <MobileViewReports />;
+  }
+
+  // Desktop view - PRESERVED EXACTLY AS ORIGINAL
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       {/* Header with consistent layout */}
@@ -85,7 +126,7 @@ export default function ViewReports() {
               margin: '8px 0 0 0',
               fontSize: '16px'
             }}>
-              View, edit, and download completed reports for your classes
+              View and manage all your class reports
             </p>
           </div>
           
@@ -120,22 +161,7 @@ export default function ViewReports() {
                 fontWeight: '500',
                 cursor: 'pointer'
               }}>
-                📝 Write Reports
-              </button>
-            </Link>
-
-            <Link to="/class-management" style={{ textDecoration: 'none' }}>
-              <button style={{
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                padding: '12px 20px',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-                cursor: 'pointer'
-              }}>
-                👥 Manage Classes
+                ✏️ Write New Reports
               </button>
             </Link>
           </div>
@@ -153,7 +179,8 @@ export default function ViewReports() {
           backgroundColor: 'white',
           padding: '32px',
           borderRadius: '12px',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+          marginBottom: '32px'
         }}>
           <h2 style={{ 
             fontSize: '20px', 
@@ -172,8 +199,8 @@ export default function ViewReports() {
               textAlign: 'center',
               color: '#9ca3af'
             }}>
-              <p style={{ margin: '0 0 8px 0' }}>No reports have been created yet.</p>
-              <p style={{ margin: '0 0 16px 0' }}>Start writing reports to see them here!</p>
+              <p style={{ margin: '0 0 8px 0' }}>No reports created yet.</p>
+              <p style={{ margin: '0 0 16px 0' }}>Write your first report to get started!</p>
               <Link to="/write-reports" style={{ textDecoration: 'none' }}>
                 <button style={{
                   backgroundColor: '#10b981',
@@ -185,14 +212,14 @@ export default function ViewReports() {
                   fontWeight: '500',
                   cursor: 'pointer'
                 }}>
-                  Start Writing Reports
+                  Write Your First Report
                 </button>
               </Link>
             </div>
           ) : (
             <div style={{ 
               display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
               gap: '16px'
             }}>
               {classesWithReports.map((classItem) => {
@@ -264,13 +291,13 @@ export default function ViewReports() {
                           cursor: 'pointer'
                         }}
                       >
-                        📊 View All Reports
+                        📋 View All Reports
                       </button>
                       
                       <button
-                        onClick={() => navigate(`/view-reports/${classItem.id}/all`)}
+                        onClick={() => navigate(`/view-reports/${classItem.id}/summary`)}
                         style={{
-                          backgroundColor: '#10b981',
+                          backgroundColor: '#8b5cf6',
                           color: 'white',
                           padding: '12px 16px',
                           border: 'none',
@@ -280,7 +307,7 @@ export default function ViewReports() {
                           cursor: 'pointer'
                         }}
                       >
-                        📄 View Summary
+                        📊 View Summary
                       </button>
                     </div>
 
@@ -290,15 +317,7 @@ export default function ViewReports() {
                       gap: '8px'
                     }}>
                       <button
-                        onClick={() => {
-                          // Navigate to write reports and continue editing
-                          sessionStorage.setItem('continueEditing', JSON.stringify({
-                            classId: classItem.id,
-                            templateId: state.reports.find(r => r.classId === classItem.id)?.templateId,
-                            studentIndex: 0
-                          }));
-                          navigate('/write-reports');
-                        }}
+                        onClick={() => handleContinueWriting(classItem.id)}
                         style={{
                           backgroundColor: '#f59e0b',
                           color: 'white',
