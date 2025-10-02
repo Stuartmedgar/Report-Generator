@@ -33,7 +33,7 @@ export const useReportLogic = ({
         const initialData: Record<string, any> = {};
         template.sections.forEach((section: any) => {
           const showHeader = section.data.showHeader !== undefined ?
-            section.data.showHeader : true;
+            section.data.showHeader : false;
           initialData[section.id] = { 
             showHeader,
             ...section.data 
@@ -180,7 +180,7 @@ export const useReportLogic = ({
     allSections.forEach((section: any) => {
       const data = sectionData[section.id] || {};
       const showHeader = data.showHeader !== undefined ? data.showHeader : section.data?.showHeader !== undefined ?
-        section.data.showHeader : true;
+        section.data.showHeader : false;
 
       switch (section.type) {
         case 'rated-comment':
@@ -196,13 +196,13 @@ export const useReportLogic = ({
             console.log('Generated rated comment content:', processedComment); // DEBUG
           }
           break;
-          
+
         case 'assessment-comment':
           if (data.performance && data.performance !== 'no-comment') {
             if (showHeader && section.name) {
               content += `${section.name}: `;
             }
-            
+
             // Use custom edited comment if available, otherwise use selected comment
             const comment = data.customEditedComment || data.selectedComment || '[No comment selected]';
             const processedComment = comment.replace(/\[Name\]/g, currentStudent.firstName);
@@ -250,18 +250,18 @@ export const useReportLogic = ({
           break;
 
         case 'standard-comment':
-          if (data.content && data.content.trim()) {
+          // FIXED: Check for template content OR user-edited content
+          // Template content is in section.data.content
+          // User might override with data.comment
+          const standardContent = data.comment || section.data?.content;
+          
+          if (standardContent && standardContent.trim()) {
             if (showHeader && section.name) {
               content += `${section.name}: `;
             }
-            const processedComment = data.content.replace(/\[Name\]/g, currentStudent.firstName);
+            const processedComment = standardContent.replace(/\[Name\]/g, currentStudent.firstName);
             content += processedComment + ' ';
-          } else if (section.data?.content) {
-            if (showHeader && section.name) {
-              content += `${section.name}: `;
-            }
-            const processedComment = section.data.content.replace(/\[Name\]/g, currentStudent.firstName);
-            content += processedComment + ' ';
+            console.log('Generated standard comment content:', processedComment); // DEBUG
           }
           break;
 

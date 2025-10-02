@@ -52,6 +52,17 @@ const CreateTemplate: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // SCROLL FIX: Ensure body can scroll when editing template
+  useEffect(() => {
+    document.body.style.overflow = 'auto';
+    document.documentElement.style.overflow = 'auto';
+    
+    return () => {
+      document.body.style.overflow = 'auto';
+      document.documentElement.style.overflow = 'auto';
+    };
+  }, []);
+
   // If mobile, use mobile component - AFTER all hooks are called
   if (isMobile) {
     return <MobileCreateTemplate />;
@@ -308,7 +319,13 @@ const CreateTemplate: React.FC = () => {
 
   // Main desktop template builder interface
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+    <div style={{ 
+      minHeight: '100vh', 
+      backgroundColor: '#f9fafb',
+      height: '100vh',
+      overflowY: 'auto',
+      position: 'relative'
+    }}>
       {/* Header */}
       <header style={{ 
         backgroundColor: 'white', 
@@ -335,45 +352,40 @@ const CreateTemplate: React.FC = () => {
             </h1>
             <p style={{ 
               color: '#6b7280', 
-              margin: '4px 0 0 0',
+              margin: '8px 0 0 0',
               fontSize: '16px'
             }}>
               {templateName || 'Untitled Template'}
             </p>
           </div>
           
-          <div style={{ 
-            display: 'flex', 
-            gap: '12px', 
-            alignItems: 'center', 
-            flexWrap: 'wrap'
-          }}>
-            <Link
-              to="/manage-templates"
-              style={{
-                padding: '12px 24px',
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
+              <button style={{
                 backgroundColor: '#f3f4f6',
                 color: '#374151',
-                textDecoration: 'none',
+                padding: '12px 24px',
+                border: 'none',
                 borderRadius: '8px',
-                fontWeight: '600',
-                fontSize: '16px'
-              }}
-            >
-              Cancel
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}>
+                Cancel
+              </button>
             </Link>
             
             <button
               onClick={handleSaveTemplate}
               style={{
-                padding: '12px 24px',
                 backgroundColor: '#3b82f6',
                 color: 'white',
+                padding: '12px 24px',
                 border: 'none',
                 borderRadius: '8px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                fontSize: '16px'
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer'
               }}
             >
               {isEditing ? 'Update Template' : 'Save Template'}
@@ -382,19 +394,21 @@ const CreateTemplate: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Content - Single Column Layout */}
-      <main style={{
-        maxWidth: '800px',
-        margin: '0 auto',
-        padding: '32px 24px'
+      <main style={{ 
+        maxWidth: '1200px', 
+        margin: '0 auto', 
+        padding: '32px 24px',
+        paddingBottom: '100px',
+        width: '100%',
+        boxSizing: 'border-box'
       }}>
-        
         {/* Template Sections */}
         <div style={{
           backgroundColor: 'white',
           border: '2px solid #e5e7eb',
           borderRadius: '12px',
-          padding: '24px'
+          padding: '24px',
+          marginBottom: '24px'
         }}>
           <div style={{ 
             display: 'flex', 
@@ -434,33 +448,18 @@ const CreateTemplate: React.FC = () => {
           {sections.length === 0 ? (
             <div style={{
               textAlign: 'center',
-              padding: '60px 40px',
+              padding: '48px 20px',
               color: '#6b7280',
               backgroundColor: '#f9fafb',
               borderRadius: '8px',
               border: '2px dashed #d1d5db'
             }}>
               <p style={{ 
-                fontSize: '16px', 
+                fontSize: '14px', 
                 margin: '0 0 16px 0' 
               }}>
                 No sections added yet. Click "Add Section" to get started!
               </p>
-              <button
-                onClick={() => setShowSectionSelector(true)}
-                style={{
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  padding: '10px 20px',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: 'pointer'
-                }}
-              >
-                Add Your First Section
-              </button>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -468,49 +467,39 @@ const CreateTemplate: React.FC = () => {
                 <div
                   key={section.id}
                   style={{
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
                     padding: '16px',
-                    backgroundColor: '#f9fafb',
+                    border: `2px solid ${getSectionColor(section.type)}`,
+                    borderRadius: '8px',
+                    backgroundColor: 'white',
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '8px'
+                    alignItems: 'center'
                   }}
                 >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <h3 style={{
-                      fontSize: '16px',
+                  <div style={{ flex: 1 }}>
+                    <div style={{
+                      fontSize: '14px',
                       fontWeight: '600',
                       color: '#111827',
-                      margin: '0 0 4px 0'
+                      marginBottom: '4px'
                     }}>
-                      {section.name}
-                    </h3>
+                      {section.name || getSectionDisplayName(section.type)}
+                    </div>
                     <div style={{
-                      display: 'inline-block',
-                      backgroundColor: getSectionColor(section.type),
-                      color: 'white',
-                      padding: '2px 8px',
-                      borderRadius: '12px',
                       fontSize: '12px',
-                      fontWeight: '500'
+                      color: '#6b7280'
                     }}>
                       {getSectionDisplayName(section.type)}
                     </div>
                   </div>
-                  
-                  <div style={{
-                    display: 'flex',
-                    gap: '6px',
-                    alignItems: 'center'
-                  }}>
-                    {/* Move buttons */}
+
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {/* Move up button */}
                     <button
                       onClick={() => handleMoveSection(index, 'up')}
                       disabled={index === 0}
                       style={{
-                        padding: '4px 8px',
+                        padding: '6px 12px',
                         backgroundColor: index === 0 ? '#f3f4f6' : '#e5e7eb',
                         color: index === 0 ? '#9ca3af' : '#374151',
                         border: 'none',
@@ -521,11 +510,13 @@ const CreateTemplate: React.FC = () => {
                     >
                       ↑
                     </button>
+
+                    {/* Move down button */}
                     <button
                       onClick={() => handleMoveSection(index, 'down')}
                       disabled={index === sections.length - 1}
                       style={{
-                        padding: '4px 8px',
+                        padding: '6px 12px',
                         backgroundColor: index === sections.length - 1 ? '#f3f4f6' : '#e5e7eb',
                         color: index === sections.length - 1 ? '#9ca3af' : '#374151',
                         border: 'none',
@@ -578,7 +569,7 @@ const CreateTemplate: React.FC = () => {
         </div>
       </main>
 
-      {/* Section Selector Modal */}
+      {/* Section Selector Modal - FIXED: Much larger modal */}
       {showSectionSelector && (
         <div style={{
           position: 'fixed',
@@ -591,15 +582,15 @@ const CreateTemplate: React.FC = () => {
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 1000,
-          padding: '40px'
+          padding: '20px'
         }}>
           <div style={{
             backgroundColor: 'white',
             borderRadius: '12px',
             padding: '32px',
-            maxWidth: '600px',
-            width: '100%',
-            maxHeight: '80vh',
+            maxWidth: '1200px',
+            width: '95%',
+            maxHeight: '90vh',
             overflowY: 'auto'
           }}>
             <SectionSelector
@@ -767,48 +758,41 @@ const CreateTemplate: React.FC = () => {
                 onChange={(e) => setStandardCommentContent(e.target.value)}
                 style={{
                   width: '100%',
-                  height: '150px',
                   padding: '10px',
                   border: '1px solid #d1d5db',
                   borderRadius: '6px',
                   fontSize: '14px',
-                  resize: 'vertical',
-                  boxSizing: 'border-box'
+                  minHeight: '120px',
+                  boxSizing: 'border-box',
+                  fontFamily: 'inherit',
+                  resize: 'vertical'
                 }}
-                placeholder="Enter comment content..."
+                placeholder="Enter the comment text..."
               />
             </div>
 
-            <div style={{
-              display: 'flex',
-              gap: '12px',
-              justifyContent: 'flex-end'
-            }}>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button
-                onClick={() => {
-                  setEditingSection(null);
-                  setShowStandardCommentEditor(false);
-                }}
+                onClick={handleCancelEdit}
                 style={{
                   padding: '10px 20px',
                   backgroundColor: '#f3f4f6',
                   color: '#374151',
                   border: 'none',
                   borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
                 }}
               >
                 Cancel
               </button>
               <button
                 onClick={() => {
-                  if (standardCommentName.trim() && standardCommentContent.trim()) {
-                    handleSaveEditedSection({
-                      name: standardCommentName.trim(),
-                      data: { content: standardCommentContent.trim() }
-                    });
-                  }
+                  handleSaveEditedSection({
+                    name: standardCommentName,
+                    content: standardCommentContent
+                  });
                 }}
                 style={{
                   padding: '10px 20px',
@@ -816,8 +800,9 @@ const CreateTemplate: React.FC = () => {
                   color: 'white',
                   border: 'none',
                   borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
                 }}
               >
                 Save Changes

@@ -25,7 +25,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
   const enhancedUpdateSectionData = (sectionId: string, newData: any) => {
     // If showHeader is not set in newData, use template default or true
     if (newData.showHeader === undefined) {
-      const headerDefault = section.data?.showHeader !== undefined ? section.data.showHeader : true;
+      const headerDefault = section.data?.showHeader !== undefined ? section.data.showHeader : false;
       newData.showHeader = headerDefault;
     }
     updateSectionData(sectionId, newData);
