@@ -84,7 +84,7 @@ const MobileCreateTemplate: React.FC = () => {
   };
 
   // Handle adding new sections
-  const handleAddSection = (sectionType: string, sectionDataInput?: any) => {
+  const handleAddSection = (sectionType: string, sectionDataInput: any) => {
     const newSection: TemplateSection = {
       id: `section-${Date.now()}`,
       type: sectionType as any,
@@ -158,87 +158,73 @@ const MobileCreateTemplate: React.FC = () => {
     navigate('/manage-templates');
   };
 
-  // Get section display name
-  const getSectionDisplayName = (type: string): string => {
-    const nameMap: Record<string, string> = {
-      'rated-comment': 'Rated Comment',
-      'standard-comment': 'Standard Comment',
-      'assessment-comment': 'Assessment Comment',
-      'personalised-comment': 'Personalised Comment',
-      'next-steps': 'Next Steps',
-      'new-line': 'New Line'
-    };
-    return nameMap[type] || type;
-  };
-
-  // Get section color
-  const getSectionColor = (type: string): string => {
-    const colorMap: Record<string, string> = {
-      'rated-comment': '#3b82f6',
-      'standard-comment': '#10b981',
-      'assessment-comment': '#8b5cf6',
-      'personalised-comment': '#f59e0b',
-      'next-steps': '#06b6d4',
-      'new-line': '#6b7280'
-    };
-    return colorMap[type] || '#6b7280';
-  };
-
-  // Show naming step if needed
+  // Naming step screen
   if (isNamingStep) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', alignItems: 'center', padding: '16px' }}>
-        <div style={{ 
-          width: '100%',
-          margin: '0 auto', 
-          backgroundColor: 'white', 
-          padding: '24px', 
-          borderRadius: '12px', 
-          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' 
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#f9fafb',
+        padding: '20px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '24px',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
         }}>
-          <h1 style={{ 
-            textAlign: 'center', 
-            fontSize: '24px', 
-            fontWeight: '600', 
-            color: '#111827', 
-            marginBottom: '8px' 
+          <h1 style={{
+            fontSize: '24px',
+            fontWeight: '600',
+            color: '#111827',
+            marginBottom: '8px',
+            textAlign: 'center'
           }}>
             Create New Template
           </h1>
-          <p style={{ 
-            textAlign: 'center', 
-            color: '#6b7280', 
-            marginBottom: '32px',
-            fontSize: '14px'
+          <p style={{
+            fontSize: '14px',
+            color: '#6b7280',
+            marginBottom: '24px',
+            textAlign: 'center'
           }}>
-            Start by giving your template a name
+            Let's start by giving your template a name
           </p>
-          
-          <div style={{ marginBottom: '24px' }}>
+
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '6px'
+            }}>
+              Template Name
+            </label>
             <input
               type="text"
+              placeholder="e.g., Year 3 End of Term Report"
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
               onKeyPress={handleNamingKeyPress}
-              placeholder="Enter template name..."
+              autoFocus
               style={{
                 width: '100%',
                 padding: '12px',
-                fontSize: '16px',
                 border: '2px solid #e5e7eb',
                 borderRadius: '8px',
-                textAlign: 'center',
+                fontSize: '14px',
                 boxSizing: 'border-box'
               }}
-              autoFocus
             />
           </div>
-          
-          <div style={{ 
-            display: 'flex', 
-            gap: '12px', 
-            justifyContent: 'center',
-            flexDirection: 'column'
+
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px'
           }}>
             <button
               onClick={handleContinueFromNaming}
@@ -408,65 +394,40 @@ const MobileCreateTemplate: React.FC = () => {
               }}>
                 No sections added yet. Click "Add Section" to get started!
               </p>
-              <button
-                onClick={() => setShowSectionSelector(true)}
-                style={{
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  padding: '12px 24px',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: 'pointer'
-                }}
-              >
-                Add Your First Section
-              </button>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {sections.map((section, index) => (
-                <div
+                <div 
                   key={section.id}
                   style={{
+                    backgroundColor: '#f9fafb',
                     border: '1px solid #e5e7eb',
                     borderRadius: '8px',
-                    padding: '12px',
-                    backgroundColor: '#f9fafb',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    flexDirection: 'column',
-                    gap: '12px'
+                    padding: '12px'
                   }}
                 >
-                  <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
-                    <h3 style={{
-                      fontSize: '14px',
-                      fontWeight: '600',
+                  <div style={{ marginBottom: '8px' }}>
+                    <h3 style={{ 
+                      fontSize: '14px', 
+                      fontWeight: '600', 
                       color: '#111827',
                       margin: '0 0 4px 0'
                     }}>
                       {section.name}
                     </h3>
-                    <div style={{
-                      display: 'inline-block',
-                      backgroundColor: getSectionColor(section.type),
-                      color: 'white',
-                      padding: '2px 8px',
-                      borderRadius: '12px',
-                      fontSize: '12px',
-                      fontWeight: '500'
+                    <p style={{ 
+                      fontSize: '12px', 
+                      color: '#6b7280',
+                      margin: 0
                     }}>
-                      {getSectionDisplayName(section.type)}
-                    </div>
+                      {section.type.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </p>
                   </div>
-                  
+
                   <div style={{
                     display: 'flex',
-                    gap: '6px',
-                    alignItems: 'center',
+                    gap: '8px',
                     width: '100%'
                   }}>
                     {/* Edit button */}
@@ -543,7 +504,7 @@ const MobileCreateTemplate: React.FC = () => {
         </div>
       )}
 
-      {/* Comment Builder Modals */}
+      {/* Comment Builder Modals - FIXED: Added scrollable wrapper */}
       {showRatedCommentBuilder && editingSection && (
         <div style={{
           position: 'fixed',
@@ -552,16 +513,27 @@ const MobileCreateTemplate: React.FC = () => {
           right: 0,
           bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          zIndex: 1000
+          zIndex: 1000,
+          overflow: 'auto'
         }}>
-          <RatedCommentBuilder
-            existingComment={editingSection.section.data}
-            onSave={handleSaveEditedSection}
-            onCancel={() => {
-              setEditingSection(null);
-              setShowRatedCommentBuilder(false);
-            }}
-          />
+          <div style={{
+            minHeight: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}>
+            <div style={{ width: '100%', maxWidth: '900px' }}>
+              <RatedCommentBuilder
+                existingComment={editingSection.section.data}
+                onSave={handleSaveEditedSection}
+                onCancel={() => {
+                  setEditingSection(null);
+                  setShowRatedCommentBuilder(false);
+                }}
+              />
+            </div>
+          </div>
         </div>
       )}
 
@@ -573,16 +545,27 @@ const MobileCreateTemplate: React.FC = () => {
           right: 0,
           bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          zIndex: 1000
+          zIndex: 1000,
+          overflow: 'auto'
         }}>
-          <AssessmentCommentBuilder
-            existingComment={editingSection.section.data}
-            onSave={handleSaveEditedSection}
-            onCancel={() => {
-              setEditingSection(null);
-              setShowAssessmentCommentBuilder(false);
-            }}
-          />
+          <div style={{
+            minHeight: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}>
+            <div style={{ width: '100%', maxWidth: '900px' }}>
+              <AssessmentCommentBuilder
+                existingComment={editingSection.section.data}
+                onSave={handleSaveEditedSection}
+                onCancel={() => {
+                  setEditingSection(null);
+                  setShowAssessmentCommentBuilder(false);
+                }}
+              />
+            </div>
+          </div>
         </div>
       )}
 
@@ -594,16 +577,27 @@ const MobileCreateTemplate: React.FC = () => {
           right: 0,
           bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          zIndex: 1000
+          zIndex: 1000,
+          overflow: 'auto'
         }}>
-          <PersonalisedCommentBuilder
-            existingComment={editingSection.section.data}
-            onSave={handleSaveEditedSection}
-            onCancel={() => {
-              setEditingSection(null);
-              setShowPersonalisedCommentBuilder(false);
-            }}
-          />
+          <div style={{
+            minHeight: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}>
+            <div style={{ width: '100%', maxWidth: '900px' }}>
+              <PersonalisedCommentBuilder
+                existingComment={editingSection.section.data}
+                onSave={handleSaveEditedSection}
+                onCancel={() => {
+                  setEditingSection(null);
+                  setShowPersonalisedCommentBuilder(false);
+                }}
+              />
+            </div>
+          </div>
         </div>
       )}
 
@@ -615,16 +609,27 @@ const MobileCreateTemplate: React.FC = () => {
           right: 0,
           bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          zIndex: 1000
+          zIndex: 1000,
+          overflow: 'auto'
         }}>
-          <NextStepsCommentBuilder
-            existingComment={editingSection.section.data}
-            onSave={handleSaveEditedSection}
-            onCancel={() => {
-              setEditingSection(null);
-              setShowNextStepsCommentBuilder(false);
-            }}
-          />
+          <div style={{
+            minHeight: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}>
+            <div style={{ width: '100%', maxWidth: '900px' }}>
+              <NextStepsCommentBuilder
+                existingComment={editingSection.section.data}
+                onSave={handleSaveEditedSection}
+                onCancel={() => {
+                  setEditingSection(null);
+                  setShowNextStepsCommentBuilder(false);
+                }}
+              />
+            </div>
+          </div>
         </div>
       )}
 
@@ -647,7 +652,9 @@ const MobileCreateTemplate: React.FC = () => {
             backgroundColor: 'white',
             borderRadius: '12px',
             padding: '20px',
-            width: '100%'
+            width: '100%',
+            maxHeight: '80vh',
+            overflow: 'auto'
           }}>
             <h3 style={{
               fontSize: '18px',

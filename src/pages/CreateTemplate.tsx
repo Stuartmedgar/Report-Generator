@@ -114,7 +114,7 @@ const CreateTemplate: React.FC = () => {
   };
 
   // Handle adding new sections
-  const handleAddSection = (sectionType: string, sectionDataInput?: any) => {
+  const handleAddSection = (sectionType: string, sectionDataInput: any) => {
     const newSection: TemplateSection = {
       id: `section-${Date.now()}`,
       type: sectionType as any,
@@ -199,117 +199,91 @@ const CreateTemplate: React.FC = () => {
     navigate('/manage-templates');
   };
 
-  // Get section display name
-  const getSectionDisplayName = (type: string): string => {
-    const nameMap: Record<string, string> = {
-      'rated-comment': 'Rated Comment',
-      'standard-comment': 'Standard Comment',
-      'assessment-comment': 'Assessment Comment',
-      'personalised-comment': 'Personalised Comment',
-      'next-steps': 'Next Steps',
-      'new-line': 'New Line'
+  const handleSaveStandardComment = () => {
+    if (!standardCommentName.trim()) {
+      alert('Please enter a name for this section');
+      return;
+    }
+    if (!standardCommentContent.trim()) {
+      alert('Please enter content for this section');
+      return;
+    }
+
+    const standardCommentData = {
+      name: standardCommentName.trim(),
+      content: standardCommentContent.trim()
     };
-    return nameMap[type] || type;
+
+    handleSaveEditedSection(standardCommentData);
   };
 
-  // Get section color
-  const getSectionColor = (type: string): string => {
-    const colorMap: Record<string, string> = {
-      'rated-comment': '#3b82f6',
-      'standard-comment': '#10b981',
-      'assessment-comment': '#8b5cf6',
-      'personalised-comment': '#f59e0b',
-      'next-steps': '#06b6d4',
-      'new-line': '#6b7280'
-    };
-    return colorMap[type] || '#6b7280';
-  };
-
-  // Show naming step if needed
+  // Naming step screen
   if (isNamingStep) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', alignItems: 'center', padding: '24px' }}>
-        <div style={{ 
-          maxWidth: '600px', 
-          margin: '0 auto', 
-          backgroundColor: 'white', 
-          padding: '48px', 
-          borderRadius: '12px', 
-          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' 
-        }}>
-          <h1 style={{ 
-            textAlign: 'center', 
-            fontSize: '32px', 
-            fontWeight: '600', 
-            color: '#111827', 
-            marginBottom: '8px' 
-          }}>
+      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+        <div style={{ maxWidth: '500px', width: '100%', backgroundColor: 'white', borderRadius: '12px', padding: '48px', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
+          <h1 style={{ fontSize: '28px', fontWeight: '600', color: '#111827', marginBottom: '12px', textAlign: 'center' }}>
             Create New Template
           </h1>
-          <p style={{ 
-            textAlign: 'center', 
-            color: '#6b7280', 
-            marginBottom: '32px',
-            fontSize: '16px'
-          }}>
-            Start by giving your template a name
+          <p style={{ fontSize: '16px', color: '#6b7280', marginBottom: '32px', textAlign: 'center' }}>
+            Let's start by giving your template a name
           </p>
           
           <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+              Template Name
+            </label>
             <input
               type="text"
+              placeholder="e.g., Year 3 End of Term Report"
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
               onKeyPress={handleNamingKeyPress}
-              placeholder="Enter template name..."
+              autoFocus
               style={{
                 width: '100%',
-                padding: '16px',
-                fontSize: '18px',
+                padding: '12px 16px',
                 border: '2px solid #e5e7eb',
                 borderRadius: '8px',
-                textAlign: 'center',
+                fontSize: '16px',
                 boxSizing: 'border-box'
               }}
-              autoFocus
             />
           </div>
-          
-          <div style={{ 
-            display: 'flex', 
-            gap: '16px', 
-            justifyContent: 'center'
-          }}>
-            <Link
-              to="/"
-              style={{
-                padding: '16px 32px',
-                backgroundColor: '#6b7280',
-                color: 'white',
-                textDecoration: 'none',
+
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <Link to="/manage-templates" style={{ flex: 1, textDecoration: 'none' }}>
+              <button style={{
+                width: '100%',
+                backgroundColor: '#f3f4f6',
+                color: '#374151',
+                padding: '12px 24px',
+                border: 'none',
                 borderRadius: '8px',
-                fontWeight: '600',
-                textAlign: 'center',
-                fontSize: '16px'
-              }}
-            >
-              ← Back to Home
+                fontSize: '16px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}>
+                Cancel
+              </button>
             </Link>
+            
             <button
               onClick={handleContinueFromNaming}
               disabled={!templateName.trim()}
               style={{
-                padding: '16px 32px',
-                backgroundColor: templateName.trim() ? '#3b82f6' : '#9ca3af',
-                color: 'white',
+                flex: 1,
+                backgroundColor: templateName.trim() ? '#3b82f6' : '#e5e7eb',
+                color: templateName.trim() ? 'white' : '#9ca3af',
+                padding: '12px 24px',
                 border: 'none',
                 borderRadius: '8px',
-                fontWeight: '600',
-                cursor: templateName.trim() ? 'pointer' : 'not-allowed',
-                fontSize: '16px'
+                fontSize: '16px',
+                fontWeight: '500',
+                cursor: templateName.trim() ? 'pointer' : 'not-allowed'
               }}
             >
-              Continue to Add Sections
+              Continue
             </button>
           </div>
         </div>
@@ -317,33 +291,26 @@ const CreateTemplate: React.FC = () => {
     );
   }
 
-  // Main desktop template builder interface
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      backgroundColor: '#f9fafb',
-      height: '100vh',
-      overflowY: 'auto',
-      position: 'relative'
-    }}>
-      {/* Header */}
+    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       <header style={{ 
         backgroundColor: 'white', 
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-        padding: '32px 24px'
+        padding: '24px 32px',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100
       }}>
-        <div style={{
-          maxWidth: '1200px',
+        <div style={{ 
+          maxWidth: '1200px', 
           margin: '0 auto',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '16px'
+          alignItems: 'center'
         }}>
           <div>
             <h1 style={{ 
-              fontSize: '28px', 
+              fontSize: '24px', 
               fontWeight: '600', 
               color: '#111827',
               margin: 0
@@ -448,93 +415,109 @@ const CreateTemplate: React.FC = () => {
           {sections.length === 0 ? (
             <div style={{
               textAlign: 'center',
-              padding: '48px 20px',
-              color: '#6b7280',
-              backgroundColor: '#f9fafb',
-              borderRadius: '8px',
-              border: '2px dashed #d1d5db'
+              padding: '48px 24px',
+              color: '#9ca3af',
+              border: '2px dashed #e5e7eb',
+              borderRadius: '8px'
             }}>
-              <p style={{ 
-                fontSize: '14px', 
-                margin: '0 0 16px 0' 
-              }}>
-                No sections added yet. Click "Add Section" to get started!
-              </p>
+              <p style={{ fontSize: '18px', margin: '0 0 8px 0' }}>No sections yet</p>
+              <p style={{ fontSize: '14px', margin: 0 }}>Click "Add Section" to get started</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {sections.map((section, index) => (
-                <div
+                <div 
                   key={section.id}
                   style={{
-                    padding: '16px',
-                    border: `2px solid ${getSectionColor(section.type)}`,
+                    backgroundColor: '#f9fafb',
+                    border: '1px solid #e5e7eb',
                     borderRadius: '8px',
-                    backgroundColor: 'white',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
+                    padding: '16px'
                   }}
                 >
-                  <div style={{ flex: 1 }}>
-                    <div style={{
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      color: '#111827',
-                      marginBottom: '4px'
-                    }}>
-                      {section.name || getSectionDisplayName(section.type)}
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    marginBottom: '8px'
+                  }}>
+                    <div>
+                      <h3 style={{ 
+                        fontSize: '16px', 
+                        fontWeight: '600', 
+                        color: '#111827',
+                        margin: '0 0 4px 0'
+                      }}>
+                        {section.name}
+                      </h3>
+                      <p style={{ 
+                        fontSize: '12px', 
+                        color: '#6b7280',
+                        margin: 0
+                      }}>
+                        {section.type.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </p>
                     </div>
-                    <div style={{
-                      fontSize: '12px',
-                      color: '#6b7280'
-                    }}>
-                      {getSectionDisplayName(section.type)}
-                    </div>
-                  </div>
 
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    {/* Move up button */}
-                    <button
-                      onClick={() => handleMoveSection(index, 'up')}
-                      disabled={index === 0}
-                      style={{
-                        padding: '6px 12px',
-                        backgroundColor: index === 0 ? '#f3f4f6' : '#e5e7eb',
-                        color: index === 0 ? '#9ca3af' : '#374151',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: index === 0 ? 'not-allowed' : 'pointer',
-                        fontSize: '12px'
-                      }}
-                    >
-                      ↑
-                    </button>
-
-                    {/* Move down button */}
-                    <button
-                      onClick={() => handleMoveSection(index, 'down')}
-                      disabled={index === sections.length - 1}
-                      style={{
-                        padding: '6px 12px',
-                        backgroundColor: index === sections.length - 1 ? '#f3f4f6' : '#e5e7eb',
-                        color: index === sections.length - 1 ? '#9ca3af' : '#374151',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: index === sections.length - 1 ? 'not-allowed' : 'pointer',
-                        fontSize: '12px'
-                      }}
-                    >
-                      ↓
-                    </button>
-
-                    {/* Edit button */}
-                    {isSectionEditable(section.type) && (
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      {/* Move Up button */}
                       <button
-                        onClick={() => handleEditSection(section, index)}
+                        onClick={() => handleMoveSection(index, 'up')}
+                        disabled={index === 0}
                         style={{
                           padding: '6px 12px',
-                          backgroundColor: '#3b82f6',
+                          backgroundColor: index === 0 ? '#f3f4f6' : '#e5e7eb',
+                          color: index === 0 ? '#9ca3af' : '#374151',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: index === 0 ? 'not-allowed' : 'pointer',
+                          fontSize: '12px'
+                        }}
+                      >
+                        ↑
+                      </button>
+
+                      {/* Move Down button */}
+                      <button
+                        onClick={() => handleMoveSection(index, 'down')}
+                        disabled={index === sections.length - 1}
+                        style={{
+                          padding: '6px 12px',
+                          backgroundColor: index === sections.length - 1 ? '#f3f4f6' : '#e5e7eb',
+                          color: index === sections.length - 1 ? '#9ca3af' : '#374151',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: index === sections.length - 1 ? 'not-allowed' : 'pointer',
+                          fontSize: '12px'
+                        }}
+                      >
+                        ↓
+                      </button>
+
+                      {/* Edit button */}
+                      {isSectionEditable(section.type) && (
+                        <button
+                          onClick={() => handleEditSection(section, index)}
+                          style={{
+                            padding: '6px 12px',
+                            backgroundColor: '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Edit
+                        </button>
+                      )}
+
+                      {/* Delete button */}
+                      <button
+                        onClick={() => handleDeleteSection(index)}
+                        style={{
+                          padding: '6px 12px',
+                          backgroundColor: '#ef4444',
                           color: 'white',
                           border: 'none',
                           borderRadius: '4px',
@@ -542,25 +525,9 @@ const CreateTemplate: React.FC = () => {
                           cursor: 'pointer'
                         }}
                       >
-                        Edit
+                        Delete
                       </button>
-                    )}
-
-                    {/* Delete button */}
-                    <button
-                      onClick={() => handleDeleteSection(index)}
-                      style={{
-                        padding: '6px 12px',
-                        backgroundColor: '#ef4444',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Delete
-                    </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -601,7 +568,7 @@ const CreateTemplate: React.FC = () => {
         </div>
       )}
 
-      {/* Comment Builder Modals */}
+      {/* Comment Builder Modals - FIXED: Added scrollable wrapper */}
       {showRatedCommentBuilder && editingSection && (
         <div style={{
           position: 'fixed',
@@ -610,16 +577,31 @@ const CreateTemplate: React.FC = () => {
           right: 0,
           bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          zIndex: 1000
+          zIndex: 1000,
+          overflow: 'auto',
+          padding: '20px'
         }}>
-          <RatedCommentBuilder
-            existingComment={editingSection.section.data}
-            onSave={handleSaveEditedSection}
-            onCancel={() => {
-              setEditingSection(null);
-              setShowRatedCommentBuilder(false);
-            }}
-          />
+          <div style={{
+            minHeight: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <div style={{
+              width: '100%',
+              maxWidth: '900px',
+              margin: '0 auto'
+            }}>
+              <RatedCommentBuilder
+                existingComment={editingSection.section.data}
+                onSave={handleSaveEditedSection}
+                onCancel={() => {
+                  setEditingSection(null);
+                  setShowRatedCommentBuilder(false);
+                }}
+              />
+            </div>
+          </div>
         </div>
       )}
 
@@ -631,16 +613,31 @@ const CreateTemplate: React.FC = () => {
           right: 0,
           bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          zIndex: 1000
+          zIndex: 1000,
+          overflow: 'auto',
+          padding: '20px'
         }}>
-          <AssessmentCommentBuilder
-            existingComment={editingSection.section.data}
-            onSave={handleSaveEditedSection}
-            onCancel={() => {
-              setEditingSection(null);
-              setShowAssessmentCommentBuilder(false);
-            }}
-          />
+          <div style={{
+            minHeight: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <div style={{
+              width: '100%',
+              maxWidth: '900px',
+              margin: '0 auto'
+            }}>
+              <AssessmentCommentBuilder
+                existingComment={editingSection.section.data}
+                onSave={handleSaveEditedSection}
+                onCancel={() => {
+                  setEditingSection(null);
+                  setShowAssessmentCommentBuilder(false);
+                }}
+              />
+            </div>
+          </div>
         </div>
       )}
 
@@ -652,16 +649,31 @@ const CreateTemplate: React.FC = () => {
           right: 0,
           bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          zIndex: 1000
+          zIndex: 1000,
+          overflow: 'auto',
+          padding: '20px'
         }}>
-          <PersonalisedCommentBuilder
-            existingComment={editingSection.section.data}
-            onSave={handleSaveEditedSection}
-            onCancel={() => {
-              setEditingSection(null);
-              setShowPersonalisedCommentBuilder(false);
-            }}
-          />
+          <div style={{
+            minHeight: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <div style={{
+              width: '100%',
+              maxWidth: '900px',
+              margin: '0 auto'
+            }}>
+              <PersonalisedCommentBuilder
+                existingComment={editingSection.section.data}
+                onSave={handleSaveEditedSection}
+                onCancel={() => {
+                  setEditingSection(null);
+                  setShowPersonalisedCommentBuilder(false);
+                }}
+              />
+            </div>
+          </div>
         </div>
       )}
 
@@ -673,21 +685,36 @@ const CreateTemplate: React.FC = () => {
           right: 0,
           bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          zIndex: 1000
+          zIndex: 1000,
+          overflow: 'auto',
+          padding: '20px'
         }}>
-          <NextStepsCommentBuilder
-            existingComment={editingSection.section.data}
-            onSave={handleSaveEditedSection}
-            onCancel={() => {
-              setEditingSection(null);
-              setShowNextStepsCommentBuilder(false);
-            }}
-          />
+          <div style={{
+            minHeight: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <div style={{
+              width: '100%',
+              maxWidth: '900px',
+              margin: '0 auto'
+            }}>
+              <NextStepsCommentBuilder
+                existingComment={editingSection.section.data}
+                onSave={handleSaveEditedSection}
+                onCancel={() => {
+                  setEditingSection(null);
+                  setShowNextStepsCommentBuilder(false);
+                }}
+              />
+            </div>
+          </div>
         </div>
       )}
 
       {/* Standard Comment Editor Modal */}
-      {showStandardCommentEditor && (
+      {showStandardCommentEditor && editingSection && (
         <div style={{
           position: 'fixed',
           top: 0,
@@ -699,87 +726,75 @@ const CreateTemplate: React.FC = () => {
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 1000,
-          padding: '40px'
+          padding: '20px'
         }}>
           <div style={{
             backgroundColor: 'white',
             borderRadius: '12px',
             padding: '32px',
             maxWidth: '600px',
-            width: '100%'
+            width: '100%',
+            maxHeight: '80vh',
+            overflow: 'auto'
           }}>
-            <h3 style={{
-              fontSize: '20px',
-              fontWeight: '600',
-              marginBottom: '20px',
-              color: '#111827'
-            }}>
+            <h2 style={{ fontSize: '24px', fontWeight: '600', color: '#111827', marginBottom: '24px' }}>
               Edit Standard Comment
-            </h3>
-            
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '6px'
-              }}>
-                Comment Name
+            </h2>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                Section Name
               </label>
               <input
                 type="text"
                 value={standardCommentName}
                 onChange={(e) => setStandardCommentName(e.target.value)}
+                placeholder="e.g., Attendance, Homework, Participation..."
                 style={{
                   width: '100%',
-                  padding: '10px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '14px',
+                  padding: '12px 16px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '16px',
                   boxSizing: 'border-box'
                 }}
-                placeholder="Enter comment name..."
               />
             </div>
 
             <div style={{ marginBottom: '24px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '6px'
-              }}>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
                 Comment Content
               </label>
               <textarea
                 value={standardCommentContent}
                 onChange={(e) => setStandardCommentContent(e.target.value)}
+                placeholder="Enter your comment here. Use [Name] to insert the student's name..."
                 style={{
                   width: '100%',
-                  padding: '10px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  minHeight: '120px',
+                  minHeight: '200px',
+                  padding: '12px 16px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  resize: 'vertical',
                   boxSizing: 'border-box',
-                  fontFamily: 'inherit',
-                  resize: 'vertical'
+                  fontFamily: 'inherit'
                 }}
-                placeholder="Enter the comment text..."
               />
+              <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px', fontStyle: 'italic' }}>
+                Tip: Use [Name] to automatically insert the student's name
+              </p>
             </div>
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button
                 onClick={handleCancelEdit}
                 style={{
-                  padding: '10px 20px',
                   backgroundColor: '#f3f4f6',
                   color: '#374151',
+                  padding: '12px 24px',
                   border: 'none',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   fontSize: '14px',
                   fontWeight: '500',
                   cursor: 'pointer'
@@ -788,18 +803,13 @@ const CreateTemplate: React.FC = () => {
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  handleSaveEditedSection({
-                    name: standardCommentName,
-                    content: standardCommentContent
-                  });
-                }}
+                onClick={handleSaveStandardComment}
                 style={{
-                  padding: '10px 20px',
                   backgroundColor: '#3b82f6',
                   color: 'white',
+                  padding: '12px 24px',
                   border: 'none',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   fontSize: '14px',
                   fontWeight: '500',
                   cursor: 'pointer'
