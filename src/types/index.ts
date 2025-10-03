@@ -21,7 +21,7 @@ export type SectionType =
   | 'optional-additional-comment'
   | 'next-steps'
   | 'new-line'
-  | 'qualities-comment'; // Added this if it's used
+  | 'qualities';
 
 // Rated Comment types
 export interface RatedComment {

@@ -157,6 +157,17 @@ export const useReportLogic = ({
         }
       }
 
+      // Handle qualities - select new quality if quality area is clicked (even if same quality area)
+    if (section?.type === 'qualities' && data.qualityArea) {
+      const qualities = section.data?.comments?.[data.qualityArea];
+      if (qualities && qualities.length > 0) {
+        const randomIndex = Math.floor(Math.random() * qualities.length);
+        newData[sectionId].selectedQuality = qualities[randomIndex];
+        newData[sectionId].selectedQualityIndex = randomIndex;
+        console.log('Selected quality:', qualities[randomIndex]);
+        }
+      }
+
       console.log('New sectionData after update:', newData);
       return newData;
     });
@@ -250,6 +261,18 @@ export const useReportLogic = ({
             content += processedSuggestion + ' ';
           }
           break;
+
+        case 'qualities':
+          if (data.qualityArea) {
+            if (showHeader && section.name) {
+              content += `${section.name}: `;
+            }
+    
+            const quality = data.customEditedQuality || data.selectedQuality || '[No quality selected]';
+            const processedQuality = quality.replace(/\[Name\]/g, currentStudent.firstName);
+            content += processedQuality + ' ';
+          }
+          break; 
 
         case 'optional-additional-comment':
           if (data.comment && data.comment.trim()) {

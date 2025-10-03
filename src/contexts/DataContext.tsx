@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { Template, Class, Student, Report, RatedComment, StandardComment, AssessmentComment, PersonalisedComment, NextStepsComment } from '../types';
+import { Template, Class, Student, Report, RatedComment, StandardComment, AssessmentComment, PersonalisedComment, NextStepsComment, QualitiesComment } from '../types';
 import { supabaseOperations, setSupabaseUserContext } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 
@@ -12,6 +12,7 @@ interface DataState {
   savedAssessmentComments: AssessmentComment[];
   savedPersonalisedComments: PersonalisedComment[];
   savedNextStepsComments: NextStepsComment[];
+  savedQualitiesComments: QualitiesComment[];
   isLoading: boolean;
   isSyncing: boolean;
   lastSyncTime: Date | null;
@@ -46,6 +47,9 @@ interface DataContextType {
   addNextStepsComment: (comment: NextStepsComment) => void;
   updateNextStepsComment: (comment: NextStepsComment) => void;
   deleteNextStepsComment: (name: string) => void;
+  addQualitiesComment: (comment: QualitiesComment) => void;
+  updateQualitiesComment: (comment: QualitiesComment) => void;
+  deleteQualitiesComment: (name: string) => void;
   syncData: () => Promise<void>;
 }
 
@@ -74,6 +78,9 @@ type DataAction =
   | { type: 'ADD_NEXT_STEPS_COMMENT'; payload: NextStepsComment }
   | { type: 'UPDATE_NEXT_STEPS_COMMENT'; payload: NextStepsComment }
   | { type: 'DELETE_NEXT_STEPS_COMMENT'; payload: string }
+  | { type: 'ADD_QUALITIES_COMMENT'; payload: QualitiesComment }
+| { type: 'UPDATE_QUALITIES_COMMENT'; payload: QualitiesComment }
+| { type: 'DELETE_QUALITIES_COMMENT'; payload: string }
   | { type: 'LOAD_DATA'; payload: DataState }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_SYNCING'; payload: boolean }
@@ -88,6 +95,7 @@ const initialState: DataState = {
   savedAssessmentComments: [],
   savedPersonalisedComments: [],
   savedNextStepsComments: [],
+  savedQualitiesComments: [],
   isLoading: true,
   isSyncing: false,
   lastSyncTime: null
@@ -231,6 +239,23 @@ function dataReducer(state: DataState, action: DataAction): DataState {
         ...state,
         savedNextStepsComments: state.savedNextStepsComments.filter(nsc => nsc.name !== action.payload)
       };
+
+      case 'ADD_QUALITIES_COMMENT':
+  return { ...state, savedQualitiesComments: [...state.savedQualitiesComments, action.payload] };
+
+case 'UPDATE_QUALITIES_COMMENT':
+  return {
+    ...state,
+    savedQualitiesComments: state.savedQualitiesComments.map(qc => 
+      qc.name === action.payload.name ? action.payload : qc
+    )
+  };
+
+case 'DELETE_QUALITIES_COMMENT':
+  return {
+    ...state,
+    savedQualitiesComments: state.savedQualitiesComments.filter(qc => qc.name !== action.payload)
+  };
     
     case 'LOAD_DATA':
       return action.payload;
@@ -366,19 +391,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const savedPersonalisedComments = localStorage.getItem('savedPersonalisedComments');
       const savedNextStepsComments = localStorage.getItem('savedNextStepsComments');
 
-      const loadedState: DataState = {
-        templates: savedTemplates ? JSON.parse(savedTemplates) : [],
-        classes: savedClasses ? JSON.parse(savedClasses) : [],
-        reports: savedReports ? JSON.parse(savedReports) : [],
-        savedRatedComments: savedRatedComments ? JSON.parse(savedRatedComments) : [],
-        savedStandardComments: savedStandardComments ? JSON.parse(savedStandardComments) : [],
-        savedAssessmentComments: savedAssessmentComments ? JSON.parse(savedAssessmentComments) : [],
-        savedPersonalisedComments: savedPersonalisedComments ? JSON.parse(savedPersonalisedComments) : [],
-        savedNextStepsComments: savedNextStepsComments ? JSON.parse(savedNextStepsComments) : [],
-        isLoading: false,
-        isSyncing: false,
-        lastSyncTime: null
-      };
+      const savedQualitiesComments = localStorage.getItem('savedQualitiesComments');
+
+const loadedState: DataState = {
+  templates: savedTemplates ? JSON.parse(savedTemplates) : [],
+  classes: savedClasses ? JSON.parse(savedClasses) : [],
+  reports: savedReports ? JSON.parse(savedReports) : [],
+  savedRatedComments: savedRatedComments ? JSON.parse(savedRatedComments) : [],
+  savedStandardComments: savedStandardComments ? JSON.parse(savedStandardComments) : [],
+  savedAssessmentComments: savedAssessmentComments ? JSON.parse(savedAssessmentComments) : [],
+  savedPersonalisedComments: savedPersonalisedComments ? JSON.parse(savedPersonalisedComments) : [],
+  savedNextStepsComments: savedNextStepsComments ? JSON.parse(savedNextStepsComments) : [],
+  savedQualitiesComments: savedQualitiesComments ? JSON.parse(savedQualitiesComments) : [],
+  isLoading: false,
+  isSyncing: false,
+  lastSyncTime: null
+};
 
       console.log(`Loaded from localStorage - Templates: ${loadedState.templates.length}, Classes: ${loadedState.classes.length}, Reports: ${loadedState.reports.length}`);
       
@@ -406,7 +434,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('savedAssessmentComments', JSON.stringify(state.savedAssessmentComments));
       localStorage.setItem('savedPersonalisedComments', JSON.stringify(state.savedPersonalisedComments));
       localStorage.setItem('savedNextStepsComments', JSON.stringify(state.savedNextStepsComments));
-      
+      localStorage.setItem('savedQualitiesComments', JSON.stringify(state.savedQualitiesComments));
+     
       // Also sync to cloud if user is logged in (throttled)
       if (user && (state.templates.length > 0 || state.classes.length > 0 || state.reports.length > 0)) {
         // Debounce cloud sync to prevent infinite loops
@@ -573,6 +602,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'DELETE_NEXT_STEPS_COMMENT', payload: name });
   };
 
+  const addQualitiesComment = (comment: QualitiesComment) => {
+  dispatch({ type: 'ADD_QUALITIES_COMMENT', payload: comment });
+};
+
+const updateQualitiesComment = (comment: QualitiesComment) => {
+  dispatch({ type: 'UPDATE_QUALITIES_COMMENT', payload: comment });
+};
+
+const deleteQualitiesComment = (name: string) => {
+  dispatch({ type: 'DELETE_QUALITIES_COMMENT', payload: name });
+};
+
   const syncData = async () => {
     if (user) {
       await syncFromCloud();
@@ -609,6 +650,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       addNextStepsComment,
       updateNextStepsComment,
       deleteNextStepsComment,
+      addQualitiesComment,
+updateQualitiesComment,
+deleteQualitiesComment,
       syncData
     }}>
       {children}

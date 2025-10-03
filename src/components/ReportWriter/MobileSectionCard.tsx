@@ -4,7 +4,6 @@ interface MobileSectionCardProps {
   section: any;
   sectionData: any;
   updateSectionData: (sectionId: string, data: any) => void;
-  // Navigation props - ONLY ADDITION
   isFirstSection?: boolean;
   isLastSection?: boolean;
   navigationHandlers?: {
@@ -13,7 +12,6 @@ interface MobileSectionCardProps {
     handleSaveReport: () => void;
     handleHome: () => void;
     handleFinish: () => void;
-    handleViewAllReports: () => void;
   };
   currentStudentIndex?: number;
   studentsLength?: number;
@@ -23,7 +21,6 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
   section, 
   sectionData, 
   updateSectionData,
-  // Navigation props - ONLY ADDITION
   isFirstSection = false,
   isLastSection = false,
   navigationHandlers,
@@ -32,7 +29,7 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
 }) => {
   const data = sectionData[section.id] || {};
 
-  // State for all editing functionality - moved to component level
+  // State for all editing functionality
   const [showEditComment, setShowEditComment] = React.useState(false);
   const [editableComment, setEditableComment] = React.useState('');
   const [showEditSuggestion, setShowEditSuggestion] = React.useState(false);
@@ -47,20 +44,18 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
     if (data.selectedSuggestion) {
       setEditableSuggestion(data.customEditedSuggestion || data.selectedSuggestion);
     }
-    // Update optional comment state when data changes
     setShowOptionalComment(!!data.comment);
-  }, [data.selectedComment, data.customEditedComment, data.selectedSuggestion, data.customEditedSuggestion, data.comment]);
+  }, [data.selectedComment, data.selectedSuggestion, data.customEditedComment, data.customEditedSuggestion, data.comment]);
 
-  // Top Navigation Buttons - ONLY ADDITION
   const renderTopNavigationButtons = () => {
     if (!isFirstSection || !navigationHandlers) return null;
-    
+
     return (
       <div style={{
         display: 'flex',
-        gap: '8px',
-        marginBottom: '16px',
-        paddingTop: '8px'
+        gap: '6px',
+        marginBottom: '8px',
+        padding: '0 4px'
       }}>
         <button
           onClick={navigationHandlers.handleHome}
@@ -92,74 +87,43 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
             fontWeight: '600'
           }}
         >
-          💾 Save Report
-        </button>
-        <button
-          onClick={navigationHandlers.handleViewAllReports}
-          style={{
-            flex: 1,
-            backgroundColor: '#6366f1',
-            color: 'white',
-            padding: '12px 16px',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '14px',
-            cursor: 'pointer',
-            fontWeight: '600'
-          }}
-        >
-          📋 View Reports
+          💾 Save
         </button>
       </div>
     );
   };
 
-  // Bottom Navigation Buttons - ONLY ADDITION
   const renderBottomNavigationButtons = () => {
     if (!isLastSection || !navigationHandlers) return null;
-    
+
     return (
       <div style={{
         display: 'flex',
-        gap: '8px',
-        marginTop: '16px',
-        marginBottom: '80px'
+        gap: '6px',
+        marginTop: '8px',
+        padding: '0 4px'
       }}>
         <button
           onClick={navigationHandlers.handlePreviousStudent}
           disabled={currentStudentIndex === 0}
           style={{
             flex: 1,
-            backgroundColor: currentStudentIndex === 0 ? '#9ca3af' : '#6b7280',
+            backgroundColor: currentStudentIndex === 0 ? '#d1d5db' : '#3b82f6',
             color: 'white',
             padding: '12px 16px',
             border: 'none',
             borderRadius: '6px',
             fontSize: '14px',
             cursor: currentStudentIndex === 0 ? 'not-allowed' : 'pointer',
-            fontWeight: '600'
+            fontWeight: '600',
+            opacity: currentStudentIndex === 0 ? 0.5 : 1
           }}
         >
           ← Previous
         </button>
         <button
-          onClick={navigationHandlers.handleSaveReport}
-          style={{
-            flex: 1,
-            backgroundColor: '#10b981',
-            color: 'white',
-            padding: '12px 16px',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '14px',
-            cursor: 'pointer',
-            fontWeight: '600'
-          }}
-        >
-          💾 Save Report
-        </button>
-        <button
-          onClick={currentStudentIndex === studentsLength - 1 ? navigationHandlers.handleFinish : navigationHandlers.handleNextStudent}
+          onClick={currentStudentIndex === studentsLength - 1 ? 
+            navigationHandlers.handleFinish : navigationHandlers.handleNextStudent}
           style={{
             flex: 1,
             backgroundColor: currentStudentIndex === studentsLength - 1 ? '#ef4444' : '#3b82f6',
@@ -184,6 +148,7 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
       case 'assessment-comment': return { bg: '#f0fdf4', border: '#10b981', text: '#059669' };
       case 'personalised-comment': return { bg: '#fffbeb', border: '#f59e0b', text: '#d97706' };
       case 'next-steps': return { bg: '#ecfeff', border: '#06b6d4', text: '#0891b2' };
+      case 'qualities': return { bg: '#f3e8ff', border: '#8b5cf6', text: '#7c3aed' };
       case 'standard-comment': return { bg: '#f8fafc', border: '#64748b', text: '#475569' };
       case 'optional-additional-comment': return { bg: '#fdf4ff', border: '#a855f7', text: '#9333ea' };
       default: return { bg: '#f8fafc', border: '#64748b', text: '#475569' };
@@ -240,7 +205,7 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
               cursor: 'pointer'
             }}
           >
-            {comment ? 'View & Edit Comment' : 'Add Comment'}
+            {comment ? '✏️ Edit Comment' : '+ Add Custom Comment'}
           </button>
         </div>
       );
@@ -248,82 +213,34 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
 
     return (
       <div style={{
-        backgroundColor: '#f8fafc',
-        padding: '8px',
+        backgroundColor: 'white',
+        padding: '6px',
+        border: '1px solid #d1d5db',
         borderRadius: '4px',
-        border: '1px solid #e5e7eb',
         marginTop: '6px'
       }}>
         <textarea
           value={editableComment}
           onChange={(e) => setEditableComment(e.target.value)}
+          placeholder="Edit the comment..."
           style={{
             width: '100%',
-            minHeight: '80px',
+            minHeight: '50px',
             padding: '6px',
+            marginBottom: '4px',
             border: '1px solid #d1d5db',
-            borderRadius: '3px',
+            borderRadius: '4px',
             fontSize: '11px',
             fontFamily: 'inherit',
             resize: 'vertical',
-            marginBottom: '6px',
             textAlign: 'left'
           }}
         />
-        <div style={{ display: 'flex', gap: '4px' }}>
-          <button
-            onClick={handleSaveEditedComment}
-            style={{
-              backgroundColor: '#10b981',
-              color: 'white',
-              border: 'none',
-              padding: '3px 6px',
-              borderRadius: '3px',
-              fontSize: '9px',
-              cursor: 'pointer'
-            }}
-          >
-            Save
-          </button>
+        <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-start' }}>
           <button
             onClick={handleCancelEditComment}
             style={{
               backgroundColor: '#6b7280',
-              color: 'white',
-              border: 'none',
-              padding: '3px 6px',
-              borderRadius: '3px',
-              fontSize: '9px',
-              cursor: 'pointer'
-            }}
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  const renderEditableSuggestionBox = () => {
-    const suggestion = data.customEditedSuggestion || data.selectedSuggestion;
-
-    if (!showEditSuggestion) {
-      return (
-        <div style={{
-          backgroundColor: '#f8fafc',
-          padding: '6px',
-          borderRadius: '4px',
-          border: '1px solid #e5e7eb',
-          marginTop: '6px',
-          textAlign: 'center'
-        }}>
-          <button
-            onClick={() => {
-              setEditableSuggestion(suggestion || '');
-              setShowEditSuggestion(true);
-            }}
-            style={{
-              backgroundColor: '#06b6d4',
               color: 'white',
               border: 'none',
               padding: '4px 8px',
@@ -332,64 +249,21 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
               cursor: 'pointer'
             }}
           >
-            {suggestion ? 'View & Edit Suggestion' : 'Add Suggestion'}
+            Cancel
           </button>
-        </div>
-      );
-    }
-
-    return (
-      <div style={{
-        backgroundColor: '#f8fafc',
-        padding: '8px',
-        borderRadius: '4px',
-        border: '1px solid #e5e7eb',
-        marginTop: '6px'
-      }}>
-        <textarea
-          value={editableSuggestion}
-          onChange={(e) => setEditableSuggestion(e.target.value)}
-          style={{
-            width: '100%',
-            minHeight: '80px',
-            padding: '6px',
-            border: '1px solid #d1d5db',
-            borderRadius: '3px',
-            fontSize: '11px',
-            fontFamily: 'inherit',
-            resize: 'vertical',
-            marginBottom: '6px',
-            textAlign: 'left'
-          }}
-        />
-        <div style={{ display: 'flex', gap: '4px' }}>
           <button
-            onClick={handleSaveEditedSuggestion}
+            onClick={handleSaveEditedComment}
             style={{
               backgroundColor: '#10b981',
               color: 'white',
               border: 'none',
-              padding: '3px 6px',
+              padding: '4px 8px',
               borderRadius: '3px',
-              fontSize: '9px',
+              fontSize: '10px',
               cursor: 'pointer'
             }}
           >
             Save
-          </button>
-          <button
-            onClick={handleCancelEditSuggestion}
-            style={{
-              backgroundColor: '#6b7280',
-              color: 'white',
-              border: 'none',
-              padding: '3px 6px',
-              borderRadius: '3px',
-              fontSize: '9px',
-              cursor: 'pointer'
-            }}
-          >
-            Cancel
           </button>
         </div>
       </div>
@@ -430,7 +304,6 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
           ))}
         </div>
         
-        {/* Only show comment box if rating is selected and not excluded */}
         {data.rating && data.rating !== 'no-comment' && data.selectedComment && 
           renderEditableCommentBox('#3b82f6')
         }
@@ -439,82 +312,275 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
   };
 
   const renderAssessmentComment = () => {
-    const performances = [
-      { value: 'excellent', label: 'Excellent', color: '#10b981' },
-      { value: 'good', label: 'Good', color: '#3b82f6' },
-      { value: 'satisfactory', label: 'Satisfactory', color: '#f59e0b' },
-      { value: 'needsImprovement', label: 'Needs Improvement', color: '#ef4444' }
-    ];
+  const performances = [
+    { value: 'excellent', label: 'Excellent', color: '#10b981' },
+    { value: 'good', label: 'Good', color: '#3b82f6' },
+    { value: 'satisfactory', label: 'Satisfactory', color: '#f59e0b' },
+    { value: 'needsImprovement', label: 'Needs Improvement', color: '#ef4444' },
+    { value: 'notCompleted', label: 'Not Completed', color: '#6b7280' }
+  ];
 
-    return (
-      <div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
-          {performances.map((performance) => (
-            <button
-              key={performance.value}
-              onClick={() => updateSectionData(section.id, { performance: performance.value })}
-              style={{
-                backgroundColor: data.performance === performance.value ? performance.color : 'white',
-                color: data.performance === performance.value ? 'white' : performance.color,
-                border: `1px solid ${performance.color}`,
-                padding: '6px 8px',
-                borderRadius: '4px',
-                fontSize: '11px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                flex: '1 1 calc(50% - 2px)',
-                minWidth: '80px',
-                textAlign: 'center'
-              }}
-            >
-              {performance.label}
-            </button>
-          ))}
+  // Get score type settings
+  const currentScoreType = data.scoreType || section.data?.scoreType || 'outOf';
+  const currentMaxScore = data.maxScore || section.data?.maxScore || 100;
+
+  return (
+    <div>
+      {/* Score Type Toggle */}
+      <div style={{
+        backgroundColor: '#f0fdf4',
+        padding: '6px',
+        borderRadius: '4px',
+        marginBottom: '6px',
+        border: '1px solid #10b981'
+      }}>
+        <div style={{
+          fontSize: '10px',
+          fontWeight: '600',
+          color: '#059669',
+          marginBottom: '4px'
+        }}>
+          Score Type:
         </div>
-        
-        {/* Only show comment box if performance is selected and not excluded */}
-        {data.performance && data.performance !== 'no-comment' && data.selectedComment && 
-          renderEditableCommentBox('#10b981')
-        }
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <button
+            onClick={() => updateSectionData(section.id, { 
+              scoreType: 'outOf',
+              maxScore: currentMaxScore,
+              score: undefined
+            })}
+            style={{
+              flex: 1,
+              backgroundColor: currentScoreType === 'outOf' ? '#10b981' : 'white',
+              color: currentScoreType === 'outOf' ? 'white' : '#10b981',
+              border: '1px solid #10b981',
+              padding: '4px 8px',
+              borderRadius: '3px',
+              fontSize: '10px',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            Out of {currentMaxScore}
+          </button>
+          <button
+            onClick={() => updateSectionData(section.id, { 
+              scoreType: 'percentage',
+              score: undefined
+            })}
+            style={{
+              flex: 1,
+              backgroundColor: currentScoreType === 'percentage' ? '#10b981' : 'white',
+              color: currentScoreType === 'percentage' ? 'white' : '#10b981',
+              border: '1px solid #10b981',
+              padding: '4px 8px',
+              borderRadius: '3px',
+              fontSize: '10px',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            Percentage
+          </button>
+        </div>
       </div>
-    );
-  };
+
+      {/* Score Input */}
+      <div style={{
+        backgroundColor: '#f0fdf4',
+        padding: '6px',
+        borderRadius: '4px',
+        marginBottom: '6px',
+        border: '1px solid #10b981'
+      }}>
+        <div style={{
+          fontSize: '10px',
+          fontWeight: '600',
+          color: '#059669',
+          marginBottom: '4px'
+        }}>
+          {currentScoreType === 'percentage' ? 'Score (%)' : `Score (out of ${currentMaxScore})`}:
+        </div>
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          <input
+            type="number"
+            value={data.score || ''}
+            onChange={(e) => updateSectionData(section.id, { score: parseFloat(e.target.value) || undefined })}
+            placeholder={currentScoreType === 'percentage' ? 'e.g., 85' : `e.g., ${Math.floor(currentMaxScore * 0.75)}`}
+            min="0"
+            max={currentScoreType === 'percentage' ? '100' : currentMaxScore}
+            style={{
+              width: currentScoreType === 'percentage' ? '100%' : '50%',
+              padding: '4px 6px',
+              border: '1px solid #d1d5db',
+              borderRadius: '3px',
+              fontSize: '12px',
+              boxSizing: 'border-box'
+            }}
+          />
+          {currentScoreType === 'outOf' && (
+            <>
+              <span style={{ fontSize: '10px', color: '#6b7280', whiteSpace: 'nowrap' }}>out of</span>
+              <input
+                type="number"
+                value={currentMaxScore}
+                onChange={(e) => updateSectionData(section.id, { maxScore: parseFloat(e.target.value) || 100 })}
+                min="1"
+                style={{
+                  width: '50%',
+                  padding: '4px 6px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '3px',
+                  fontSize: '12px',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </>
+          )}
+          {currentScoreType === 'percentage' && (
+            <span style={{ fontSize: '10px', color: '#6b7280' }}>%</span>
+          )}
+        </div>
+      </div>
+
+      {/* Performance Buttons */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
+        {performances.map((performance) => (
+          <button
+            key={performance.value}
+            onClick={() => updateSectionData(section.id, { performance: performance.value })}
+            style={{
+              backgroundColor: data.performance === performance.value ? performance.color : 'white',
+              color: data.performance === performance.value ? 'white' : performance.color,
+              border: `1px solid ${performance.color}`,
+              padding: '6px 8px',
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              flex: '1 1 calc(50% - 2px)',
+              minWidth: '80px',
+              textAlign: 'center'
+            }}
+          >
+            {performance.label}
+          </button>
+        ))}
+      </div>
+      
+      {data.performance && data.performance !== 'no-comment' && data.selectedComment && 
+        renderEditableCommentBox('#10b981')
+      }
+    </div>
+  );
+};
 
   const renderPersonalisedComment = () => {
-    const categories = section.data?.headings || Object.keys(section.data?.categories || section.data?.comments || {});
-    
-    return (
-      <div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
-          {categories.map((category: string) => (
-            <button
-              key={category}
-              onClick={() => updateSectionData(section.id, { category })}
-              style={{
-                backgroundColor: data.category === category ? '#f59e0b' : 'white',
-                color: data.category === category ? 'white' : '#f59e0b',
-                border: '1px solid #f59e0b',
-                padding: '6px 8px',
-                borderRadius: '4px',
-                fontSize: '11px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                flex: '1 1 auto',
-                textAlign: 'center'
-              }}
-            >
-              {category}
-            </button>
-          ))}
+  const categories = section.data?.headings || Object.keys(section.data?.categories || section.data?.comments || {});
+  const instruction = section.data?.instruction || '';
+  
+  return (
+    <div>
+      {/* Display instruction */}
+      {instruction && (
+        <div style={{
+          backgroundColor: '#fef3c7',
+          padding: '6px',
+          borderRadius: '4px',
+          marginBottom: '6px',
+          border: '1px solid #f59e0b'
+        }}>
+          <div style={{
+            fontSize: '10px',
+            fontWeight: '600',
+            color: '#92400e',
+            marginBottom: '2px'
+          }}>
+            Instructions:
+          </div>
+          <div style={{
+            fontSize: '10px',
+            color: '#78350f',
+            fontStyle: 'italic',
+            lineHeight: '1.3'
+          }}>
+            {instruction}
+          </div>
         </div>
-        
-        {/* Only show comment box if category is selected and not excluded */}
-        {data.category && data.selectedComment && 
-          renderEditableCommentBox('#f59e0b')
-        }
+      )}
+
+      {/* Personalised Information Input - Now FIRST */}
+      <div style={{
+        backgroundColor: '#fffbeb',
+        padding: '6px',
+        borderRadius: '4px',
+        border: '1px solid #f59e0b',
+        marginBottom: '6px'
+      }}>
+        <label style={{
+          display: 'block',
+          fontSize: '10px',
+          fontWeight: '600',
+          color: '#d97706',
+          marginBottom: '4px'
+        }}>
+          Personalised Information:
+        </label>
+        <input
+          type="text"
+          value={data.personalisedInfo || ''}
+          onChange={(e) => updateSectionData(section.id, { personalisedInfo: e.target.value })}
+          placeholder="Enter specific information..."
+          style={{
+            width: '100%',
+            padding: '4px 6px',
+            border: '1px solid #d1d5db',
+            borderRadius: '3px',
+            fontSize: '11px',
+            boxSizing: 'border-box'
+          }}
+        />
+        <div style={{
+          fontSize: '9px',
+          color: '#78350f',
+          fontStyle: 'italic',
+          marginTop: '2px'
+        }}>
+          This will replace [Personal Information] in the comment
+        </div>
       </div>
-    );
-  };
+
+      {/* Category Buttons - Now SECOND */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
+        {categories.map((category: string) => (
+          <button
+            key={category}
+            onClick={() => updateSectionData(section.id, { category })}
+            style={{
+              backgroundColor: data.category === category ? '#f59e0b' : 'white',
+              color: data.category === category ? 'white' : '#f59e0b',
+              border: '1px solid #f59e0b',
+              padding: '6px 8px',
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              flex: '1 1 calc(50% - 2px)',
+              minWidth: '80px',
+              textAlign: 'center'
+            }}
+          >
+            {category}
+          </button>
+        ))}
+      </div>
+        
+      {data.category && data.selectedComment && 
+        renderEditableCommentBox('#f59e0b')
+      }
+    </div>
+  );
+};
 
   const renderNextSteps = () => {
     const focusAreas = section.data?.headings || Object.keys(section.data?.focusAreas || section.data?.comments || {});
@@ -535,7 +601,8 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
                 fontSize: '11px',
                 fontWeight: '600',
                 cursor: 'pointer',
-                flex: '1 1 auto',
+                flex: '1 1 calc(50% - 2px)',
+                minWidth: '80px',
                 textAlign: 'center'
               }}
             >
@@ -544,121 +611,107 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
           ))}
         </div>
         
-        {/* Only show suggestion box if focus area is selected and not excluded */}
-        {data.focusArea && data.selectedSuggestion && 
-          renderEditableSuggestionBox()
-        }
+        {data.focusArea && data.selectedSuggestion && (
+          <div style={{
+            backgroundColor: '#f8fafc',
+            padding: '6px',
+            borderRadius: '4px',
+            border: '1px solid #e5e7eb',
+            marginTop: '6px',
+            textAlign: 'center'
+          }}>
+            {!showEditSuggestion ? (
+              <button
+                onClick={() => {
+                  setEditableSuggestion(data.customEditedSuggestion || data.selectedSuggestion || '');
+                  setShowEditSuggestion(true);
+                }}
+                style={{
+                  backgroundColor: '#06b6d4',
+                  color: 'white',
+                  border: 'none',
+                  padding: '4px 8px',
+                  borderRadius: '3px',
+                  fontSize: '10px',
+                  cursor: 'pointer'
+                }}
+              >
+                ✏️ Edit Suggestion
+              </button>
+            ) : (
+              <div style={{
+                backgroundColor: 'white',
+                padding: '6px',
+                border: '1px solid #d1d5db',
+                borderRadius: '4px'
+              }}>
+                <textarea
+                  value={editableSuggestion}
+                  onChange={(e) => setEditableSuggestion(e.target.value)}
+                  placeholder="Edit the suggestion..."
+                  style={{
+                    width: '100%',
+                    minHeight: '50px',
+                    padding: '6px',
+                    marginBottom: '4px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontFamily: 'inherit',
+                    resize: 'vertical',
+                    textAlign: 'left'
+                  }}
+                />
+                <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-start' }}>
+                  <button
+                    onClick={handleCancelEditSuggestion}
+                    style={{
+                      backgroundColor: '#6b7280',
+                      color: 'white',
+                      border: 'none',
+                      padding: '4px 8px',
+                      borderRadius: '3px',
+                      fontSize: '10px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveEditedSuggestion}
+                    style={{
+                      backgroundColor: '#10b981',
+                      color: 'white',
+                      border: 'none',
+                      padding: '4px 8px',
+                      borderRadius: '3px',
+                      fontSize: '10px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
 
   const renderStandardComment = () => {
-    const content = data.content || section.data?.content || '';
-    const displayContent = content.replace(/\[Name\]/g, 'Student');
-    
-    // Show first 60 characters as preview
-    const previewText = displayContent.length > 60 
-      ? displayContent.substring(0, 60) + '...' 
-      : displayContent;
-    
-    if (!showEditComment) {
-      return (
-        <div style={{
-          backgroundColor: '#f8fafc',
-          padding: '8px',
-          borderRadius: '4px',
-          fontSize: '11px',
-          color: '#374151',
-          border: '1px solid #e5e7eb'
-        }}>
-          <div style={{ 
-            marginBottom: '6px',
-            textAlign: 'left',
-            lineHeight: '1.3'
-          }}>
-            {previewText || 'No content set'}
-          </div>
-          <button
-            onClick={() => {
-              setEditableComment(content);
-              setShowEditComment(true);
-            }}
-            style={{
-              backgroundColor: '#64748b',
-              color: 'white',
-              border: 'none',
-              padding: '3px 6px',
-              borderRadius: '3px',
-              fontSize: '9px',
-              cursor: 'pointer'
-            }}
-          >
-            {content ? '📖 View & Edit' : '✏️ Add Content'}
-          </button>
-        </div>
-      );
-    }
-
     return (
       <div style={{
-        backgroundColor: '#f8fafc',
         padding: '8px',
+        backgroundColor: '#f8fafc',
         borderRadius: '4px',
-        border: '1px solid #e5e7eb'
+        fontSize: '11px',
+        color: '#64748b',
+        fontStyle: 'italic',
+        textAlign: 'center'
       }}>
-        <textarea
-          value={editableComment}
-          onChange={(e) => setEditableComment(e.target.value)}
-          placeholder="Enter the standard comment content here..."
-          style={{
-            width: '100%',
-            minHeight: '100px',
-            padding: '6px',
-            border: '1px solid #d1d5db',
-            borderRadius: '3px',
-            fontSize: '11px',
-            fontFamily: 'inherit',
-            resize: 'vertical',
-            marginBottom: '6px',
-            textAlign: 'left'
-          }}
-        />
-        <div style={{ display: 'flex', gap: '4px' }}>
-          <button
-            onClick={() => {
-              updateSectionData(section.id, { content: editableComment });
-              setShowEditComment(false);
-            }}
-            style={{
-              backgroundColor: '#10b981',
-              color: 'white',
-              border: 'none',
-              padding: '3px 6px',
-              borderRadius: '3px',
-              fontSize: '9px',
-              cursor: 'pointer'
-            }}
-          >
-            ✓ Save
-          </button>
-          <button
-            onClick={() => {
-              setEditableComment(content);
-              setShowEditComment(false);
-            }}
-            style={{
-              backgroundColor: '#6b7280',
-              color: 'white',
-              border: 'none',
-              padding: '3px 6px',
-              borderRadius: '3px',
-              fontSize: '9px',
-              cursor: 'pointer'
-            }}
-          >
-            ✗ Cancel
-          </button>
-        </div>
+        Standard comment - will appear in all reports
       </div>
     );
   };
@@ -666,61 +719,33 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
   const renderOptionalComment = () => {
     return (
       <div>
-        {/* Section header - same style as other sections but without Header/Exclude checkboxes */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          marginBottom: '6px',
-          justifyContent: 'space-between'
-        }}>
-          <h3 style={{
-            fontSize: '11px',
-            fontWeight: '600',
-            color: '#dc2626', // Red color for optional additional comment
-            margin: 0,
-            textAlign: 'left'
-          }}>
-            Optional Additional Comment
-          </h3>
-          
-          {/* Checkbox to show/hide the comment area */}
-          <label style={{
-            display: 'flex',
-            alignItems: 'center',
-            fontSize: '8px',
-            color: '#dc2626',
-            cursor: 'pointer'
-          }}>
-            <input
-              type="checkbox"
-              checked={showOptionalComment}
-              onChange={(e) => {
-                setShowOptionalComment(e.target.checked);
-                if (!e.target.checked) {
-                  updateSectionData(section.id, { comment: '' });
-                }
+        {!showOptionalComment ? (
+          <div style={{ textAlign: 'center', padding: '8px' }}>
+            <button
+              onClick={() => setShowOptionalComment(true)}
+              style={{
+                backgroundColor: '#a855f7',
+                color: 'white',
+                border: 'none',
+                padding: '6px 12px',
+                borderRadius: '4px',
+                fontSize: '11px',
+                cursor: 'pointer',
+                fontWeight: '600'
               }}
-              style={{ marginRight: '2px', transform: 'scale(0.6)' }}
-            />
-            Add
-          </label>
-        </div>
-
-        {/* Show textarea only when checkbox is selected - red/pink theme */}
-        {showOptionalComment && (
-          <div style={{
-            backgroundColor: '#fef2f2', // Light red/pink background
-            padding: '8px',
-            borderRadius: '4px',
-            border: '1px solid #f87171' // Red/pink border
-          }}>
+            >
+              + Add Comment
+            </button>
+          </div>
+        ) : (
+          <div>
             <textarea
               value={data.comment || ''}
               onChange={(e) => updateSectionData(section.id, { comment: e.target.value })}
-              placeholder="Add your optional additional comment here..."
+              placeholder="Enter your optional comment here..."
               style={{
                 width: '100%',
-                minHeight: '80px',
+                minHeight: '60px',
                 padding: '8px',
                 border: '1px solid #d1d5db',
                 borderRadius: '4px',
@@ -742,6 +767,7 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
       case 'assessment-comment': return renderAssessmentComment();
       case 'personalised-comment': return renderPersonalisedComment();
       case 'next-steps': return renderNextSteps();
+      case 'qualities': return renderNextSteps(); // Qualities uses same rendering as next steps
       case 'standard-comment': return renderStandardComment();
       case 'optional-additional-comment': return renderOptionalComment();
       case 'new-line': return (
@@ -776,7 +802,6 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
 
   return (
     <div>
-      {/* Top Navigation Buttons (only for first section) - ONLY ADDITION */}
       {renderTopNavigationButtons()}
 
       <div style={{
@@ -835,7 +860,8 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
                     (section.type === 'rated-comment' && data.rating === 'no-comment') ||
                     (section.type === 'assessment-comment' && data.performance === 'no-comment') ||
                     (section.type === 'personalised-comment' && data.category === null) ||
-                    (section.type === 'next-steps' && data.focusArea === null)
+                    (section.type === 'next-steps' && data.focusArea === null) ||
+                    (section.type === 'qualities' && data.qualityArea === null)
                   }
                   onChange={(e) => {
                     if (section.type === 'rated-comment') {
@@ -848,6 +874,9 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
                     } else if (section.type === 'next-steps') {
                       const firstArea = Object.keys(section.data?.focusAreas || section.data?.comments || {})[0];
                       updateSectionData(section.id, { focusArea: e.target.checked ? null : firstArea });
+                    } else if (section.type === 'qualities') {
+                      const firstArea = Object.keys(section.data?.comments || {})[0];
+                      updateSectionData(section.id, { qualityArea: e.target.checked ? null : firstArea });
                     }
                   }}
                   style={{ marginRight: '2px', transform: 'scale(0.6)' }}
@@ -862,7 +891,6 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
         {renderSectionContent()}
       </div>
 
-      {/* Bottom Navigation Buttons (only for last section) - ONLY ADDITION */}
       {renderBottomNavigationButtons()}
     </div>
   );
