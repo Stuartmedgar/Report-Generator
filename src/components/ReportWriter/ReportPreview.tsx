@@ -110,7 +110,7 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
                 fontFamily: 'inherit',
                 boxSizing: 'border-box',
                 backgroundColor: 'transparent',
-                textAlign: 'left' // CHANGED: Fixed from 'right' to 'left'
+                textAlign: 'left'
               }}
               autoCapitalize="sentences"
               autoCorrect="on"
@@ -125,13 +125,13 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
               wordWrap: 'break-word',
               overflowWrap: 'break-word',
               height: '100%',
-              textAlign: 'left' // CHANGED: Fixed from 'right' to 'left'
+              textAlign: 'left'
             }}>
               {getDisplayContent() || (
                 <div style={{
                   color: '#9ca3af',
                   fontStyle: 'italic',
-                  textAlign: 'left', // Keep helper text left-aligned for readability
+                  textAlign: 'left',
                   padding: '40px 20px',
                   fontSize: '14px'
                 }}>
@@ -161,7 +161,7 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
     );
   }
 
-  // Desktop Layout
+  // Desktop Layout - FIXED: Removed maxHeight to allow natural scrolling
   return (
     <div style={{
       backgroundColor: '#f9fafb',
@@ -205,15 +205,15 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
         </h3>
       </div>
 
-      {/* Preview Content - Desktop */}
+      {/* Preview Content - Desktop - FIXED: No maxHeight, natural flow */}
       <div style={{
         backgroundColor: 'white',
         border: '1px solid #d1d5db',
         borderRadius: '6px',
         padding: '16px',
-        minHeight: '200px',
-        maxHeight: '400px',
-        overflowY: 'auto'
+        minHeight: '200px'
+        // REMOVED: maxHeight: '400px' and overflowY: 'auto'
+        // This allows the content to grow naturally and scroll with the page
       }}>
         {isPreviewEditing ? (
           <textarea
@@ -221,14 +221,14 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
             onChange={(e) => setEditableReportContent(e.target.value)}
             style={{
               width: '100%',
-              height: '300px',
+              minHeight: '300px',
               border: 'none',
               resize: 'vertical',
               fontSize: '14px',
               lineHeight: '1.5',
               padding: 0,
               outline: 'none',
-              textAlign: 'left' // Already correct on desktop
+              textAlign: 'left'
             }}
           />
         ) : (
@@ -237,7 +237,7 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
             lineHeight: '1.6',
             color: '#374151',
             whiteSpace: 'pre-wrap',
-            textAlign: 'left' // Already correct on desktop
+            textAlign: 'left'
           }}>
             {getDisplayContent() || 'Complete the sections to see the report preview...'}
           </div>
@@ -246,3 +246,5 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
     </div>
   );
 };
+
+export default ReportPreview;
