@@ -34,6 +34,8 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
   const [editableComment, setEditableComment] = React.useState('');
   const [showEditSuggestion, setShowEditSuggestion] = React.useState(false);
   const [editableSuggestion, setEditableSuggestion] = React.useState('');
+  const [showEditQuality, setShowEditQuality] = React.useState(false);
+  const [editableQuality, setEditableQuality] = React.useState('');
   const [showOptionalComment, setShowOptionalComment] = React.useState(!!data.comment);
 
   // Effect to sync editable content when data changes
@@ -44,18 +46,20 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
     if (data.selectedSuggestion) {
       setEditableSuggestion(data.customEditedSuggestion || data.selectedSuggestion);
     }
+    if (data.selectedQuality) {
+      setEditableQuality(data.customEditedQuality || data.selectedQuality);
+    }
     setShowOptionalComment(!!data.comment);
-  }, [data.selectedComment, data.selectedSuggestion, data.customEditedComment, data.customEditedSuggestion, data.comment]);
+  }, [data.selectedComment, data.customEditedComment, data.selectedSuggestion, data.customEditedSuggestion, data.selectedQuality, data.customEditedQuality, data.comment]);
 
   const renderTopNavigationButtons = () => {
     if (!isFirstSection || !navigationHandlers) return null;
-
+    
     return (
       <div style={{
         display: 'flex',
-        gap: '6px',
-        marginBottom: '8px',
-        padding: '0 4px'
+        gap: '8px',
+        marginBottom: '12px'
       }}>
         <button
           onClick={navigationHandlers.handleHome}
@@ -76,7 +80,7 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
         <button
           onClick={navigationHandlers.handleSaveReport}
           style={{
-            flex: 1,
+            flex: 2,
             backgroundColor: '#10b981',
             color: 'white',
             padding: '12px 16px',
@@ -87,7 +91,7 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
             fontWeight: '600'
           }}
         >
-          💾 Save
+          💾 Save Report
         </button>
       </div>
     );
@@ -99,31 +103,28 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
     return (
       <div style={{
         display: 'flex',
-        gap: '6px',
-        marginTop: '8px',
-        padding: '0 4px'
+        gap: '8px',
+        marginTop: '12px'
       }}>
         <button
-          onClick={navigationHandlers.handlePreviousStudent}
           disabled={currentStudentIndex === 0}
+          onClick={navigationHandlers.handlePreviousStudent}
           style={{
             flex: 1,
-            backgroundColor: currentStudentIndex === 0 ? '#d1d5db' : '#3b82f6',
+            backgroundColor: currentStudentIndex === 0 ? '#d1d5db' : '#6b7280',
             color: 'white',
             padding: '12px 16px',
             border: 'none',
             borderRadius: '6px',
             fontSize: '14px',
             cursor: currentStudentIndex === 0 ? 'not-allowed' : 'pointer',
-            fontWeight: '600',
-            opacity: currentStudentIndex === 0 ? 0.5 : 1
+            fontWeight: '600'
           }}
         >
           ← Previous
         </button>
         <button
-          onClick={currentStudentIndex === studentsLength - 1 ? 
-            navigationHandlers.handleFinish : navigationHandlers.handleNextStudent}
+          onClick={currentStudentIndex === studentsLength - 1 ? navigationHandlers.handleFinish : navigationHandlers.handleNextStudent}
           style={{
             flex: 1,
             backgroundColor: currentStudentIndex === studentsLength - 1 ? '#ef4444' : '#3b82f6',
@@ -175,6 +176,16 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
   const handleCancelEditSuggestion = () => {
     setEditableSuggestion(data.selectedSuggestion || '');
     setShowEditSuggestion(false);
+  };
+
+  const handleSaveEditedQuality = () => {
+    updateSectionData(section.id, { customEditedQuality: editableQuality });
+    setShowEditQuality(false);
+  };
+
+  const handleCancelEditQuality = () => {
+    setEditableQuality(data.selectedQuality || '');
+    setShowEditQuality(false);
   };
 
   const renderEditableCommentBox = (editButtonColor: string) => {
@@ -270,6 +281,192 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
     );
   };
 
+  const renderEditableSuggestionBox = () => {
+    const suggestion = data.customEditedSuggestion || data.selectedSuggestion;
+
+    if (!showEditSuggestion) {
+      return (
+        <div style={{
+          backgroundColor: '#f8fafc',
+          padding: '6px',
+          borderRadius: '4px',
+          border: '1px solid #e5e7eb',
+          marginTop: '6px',
+          textAlign: 'center'
+        }}>
+          <button
+            onClick={() => {
+              setEditableSuggestion(suggestion || '');
+              setShowEditSuggestion(true);
+            }}
+            style={{
+              backgroundColor: '#06b6d4',
+              color: 'white',
+              border: 'none',
+              padding: '4px 8px',
+              borderRadius: '3px',
+              fontSize: '10px',
+              cursor: 'pointer'
+            }}
+          >
+            {suggestion ? '✏️ Edit Suggestion' : '+ Add Custom Suggestion'}
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{
+        backgroundColor: 'white',
+        padding: '6px',
+        border: '1px solid #d1d5db',
+        borderRadius: '4px',
+        marginTop: '6px'
+      }}>
+        <textarea
+          value={editableSuggestion}
+          onChange={(e) => setEditableSuggestion(e.target.value)}
+          placeholder="Edit the suggestion..."
+          style={{
+            width: '100%',
+            minHeight: '50px',
+            padding: '6px',
+            marginBottom: '4px',
+            border: '1px solid #d1d5db',
+            borderRadius: '4px',
+            fontSize: '11px',
+            fontFamily: 'inherit',
+            resize: 'vertical',
+            textAlign: 'left'
+          }}
+        />
+        <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-start' }}>
+          <button
+            onClick={handleCancelEditSuggestion}
+            style={{
+              backgroundColor: '#6b7280',
+              color: 'white',
+              border: 'none',
+              padding: '4px 8px',
+              borderRadius: '3px',
+              fontSize: '10px',
+              cursor: 'pointer'
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSaveEditedSuggestion}
+            style={{
+              backgroundColor: '#10b981',
+              color: 'white',
+              border: 'none',
+              padding: '4px 8px',
+              borderRadius: '3px',
+              fontSize: '10px',
+              cursor: 'pointer'
+            }}
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderEditableQualityBox = () => {
+    const quality = data.customEditedQuality || data.selectedQuality;
+
+    if (!showEditQuality) {
+      return (
+        <div style={{
+          backgroundColor: '#f8fafc',
+          padding: '6px',
+          borderRadius: '4px',
+          border: '1px solid #e5e7eb',
+          marginTop: '6px',
+          textAlign: 'center'
+        }}>
+          <button
+            onClick={() => {
+              setEditableQuality(quality || '');
+              setShowEditQuality(true);
+            }}
+            style={{
+              backgroundColor: '#8b5cf6',
+              color: 'white',
+              border: 'none',
+              padding: '4px 8px',
+              borderRadius: '3px',
+              fontSize: '10px',
+              cursor: 'pointer'
+            }}
+          >
+            {quality ? '✏️ Edit Quality' : '+ Add Custom Quality'}
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{
+        backgroundColor: 'white',
+        padding: '6px',
+        border: '1px solid #d1d5db',
+        borderRadius: '4px',
+        marginTop: '6px'
+      }}>
+        <textarea
+          value={editableQuality}
+          onChange={(e) => setEditableQuality(e.target.value)}
+          placeholder="Edit the quality..."
+          style={{
+            width: '100%',
+            minHeight: '50px',
+            padding: '6px',
+            marginBottom: '4px',
+            border: '1px solid #d1d5db',
+            borderRadius: '4px',
+            fontSize: '11px',
+            fontFamily: 'inherit',
+            resize: 'vertical',
+            textAlign: 'left'
+          }}
+        />
+        <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-start' }}>
+          <button
+            onClick={handleCancelEditQuality}
+            style={{
+              backgroundColor: '#6b7280',
+              color: 'white',
+              border: 'none',
+              padding: '4px 8px',
+              borderRadius: '3px',
+              fontSize: '10px',
+              cursor: 'pointer'
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSaveEditedQuality}
+            style={{
+              backgroundColor: '#10b981',
+              color: 'white',
+              border: 'none',
+              padding: '4px 8px',
+              borderRadius: '3px',
+              fontSize: '10px',
+              cursor: 'pointer'
+            }}
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const renderRatedComment = () => {
     const ratings = [
       { value: 'excellent', label: 'Excellent', color: '#10b981' },
@@ -305,282 +502,194 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
         </div>
         
         {data.rating && data.rating !== 'no-comment' && data.selectedComment && 
-          renderEditableCommentBox('#3b82f6')
+          renderEditableCommentBox('#0ea5e9')
         }
       </div>
     );
   };
 
   const renderAssessmentComment = () => {
-  const performances = [
-    { value: 'excellent', label: 'Excellent', color: '#10b981' },
-    { value: 'good', label: 'Good', color: '#3b82f6' },
-    { value: 'satisfactory', label: 'Satisfactory', color: '#f59e0b' },
-    { value: 'needsImprovement', label: 'Needs Improvement', color: '#ef4444' },
-    { value: 'notCompleted', label: 'Not Completed', color: '#6b7280' }
-  ];
+    const performances = [
+      { value: 'excellent', label: 'Excellent', color: '#10b981' },
+      { value: 'good', label: 'Good', color: '#3b82f6' },
+      { value: 'satisfactory', label: 'Satisfactory', color: '#f59e0b' },
+      { value: 'needsImprovement', label: 'Needs Improvement', color: '#ef4444' },
+      { value: 'notCompleted', label: 'Not Completed', color: '#6b7280' }
+    ];
 
-  // Get score type settings
-  const currentScoreType = data.scoreType || section.data?.scoreType || 'outOf';
-  const currentMaxScore = data.maxScore || section.data?.maxScore || 100;
-
-  return (
-    <div>
-      {/* Score Type Toggle */}
-      <div style={{
-        backgroundColor: '#f0fdf4',
-        padding: '6px',
-        borderRadius: '4px',
-        marginBottom: '6px',
-        border: '1px solid #10b981'
-      }}>
+    return (
+      <div>
+        {/* Score Input - Always First */}
         <div style={{
-          fontSize: '10px',
-          fontWeight: '600',
-          color: '#059669',
-          marginBottom: '4px'
+          backgroundColor: '#f0fdf4',
+          padding: '6px',
+          borderRadius: '4px',
+          border: '1px solid #10b981',
+          marginBottom: '6px'
         }}>
-          Score Type:
-        </div>
-        <div style={{ display: 'flex', gap: '4px' }}>
-          <button
-            onClick={() => updateSectionData(section.id, { 
-              scoreType: 'outOf',
-              maxScore: currentMaxScore,
-              score: undefined
-            })}
-            style={{
-              flex: 1,
-              backgroundColor: currentScoreType === 'outOf' ? '#10b981' : 'white',
-              color: currentScoreType === 'outOf' ? 'white' : '#10b981',
-              border: '1px solid #10b981',
-              padding: '4px 8px',
-              borderRadius: '3px',
-              fontSize: '10px',
-              fontWeight: '600',
-              cursor: 'pointer'
-            }}
-          >
-            Out of {currentMaxScore}
-          </button>
-          <button
-            onClick={() => updateSectionData(section.id, { 
-              scoreType: 'percentage',
-              score: undefined
-            })}
-            style={{
-              flex: 1,
-              backgroundColor: currentScoreType === 'percentage' ? '#10b981' : 'white',
-              color: currentScoreType === 'percentage' ? 'white' : '#10b981',
-              border: '1px solid #10b981',
-              padding: '4px 8px',
-              borderRadius: '3px',
-              fontSize: '10px',
-              fontWeight: '600',
-              cursor: 'pointer'
-            }}
-          >
-            Percentage
-          </button>
-        </div>
-      </div>
-
-      {/* Score Input */}
-      <div style={{
-        backgroundColor: '#f0fdf4',
-        padding: '6px',
-        borderRadius: '4px',
-        marginBottom: '6px',
-        border: '1px solid #10b981'
-      }}>
-        <div style={{
-          fontSize: '10px',
-          fontWeight: '600',
-          color: '#059669',
-          marginBottom: '4px'
-        }}>
-          {currentScoreType === 'percentage' ? 'Score (%)' : `Score (out of ${currentMaxScore})`}:
-        </div>
-        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          <label style={{
+            display: 'block',
+            fontSize: '10px',
+            fontWeight: '600',
+            color: '#059669',
+            marginBottom: '4px'
+          }}>
+            Score:
+          </label>
           <input
             type="number"
-            value={data.score || ''}
-            onChange={(e) => updateSectionData(section.id, { score: parseFloat(e.target.value) || undefined })}
-            placeholder={currentScoreType === 'percentage' ? 'e.g., 85' : `e.g., ${Math.floor(currentMaxScore * 0.75)}`}
-            min="0"
-            max={currentScoreType === 'percentage' ? '100' : currentMaxScore}
+            value={data.score !== undefined ? data.score : ''}
+            onChange={(e) => updateSectionData(section.id, { score: e.target.value ? Number(e.target.value) : undefined })}
+            placeholder="Enter score..."
             style={{
-              width: currentScoreType === 'percentage' ? '100%' : '50%',
+              width: '100%',
               padding: '4px 6px',
               border: '1px solid #d1d5db',
               borderRadius: '3px',
-              fontSize: '12px',
+              fontSize: '11px',
               boxSizing: 'border-box'
             }}
           />
-          {currentScoreType === 'outOf' && (
-            <>
-              <span style={{ fontSize: '10px', color: '#6b7280', whiteSpace: 'nowrap' }}>out of</span>
-              <input
-                type="number"
-                value={currentMaxScore}
-                onChange={(e) => updateSectionData(section.id, { maxScore: parseFloat(e.target.value) || 100 })}
-                min="1"
-                style={{
-                  width: '50%',
-                  padding: '4px 6px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '3px',
-                  fontSize: '12px',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </>
-          )}
-          {currentScoreType === 'percentage' && (
-            <span style={{ fontSize: '10px', color: '#6b7280' }}>%</span>
-          )}
         </div>
-      </div>
 
-      {/* Performance Buttons */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
-        {performances.map((performance) => (
-          <button
-            key={performance.value}
-            onClick={() => updateSectionData(section.id, { performance: performance.value })}
-            style={{
-              backgroundColor: data.performance === performance.value ? performance.color : 'white',
-              color: data.performance === performance.value ? 'white' : performance.color,
-              border: `1px solid ${performance.color}`,
-              padding: '6px 8px',
-              borderRadius: '4px',
-              fontSize: '11px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              flex: '1 1 calc(50% - 2px)',
-              minWidth: '80px',
-              textAlign: 'center'
-            }}
-          >
-            {performance.label}
-          </button>
-        ))}
+        {/* Performance Buttons - Now Second */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
+          {performances.map((performance) => (
+            <button
+              key={performance.value}
+              onClick={() => updateSectionData(section.id, { performance: performance.value })}
+              style={{
+                backgroundColor: data.performance === performance.value ? performance.color : 'white',
+                color: data.performance === performance.value ? 'white' : performance.color,
+                border: `1px solid ${performance.color}`,
+                padding: '6px 8px',
+                borderRadius: '4px',
+                fontSize: '11px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                flex: '1 1 calc(50% - 2px)',
+                minWidth: '80px',
+                textAlign: 'center'
+              }}
+            >
+              {performance.label}
+            </button>
+          ))}
+        </div>
+        
+        {data.performance && data.performance !== 'no-comment' && data.selectedComment && 
+          renderEditableCommentBox('#10b981')
+        }
       </div>
-      
-      {data.performance && data.performance !== 'no-comment' && data.selectedComment && 
-        renderEditableCommentBox('#10b981')
-      }
-    </div>
-  );
-};
+    );
+  };
 
   const renderPersonalisedComment = () => {
-  const categories = section.data?.headings || Object.keys(section.data?.categories || section.data?.comments || {});
-  const instruction = section.data?.instruction || '';
-  
-  return (
-    <div>
-      {/* Display instruction */}
-      {instruction && (
+    const categories = section.data?.headings || Object.keys(section.data?.categories || section.data?.comments || {});
+    const instruction = section.data?.instruction || '';
+    
+    return (
+      <div>
+        {/* Display instruction */}
+        {instruction && (
+          <div style={{
+            backgroundColor: '#fef3c7',
+            padding: '6px',
+            borderRadius: '4px',
+            marginBottom: '6px',
+            border: '1px solid #f59e0b'
+          }}>
+            <div style={{
+              fontSize: '10px',
+              fontWeight: '600',
+              color: '#92400e',
+              marginBottom: '2px'
+            }}>
+              Instructions:
+            </div>
+            <div style={{
+              fontSize: '10px',
+              color: '#78350f',
+              fontStyle: 'italic',
+              lineHeight: '1.3'
+            }}>
+              {instruction}
+            </div>
+          </div>
+        )}
+
+        {/* Personalised Information Input - Now FIRST */}
         <div style={{
-          backgroundColor: '#fef3c7',
+          backgroundColor: '#fffbeb',
           padding: '6px',
           borderRadius: '4px',
-          marginBottom: '6px',
-          border: '1px solid #f59e0b'
+          border: '1px solid #f59e0b',
+          marginBottom: '6px'
         }}>
-          <div style={{
+          <label style={{
+            display: 'block',
             fontSize: '10px',
             fontWeight: '600',
-            color: '#92400e',
-            marginBottom: '2px'
+            color: '#d97706',
+            marginBottom: '4px'
           }}>
-            Instructions:
-          </div>
+            Personalised Information:
+          </label>
+          <input
+            type="text"
+            value={data.personalisedInfo || ''}
+            onChange={(e) => updateSectionData(section.id, { personalisedInfo: e.target.value })}
+            placeholder="Enter specific information..."
+            style={{
+              width: '100%',
+              padding: '4px 6px',
+              border: '1px solid #d1d5db',
+              borderRadius: '3px',
+              fontSize: '11px',
+              boxSizing: 'border-box'
+            }}
+          />
           <div style={{
-            fontSize: '10px',
+            fontSize: '9px',
             color: '#78350f',
             fontStyle: 'italic',
-            lineHeight: '1.3'
+            marginTop: '2px'
           }}>
-            {instruction}
+            This will replace [Personal Information] in the comment
           </div>
         </div>
-      )}
 
-      {/* Personalised Information Input - Now FIRST */}
-      <div style={{
-        backgroundColor: '#fffbeb',
-        padding: '6px',
-        borderRadius: '4px',
-        border: '1px solid #f59e0b',
-        marginBottom: '6px'
-      }}>
-        <label style={{
-          display: 'block',
-          fontSize: '10px',
-          fontWeight: '600',
-          color: '#d97706',
-          marginBottom: '4px'
-        }}>
-          Personalised Information:
-        </label>
-        <input
-          type="text"
-          value={data.personalisedInfo || ''}
-          onChange={(e) => updateSectionData(section.id, { personalisedInfo: e.target.value })}
-          placeholder="Enter specific information..."
-          style={{
-            width: '100%',
-            padding: '4px 6px',
-            border: '1px solid #d1d5db',
-            borderRadius: '3px',
-            fontSize: '11px',
-            boxSizing: 'border-box'
-          }}
-        />
-        <div style={{
-          fontSize: '9px',
-          color: '#78350f',
-          fontStyle: 'italic',
-          marginTop: '2px'
-        }}>
-          This will replace [Personal Information] in the comment
+        {/* Category Buttons - Now SECOND */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
+          {categories.map((category: string) => (
+            <button
+              key={category}
+              onClick={() => updateSectionData(section.id, { category })}
+              style={{
+                backgroundColor: data.category === category ? '#f59e0b' : 'white',
+                color: data.category === category ? 'white' : '#f59e0b',
+                border: '1px solid #f59e0b',
+                padding: '6px 8px',
+                borderRadius: '4px',
+                fontSize: '11px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                flex: '1 1 calc(50% - 2px)',
+                minWidth: '80px',
+                textAlign: 'center'
+              }}
+            >
+              {category}
+            </button>
+          ))}
         </div>
+          
+        {data.category && data.selectedComment && 
+          renderEditableCommentBox('#f59e0b')
+        }
       </div>
-
-      {/* Category Buttons - Now SECOND */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
-        {categories.map((category: string) => (
-          <button
-            key={category}
-            onClick={() => updateSectionData(section.id, { category })}
-            style={{
-              backgroundColor: data.category === category ? '#f59e0b' : 'white',
-              color: data.category === category ? 'white' : '#f59e0b',
-              border: '1px solid #f59e0b',
-              padding: '6px 8px',
-              borderRadius: '4px',
-              fontSize: '11px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              flex: '1 1 calc(50% - 2px)',
-              minWidth: '80px',
-              textAlign: 'center'
-            }}
-          >
-            {category}
-          </button>
-        ))}
-      </div>
-        
-      {data.category && data.selectedComment && 
-        renderEditableCommentBox('#f59e0b')
-      }
-    </div>
-  );
-};
+    );
+  };
 
   const renderNextSteps = () => {
     const focusAreas = section.data?.headings || Object.keys(section.data?.focusAreas || section.data?.comments || {});
@@ -610,92 +719,46 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
             </button>
           ))}
         </div>
-        
-        {data.focusArea && data.selectedSuggestion && (
-          <div style={{
-            backgroundColor: '#f8fafc',
-            padding: '6px',
-            borderRadius: '4px',
-            border: '1px solid #e5e7eb',
-            marginTop: '6px',
-            textAlign: 'center'
-          }}>
-            {!showEditSuggestion ? (
-              <button
-                onClick={() => {
-                  setEditableSuggestion(data.customEditedSuggestion || data.selectedSuggestion || '');
-                  setShowEditSuggestion(true);
-                }}
-                style={{
-                  backgroundColor: '#06b6d4',
-                  color: 'white',
-                  border: 'none',
-                  padding: '4px 8px',
-                  borderRadius: '3px',
-                  fontSize: '10px',
-                  cursor: 'pointer'
-                }}
-              >
-                ✏️ Edit Suggestion
-              </button>
-            ) : (
-              <div style={{
-                backgroundColor: 'white',
-                padding: '6px',
-                border: '1px solid #d1d5db',
-                borderRadius: '4px'
-              }}>
-                <textarea
-                  value={editableSuggestion}
-                  onChange={(e) => setEditableSuggestion(e.target.value)}
-                  placeholder="Edit the suggestion..."
-                  style={{
-                    width: '100%',
-                    minHeight: '50px',
-                    padding: '6px',
-                    marginBottom: '4px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '4px',
-                    fontSize: '11px',
-                    fontFamily: 'inherit',
-                    resize: 'vertical',
-                    textAlign: 'left'
-                  }}
-                />
-                <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-start' }}>
-                  <button
-                    onClick={handleCancelEditSuggestion}
-                    style={{
-                      backgroundColor: '#6b7280',
-                      color: 'white',
-                      border: 'none',
-                      padding: '4px 8px',
-                      borderRadius: '3px',
-                      fontSize: '10px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSaveEditedSuggestion}
-                    style={{
-                      backgroundColor: '#10b981',
-                      color: 'white',
-                      border: 'none',
-                      padding: '4px 8px',
-                      borderRadius: '3px',
-                      fontSize: '10px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+          
+        {data.focusArea && data.selectedSuggestion && 
+          renderEditableSuggestionBox()
+        }
+      </div>
+    );
+  };
+
+  const renderQualities = () => {
+    const qualityAreas = section.data?.headings || Object.keys(section.data?.comments || {});
+    
+    return (
+      <div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
+          {qualityAreas.map((area: string) => (
+            <button
+              key={area}
+              onClick={() => updateSectionData(section.id, { qualityArea: area })}
+              style={{
+                backgroundColor: data.qualityArea === area ? '#8b5cf6' : 'white',
+                color: data.qualityArea === area ? 'white' : '#8b5cf6',
+                border: '1px solid #8b5cf6',
+                padding: '6px 8px',
+                borderRadius: '4px',
+                fontSize: '11px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                flex: '1 1 calc(50% - 2px)',
+                minWidth: '80px',
+                textAlign: 'center'
+              }}
+            >
+              {area}
+            </button>
+          ))}
+        </div>
+          
+        {data.qualityArea && data.selectedQuality && 
+          renderEditableQualityBox()
+        }
       </div>
     );
   };
@@ -767,7 +830,7 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
       case 'assessment-comment': return renderAssessmentComment();
       case 'personalised-comment': return renderPersonalisedComment();
       case 'next-steps': return renderNextSteps();
-      case 'qualities': return renderNextSteps(); // Qualities uses same rendering as next steps
+      case 'qualities': return renderQualities();
       case 'standard-comment': return renderStandardComment();
       case 'optional-additional-comment': return renderOptionalComment();
       case 'new-line': return (
@@ -829,47 +892,46 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
           </h3>
           
           {/* Only show Header and Exclude toggles for non-optional sections */}
-          {section.type !== 'optional-additional-comment' && (
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {section.type !== 'optional-additional-comment' && section.type !== 'new-line' && (
+            <div style={{
+              display: 'flex',
+              gap: '8px',
+              fontSize: '10px'
+            }}>
               <label style={{
                 display: 'flex',
                 alignItems: 'center',
-                fontSize: '8px',
                 color: colors.text,
-                cursor: 'pointer'
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
               }}>
                 <input
                   type="checkbox"
-                  checked={data.showHeader !== false}
+                  checked={data.showHeader || false}
                   onChange={(e) => updateSectionData(section.id, { showHeader: e.target.checked })}
                   style={{ marginRight: '2px', transform: 'scale(0.6)' }}
                 />
                 Header
               </label>
-              
               <label style={{
                 display: 'flex',
                 alignItems: 'center',
-                fontSize: '8px',
-                color: '#6b7280',
-                cursor: 'pointer'
+                color: colors.text,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
               }}>
                 <input
                   type="checkbox"
-                  checked={
-                    (section.type === 'rated-comment' && data.rating === 'no-comment') ||
-                    (section.type === 'assessment-comment' && data.performance === 'no-comment') ||
-                    (section.type === 'personalised-comment' && data.category === null) ||
-                    (section.type === 'next-steps' && data.focusArea === null) ||
-                    (section.type === 'qualities' && data.qualityArea === null)
-                  }
+                  checked={!data.rating && !data.performance && !data.category && !data.focusArea && !data.qualityArea}
                   onChange={(e) => {
                     if (section.type === 'rated-comment') {
-                      updateSectionData(section.id, { rating: e.target.checked ? 'no-comment' : null });
+                      const firstRating = Object.keys(section.data?.comments || section.data?.ratings || {})[0];
+                      updateSectionData(section.id, { rating: e.target.checked ? null : firstRating });
                     } else if (section.type === 'assessment-comment') {
-                      updateSectionData(section.id, { performance: e.target.checked ? 'no-comment' : null });
+                      const firstPerformance = Object.keys(section.data?.comments || {})[0];
+                      updateSectionData(section.id, { performance: e.target.checked ? null : firstPerformance });
                     } else if (section.type === 'personalised-comment') {
-                      const firstCategory = Object.keys(section.data?.categories || section.data?.comments || {})[0];
+                      const firstCategory = section.data?.headings?.[0] || Object.keys(section.data?.categories || section.data?.comments || {})[0];
                       updateSectionData(section.id, { category: e.target.checked ? null : firstCategory });
                     } else if (section.type === 'next-steps') {
                       const firstArea = Object.keys(section.data?.focusAreas || section.data?.comments || {})[0];
