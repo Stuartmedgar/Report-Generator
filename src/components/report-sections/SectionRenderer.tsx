@@ -7,6 +7,7 @@ import AssessmentCommentSection from './AssessmentCommentSection';
 import PersonalisedCommentSection from './PersonalisedCommentSection';
 import NextStepsSection from './NextStepsSection';
 import NewLineSection from './NewLineSection';
+import QualitiesSection from './QualitiesSection';
 
 interface SectionRendererProps {
   section: TemplateSection;
@@ -25,7 +26,8 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
   const enhancedUpdateSectionData = (sectionId: string, newData: any) => {
     // If showHeader is not set in newData, use template default or true
     if (newData.showHeader === undefined) {
-      const headerDefault = section.data?.showHeader !== undefined ? section.data.showHeader : false;
+      const headerDefault = section.data?.showHeader !== undefined ? 
+        section.data.showHeader : false;
       newData.showHeader = headerDefault;
     }
     updateSectionData(sectionId, newData);
@@ -80,6 +82,15 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
     case 'next-steps':
       return (
         <NextStepsSection
+          section={section}
+          data={data}
+          updateSectionData={enhancedUpdateSectionData}
+        />
+      );
+
+    case 'qualities':
+      return (
+        <QualitiesSection
           section={section}
           data={data}
           updateSectionData={enhancedUpdateSectionData}
