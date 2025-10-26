@@ -28,7 +28,7 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
 }) => {
   // Check if section type is editable
   const isSectionEditable = (type: string) => {
-    return ['rated-comment', 'assessment-comment', 'personalised-comment', 'next-steps'].includes(type);
+    return ['rated-comment', 'assessment-comment', 'personalised-comment', 'next-steps', 'qualities'].includes(type);
   };
 
   // FIXED: Handle adding section and closing menu

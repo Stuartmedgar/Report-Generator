@@ -7,6 +7,7 @@ import RatedCommentBuilder from '../components/RatedCommentBuilder';
 import AssessmentCommentBuilder from '../components/AssessmentCommentBuilder';
 import PersonalisedCommentBuilder from '../components/PersonalisedCommentBuilder';
 import NextStepsCommentBuilder from '../components/NextStepsCommentBuilder';
+import QualitiesCommentBuilder from '../components/QualitiesCommentBuilder';
 import MobileCreateTemplate from '../components/MobileCreateTemplate';
 
 const CreateTemplate: React.FC = () => {
@@ -35,7 +36,7 @@ const CreateTemplate: React.FC = () => {
   const [showPersonalisedCommentBuilder, setShowPersonalisedCommentBuilder] = useState(false);
   const [showNextStepsCommentBuilder, setShowNextStepsCommentBuilder] = useState(false);
   const [showStandardCommentEditor, setShowStandardCommentEditor] = useState(false);
-
+const [showQualitiesCommentBuilder, setShowQualitiesCommentBuilder] = useState(false);
   // Editing state
   const [editingSection, setEditingSection] = useState<{section: TemplateSection, index: number} | null>(null);
 
@@ -83,8 +84,8 @@ const CreateTemplate: React.FC = () => {
 
   // Check if a section type is editable
   const isSectionEditable = (type: string) => {
-    return ['rated-comment', 'assessment-comment', 'personalised-comment', 'next-steps', 'standard-comment'].includes(type);
-  };
+  return ['rated-comment', 'assessment-comment', 'personalised-comment', 'next-steps', 'standard-comment', 'qualities'].includes(type);
+};
 
   // Handle section editing
   const handleEditSection = (section: TemplateSection, index: number) => {
@@ -104,10 +105,38 @@ const CreateTemplate: React.FC = () => {
         setShowNextStepsCommentBuilder(true);
         break;
       case 'standard-comment':
-        setStandardCommentName(section.name || '');
-        setStandardCommentContent(section.data?.content || '');
-        setShowStandardCommentEditor(true);
-        break;
+  console.log('=== EDITING STANDARD COMMENT ===');
+  console.log('Full section:', section);
+  console.log('section.name:', section.name);
+  console.log('section.data:', section.data);
+  console.log('section.data?.content:', section.data?.content);
+  
+  setStandardCommentName(section.name || '');
+  setStandardCommentContent(section.data?.content || '');
+  
+  console.log('Setting standardCommentName to:', section.name || '');
+  console.log('Setting standardCommentContent to:', section.data?.content || '');
+  
+  setShowStandardCommentEditor(true);
+  break;
+       case 'qualities':
+  setShowQualitiesCommentBuilder(true);
+  break; 
+  case 'standard-comment':
+  console.log('=== EDITING STANDARD COMMENT ===');
+  console.log('Full section:', section);
+  console.log('section.name:', section.name);
+  console.log('section.data:', section.data);
+  console.log('section.data?.content:', section.data?.content);
+  
+  setStandardCommentName(section.name || '');
+  setStandardCommentContent(section.data?.content || '');
+  
+  console.log('Setting standardCommentName to:', section.name || '');
+  console.log('Setting standardCommentContent to:', section.data?.content || '');
+  
+  setShowStandardCommentEditor(true);
+  break;
       default:
         alert(`Editing for ${section.type} sections is not yet implemented.`);
     }
@@ -128,18 +157,23 @@ const CreateTemplate: React.FC = () => {
 
   // Handle saving edited sections
   const handleSaveEditedSection = (updatedData: any) => {
-    if (!editingSection) return;
+  if (!editingSection) return;
 
-    const updatedSections = [...sections];
-    updatedSections[editingSection.index] = {
-      ...editingSection.section,
-      name: updatedData.name || editingSection.section.name,
-      data: updatedData
-    };
-
-    setSections(updatedSections);
-    handleCancelEdit();
+  const updatedSections = [...sections];
+  
+  // Check if updatedData has a 'data' property (for standard comments)
+  // or if it's the data itself (for builders)
+  const newData = updatedData.data !== undefined ? updatedData.data : updatedData;
+  
+  updatedSections[editingSection.index] = {
+    ...editingSection.section,
+    name: updatedData.name || editingSection.section.name,
+    data: newData
   };
+
+  setSections(updatedSections);
+  handleCancelEdit();
+};
 
   // Handle move section up/down
   const handleMoveSection = (index: number, direction: 'up' | 'down') => {
@@ -167,6 +201,7 @@ const CreateTemplate: React.FC = () => {
     setShowAssessmentCommentBuilder(false);
     setShowPersonalisedCommentBuilder(false);
     setShowNextStepsCommentBuilder(false);
+    setShowQualitiesCommentBuilder(false);
     setShowStandardCommentEditor(false);
     setStandardCommentName('');
     setStandardCommentContent('');
@@ -199,23 +234,24 @@ const CreateTemplate: React.FC = () => {
     navigate('/manage-templates');
   };
 
-  const handleSaveStandardComment = () => {
-    if (!standardCommentName.trim()) {
-      alert('Please enter a name for this section');
-      return;
-    }
-    if (!standardCommentContent.trim()) {
-      alert('Please enter content for this section');
-      return;
-    }
+ const handleSaveStandardComment = () => {
+  if (!standardCommentName.trim()) {
+    alert('Please enter a name for this section');
+    return;
+  }
+  if (!standardCommentContent.trim()) {
+    alert('Please enter content for this section');
+    return;
+  }
 
-    const standardCommentData = {
-      name: standardCommentName.trim(),
-      content: standardCommentContent.trim()
-    };
-
-    handleSaveEditedSection(standardCommentData);
+  // FIXED: Wrap content in data object
+  const standardCommentData = {
+    name: standardCommentName.trim(),
+    data: { content: standardCommentContent.trim() }
   };
+
+  handleSaveEditedSection(standardCommentData);
+};
 
   // Naming step screen
   if (isNamingStep) {
@@ -713,6 +749,40 @@ const CreateTemplate: React.FC = () => {
         </div>
       )}
 
+{showQualitiesCommentBuilder && editingSection && (
+  <div style={{
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    padding: '20px'
+  }}>
+    <div style={{
+      backgroundColor: 'white',
+      borderRadius: '12px',
+      padding: '20px',
+      width: '100%',
+      maxWidth: '900px',
+      maxHeight: '90vh',
+      overflowY: 'auto'
+    }}>
+      <QualitiesCommentBuilder
+        existingComment={editingSection.section.data}
+        onSave={handleSaveEditedSection}
+        onCancel={() => {
+          setEditingSection(null);
+          setShowQualitiesCommentBuilder(false);
+        }}
+      />
+    </div>
+  </div>
+)}
       {/* Standard Comment Editor Modal */}
       {showStandardCommentEditor && editingSection && (
         <div style={{

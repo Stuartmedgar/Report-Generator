@@ -23,7 +23,7 @@ export const TemplateSectionList: React.FC<TemplateSectionListProps> = ({
   onAddSection
 }) => {
   const isSectionEditable = (type: string) => {
-    return ['rated-comment', 'assessment-comment', 'personalised-comment', 'next-steps'].includes(type);
+    return ['rated-comment', 'assessment-comment', 'personalised-comment', 'next-steps', 'qualities'].includes(type);
   };
 
   return (
