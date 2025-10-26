@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
-import { TemplateSection } from '../types';
+import { TemplateSection, SectionType } from '../types';
 import SectionSelector from '../components/SectionSelector';
 import RatedCommentBuilder from '../components/RatedCommentBuilder';
 import AssessmentCommentBuilder from '../components/AssessmentCommentBuilder';
@@ -36,7 +36,8 @@ const CreateTemplate: React.FC = () => {
   const [showPersonalisedCommentBuilder, setShowPersonalisedCommentBuilder] = useState(false);
   const [showNextStepsCommentBuilder, setShowNextStepsCommentBuilder] = useState(false);
   const [showStandardCommentEditor, setShowStandardCommentEditor] = useState(false);
-const [showQualitiesCommentBuilder, setShowQualitiesCommentBuilder] = useState(false);
+  const [showQualitiesCommentBuilder, setShowQualitiesCommentBuilder] = useState(false);
+
   // Editing state
   const [editingSection, setEditingSection] = useState<{section: TemplateSection, index: number} | null>(null);
 
@@ -53,45 +54,54 @@ const [showQualitiesCommentBuilder, setShowQualitiesCommentBuilder] = useState(f
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // SCROLL FIX: Ensure body can scroll when editing template
+  // SCROLL FIX: Ensure body doesn't scroll when modal is open
   useEffect(() => {
-    document.body.style.overflow = 'auto';
-    document.documentElement.style.overflow = 'auto';
+    if (showSectionSelector || showRatedCommentBuilder || showAssessmentCommentBuilder || 
+        showPersonalisedCommentBuilder || showNextStepsCommentBuilder || showStandardCommentEditor ||
+        showQualitiesCommentBuilder) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
     
     return () => {
-      document.body.style.overflow = 'auto';
-      document.documentElement.style.overflow = 'auto';
+      document.body.style.overflow = 'unset';
     };
-  }, []);
+  }, [showSectionSelector, showRatedCommentBuilder, showAssessmentCommentBuilder, 
+      showPersonalisedCommentBuilder, showNextStepsCommentBuilder, showStandardCommentEditor,
+      showQualitiesCommentBuilder]);
 
-  // If mobile, use mobile component - AFTER all hooks are called
+  // NOW SAFE TO RETURN MOBILE COMPONENT
   if (isMobile) {
     return <MobileCreateTemplate />;
   }
 
-  // Handle naming step
-  const handleContinueFromNaming = () => {
-    if (templateName.trim()) {
-      setIsNamingStep(false);
-    }
+  const handleAddSection = (type: string, data: any) => {
+    const newSection: TemplateSection = {
+      id: `${Date.now()}-${Math.random()}`,
+      type: type as SectionType,
+      name: data.name,
+      data
+    };
+    
+    setSections([...sections, newSection]);
+    setSectionData({ ...sectionData, [newSection.id]: data });
+    setShowSectionSelector(false);
+    
+    // Reset all builder states
+    setShowRatedCommentBuilder(false);
+    setShowAssessmentCommentBuilder(false);
+    setShowPersonalisedCommentBuilder(false);
+    setShowNextStepsCommentBuilder(false);
+    setShowStandardCommentEditor(false);
+    setShowQualitiesCommentBuilder(false);
   };
 
-  const handleNamingKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleContinueFromNaming();
-    }
-  };
-
-  // Check if a section type is editable
-  const isSectionEditable = (type: string) => {
-  return ['rated-comment', 'assessment-comment', 'personalised-comment', 'next-steps', 'standard-comment', 'qualities'].includes(type);
-};
-
-  // Handle section editing
   const handleEditSection = (section: TemplateSection, index: number) => {
     setEditingSection({ section, index });
-
-    switch (section.type) {
+    
+    // Open appropriate builder based on section type
+    switch(section.type) {
       case 'rated-comment':
         setShowRatedCommentBuilder(true);
         break;
@@ -104,193 +114,189 @@ const [showQualitiesCommentBuilder, setShowQualitiesCommentBuilder] = useState(f
       case 'next-steps':
         setShowNextStepsCommentBuilder(true);
         break;
+      case 'qualities':
+        setShowQualitiesCommentBuilder(true);
+        break;
       case 'standard-comment':
-  console.log('=== EDITING STANDARD COMMENT ===');
-  console.log('Full section:', section);
-  console.log('section.name:', section.name);
-  console.log('section.data:', section.data);
-  console.log('section.data?.content:', section.data?.content);
-  
-  setStandardCommentName(section.name || '');
-  setStandardCommentContent(section.data?.content || '');
-  
-  console.log('Setting standardCommentName to:', section.name || '');
-  console.log('Setting standardCommentContent to:', section.data?.content || '');
-  
-  setShowStandardCommentEditor(true);
-  break;
-       case 'qualities':
-  setShowQualitiesCommentBuilder(true);
-  break; 
-  case 'standard-comment':
-  console.log('=== EDITING STANDARD COMMENT ===');
-  console.log('Full section:', section);
-  console.log('section.name:', section.name);
-  console.log('section.data:', section.data);
-  console.log('section.data?.content:', section.data?.content);
-  
-  setStandardCommentName(section.name || '');
-  setStandardCommentContent(section.data?.content || '');
-  
-  console.log('Setting standardCommentName to:', section.name || '');
-  console.log('Setting standardCommentContent to:', section.data?.content || '');
-  
-  setShowStandardCommentEditor(true);
-  break;
-      default:
-        alert(`Editing for ${section.type} sections is not yet implemented.`);
+        setStandardCommentName(section.name || '');
+        setStandardCommentContent(section.data?.comment || section.data?.content || '');
+        setShowStandardCommentEditor(true);
+        break;
     }
   };
 
-  // Handle adding new sections
-  const handleAddSection = (sectionType: string, sectionDataInput: any) => {
-    const newSection: TemplateSection = {
-      id: `section-${Date.now()}`,
-      type: sectionType as any,
-      name: sectionDataInput.name || `New ${sectionType.replace('-', ' ')}`,
-      data: sectionDataInput
+  const handleSaveEditedSection = (updatedData: any) => {
+    if (!editingSection) return;
+    
+    const updatedSections = [...sections];
+    
+    // Check if updatedData already has name and data properties
+    const newData = updatedData.name && updatedData.data ? updatedData.data : updatedData;
+    
+    updatedSections[editingSection.index] = {
+      ...editingSection.section,
+      name: updatedData.name || editingSection.section.name,
+      data: newData
     };
 
-    setSections(prev => [...prev, newSection]);
-    setShowSectionSelector(false);
+    setSections(updatedSections);
+    setEditingSection(null);
+    
+    // Reset all builder states
+    setShowRatedCommentBuilder(false);
+    setShowAssessmentCommentBuilder(false);
+    setShowPersonalisedCommentBuilder(false);
+    setShowNextStepsCommentBuilder(false);
+    setShowStandardCommentEditor(false);
+    setShowQualitiesCommentBuilder(false);
   };
 
-  // Handle saving edited sections
-  const handleSaveEditedSection = (updatedData: any) => {
-  if (!editingSection) return;
-
-  const updatedSections = [...sections];
-  
-  // Check if updatedData has a 'data' property (for standard comments)
-  // or if it's the data itself (for builders)
-  const newData = updatedData.data !== undefined ? updatedData.data : updatedData;
-  
-  updatedSections[editingSection.index] = {
-    ...editingSection.section,
-    name: updatedData.name || editingSection.section.name,
-    data: newData
-  };
-
-  setSections(updatedSections);
-  handleCancelEdit();
-};
-
-  // Handle move section up/down
-  const handleMoveSection = (index: number, direction: 'up' | 'down') => {
-    const newSections = [...sections];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-
-    if (targetIndex >= 0 && targetIndex < newSections.length) {
-      [newSections[index], newSections[targetIndex]] = [newSections[targetIndex], newSections[index]];
-      setSections(newSections);
-    }
-  };
-
-  // Handle deleting sections
-  const handleDeleteSection = (index: number) => {
-    if (window.confirm('Are you sure you want to delete this section?')) {
-      const newSections = sections.filter((_, i) => i !== index);
-      setSections(newSections);
-    }
-  };
-
-  // Handle canceling edits
   const handleCancelEdit = () => {
     setEditingSection(null);
     setShowRatedCommentBuilder(false);
     setShowAssessmentCommentBuilder(false);
     setShowPersonalisedCommentBuilder(false);
     setShowNextStepsCommentBuilder(false);
+    setShowStandardCommentEditor(false);
     setShowQualitiesCommentBuilder(false);
+  };
+
+  const handleSaveStandardCommentEdit = () => {
+    if (!editingSection) return;
+    
+    const updatedSections = [...sections];
+    updatedSections[editingSection.index] = {
+      ...editingSection.section,
+      name: standardCommentName,
+      data: { comment: standardCommentContent }
+    };
+    
+    setSections(updatedSections);
+    setEditingSection(null);
     setShowStandardCommentEditor(false);
     setStandardCommentName('');
     setStandardCommentContent('');
   };
 
-  // Handle saving template
+  const handleDeleteSection = (index: number) => {
+    const updatedSections = sections.filter((_, i) => i !== index);
+    setSections(updatedSections);
+  };
+
+  const handleMoveSection = (index: number, direction: 'up' | 'down') => {
+    if (
+      (direction === 'up' && index === 0) ||
+      (direction === 'down' && index === sections.length - 1)
+    ) {
+      return;
+    }
+
+    const newSections = [...sections];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    [newSections[index], newSections[targetIndex]] = [newSections[targetIndex], newSections[index]];
+    setSections(newSections);
+  };
+
+  const isSectionEditable = (type: string): boolean => {
+    return ['rated-comment', 'assessment-comment', 'personalised-comment', 
+            'next-steps', 'qualities', 'standard-comment'].includes(type);
+  };
+
   const handleSaveTemplate = () => {
     if (!templateName.trim()) {
       alert('Please enter a template name');
       return;
     }
 
-    const templateData = {
-      id: editTemplate?.id || Date.now().toString(),
-      name: templateName,
-      sections,
-      sectionData,
-      createdAt: editTemplate?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    if (isEditing) {
-      updateTemplate(templateData);
-      alert('Template updated successfully!');
-    } else {
-      addTemplate(templateData);
-      alert('Template saved successfully!');
+    if (sections.length === 0) {
+      alert('Please add at least one section to your template');
+      return;
     }
 
+    const template = {
+      name: templateName,
+      sections,
+      sectionData
+    };
+
+    if (isEditing && editTemplate) {
+      updateTemplate({
+        ...editTemplate,
+        ...template
+      });
+      alert(`Template "${templateName}" has been updated successfully!`);
+    } else {
+      addTemplate(template);
+      alert(`Template "${templateName}" has been created successfully!`);
+    }
+    
     navigate('/manage-templates');
   };
 
- const handleSaveStandardComment = () => {
-  if (!standardCommentName.trim()) {
-    alert('Please enter a name for this section');
-    return;
-  }
-  if (!standardCommentContent.trim()) {
-    alert('Please enter content for this section');
-    return;
-  }
-
-  // FIXED: Wrap content in data object
-  const standardCommentData = {
-    name: standardCommentName.trim(),
-    data: { content: standardCommentContent.trim() }
-  };
-
-  handleSaveEditedSection(standardCommentData);
-};
-
-  // Naming step screen
+  // Template naming step
   if (isNamingStep) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-        <div style={{ maxWidth: '500px', width: '100%', backgroundColor: 'white', borderRadius: '12px', padding: '48px', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: '600', color: '#111827', marginBottom: '12px', textAlign: 'center' }}>
-            Create New Template
+      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ 
+          maxWidth: '600px', 
+          width: '100%',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+          padding: '48px'
+        }}>
+          <h1 style={{ 
+            fontSize: '32px', 
+            fontWeight: '700', 
+            color: '#111827',
+            marginBottom: '12px',
+            textAlign: 'center'
+          }}>
+            Name Your Template
           </h1>
-          <p style={{ fontSize: '16px', color: '#6b7280', marginBottom: '32px', textAlign: 'center' }}>
-            Let's start by giving your template a name
+          <p style={{ 
+            color: '#6b7280', 
+            marginBottom: '32px',
+            fontSize: '16px',
+            textAlign: 'center'
+          }}>
+            Choose a descriptive name for your report template
           </p>
-          
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+
+          <div style={{ marginBottom: '32px' }}>
+            <label style={{ 
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '8px'
+            }}>
               Template Name
             </label>
             <input
               type="text"
-              placeholder="e.g., Year 3 End of Term Report"
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
-              onKeyPress={handleNamingKeyPress}
-              autoFocus
+              placeholder="e.g., Primary School Report, KS2 Mathematics Report"
               style={{
                 width: '100%',
                 padding: '12px 16px',
                 border: '2px solid #e5e7eb',
                 borderRadius: '8px',
                 fontSize: '16px',
+                outline: 'none',
+                transition: 'border-color 0.2s',
                 boxSizing: 'border-box'
               }}
+              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+              autoFocus
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <Link to="/manage-templates" style={{ flex: 1, textDecoration: 'none' }}>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
               <button style={{
-                width: '100%',
                 backgroundColor: '#f3f4f6',
                 color: '#374151',
                 padding: '12px 24px',
@@ -305,10 +311,9 @@ const [showQualitiesCommentBuilder, setShowQualitiesCommentBuilder] = useState(f
             </Link>
             
             <button
-              onClick={handleContinueFromNaming}
+              onClick={() => setIsNamingStep(false)}
               disabled={!templateName.trim()}
               style={{
-                flex: 1,
                 backgroundColor: templateName.trim() ? '#3b82f6' : '#e5e7eb',
                 color: templateName.trim() ? 'white' : '#9ca3af',
                 padding: '12px 24px',
@@ -391,111 +396,102 @@ const [showQualitiesCommentBuilder, setShowQualitiesCommentBuilder] = useState(f
                 cursor: 'pointer'
               }}
             >
-              {isEditing ? 'Update Template' : 'Save Template'}
+              {isEditing ? 'Save Changes' : 'Save Template'}
             </button>
           </div>
         </div>
       </header>
 
-      <main style={{ 
-        maxWidth: '1200px', 
-        margin: '0 auto', 
-        padding: '32px 24px',
-        paddingBottom: '100px',
-        width: '100%',
-        boxSizing: 'border-box'
-      }}>
-        {/* Template Sections */}
-        <div style={{
-          backgroundColor: 'white',
-          border: '2px solid #e5e7eb',
-          borderRadius: '12px',
-          padding: '24px',
-          marginBottom: '24px'
-        }}>
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            marginBottom: '20px'
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
+        {/* Add Section Button */}
+        {sections.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '60px 20px',
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            border: '2px dashed #d1d5db'
           }}>
-            <h2 style={{ 
-              fontSize: '18px', 
-              fontWeight: '600', 
-              color: '#111827',
-              margin: 0
-            }}>
-              Template Sections
+            <div style={{ fontSize: '64px', marginBottom: '16px' }}>📝</div>
+            <h2 style={{ fontSize: '24px', fontWeight: '600', color: '#111827', marginBottom: '12px' }}>
+              Start Building Your Template
             </h2>
-            
+            <p style={{ color: '#6b7280', marginBottom: '32px', fontSize: '16px' }}>
+              Add sections to define the structure of your report
+            </p>
             <button
               onClick={() => setShowSectionSelector(true)}
               style={{
-                backgroundColor: '#3b82f6',
+                backgroundColor: '#10b981',
                 color: 'white',
-                padding: '8px 16px',
+                padding: '16px 32px',
                 border: 'none',
-                borderRadius: '6px',
-                fontSize: '14px',
+                borderRadius: '8px',
+                fontSize: '16px',
                 fontWeight: '500',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px'
+                cursor: 'pointer'
               }}
             >
-              + Add Section
+              + Add Your First Section
             </button>
           </div>
-
-          {sections.length === 0 ? (
-            <div style={{
-              textAlign: 'center',
-              padding: '48px 24px',
-              color: '#9ca3af',
-              border: '2px dashed #e5e7eb',
-              borderRadius: '8px'
-            }}>
-              <p style={{ fontSize: '18px', margin: '0 0 8px 0' }}>No sections yet</p>
-              <p style={{ fontSize: '14px', margin: 0 }}>Click "Add Section" to get started</p>
+        ) : (
+          <div>
+            <div style={{ marginBottom: '24px' }}>
+              <button
+                onClick={() => setShowSectionSelector(true)}
+                style={{
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  padding: '12px 24px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                + Add Section
+              </button>
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+            {/* Template Sections List */}
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '24px',
+              boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+            }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
+                Template Sections ({sections.length})
+              </h2>
+              
               {sections.map((section, index) => (
-                <div 
+                <div
                   key={section.id}
                   style={{
+                    padding: '16px',
                     backgroundColor: '#f9fafb',
-                    border: '1px solid #e5e7eb',
                     borderRadius: '8px',
-                    padding: '16px'
+                    marginBottom: '12px',
+                    border: '1px solid #e5e7eb'
                   }}
                 >
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center',
-                    marginBottom: '8px'
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
                   }}>
                     <div>
-                      <h3 style={{ 
-                        fontSize: '16px', 
-                        fontWeight: '600', 
-                        color: '#111827',
-                        margin: '0 0 4px 0'
-                      }}>
-                        {section.name}
+                      <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', margin: '0 0 4px 0' }}>
+                        {section.name || section.type}
                       </h3>
-                      <p style={{ 
-                        fontSize: '12px', 
-                        color: '#6b7280',
-                        margin: 0
-                      }}>
-                        {section.type.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+                        Type: {section.type}
                       </p>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '8px' }}>
                       {/* Move Up button */}
                       <button
                         onClick={() => handleMoveSection(index, 'up')}
@@ -568,11 +564,11 @@ const [showQualitiesCommentBuilder, setShowQualitiesCommentBuilder] = useState(f
                 </div>
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </main>
 
-      {/* Section Selector Modal - FIXED: Much larger modal */}
+      {/* Section Selector - FIXED: Wrapped in fixed overlay that only shows when clicked */}
       {showSectionSelector && (
         <div style={{
           position: 'fixed',
@@ -580,27 +576,14 @@ const [showQualitiesCommentBuilder, setShowQualitiesCommentBuilder] = useState(f
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          backgroundColor: 'white',
           zIndex: 1000,
-          padding: '20px'
+          overflow: 'auto'
         }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '32px',
-            maxWidth: '1200px',
-            width: '95%',
-            maxHeight: '90vh',
-            overflowY: 'auto'
-          }}>
-            <SectionSelector
-              onSelectSection={handleAddSection}
-              onBack={() => setShowSectionSelector(false)}
-            />
-          </div>
+          <SectionSelector
+            onSelectSection={handleAddSection}
+            onBack={() => setShowSectionSelector(false)}
+          />
         </div>
       )}
 
@@ -631,10 +614,7 @@ const [showQualitiesCommentBuilder, setShowQualitiesCommentBuilder] = useState(f
               <RatedCommentBuilder
                 existingComment={editingSection.section.data}
                 onSave={handleSaveEditedSection}
-                onCancel={() => {
-                  setEditingSection(null);
-                  setShowRatedCommentBuilder(false);
-                }}
+                onCancel={handleCancelEdit}
               />
             </div>
           </div>
@@ -667,10 +647,7 @@ const [showQualitiesCommentBuilder, setShowQualitiesCommentBuilder] = useState(f
               <AssessmentCommentBuilder
                 existingComment={editingSection.section.data}
                 onSave={handleSaveEditedSection}
-                onCancel={() => {
-                  setEditingSection(null);
-                  setShowAssessmentCommentBuilder(false);
-                }}
+                onCancel={handleCancelEdit}
               />
             </div>
           </div>
@@ -703,10 +680,7 @@ const [showQualitiesCommentBuilder, setShowQualitiesCommentBuilder] = useState(f
               <PersonalisedCommentBuilder
                 existingComment={editingSection.section.data}
                 onSave={handleSaveEditedSection}
-                onCancel={() => {
-                  setEditingSection(null);
-                  setShowPersonalisedCommentBuilder(false);
-                }}
+                onCancel={handleCancelEdit}
               />
             </div>
           </div>
@@ -739,50 +713,46 @@ const [showQualitiesCommentBuilder, setShowQualitiesCommentBuilder] = useState(f
               <NextStepsCommentBuilder
                 existingComment={editingSection.section.data}
                 onSave={handleSaveEditedSection}
-                onCancel={() => {
-                  setEditingSection(null);
-                  setShowNextStepsCommentBuilder(false);
-                }}
+                onCancel={handleCancelEdit}
               />
             </div>
           </div>
         </div>
       )}
 
-{showQualitiesCommentBuilder && editingSection && (
-  <div style={{
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-    padding: '20px'
-  }}>
-    <div style={{
-      backgroundColor: 'white',
-      borderRadius: '12px',
-      padding: '20px',
-      width: '100%',
-      maxWidth: '900px',
-      maxHeight: '90vh',
-      overflowY: 'auto'
-    }}>
-      <QualitiesCommentBuilder
-        existingComment={editingSection.section.data}
-        onSave={handleSaveEditedSection}
-        onCancel={() => {
-          setEditingSection(null);
-          setShowQualitiesCommentBuilder(false);
-        }}
-      />
-    </div>
-  </div>
-)}
+      {showQualitiesCommentBuilder && editingSection && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          zIndex: 1000,
+          overflow: 'auto',
+          padding: '20px'
+        }}>
+          <div style={{
+            minHeight: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <div style={{
+              width: '100%',
+              maxWidth: '900px',
+              margin: '0 auto'
+            }}>
+              <QualitiesCommentBuilder
+                existingComment={editingSection.section.data}
+                onSave={handleSaveEditedSection}
+                onCancel={handleCancelEdit}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Standard Comment Editor Modal */}
       {showStandardCommentEditor && editingSection && (
         <div style={{
@@ -804,65 +774,70 @@ const [showQualitiesCommentBuilder, setShowQualitiesCommentBuilder] = useState(f
             padding: '32px',
             maxWidth: '600px',
             width: '100%',
-            maxHeight: '80vh',
-            overflow: 'auto'
+            maxHeight: '90vh',
+            overflowY: 'auto'
           }}>
-            <h2 style={{ fontSize: '24px', fontWeight: '600', color: '#111827', marginBottom: '24px' }}>
+            <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '24px' }}>
               Edit Standard Comment
             </h2>
 
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-                Section Name
+              <label style={{ 
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                marginBottom: '8px'
+              }}>
+                Comment Name
               </label>
               <input
                 type="text"
                 value={standardCommentName}
                 onChange={(e) => setStandardCommentName(e.target.value)}
-                placeholder="e.g., Attendance, Homework, Participation..."
                 style={{
                   width: '100%',
-                  padding: '12px 16px',
-                  border: '2px solid #e5e7eb',
+                  padding: '12px',
+                  border: '1px solid #d1d5db',
                   borderRadius: '8px',
-                  fontSize: '16px',
+                  fontSize: '14px',
                   boxSizing: 'border-box'
                 }}
               />
             </div>
 
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+              <label style={{ 
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                marginBottom: '8px'
+              }}>
                 Comment Content
               </label>
               <textarea
                 value={standardCommentContent}
                 onChange={(e) => setStandardCommentContent(e.target.value)}
-                placeholder="Enter your comment here. Use [Name] to insert the student's name..."
+                rows={6}
                 style={{
                   width: '100%',
-                  minHeight: '200px',
-                  padding: '12px 16px',
-                  border: '2px solid #e5e7eb',
+                  padding: '12px',
+                  border: '1px solid #d1d5db',
                   borderRadius: '8px',
-                  fontSize: '16px',
+                  fontSize: '14px',
+                  fontFamily: 'inherit',
                   resize: 'vertical',
-                  boxSizing: 'border-box',
-                  fontFamily: 'inherit'
+                  boxSizing: 'border-box'
                 }}
               />
-              <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px', fontStyle: 'italic' }}>
-                Tip: Use [Name] to automatically insert the student's name
-              </p>
             </div>
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button
                 onClick={handleCancelEdit}
                 style={{
+                  padding: '12px 24px',
                   backgroundColor: '#f3f4f6',
                   color: '#374151',
-                  padding: '12px 24px',
                   border: 'none',
                   borderRadius: '8px',
                   fontSize: '14px',
@@ -872,12 +847,13 @@ const [showQualitiesCommentBuilder, setShowQualitiesCommentBuilder] = useState(f
               >
                 Cancel
               </button>
+              
               <button
-                onClick={handleSaveStandardComment}
+                onClick={handleSaveStandardCommentEdit}
                 style={{
+                  padding: '12px 24px',
                   backgroundColor: '#3b82f6',
                   color: 'white',
-                  padding: '12px 24px',
                   border: 'none',
                   borderRadius: '8px',
                   fontSize: '14px',
