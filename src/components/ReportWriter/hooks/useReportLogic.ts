@@ -186,6 +186,13 @@ export const useReportLogic = ({
 
     allSections.forEach((section: any) => {
       const data = sectionData[section.id] || {};
+
+    // ⬇️⬇️⬇️ ADD THESE 4 LINES HERE ⬇️⬇️⬇️
+    if (data.exclude) {
+      return; // Skip excluded sections
+    }
+    // ⬆️⬆️⬆️ END OF NEW CODE ⬆️⬆️⬆️
+
       const showHeader = data.showHeader !== undefined ? data.showHeader : section.data?.showHeader !== undefined ?
         section.data.showHeader : false;
 
