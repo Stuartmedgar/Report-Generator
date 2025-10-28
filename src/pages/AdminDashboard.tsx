@@ -65,17 +65,34 @@ export default function AdminDashboard() {
       return;
     }
 
+    console.log('Approving user:', requestId);
+    console.log('Current user (admin):', user);
+
     try {
       // Update user to approved status
-      const { error: updateError } = await supabase
+      const { data, error: updateError } = await supabase
         .from('users')
         .update({
           is_approved: true,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', requestId);
+        .eq('id', requestId)
+        .select();
 
-      if (updateError) throw updateError;
+      console.log('Update response:', { data, updateError });
+
+      if (updateError) {
+        console.error('Update error details:', updateError);
+        throw updateError;
+      }
+
+      if (!data || data.length === 0) {
+        console.error('No rows were updated - possible RLS policy issue');
+        alert('Update failed - check console for details. You may not have permission to approve users.');
+        return;
+      }
+
+      console.log('User approved successfully:', data);
 
       // Reload the requests
       await loadApprovalRequests();
