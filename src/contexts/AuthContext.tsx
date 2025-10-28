@@ -96,7 +96,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           id: supabaseUser.id,
           email: supabaseUser.email || '',
           user_metadata: {
-            full_name: data.full_name || `${data.first_name} ${data.last_name}`.trim(),
+            full_name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
             first_name: data.first_name,
             last_name: data.last_name,
           },
@@ -152,6 +152,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
     try {
+      console.log('SignUp: Starting signup for', email);
+      
       // Sign up with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -160,15 +162,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
           data: {
             first_name: firstName,
             last_name: lastName,
-            full_name: `${firstName} ${lastName}`.trim(),
           },
         },
       });
 
-      if (error) throw error;
+      console.log('SignUp: Auth response:', { data, error });
+
+      if (error) {
+        console.error('SignUp: Auth error:', error);
+        throw error;
+      }
 
       if (data.user) {
-        // Create user record in our users table (will be unapproved by default)
+        console.log('SignUp: User created in auth, now creating in users table...');
+        
+        // Create user record in our users table (without full_name)
         const { error: insertError } = await supabase
           .from('users')
           .insert({
@@ -176,21 +184,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
             email: data.user.email,
             first_name: firstName,
             last_name: lastName,
-            full_name: `${firstName} ${lastName}`.trim(),
             role: 'teacher',
-            is_approved: false, // Requires admin approval
+            is_approved: false,
           });
 
         if (insertError) {
-          console.error('Error creating user record:', insertError);
+          console.error('SignUp: Error creating user record:', insertError);
           throw insertError;
         }
 
-        // Note: User won't be set in state because they're not approved yet
-        console.log('User signed up successfully. Awaiting admin approval.');
+        console.log('SignUp: User signed up successfully. Awaiting admin approval.');
       }
     } catch (error: any) {
-      console.error('Error signing up:', error);
+      console.error('SignUp: Error signing up:', error);
       throw error;
     }
   };
@@ -235,7 +241,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         .update({
           first_name: userData.first_name,
           last_name: userData.last_name,
-          full_name: `${userData.first_name} ${userData.last_name}`.trim(),
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
@@ -247,7 +252,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         ...user,
         user_metadata: {
           ...user.user_metadata,
-          ...userData,
+          first_name: userData.first_name,
+          last_name: userData.last_name,
           full_name: `${userData.first_name} ${userData.last_name}`.trim(),
         },
         updated_at: new Date().toISOString(),
