@@ -1,5 +1,33 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, AuthContextType } from '../types/auth';
+import { supabase } from '../lib/supabase';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
+
+// Custom User type that matches our needs
+interface User {
+  id: string;
+  email: string;
+  user_metadata?: {
+    full_name?: string;
+    first_name?: string;
+    last_name?: string;
+  };
+  app_metadata?: {
+    roles?: string[];
+    plan?: string;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updateProfile: (userData: any) => Promise<void>;
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -7,135 +35,227 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-const SESSION_STORAGE_KEY = "teacher_authenticated";
-const USER_CODE_KEY = "teacher_user_code";
-
-// Valid teacher codes - you can add/remove teachers here
-const VALID_TEACHER_CODES = [
-  'sarah-smith-2024',
-  'john-doe-2024',
-  'maria-garcia-2024',
-  'david-wilson-2024',
-  'lisa-brown-2024',
-  'admin-test-2024'
-];
-
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already authenticated
-    const isAuthenticated = sessionStorage.getItem(SESSION_STORAGE_KEY) === 'true';
-    const savedUserCode = sessionStorage.getItem(USER_CODE_KEY);
-    
-    if (isAuthenticated && savedUserCode && VALID_TEACHER_CODES.includes(savedUserCode)) {
-      const teacherUser: User = {
-        id: savedUserCode,
-        email: `${savedUserCode}@reportgenerator.com`,
-        user_metadata: {
-          full_name: formatTeacherName(savedUserCode),
-          first_name: extractFirstName(savedUserCode),
-          last_name: extractLastName(savedUserCode)
-        },
-        app_metadata: {
-          roles: ['teacher'],
-          plan: 'full_access',
-          teacher_code: savedUserCode
-        },
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      setUser(teacherUser);
-    }
-    
-    setLoading(false);
-  }, []);
-
-  // Helper functions to format teacher names
-  const formatTeacherName = (code: string): string => {
-    const parts = code.split('-');
-    if (parts.length >= 2) {
-      const firstName = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
-      const lastName = parts[1].charAt(0).toUpperCase() + parts[1].slice(1);
-      return `${firstName} ${lastName}`;
-    }
-    return code.charAt(0).toUpperCase() + code.slice(1);
-  };
-
-  const extractFirstName = (code: string): string => {
-    const parts = code.split('-');
-    return parts[0] ? parts[0].charAt(0).toUpperCase() + parts[0].slice(1) : 'Teacher';
-  };
-
-  const extractLastName = (code: string): string => {
-    const parts = code.split('-');
-    return parts[1] ? parts[1].charAt(0).toUpperCase() + parts[1].slice(1) : '';
-  };
-
-  const signIn = async (email: string, teacherCode: string) => {
-    return new Promise<void>((resolve, reject) => {
-      // Clean up the teacher code (remove spaces, convert to lowercase)
-      const cleanCode = teacherCode.toLowerCase().trim();
-      
-      // Check if it's a valid teacher code
-      if (VALID_TEACHER_CODES.includes(cleanCode)) {
-        const teacherUser: User = {
-          id: cleanCode,
-          email: email || `${cleanCode}@reportgenerator.com`,
-          user_metadata: {
-            full_name: formatTeacherName(cleanCode),
-            first_name: extractFirstName(cleanCode),
-            last_name: extractLastName(cleanCode)
-          },
-          app_metadata: {
-            roles: ['teacher'],
-            plan: 'full_access',
-            teacher_code: cleanCode
-          },
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-        
-        setUser(teacherUser);
-        sessionStorage.setItem(SESSION_STORAGE_KEY, 'true');
-        sessionStorage.setItem(USER_CODE_KEY, cleanCode);
-        resolve();
+    // Check active sessions and sets the user
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        checkUserApproval(session.user);
       } else {
-        reject(new Error('Invalid teacher code. Please check your code and try again.'));
+        setLoading(false);
       }
     });
+
+    // Listen for changes on auth state (sign in, sign out, etc.)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        checkUserApproval(session.user);
+      } else {
+        setUser(null);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Check if user is approved in our users table
+  const checkUserApproval = async (supabaseUser: SupabaseUser) => {
+    try {
+      console.log('CheckApproval: Checking approval for user ID:', supabaseUser.id);
+      
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', supabaseUser.id)
+        .single();
+
+      if (error) {
+        console.error('CheckApproval: Error fetching user:', error);
+        setUser(null);
+        setLoading(false);
+        throw new Error('Could not verify user account. Please contact support.');
+      }
+
+      console.log('CheckApproval: User data from database:', data);
+      console.log('CheckApproval: Approved status:', data?.is_approved);
+      console.log('CheckApproval: Approved type:', typeof data?.is_approved);
+
+      // Check if user is approved (using correct column name)
+      const isApproved = data && (data.is_approved === true || data.is_approved === 'true');
+      
+      if (isApproved) {
+        console.log('CheckApproval: User is APPROVED - setting user state');
+        // User is approved, set the user state
+        const mappedUser: User = {
+          id: supabaseUser.id,
+          email: supabaseUser.email || '',
+          user_metadata: {
+            full_name: data.full_name || `${data.first_name} ${data.last_name}`.trim(),
+            first_name: data.first_name,
+            last_name: data.last_name,
+          },
+          app_metadata: {
+            roles: data.role ? [data.role] : ['teacher'],
+            plan: 'full_access',
+          },
+          created_at: data.created_at,
+          updated_at: data.updated_at,
+        };
+        setUser(mappedUser);
+        console.log('CheckApproval: User state set successfully');
+      } else {
+        // User exists but not approved
+        console.log('CheckApproval: User NOT APPROVED - setting user to null');
+        setUser(null);
+        throw new Error('Your account is pending admin approval. Please wait for an administrator to approve your account.');
+      }
+    } catch (error: any) {
+      console.error('CheckApproval: Error in checkUserApproval:', error);
+      setUser(null);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const signUp = async (email: string, teacherCode: string, userData?: any) => {
-    // For this simple system, signup is the same as signin
-    return signIn(email, teacherCode);
+  const signIn = async (email: string, password: string) => {
+    try {
+      console.log('SignIn: Starting login for', email);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error('SignIn: Supabase auth error:', error);
+        throw error;
+      }
+
+      console.log('SignIn: Auth successful, checking approval...');
+      console.log('SignIn: User data:', data.user);
+
+      if (data.user) {
+        await checkUserApproval(data.user);
+      }
+    } catch (error: any) {
+      console.error('SignIn: Error in signIn:', error);
+      throw error;
+    }
+  };
+
+  const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
+    try {
+      // Sign up with Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            full_name: `${firstName} ${lastName}`.trim(),
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        // Create user record in our users table (will be unapproved by default)
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert({
+            id: data.user.id,
+            email: data.user.email,
+            first_name: firstName,
+            last_name: lastName,
+            full_name: `${firstName} ${lastName}`.trim(),
+            role: 'teacher',
+            is_approved: false, // Requires admin approval
+          });
+
+        if (insertError) {
+          console.error('Error creating user record:', insertError);
+          throw insertError;
+        }
+
+        // Note: User won't be set in state because they're not approved yet
+        console.log('User signed up successfully. Awaiting admin approval.');
+      }
+    } catch (error: any) {
+      console.error('Error signing up:', error);
+      throw error;
+    }
   };
 
   const signOut = async () => {
-    return new Promise<void>((resolve) => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
       setUser(null);
-      sessionStorage.removeItem(SESSION_STORAGE_KEY);
-      sessionStorage.removeItem(USER_CODE_KEY);
-      resolve();
-    });
+    } catch (error: any) {
+      console.error('Error signing out:', error);
+      throw error;
+    }
   };
 
   const resetPassword = async (email: string) => {
-    return new Promise<void>((resolve) => {
-      alert(`Password reset requested for ${email}. Please contact the app administrator for a new teacher code.`);
-      resolve();
-    });
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+    } catch (error: any) {
+      console.error('Error resetting password:', error);
+      throw error;
+    }
   };
 
   const updateProfile = async (userData: any) => {
-    return new Promise<void>((resolve) => {
-      if (user) {
-        const updatedUser = { ...user, user_metadata: { ...user.user_metadata, ...userData } };
-        setUser(updatedUser);
-      }
-      resolve();
-    });
+    try {
+      if (!user) throw new Error('No user logged in');
+
+      // Update auth metadata
+      const { error: authError } = await supabase.auth.updateUser({
+        data: userData,
+      });
+
+      if (authError) throw authError;
+
+      // Update users table
+      const { error: dbError } = await supabase
+        .from('users')
+        .update({
+          first_name: userData.first_name,
+          last_name: userData.last_name,
+          full_name: `${userData.first_name} ${userData.last_name}`.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      if (dbError) throw dbError;
+
+      // Update local user state
+      setUser({
+        ...user,
+        user_metadata: {
+          ...user.user_metadata,
+          ...userData,
+          full_name: `${userData.first_name} ${userData.last_name}`.trim(),
+        },
+        updated_at: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      console.error('Error updating profile:', error);
+      throw error;
+    }
   };
 
   const contextValue: AuthContextType = {
@@ -145,7 +265,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signUp,
     signOut,
     resetPassword,
-    updateProfile
+    updateProfile,
   };
 
   return (

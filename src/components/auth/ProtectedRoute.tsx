@@ -1,13 +1,12 @@
 import React, { ReactNode } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import SimpleLoginForm from './SimpleLoginForm';
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  fallback?: ReactNode;
 }
 
-export default function ProtectedRoute({ children, fallback }: ProtectedRouteProps): React.ReactElement {
+export default function ProtectedRoute({ children }: ProtectedRouteProps): React.ReactElement {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -63,11 +62,7 @@ export default function ProtectedRoute({ children, fallback }: ProtectedRoutePro
   }
 
   if (!user) {
-    return (
-      <div>
-        {fallback || <SimpleLoginForm />}
-      </div>
-    );
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;

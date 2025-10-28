@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Link, Navigate } from 'react-router-dom';
+import './App.css';
+
+// Context Providers
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
-import { AuthProvider } from './contexts/AuthContext';
 
-// Import your existing pages
+// Import pages (not components!)
 import WriteReports from './pages/WriteReports';
 import CreateTemplate from './pages/CreateTemplate';
 import ManageTemplates from './pages/ManageTemplates';
@@ -13,19 +16,44 @@ import ViewReports from './pages/ViewReports';
 import ClassReports from './pages/ClassReports';
 import IndividualReportViewer from './pages/IndividualReportViewer';
 import AllReportsViewer from './pages/AllReportsViewer';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import AdminDashboard from './pages/AdminDashboard';
 
 // Import subscription components
 import { PricingPage, SubscriptionSuccess } from './components/subscription';
 
-// Import auth components
-import ProtectedRoute from './components/auth/ProtectedRoute';
-import AuthHeader from './components/auth/AuthHeader';
+// Protected Route Component
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
 
-import './App.css';
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '100vh',
+        fontSize: '18px',
+        color: '#64748b'
+      }}>
+        Loading...
+      </div>
+    );
+  }
 
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+// Home Component with Original Styling
 function Home() {
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const { user, signOut } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
     const handleResize = () => {
@@ -35,13 +63,23 @@ function Home() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const handleLogout = async () => {
+    if (window.confirm('Are you sure you want to logout?')) {
+      try {
+        await signOut();
+      } catch (error) {
+        console.error('Error signing out:', error);
+      }
+    }
+  };
+
   return (
     <>
-      {/* Small hamburger menu in top right */}
+      {/* Hamburger Menu */}
       <div style={{
-        position: 'fixed',
-        top: '20px',
-        right: '20px',
+        position: isMobile ? 'fixed' : 'absolute',
+        top: isMobile ? '16px' : '20px',
+        right: isMobile ? '16px' : '20px',
         zIndex: 1000
       }}>
         <button
@@ -49,14 +87,14 @@ function Home() {
           style={{
             width: '40px',
             height: '40px',
-            backgroundColor: 'white',
             border: '2px solid #e5e7eb',
             borderRadius: '8px',
+            backgroundColor: 'white',
             cursor: 'pointer',
+            fontSize: '20px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '18px',
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
             transition: 'all 0.2s'
           }}
@@ -87,7 +125,6 @@ function Home() {
           }}>
             <button
               onClick={() => {
-                // Add account/profile logic here
                 alert('Account details coming soon!');
                 setShowMenu(false);
               }}
@@ -112,7 +149,6 @@ function Home() {
             </button>
             <button
               onClick={() => {
-                // Add settings logic here
                 alert('Settings coming soon!');
                 setShowMenu(false);
               }}
@@ -137,11 +173,7 @@ function Home() {
             </button>
             <button
               onClick={() => {
-                // Add logout logic here
-                if (window.confirm('Are you sure you want to logout?')) {
-                  // You'll need to implement actual logout functionality
-                  alert('Logout functionality to be implemented');
-                }
+                handleLogout();
                 setShowMenu(false);
               }}
               style={{
@@ -177,17 +209,15 @@ function Home() {
         padding: isMobile ? '20px 16px 40px 16px' : '60px 20px 40px 20px'
       }}>
         
-{/* Title - Inline with hamburger on mobile */}
-<div style={{ 
-  textAlign: isMobile ? 'center' : 'center',  // Center on both mobile and desktop
-  marginBottom: isMobile ? '40px' : '60px', 
-  maxWidth: isMobile ? '100%' : '800px',
-  marginTop: isMobile ? '0' : '20px',
-  width: isMobile ? '100%' : 'auto',
-  display: isMobile ? 'block' : 'block',  // Remove flex on mobile
-  alignItems: isMobile ? 'center' : 'initial',
-  paddingRight: '0'  // Remove padding completely
-}}>
+        {/* Title - Inline with hamburger on mobile */}
+        <div style={{ 
+          textAlign: 'center',
+          marginBottom: isMobile ? '40px' : '60px', 
+          maxWidth: isMobile ? '100%' : '800px',
+          marginTop: isMobile ? '0' : '20px',
+          width: isMobile ? '100%' : 'auto',
+          paddingRight: '0'
+        }}>
           <h1 style={{ 
             fontSize: isMobile ? '24px' : '48px', 
             fontWeight: '800', 
@@ -417,29 +447,37 @@ function Home() {
             View Reports
           </Link>
 
-          {/* Pricing button is commented out - can be easily restored later */}
-          {/*
+          {/* Uncomment this if you want to add a Pricing page button
           <Link 
             to="/pricing"
             style={{
               backgroundColor: '#06b6d4',
               color: 'white',
-              padding: '32px 24px',
-              borderRadius: '12px',
+              padding: isMobile ? '64px 24px' : '32px 24px',
+              borderRadius: isMobile ? '8px' : '12px',
               textDecoration: 'none',
               textAlign: 'center',
               fontSize: '18px',
               fontWeight: '600',
               boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              transition: 'transform 0.2s, box-shadow 0.2s'
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              width: isMobile ? '100%' : 'auto',
+              boxSizing: 'border-box',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
+              if (!isMobile) {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
+              }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+              if (!isMobile) {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+              }
             }}
           >
             Pricing
@@ -460,6 +498,17 @@ function App() {
           <Router>
             <div className="App">
               <Routes>
+                {/* Auth Routes */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
+                
+                {/* Admin Route */}
+                <Route path="/admin" element={
+                  <ProtectedRoute>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                } />
+                
                 {/* Public Routes */}
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/subscription/success" element={<SubscriptionSuccess />} />
