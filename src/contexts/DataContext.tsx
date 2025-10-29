@@ -285,6 +285,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return user?.id || user?.email || `admin-test-2024-reportgenerator-com`;
   };
 
+  // 🔧 FIX #1: Generate user-specific localStorage keys
+  const getStorageKey = (key: string) => {
+    const userId = getUserId();
+    return `${key}_${userId}`;
+  };
+
   // CLOUD SYNC FUNCTIONS - RE-ENABLED WITH BETTER LOGIC
   const syncFromCloud = async () => {
     const userId = getUserId();
@@ -382,31 +388,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       console.log('Loading data from localStorage...');
       
-      const savedTemplates = localStorage.getItem('reportTemplates');
-      const savedClasses = localStorage.getItem('reportClasses');
-      const savedReports = localStorage.getItem('reportReports');
-      const savedRatedComments = localStorage.getItem('savedRatedComments');
-      const savedStandardComments = localStorage.getItem('savedStandardComments');
-      const savedAssessmentComments = localStorage.getItem('savedAssessmentComments');
-      const savedPersonalisedComments = localStorage.getItem('savedPersonalisedComments');
-      const savedNextStepsComments = localStorage.getItem('savedNextStepsComments');
+      // 🔧 FIX #1: Use user-specific keys
+      const savedTemplates = localStorage.getItem(getStorageKey('reportTemplates'));
+      const savedClasses = localStorage.getItem(getStorageKey('reportClasses'));
+      const savedReports = localStorage.getItem(getStorageKey('reportReports'));
+      const savedRatedComments = localStorage.getItem(getStorageKey('savedRatedComments'));
+      const savedStandardComments = localStorage.getItem(getStorageKey('savedStandardComments'));
+      const savedAssessmentComments = localStorage.getItem(getStorageKey('savedAssessmentComments'));
+      const savedPersonalisedComments = localStorage.getItem(getStorageKey('savedPersonalisedComments'));
+      const savedNextStepsComments = localStorage.getItem(getStorageKey('savedNextStepsComments'));
+      const savedQualitiesComments = localStorage.getItem(getStorageKey('savedQualitiesComments'));
 
-      const savedQualitiesComments = localStorage.getItem('savedQualitiesComments');
-
-const loadedState: DataState = {
-  templates: savedTemplates ? JSON.parse(savedTemplates) : [],
-  classes: savedClasses ? JSON.parse(savedClasses) : [],
-  reports: savedReports ? JSON.parse(savedReports) : [],
-  savedRatedComments: savedRatedComments ? JSON.parse(savedRatedComments) : [],
-  savedStandardComments: savedStandardComments ? JSON.parse(savedStandardComments) : [],
-  savedAssessmentComments: savedAssessmentComments ? JSON.parse(savedAssessmentComments) : [],
-  savedPersonalisedComments: savedPersonalisedComments ? JSON.parse(savedPersonalisedComments) : [],
-  savedNextStepsComments: savedNextStepsComments ? JSON.parse(savedNextStepsComments) : [],
-  savedQualitiesComments: savedQualitiesComments ? JSON.parse(savedQualitiesComments) : [],
-  isLoading: false,
-  isSyncing: false,
-  lastSyncTime: null
-};
+      const loadedState: DataState = {
+        templates: savedTemplates ? JSON.parse(savedTemplates) : [],
+        classes: savedClasses ? JSON.parse(savedClasses) : [],
+        reports: savedReports ? JSON.parse(savedReports) : [],
+        savedRatedComments: savedRatedComments ? JSON.parse(savedRatedComments) : [],
+        savedStandardComments: savedStandardComments ? JSON.parse(savedStandardComments) : [],
+        savedAssessmentComments: savedAssessmentComments ? JSON.parse(savedAssessmentComments) : [],
+        savedPersonalisedComments: savedPersonalisedComments ? JSON.parse(savedPersonalisedComments) : [],
+        savedNextStepsComments: savedNextStepsComments ? JSON.parse(savedNextStepsComments) : [],
+        savedQualitiesComments: savedQualitiesComments ? JSON.parse(savedQualitiesComments) : [],
+        isLoading: false,
+        isSyncing: false,
+        lastSyncTime: null
+      };
 
       console.log(`Loaded from localStorage - Templates: ${loadedState.templates.length}, Classes: ${loadedState.classes.length}, Reports: ${loadedState.reports.length}`);
       
@@ -426,15 +432,16 @@ const loadedState: DataState = {
     if (!state.isLoading && !state.isSyncing) {
       console.log(`Saving to localStorage - Templates: ${state.templates.length}, Classes: ${state.classes.length}, Reports: ${state.reports.length}`);
       
-      localStorage.setItem('reportTemplates', JSON.stringify(state.templates));
-      localStorage.setItem('reportClasses', JSON.stringify(state.classes));
-      localStorage.setItem('reportReports', JSON.stringify(state.reports));
-      localStorage.setItem('savedRatedComments', JSON.stringify(state.savedRatedComments));
-      localStorage.setItem('savedStandardComments', JSON.stringify(state.savedStandardComments));
-      localStorage.setItem('savedAssessmentComments', JSON.stringify(state.savedAssessmentComments));
-      localStorage.setItem('savedPersonalisedComments', JSON.stringify(state.savedPersonalisedComments));
-      localStorage.setItem('savedNextStepsComments', JSON.stringify(state.savedNextStepsComments));
-      localStorage.setItem('savedQualitiesComments', JSON.stringify(state.savedQualitiesComments));
+      // 🔧 FIX #1: Use user-specific keys
+      localStorage.setItem(getStorageKey('reportTemplates'), JSON.stringify(state.templates));
+      localStorage.setItem(getStorageKey('reportClasses'), JSON.stringify(state.classes));
+      localStorage.setItem(getStorageKey('reportReports'), JSON.stringify(state.reports));
+      localStorage.setItem(getStorageKey('savedRatedComments'), JSON.stringify(state.savedRatedComments));
+      localStorage.setItem(getStorageKey('savedStandardComments'), JSON.stringify(state.savedStandardComments));
+      localStorage.setItem(getStorageKey('savedAssessmentComments'), JSON.stringify(state.savedAssessmentComments));
+      localStorage.setItem(getStorageKey('savedPersonalisedComments'), JSON.stringify(state.savedPersonalisedComments));
+      localStorage.setItem(getStorageKey('savedNextStepsComments'), JSON.stringify(state.savedNextStepsComments));
+      localStorage.setItem(getStorageKey('savedQualitiesComments'), JSON.stringify(state.savedQualitiesComments));
      
       // Also sync to cloud if user is logged in (throttled)
       if (user && (state.templates.length > 0 || state.classes.length > 0 || state.reports.length > 0)) {
@@ -509,6 +516,7 @@ const loadedState: DataState = {
     dispatch({ type: 'DELETE_REPORT', payload: id });
   };
 
+  // 🔧 FIX #2: Complete saveReport function with all properties
   const saveReport = (reportData: any) => {
     const existingReportIndex = state.reports.findIndex(
       r => r.studentId === reportData.studentId && r.templateId === reportData.templateId
@@ -518,6 +526,9 @@ const loadedState: DataState = {
       const updatedReport: Report = {
         ...state.reports[existingReportIndex],
         content: reportData.content,
+        sectionData: reportData.sectionData || state.reports[existingReportIndex].sectionData,
+        isManuallyEdited: reportData.isManuallyEdited !== undefined ? reportData.isManuallyEdited : state.reports[existingReportIndex].isManuallyEdited,
+        manuallyEditedContent: reportData.manuallyEditedContent !== undefined ? reportData.manuallyEditedContent : state.reports[existingReportIndex].manuallyEditedContent,
         updatedAt: new Date().toISOString()
       };
       updateReport(updatedReport);
@@ -526,7 +537,10 @@ const loadedState: DataState = {
         studentId: reportData.studentId,
         classId: reportData.classId,
         templateId: reportData.templateId,
-        content: reportData.content
+        content: reportData.content,
+        sectionData: reportData.sectionData,
+        isManuallyEdited: reportData.isManuallyEdited || false,
+        manuallyEditedContent: reportData.manuallyEditedContent
       });
     }
   };
