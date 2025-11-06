@@ -22,43 +22,37 @@ export const supabaseOperations = {
     console.log('Saving templates for user:', userId, 'Count:', templates.length);
     
     try {
-      // Delete existing templates for this user
-      const { error: deleteError } = await supabase
+      if (templates.length === 0) {
+        console.log('No templates to save');
+        return [];
+      }
+
+      const templateData = templates.map(template => ({
+        user_id: userId,
+        template_id: template.id,
+        name: template.name,
+        sections: template.sections,
+        updated_at: new Date().toISOString()
+      }));
+
+      console.log('Upserting template data:', templateData[0]);
+
+      // ✅ CRITICAL FIX: Use UPSERT instead of DELETE+INSERT
+      // This prevents data loss if the insert fails
+      const { data, error } = await supabase
         .from('templates')
-        .delete()
-        .eq('user_id', userId);
-
-      if (deleteError) {
-        console.log('Delete error (might be normal if no existing data):', deleteError);
-      }
-
-      // Insert new templates if any exist
-      if (templates.length > 0) {
-        const templateData = templates.map(template => ({
-          user_id: userId,
-          template_id: template.id,
-          name: template.name,
-          sections: template.sections,
-          updated_at: new Date().toISOString()
-        }));
-
-        console.log('Inserting template data:', templateData[0]);
-
-        const { data, error } = await supabase
-          .from('templates')
-          .insert(templateData);
-        
-        if (error) {
-          console.error('Insert error:', error);
-          return [];
-        }
-
-        console.log('Templates saved successfully:', templateData.length);
-        return data || [];
-      }
+        .upsert(templateData, {
+          onConflict: 'user_id,template_id',
+          ignoreDuplicates: false
+        });
       
-      console.log('No templates to save');
-      return [];
+      if (error) {
+        console.error('Upsert error:', error);
+        return [];
+      }
+
+      console.log('Templates saved successfully:', templateData.length);
+      return data || [];
     } catch (error) {
       console.error('Error in saveTemplates:', error);
       return [];
@@ -100,40 +94,34 @@ export const supabaseOperations = {
     console.log('Saving classes for user:', userId, 'Count:', classes.length);
     
     try {
-      // Delete existing classes for this user
-      const { error: deleteError } = await supabase
+      if (classes.length === 0) {
+        console.log('No classes to save');
+        return [];
+      }
+
+      const classData = classes.map(cls => ({
+        user_id: userId,
+        class_id: cls.id,
+        name: cls.name,
+        students: cls.students,
+        updated_at: new Date().toISOString()
+      }));
+
+      // ✅ CRITICAL FIX: Use UPSERT instead of DELETE+INSERT
+      const { data, error } = await supabase
         .from('classes')
-        .delete()
-        .eq('user_id', userId);
-
-      if (deleteError) {
-        console.log('Delete error (might be normal):', deleteError);
-      }
-
-      // Insert new classes if any exist
-      if (classes.length > 0) {
-        const classData = classes.map(cls => ({
-          user_id: userId,
-          class_id: cls.id,
-          name: cls.name,
-          students: cls.students,
-          updated_at: new Date().toISOString()
-        }));
-
-        const { data, error } = await supabase
-          .from('classes')
-          .insert(classData);
-        
-        if (error) {
-          console.error('Error saving classes:', error);
-          return [];
-        }
-
-        console.log('Classes saved successfully');
-        return data || [];
-      }
+        .upsert(classData, {
+          onConflict: 'user_id,class_id',
+          ignoreDuplicates: false
+        });
       
-      return [];
+      if (error) {
+        console.error('Error saving classes:', error);
+        return [];
+      }
+
+      console.log('Classes saved successfully');
+      return data || [];
     } catch (error) {
       console.error('Error in saveClasses:', error);
       return [];
@@ -174,45 +162,39 @@ export const supabaseOperations = {
     console.log('Saving reports for user:', userId, 'Count:', reports.length);
     
     try {
-      // Delete existing reports for this user
-      const { error: deleteError } = await supabase
+      if (reports.length === 0) {
+        console.log('No reports to save');
+        return [];
+      }
+
+      const reportData = reports.map(report => ({
+        user_id: userId,
+        report_id: report.id,
+        student_id: report.studentId,
+        template_id: report.templateId,
+        class_id: report.classId,
+        content: report.content || '',
+        section_data: report.sectionData || null,
+        is_manually_edited: report.isManuallyEdited || false,
+        manually_edited_content: report.manuallyEditedContent || null,
+        updated_at: new Date().toISOString()
+      }));
+
+      // ✅ CRITICAL FIX: Use UPSERT instead of DELETE+INSERT
+      const { data, error } = await supabase
         .from('reports')
-        .delete()
-        .eq('user_id', userId);
-
-      if (deleteError) {
-        console.log('Delete error (might be normal):', deleteError);
-      }
-
-      // Insert new reports if any exist
-      if (reports.length > 0) {
-        const reportData = reports.map(report => ({
-          user_id: userId,
-          report_id: report.id,
-          student_id: report.studentId,
-          template_id: report.templateId,
-          class_id: report.classId,
-          content: report.content || '',
-          section_data: report.sectionData || null,
-          is_manually_edited: report.isManuallyEdited || false,
-          manually_edited_content: report.manuallyEditedContent || null,
-          updated_at: new Date().toISOString()
-        }));
-
-        const { data, error } = await supabase
-          .from('reports')
-          .insert(reportData);
-        
-        if (error) {
-          console.error('Error saving reports:', error);
-          return [];
-        }
-
-        console.log('Reports saved successfully');
-        return data || [];
-      }
+        .upsert(reportData, {
+          onConflict: 'user_id,report_id',
+          ignoreDuplicates: false
+        });
       
-      return [];
+      if (error) {
+        console.error('Error saving reports:', error);
+        return [];
+      }
+
+      console.log('Reports saved successfully');
+      return data || [];
     } catch (error) {
       console.error('Error in saveReports:', error);
       return [];
@@ -227,7 +209,7 @@ export const supabaseOperations = {
         .from('reports')
         .select('*')
         .eq('user_id', userId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false});
       
       if (error) {
         console.error('Error getting reports:', error);
@@ -251,6 +233,76 @@ export const supabaseOperations = {
     } catch (error) {
       console.error('Error in getReports:', error);
       return [];
+    }
+  },
+
+  // Delete individual items (for when user explicitly deletes)
+  async deleteTemplate(userId: string, templateId: string) {
+    console.log('Deleting template:', templateId, 'for user:', userId);
+    
+    try {
+      const { error } = await supabase
+        .from('templates')
+        .delete()
+        .eq('user_id', userId)
+        .eq('template_id', templateId);
+      
+      if (error) {
+        console.error('Error deleting template:', error);
+        return false;
+      }
+      
+      console.log('Template deleted successfully');
+      return true;
+    } catch (error) {
+      console.error('Error in deleteTemplate:', error);
+      return false;
+    }
+  },
+
+  async deleteClass(userId: string, classId: string) {
+    console.log('Deleting class:', classId, 'for user:', userId);
+    
+    try {
+      const { error } = await supabase
+        .from('classes')
+        .delete()
+        .eq('user_id', userId)
+        .eq('class_id', classId);
+      
+      if (error) {
+        console.error('Error deleting class:', error);
+        return false;
+      }
+      
+      console.log('Class deleted successfully');
+      return true;
+    } catch (error) {
+      console.error('Error in deleteClass:', error);
+      return false;
+    }
+  },
+
+  async deleteReport(userId: string, reportId: string) {
+    console.log('Deleting report:', reportId, 'for user:', userId);
+    
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .delete()
+        .eq('user_id', userId)
+        .eq('report_id', reportId);
+      
+      if (error) {
+        console.error('Error deleting report:', error);
+        return false;
+      }
+      
+      console.log('Report deleted successfully');
+      return true;
+    } catch (error) {
+      console.error('Error in deleteReport:', error);
+      return false;
     }
   }
 };
