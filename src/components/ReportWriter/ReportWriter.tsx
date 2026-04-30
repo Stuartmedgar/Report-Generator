@@ -70,8 +70,7 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
   const navigationHandlers = {
     handlePreviousStudent: () => {
       if (reportLogic.hasUnsavedChanges) {
-        const shouldContinue = window.confirm('You have unsaved changes. Continue anyway?');
-        if (!shouldContinue) return;
+        reportLogic.handleSaveReport();
       }
       setCurrentStudentIndex(prev => Math.max(0, prev - 1));
       reportLogic.setHasUnsavedChanges(false);
@@ -79,8 +78,7 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
     
     handleNextStudent: () => {
       if (reportLogic.hasUnsavedChanges) {
-        const shouldContinue = window.confirm('You have unsaved changes. Continue anyway?');
-        if (!shouldContinue) return;
+        reportLogic.handleSaveReport();
       }
       setCurrentStudentIndex(prev => Math.min(students.length - 1, prev + 1));
       reportLogic.setHasUnsavedChanges(false);
@@ -170,9 +168,16 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
         id: `dynamic-${Date.now()}`,
         type: sectionType,
         name: `New ${sectionType}`,
-        data: {}
+        data: {},
+        insertAfter: afterIndex  // ← store which section index this follows
       };
-      setDynamicSections(prev => [...prev, newSection]);
+      setDynamicSections(prev => {
+        // Insert after all existing dynamic sections that belong to the same or earlier index
+        const insertAt = prev.filter(s => s.insertAfter <= afterIndex).length;
+        const updated = [...prev];
+        updated.splice(insertAt, 0, newSection);
+        return updated;
+      });
       reportLogic.setSectionData((prev: any) => ({
         ...prev,
         [newSection.id]: { ...newSection.data }
