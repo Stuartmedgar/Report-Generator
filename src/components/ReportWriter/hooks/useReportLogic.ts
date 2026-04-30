@@ -95,7 +95,6 @@ export const useReportLogic = ({
     }
 
     setHasUnsavedChanges(false);
-    alert('Report saved successfully!');
   };
 
   // Update section data and handle comment selection
@@ -316,15 +315,21 @@ export const useReportLogic = ({
   }, [sectionData, currentStudent, getAllSections]);
 
   // Dynamic section handlers
-  const handleAddDynamicSection = (sectionType: string) => {
+  const handleAddDynamicSection = (sectionType: string, afterIndex: number = 0) => {
     const newSection = {
       id: `dynamic-${Date.now()}`,
       type: sectionType,
       name: `New ${sectionType}`,
-      data: { showHeader: true }
+      data: { showHeader: true },
+      insertAfter: afterIndex
     };
 
-    setDynamicSections((prev: any[]) => [...prev, newSection]);
+    setDynamicSections((prev: any[]) => {
+      const insertAt = prev.filter(s => s.insertAfter <= afterIndex).length;
+      const updated = [...prev];
+      updated.splice(insertAt, 0, newSection);
+      return updated;
+    });
     
     setSectionData((prev: Record<string, any>) => ({
       ...prev,
