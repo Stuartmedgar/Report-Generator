@@ -40,7 +40,7 @@ export default function ImportTemplate() {
   const refineCharColor = refineCharCount >= CHAR_LIMIT ? '#ef4444' : refineCharCount >= CHAR_LIMIT * 0.8 ? '#f59e0b' : '#10b981';
 
   const callGenerateFunction = async (isRefinement: boolean) => {
-    const response = await fetch('/.netlify/functions/generate-template', {
+    const response = await fetch('https://wozbrojwuzktwrzngllh.supabase.co/functions/v1/generate-template', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
