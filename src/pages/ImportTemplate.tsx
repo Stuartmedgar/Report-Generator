@@ -13,7 +13,7 @@ interface GeneratedTemplate {
   sections: TemplateSection[];
 }
 
-const CHAR_LIMIT = 12000;
+const CHAR_LIMIT = 24000;
 
 export default function ImportTemplate() {
   const navigate = useNavigate();
