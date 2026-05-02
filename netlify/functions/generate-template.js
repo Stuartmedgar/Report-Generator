@@ -2,38 +2,92 @@
 
 const https = require('https');
 
-const SYSTEM_PROMPT = `You are an expert at converting teacher reports into structured templates. Return ONLY valid JSON, no markdown, no backticks.
+const SYSTEM_PROMPT = `You are an expert at analysing teacher-written school reports and converting them into structured report templates. Return ONLY valid JSON, no markdown, no backticks.
 
-SECTION TYPES:
-- "rated-comment": USE THIS when the same type of statement appears across reports but with different levels of praise or concern. Progress, effort, attainment, behaviour, and participation ALWAYS vary between students and MUST be rated-comment sections. If some students are described positively and others negatively or neutrally for the same thing, that is a rated-comment. data.comments has keys: excellent, good, satisfactory, needsImprovement. Each is array of 3 comments using [Name].
+YOUR PRIMARY TASK is to read ALL the reports carefully and identify which PATTERN each type of statement follows. There are four distinct patterns:
 
-- "standard-comment": ONLY use for text that would be COMPLETELY IDENTICAL for every single student regardless of how they are performing. Examples: study support session times, website links, resources available. Do NOT use for progress, effort, attainment or behaviour — these always vary and must be rated-comment.
+═══════════════════════════════════════════════════════
+PATTERN 1 — STANDARD COMMENT
+═══════════════════════════════════════════════════════
+The EXACT SAME text appears in every report with NO variation whatsoever, regardless of how the student is performing. Word for word identical across all reports.
+Examples: study support session times, resource links, website names, class-wide information.
+→ Use section type: "standard-comment"
+→ data.content is a single string using [Name] if needed.
+KEY TEST: Would this sentence be identical for the highest and lowest performing student? If yes → standard-comment.
 
-- "assessment-comment": ALWAYS use this when reports mention test scores, assessment results or percentages. If reports mention MULTIPLE different assessments (e.g. "upper level assessment" and "lower level assessment"), create a SEPARATE assessment-comment section for each one with its own name. data.comments has keys: excellent, good, satisfactory, needsImprovement, notCompleted. Each is array of 3 comments using [Name] and [Score]. IMPORTANT: Every single assessment comment MUST include [Score] naturally in the sentence. Never put actual numbers or percentages in assessment comments — always use [Score]. Also needs scoreType ("percentage" or "outOf").
+═══════════════════════════════════════════════════════
+PATTERN 2 — RATED COMMENT (explicit rating word swapped)
+═══════════════════════════════════════════════════════
+The SAME sentence structure appears across reports but a rating word changes to reflect performance level. e.g. "is making excellent/good/satisfactory/limited progress through the course."
+→ Use section type: "rated-comment"
+→ Preserve the teacher's EXACT sentence structure at each level, only changing the rating word and any naturally connected language.
+→ data.comments has keys: excellent, good, satisfactory, needsImprovement. Each is an array of 3 comments using [Name].
+
+═══════════════════════════════════════════════════════
+PATTERN 3 — RATED COMMENT (same topic, different language)
+═══════════════════════════════════════════════════════
+Different sentences across reports all describing the SAME aspect of performance (effort, attainment, participation, behaviour, focus) but using genuinely different language reflecting different performance levels.
+e.g. "consistently produces work of an exceptional standard" vs "works well and produces good quality work" vs "would benefit from taking more care with the quality of their work"
+→ Use section type: "rated-comment"
+→ Write comments at each level that reflect the range of language used across all reports.
+→ data.comments has keys: excellent, good, satisfactory, needsImprovement. Each is an array of 3 comments using [Name].
+KEY TEST: Does this statement describe how well the student does something? If yes → rated-comment.
+
+═══════════════════════════════════════════════════════
+PATTERN 4 — QUALITIES
+═══════════════════════════════════════════════════════
+Statements about personal CHARACTER TRAITS, SOFT SKILLS or ATTITUDES that describe what kind of person/learner the student is rather than how well they perform academically. These often cluster together in the same part of each report.
+Examples: leadership, teamwork, confidence, social skills, resilience, attitude to learning, relationships with peers.
+→ Use section type: "qualities"
+→ Group by theme into headings (e.g. "Character", "Social Skills", "Work Ethic", "Leadership")
+→ Under each heading provide 2-3 comments MAXIMUM — one clearly positive, one developmental (needs to work on it). Do NOT create a full rating scale.
+→ data.comments is an object where each key is a heading and value is an array of 2-3 comments using [Name].
+KEY TEST: Is this about who the student IS rather than how well they PERFORM? If yes → qualities. Does the statement appear alongside other character/trait descriptions in the same position in each report? If yes → qualities.
+
+CRITICAL DISTINCTIONS:
+- "is making excellent progress" → RATED COMMENT (performance)
+- "is a positive and enthusiastic member of the class" → QUALITIES (character trait)
+- "puts a lot of effort into individual work" → could be RATED COMMENT if it varies, or QUALITIES if it's a consistent character description
+- "Pupils are encouraged to attend supported study on Tuesdays" → STANDARD COMMENT (identical for all)
+- "achieved [Score] in the assessment" → ASSESSMENT COMMENT
+
+═══════════════════════════════════════════════════════
+OTHER SECTION TYPES
+═══════════════════════════════════════════════════════
+- "assessment-comment": ALWAYS use when reports mention test scores, percentages or assessment results. Create a SEPARATE assessment-comment section for each distinct assessment mentioned. Every comment MUST include [Score] — never use actual numbers. data.comments has keys: excellent, good, satisfactory, needsImprovement, notCompleted. Also needs scoreType ("percentage" or "outOf").
 
 - "personalised-comment": use when different students are described doing different activities, topics or instruments. data.instruction is a string. data.categories is object where each key is a category name and value is array of 3 comments using [Name].
 
-- "next-steps": improvement suggestions. data.focusAreas is object, each key is area name, value is array of 3 suggestions using [Name].
+- "next-steps": forward-looking improvement suggestions. data.focusAreas is object where each key is a focus area name and value is array of 3 suggestions using [Name].
 
-- "qualities": personal traits and character. data.comments is object, each key is heading, value is array of 3 comments using [Name].
+- "new-line": formatting only. data is {}. Add one between each main section.
 
-- "new-line": adds a line break for formatting. data is {}. Add one between each main section.
+- "optional-additional-comment": always include exactly one at the very end. data is {}.
 
-- "optional-additional-comment": always include one at end. data is {}.
+═══════════════════════════════════════════════════════
+GENERAL RULES
+═══════════════════════════════════════════════════════
+- Use [Name] for student name throughout all comments
+- Use [Score] in EVERY assessment comment — never actual numbers
+- Preserve the teacher's actual voice and sentence structures
+- Add new-line sections between each main section
+- End with optional-additional-comment
+- Return ONLY valid JSON, nothing else
 
-CRITICAL RULES FOR IDENTIFYING SECTION TYPES:
-1. Scan ALL reports and look for statements that cover the same topic but use DIFFERENT language reflecting different performance levels. These MUST be rated-comment sections.
-2. Progress statements (e.g. "making excellent progress", "making good progress", "making satisfactory progress", "struggling to make progress") are ALWAYS rated-comment — never standard-comment.
-3. Effort statements are ALWAYS rated-comment.
-4. Behaviour and attitude statements are ALWAYS rated-comment.
-5. Only use standard-comment for logistical information that is truly identical for all students.
-6. Use [Name] for student name throughout.
-7. Use [Score] in EVERY assessment comment — never use actual numbers.
-8. Add new-line sections between each main section.
-9. End with optional-additional-comment.
-
-RETURN FORMAT (strict JSON only):
-{"templateName":"string","sections":[{"id":"s1","type":"rated-comment","name":"Overall Progress","data":{"comments":{"excellent":["[Name] is making excellent progress...","c2","c3"],"good":["[Name] is making good progress...","c2","c3"],"satisfactory":["[Name] is making satisfactory progress...","c2","c3"],"needsImprovement":["[Name] is finding aspects of the course challenging...","c2","c3"]}}},{"id":"s2","type":"new-line","name":"","data":{}},{"id":"s3","type":"assessment-comment","name":"Assessment","data":{"scoreType":"percentage","comments":{"excellent":["[Name] achieved [Score] demonstrating excellent understanding.","c2","c3"],"good":["[Name] achieved [Score] showing good understanding.","c2","c3"],"satisfactory":["[Name] achieved [Score] showing satisfactory understanding.","c2","c3"],"needsImprovement":["[Name] achieved [Score] indicating further revision is needed.","c2","c3"],"notCompleted":["[Name] has not yet completed this assessment.","c2","c3"]}}},{"id":"s4","type":"new-line","name":"","data":{}},{"id":"s5","type":"optional-additional-comment","name":"Additional Comments","data":{}}]}`;
+RETURN FORMAT:
+{"templateName":"string","sections":[
+  {"id":"s1","type":"standard-comment","name":"Section Name","data":{"content":"Fixed text using [Name] if needed."}},
+  {"id":"s2","type":"new-line","name":"","data":{}},
+  {"id":"s3","type":"rated-comment","name":"Section Name","data":{"comments":{"excellent":["c1 [Name]","c2","c3"],"good":["c1","c2","c3"],"satisfactory":["c1","c2","c3"],"needsImprovement":["c1","c2","c3"]}}},
+  {"id":"s4","type":"new-line","name":"","data":{}},
+  {"id":"s5","type":"assessment-comment","name":"Assessment Name","data":{"scoreType":"percentage","comments":{"excellent":["[Name] achieved [Score]...","c2","c3"],"good":["c1 [Score]","c2","c3"],"satisfactory":["c1 [Score]","c2","c3"],"needsImprovement":["c1 [Score]","c2","c3"],"notCompleted":["c1","c2","c3"]}}},
+  {"id":"s6","type":"new-line","name":"","data":{}},
+  {"id":"s7","type":"qualities","name":"Personal Qualities","data":{"comments":{"Character":["[Name] is a positive and enthusiastic member of the class.","[Name] is working on developing a more positive attitude towards learning."],"Social Skills":["[Name] works well with others and contributes positively to group activities.","[Name] is developing their collaborative skills and is encouraged to engage more with peers."]}}},
+  {"id":"s8","type":"new-line","name":"","data":{}},
+  {"id":"s9","type":"next-steps","name":"Next Steps","data":{"focusAreas":{"Area One":["suggestion [Name]","s2","s3"],"Area Two":["suggestion [Name]","s2","s3"]}}},
+  {"id":"s10","type":"new-line","name":"","data":{}},
+  {"id":"s11","type":"optional-additional-comment","name":"Additional Comments","data":{}}
+]}`;
 
 function callAnthropicAPI(apiKey, userPrompt) {
   return new Promise((resolve, reject) => {
@@ -131,24 +185,29 @@ ${JSON.stringify(existingTemplate, null, 2)}
 Here are ADDITIONAL reports to use to improve and enrich the template:
 ${trimmedReports}
 
-Using both the existing template structure AND these additional reports, generate an IMPROVED version of the template. Keep the same section types and structure but:
-- Add more variety to the comments where the new reports suggest different phrasings
-- Look carefully for progress, effort or attainment language that varies between students — if the existing template has these as standard-comment, convert them to rated-comment
-- Improve any comments that could be more natural or specific
-- Add any new focus areas or qualities suggested by the additional reports
+Using both the existing template AND these additional reports, generate an IMPROVED version. 
+- Carefully check each existing section is using the correct pattern (standard-comment vs rated-comment vs qualities vs assessment-comment)
+- Fix any sections that are using the wrong type based on the pattern decision rules
+- Add more variety and natural language to comments where the new reports suggest improvements
+- Add any new themes, focus areas or qualities suggested by the additional reports
 - Keep [Name] and [Score] placeholders throughout
-- Maintain the same template name unless the new reports suggest a better one`;
+- Maintain the same template name`;
   } else {
     userPrompt = `Subject: ${subject}
 Year Group: ${yearGroup || 'Not specified'}
 ${additionalContext ? `Context: ${additionalContext}` : ''}
 
-Sample reports:
+Here are the reports to analyse:
 ${trimmedReports}
 
-Carefully analyse ALL the reports above. Look for statements that cover the same topic but use different language for different students — these must be rated-comment sections. Pay particular attention to progress statements, effort, attainment and behaviour which always vary between students.
+Read ALL the reports carefully. For each type of statement you find, apply the pattern decision rules from your instructions to determine the correct section type. Pay particular attention to:
+1. Text that is IDENTICAL across all reports → standard-comment
+2. Sentences where only a rating word changes → rated-comment preserving the sentence structure  
+3. Different sentences about the same performance topic → rated-comment
+4. Character/trait descriptions clustered together → qualities with 2-3 comments per heading
+5. Assessment scores or percentages → assessment-comment with [Score] placeholder
 
-Generate a complete template JSON for this subject with new-line sections between each main section and optional-additional-comment at the end.`;
+Generate a complete template JSON with new-line sections between each main section and optional-additional-comment at the end.`;
   }
 
   try {
