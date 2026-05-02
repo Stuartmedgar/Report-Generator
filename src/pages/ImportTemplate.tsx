@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { Template, TemplateSection } from '../types';
 
-type Step = 'input' | 'generating' | 'preview' | 'refining' | 'saved';
+type Step = 'input' | 'generating' | 'preview' | 'saved';
 
 interface GeneratedTemplate {
   name: string;
@@ -26,7 +26,9 @@ export default function ImportTemplate() {
   const [additionalContext, setAdditionalContext] = useState('');
   const [generatedTemplate, setGeneratedTemplate] = useState<GeneratedTemplate | null>(null);
   const [refineText, setRefineText] = useState('');
+  const [isRefining, setIsRefining] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refineError, setRefineError] = useState<string | null>(null);
   const [isMobile] = useState(window.innerWidth <= 768);
 
   const charCount = reportText.length;
@@ -107,49 +109,45 @@ export default function ImportTemplate() {
 
   const handleRefine = async () => {
     if (!refineText.trim() || refineCharCount < 200) {
-      setError('Please paste more reports to refine with — at least 200 characters needed.');
+      setRefineError('Please paste more reports — at least 200 characters needed.');
       return;
     }
 
-    setError(null);
-    setStep('generating');
+    setRefineError(null);
+    setIsRefining(true);
 
     try {
       const result = await callGenerateFunction(true);
       setGeneratedTemplate(result);
       setRefineText('');
-      setStep('preview');
     } catch (err: any) {
       console.error('Refinement error:', err);
-      setError(err.message || 'Something went wrong during refinement. Please try again.');
-      setStep('preview');
+      setRefineError(err.message || 'Something went wrong during refinement. Please try again.');
+    } finally {
+      setIsRefining(false);
     }
   };
 
   const handleSave = () => {
     if (!generatedTemplate) return;
-
     const template: Template = {
       id: Date.now().toString(),
       name: generatedTemplate.name,
       sections: generatedTemplate.sections,
       createdAt: new Date().toISOString(),
     };
-
     addTemplate(template);
     setStep('saved');
   };
 
   const handleEditFirst = () => {
     if (!generatedTemplate) return;
-
     const template: Template = {
       id: Date.now().toString(),
       name: generatedTemplate.name,
       sections: generatedTemplate.sections,
       createdAt: new Date().toISOString(),
     };
-
     addTemplate(template);
     navigate('/create-template', { state: { editTemplate: template } });
   };
@@ -525,9 +523,7 @@ export default function ImportTemplate() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1 }}>
-                <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>
-                  TEMPLATE NAME
-                </p>
+                <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>TEMPLATE NAME</p>
                 <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#111827' }}>
                   {generatedTemplate.name}
                 </h2>
@@ -583,14 +579,15 @@ export default function ImportTemplate() {
           {/* Refine with more reports */}
           <div style={{
             backgroundColor: 'white', borderRadius: '10px',
-            border: '2px solid #e5e7eb', padding: '20px', marginBottom: '16px',
+            border: '2px solid #8b5cf6', padding: '20px', marginBottom: '16px',
           }}>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '15px', fontWeight: '600', color: '#111827' }}>
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: '600', color: '#111827' }}>
               🔄 Refine with More Reports
             </h3>
-            <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#6b7280' }}>
               Paste in another batch of reports to improve and enrich the template further.
               The AI will use both the existing template and the new reports to produce a better version.
+              You can refine as many times as you like before saving.
             </p>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -625,27 +622,28 @@ export default function ImportTemplate() {
               }}
             />
 
-            {error && (
+            {refineError && (
               <div style={{
                 backgroundColor: '#fef2f2', border: '1px solid #fecaca',
                 borderRadius: '8px', padding: '10px 14px', marginBottom: '12px',
                 color: '#b91c1c', fontSize: '13px',
               }}>
-                ⚠️ {error}
+                ⚠️ {refineError}
               </div>
             )}
 
             <button
               onClick={handleRefine}
-              disabled={refineCharCount < 200}
+              disabled={refineCharCount < 200 || isRefining}
               style={{
-                width: '100%', backgroundColor: refineCharCount >= 200 ? '#8b5cf6' : '#d1d5db',
+                width: '100%',
+                backgroundColor: isRefining ? '#9ca3af' : refineCharCount >= 200 ? '#8b5cf6' : '#d1d5db',
                 color: 'white', padding: '12px', border: 'none', borderRadius: '8px',
                 fontSize: '14px', fontWeight: '600',
-                cursor: refineCharCount >= 200 ? 'pointer' : 'not-allowed',
+                cursor: refineCharCount >= 200 && !isRefining ? 'pointer' : 'not-allowed',
               }}
             >
-              🔄 Refine Template
+              {isRefining ? '🔄 Refining...' : '🔄 Refine Template'}
             </button>
           </div>
 
@@ -732,6 +730,8 @@ export default function ImportTemplate() {
                 setYearGroup('');
                 setAdditionalContext('');
                 setGeneratedTemplate(null);
+                setError(null);
+                setRefineError(null);
               }}
               style={{
                 width: '100%', backgroundColor: '#f3f4f6', color: '#374151',
