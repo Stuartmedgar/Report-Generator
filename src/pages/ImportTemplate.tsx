@@ -13,6 +13,8 @@ interface GeneratedTemplate {
   sections: TemplateSection[];
 }
 
+const CHAR_LIMIT = 6000;
+
 export default function ImportTemplate() {
   const navigate = useNavigate();
   const { addTemplate } = useData();
@@ -26,15 +28,17 @@ export default function ImportTemplate() {
   const [error, setError] = useState<string | null>(null);
   const [isMobile] = useState(window.innerWidth <= 768);
 
-  const wordCount = reportText.trim().split(/\s+/).filter(Boolean).length;
+  const charCount = reportText.length;
+  const charPercent = Math.min((charCount / CHAR_LIMIT) * 100, 100);
+  const charColor = charCount >= CHAR_LIMIT ? '#ef4444' : charCount >= CHAR_LIMIT * 0.8 ? '#f59e0b' : '#10b981';
 
   const handleGenerate = async () => {
     if (!reportText.trim()) {
       setError('Please paste some reports before generating.');
       return;
     }
-    if (wordCount < 50) {
-      setError('Please paste more report text — at least 50 words needed for a good template.');
+    if (charCount < 200) {
+      setError('Please paste more report text — at least 200 characters needed for a good template.');
       return;
     }
     if (!subject.trim()) {
@@ -67,7 +71,6 @@ export default function ImportTemplate() {
         throw new Error('Generated template has invalid structure.');
       }
 
-      // Ensure IDs are unique
       const sectionsWithIds = data.sections.map((s: any, i: number) => ({
         ...s,
         id: `imported_${Date.now()}_${i}`,
@@ -172,6 +175,8 @@ export default function ImportTemplate() {
       }
       case 'optional-additional-comment':
         return 'Free text box for personalised additions';
+      case 'new-line':
+        return 'Line break for formatting';
       default:
         return '';
     }
@@ -217,9 +222,10 @@ export default function ImportTemplate() {
               💡 How this works
             </h3>
             <p style={{ margin: 0, fontSize: '13px', color: '#1e40af', lineHeight: '1.6' }}>
-              Paste in 5–20 reports you've written previously. The AI will analyse the language,
+              Paste in reports you've written previously — up to {CHAR_LIMIT.toLocaleString()} characters.
+              Keep pasting until the counter turns amber or red. The AI will analyse the language,
               identify patterns, and automatically build a complete template using the right section
-              types — rated comments, next steps, qualities, and more — all in your own voice.
+              types — rated comments, assessment scores, next steps, qualities, and more — all in your own voice.
             </p>
           </div>
 
@@ -282,20 +288,32 @@ export default function ImportTemplate() {
                   Paste Your Reports <span style={{ color: '#ef4444' }}>*</span>
                 </h2>
                 <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>
-                  Copy reports directly from Word. Names and personal details are fine — they won't be stored.
+                  Copy reports directly from Word. Keep pasting until the counter turns amber for best results.
                 </p>
               </div>
               <span style={{
-                fontSize: '12px', color: wordCount >= 100 ? '#10b981' : '#f59e0b',
-                fontWeight: '500', whiteSpace: 'nowrap', marginLeft: '12px',
+                fontSize: '12px', color: charColor,
+                fontWeight: '600', whiteSpace: 'nowrap', marginLeft: '12px',
               }}>
-                {wordCount} words
+                {charCount.toLocaleString()} / {CHAR_LIMIT.toLocaleString()}
               </span>
             </div>
+
+            {/* Character progress bar */}
+            <div style={{
+              height: '4px', backgroundColor: '#e5e7eb', borderRadius: '2px', marginBottom: '12px'
+            }}>
+              <div style={{
+                height: '100%', width: `${charPercent}%`,
+                backgroundColor: charColor, borderRadius: '2px',
+                transition: 'width 0.2s, background-color 0.2s'
+              }} />
+            </div>
+
             <textarea
               value={reportText}
-              onChange={e => setReportText(e.target.value)}
-              placeholder={`Paste your reports here. For example:\n\nJohn has shown excellent commitment throughout the year and has developed his skills significantly...\n\nSarah demonstrates good understanding of the subject and contributes well to group activities...\n\n[Continue with more reports...]`}
+              onChange={e => setReportText(e.target.value.substring(0, CHAR_LIMIT))}
+              placeholder={`Paste your reports here. Keep adding reports until the counter turns amber or red for the best quality template.\n\nFor example:\n\nJohn has shown excellent commitment throughout the year...\n\nSarah demonstrates good understanding of the subject...\n\n[Continue pasting more reports...]`}
               style={{
                 width: '100%', minHeight: '280px', padding: '12px',
                 border: '1px solid #d1d5db', borderRadius: '6px',
@@ -303,6 +321,11 @@ export default function ImportTemplate() {
                 outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
               }}
             />
+            {charCount >= CHAR_LIMIT && (
+              <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#ef4444' }}>
+                Maximum reached — the AI will use all {CHAR_LIMIT.toLocaleString()} characters you've provided.
+              </p>
+            )}
           </div>
 
           <div style={{
@@ -513,11 +536,9 @@ export default function ImportTemplate() {
                         </span>
                       )}
                     </div>
-                    {section.type !== 'new-line' && (
-                      <p style={{ margin: 0, fontSize: '12px', color: '#6b7280', lineHeight: '1.5' }}>
-                        {getSectionSummary(section)}
-                      </p>
-                    )}
+                    <p style={{ margin: 0, fontSize: '12px', color: '#6b7280', lineHeight: '1.5' }}>
+                      {getSectionSummary(section)}
+                    </p>
                   </div>
                 </div>
               </div>

@@ -5,22 +5,29 @@ const https = require('https');
 const SYSTEM_PROMPT = `You are an expert at converting teacher reports into structured templates. Return ONLY valid JSON, no markdown, no backticks.
 
 SECTION TYPES:
-- "rated-comment": varies by level. data.comments has keys: excellent, good, satisfactory, needsImprovement. Each is array of 3 comments using [Name].
-- "standard-comment": fixed text for all students. data.content is a string using [Name].
+- "rated-comment": varies by attainment level. data.comments has keys: excellent, good, satisfactory, needsImprovement. Each is array of 3 comments using [Name].
+- "standard-comment": only use for genuinely fixed text like class context or study support info. Do NOT use for assessment results - use assessment-comment instead. data.content is a string using [Name].
+- "assessment-comment": ALWAYS use this when reports mention test scores, assessment results or percentages. data.comments has keys: excellent, good, satisfactory, needsImprovement, notCompleted. Each is array of 3 comments using [Name]. Also needs scoreType ("percentage" or "outOf") and if outOf a maxScore number.
 - "next-steps": improvement suggestions. data.focusAreas is object, each key is area name, value is array of 3 suggestions using [Name].
 - "qualities": personal traits. data.comments is object, each key is heading, value is array of 3 comments using [Name].
+- "new-line": adds a line break for formatting. data is {}. Add one between each main section.
 - "optional-additional-comment": always include one at end. data is {}.
 
-RULES: Use [Name] for student name. Match the teacher's voice. End with optional-additional-comment.
+RULES:
+- Use [Name] for student name throughout
+- Match the teacher's voice and language from the sample reports
+- ALWAYS use assessment-comment if assessment scores appear in the reports
+- Add a new-line section between each main section for formatting
+- End with optional-additional-comment
 
-RETURN FORMAT:
-{"templateName":"string","sections":[{"id":"s1","type":"rated-comment","name":"Name","data":{"comments":{"excellent":["c1","c2","c3"],"good":["c1","c2","c3"],"satisfactory":["c1","c2","c3"],"needsImprovement":["c1","c2","c3"]}}},{"id":"s2","type":"optional-additional-comment","name":"Additional Comments","data":{}}]}`;
+RETURN FORMAT (strict JSON only):
+{"templateName":"string","sections":[{"id":"s1","type":"rated-comment","name":"Name","data":{"comments":{"excellent":["c1","c2","c3"],"good":["c1","c2","c3"],"satisfactory":["c1","c2","c3"],"needsImprovement":["c1","c2","c3"]}}},{"id":"s2","type":"new-line","name":"","data":{}},{"id":"s3","type":"assessment-comment","name":"Assessment","data":{"scoreType":"percentage","comments":{"excellent":["c1","c2","c3"],"good":["c1","c2","c3"],"satisfactory":["c1","c2","c3"],"needsImprovement":["c1","c2","c3"],"notCompleted":["c1","c2","c3"]}}},{"id":"s4","type":"new-line","name":"","data":{}},{"id":"s5","type":"optional-additional-comment","name":"Additional Comments","data":{}}]}`;
 
 function callAnthropicAPI(apiKey, userPrompt) {
   return new Promise((resolve, reject) => {
     const requestBody = JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2000,
+      max_tokens: 3000,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userPrompt }],
     });
@@ -60,7 +67,6 @@ function callAnthropicAPI(apiKey, userPrompt) {
 }
 
 exports.handler = async (event, context) => {
-  // Tell Netlify to wait for the full response
   context.callbackWaitsForEmptyEventLoop = false;
 
   const headers = {
@@ -96,8 +102,8 @@ exports.handler = async (event, context) => {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'reportText and subject are required' }) };
   }
 
-  // Trim report text to keep prompt short and fast
-  const trimmedReports = reportText.substring(0, 2000);
+  // Trim to 6000 characters to get a good sample while staying within timeout
+  const trimmedReports = reportText.substring(0, 6000);
 
   const userPrompt = `Subject: ${subject}
 Year Group: ${yearGroup || 'Not specified'}
@@ -106,7 +112,7 @@ ${additionalContext ? `Context: ${additionalContext}` : ''}
 Sample reports:
 ${trimmedReports}
 
-Generate a complete template JSON for this subject. Include 3-4 sections that best fit the content plus optional-additional-comment at the end.`;
+Generate a complete template JSON for this subject. Include sections that best fit the content, with new-line sections between each main section, plus optional-additional-comment at the end.`;
 
   try {
     console.log('Calling Anthropic API...');
