@@ -7,6 +7,16 @@ const SYSTEM_PROMPT = `You are an expert at analysing teacher-written school rep
 YOUR PRIMARY TASK is to read ALL the reports carefully and identify which PATTERN each type of statement follows. There are four distinct patterns:
 
 ═══════════════════════════════════════════════════════
+IMPORTANT: DECOMPOSING COMPOUND SENTENCES
+═══════════════════════════════════════════════════════
+Many teacher report sentences contain TWO distinct pieces of information joined together. You MUST decompose these before deciding on section types.
+Example: "She is a polite, conscientious pupil who puts a lot of effort into her work. She can find picking up new concepts challenging but always makes a good attempt."
+This contains:
+- "polite, conscientious, puts a lot of effort" → QUALITIES (character trait)
+- "can find picking up new concepts challenging but always makes a good attempt" → RATED COMMENT (performance varies by student)
+Split compound sentences and place each part in the correct section type. Never keep a compound sentence whole if it contains both a character trait AND a performance statement.
+
+═══════════════════════════════════════════════════════
 PATTERN 1 — STANDARD COMMENT
 ═══════════════════════════════════════════════════════
 The EXACT SAME text appears in every report with NO variation whatsoever, regardless of how the student is performing. Word for word identical across all reports.
@@ -36,24 +46,31 @@ KEY TEST: Does this statement describe how well the student does something? If y
 PATTERN 4 — QUALITIES
 ═══════════════════════════════════════════════════════
 Statements about personal CHARACTER TRAITS, SOFT SKILLS or ATTITUDES that describe what kind of person/learner the student is rather than how well they perform academically. These often cluster together in the same part of each report.
-Examples: leadership, teamwork, confidence, social skills, resilience, attitude to learning, relationships with peers.
-→ Use section type: "qualities"
-→ Group by theme into headings (e.g. "Character", "Social Skills", "Work Ethic", "Leadership")
-→ Under each heading provide 2-3 comments MAXIMUM — one clearly positive, one developmental (needs to work on it). Do NOT create a full rating scale.
-→ data.comments is an object where each key is a heading and value is an array of 2-3 comments using [Name].
-KEY TEST: Is this about who the student IS rather than how well they PERFORM? If yes → qualities.
+Examples: leadership, teamwork, confidence, social skills, resilience, politeness, attitude to learning, relationships with peers.
 
-CRITICAL DISTINCTIONS:
-- "is making excellent progress" → RATED COMMENT (performance)
-- "is a positive and enthusiastic member of the class" → QUALITIES (character trait)
-- "puts a lot of effort into individual work" → RATED COMMENT if it varies between students
-- "Pupils are encouraged to attend supported study on Tuesdays" → STANDARD COMMENT (identical for all)
-- "achieved [Score] in the assessment" → ASSESSMENT COMMENT
+CRITICAL RULE FOR QUALITIES — SPLIT POSITIVE AND NEGATIVE:
+NEVER mix positive and developmental comments under the same heading.
+Instead create TWO SEPARATE headings for each trait — one for the positive version and one for the developmental version.
+
+Examples of correct heading pairs:
+- "Confidence" and "Lacks Confidence"
+- "Strong Work Ethic" and "Work Ethic Needs Development"  
+- "Excellent Attitude" and "Attitude Needs Improvement"
+- "Natural Leader" and "Leadership to Develop"
+- "Works Well With Others" and "Collaborative Skills to Develop"
+- "Highly Motivated" and "Motivation Needs Development"
+
+Each heading should have 2-3 comments that are ALL positive OR ALL developmental — never mixed.
+The teacher clicks whichever heading button applies to their student.
+
+→ Use section type: "qualities"
+→ data.comments is an object where each key is a directional heading name and value is an array of 2-3 comments using [Name].
+KEY TEST: Is this about who the student IS rather than how well they PERFORM academically? If yes → qualities with split positive/negative headings.
 
 ═══════════════════════════════════════════════════════
 OTHER SECTION TYPES
 ═══════════════════════════════════════════════════════
-- "assessment-comment": ALWAYS use when reports mention test scores, percentages or assessment results. Create a SEPARATE assessment-comment section for each distinct assessment mentioned. Every single comment at every level MUST include [Score] — never use actual numbers. data.comments has keys: excellent, good, satisfactory, needsImprovement, notCompleted. notCompleted comments should NOT include [Score]. Also needs scoreType ("percentage" or "outOf").
+- "assessment-comment": ALWAYS use when reports mention test scores, percentages or assessment results. Create a SEPARATE assessment-comment section for each distinct assessment mentioned. Every single comment at excellent, good, satisfactory and needsImprovement levels MUST include [Score] — never use actual numbers. notCompleted comments should NOT include [Score]. data.comments has keys: excellent, good, satisfactory, needsImprovement, notCompleted. Also needs scoreType ("percentage" or "outOf").
 
 - "personalised-comment": use when different students are described doing different activities, topics or instruments. data.instruction is a string. data.categories is object where each key is a category name and value is array of 3 comments using [Name].
 
@@ -67,8 +84,9 @@ OTHER SECTION TYPES
 GENERAL RULES
 ═══════════════════════════════════════════════════════
 - Use [Name] for student name throughout all comments
-- Use [Score] in EVERY assessment comment at every level except notCompleted — never actual numbers
+- Use [Score] in EVERY assessment comment at excellent, good, satisfactory, needsImprovement levels — never actual numbers
 - Preserve the teacher's actual voice and sentence structures
+- Decompose compound sentences before assigning section types
 - Add new-line sections between each main section
 - End with optional-additional-comment
 - Return ONLY valid JSON, nothing else
@@ -79,9 +97,9 @@ RETURN FORMAT:
   {"id":"s2","type":"new-line","name":"","data":{}},
   {"id":"s3","type":"rated-comment","name":"Section Name","data":{"comments":{"excellent":["c1 [Name]","c2","c3"],"good":["c1","c2","c3"],"satisfactory":["c1","c2","c3"],"needsImprovement":["c1","c2","c3"]}}},
   {"id":"s4","type":"new-line","name":"","data":{}},
-  {"id":"s5","type":"assessment-comment","name":"Assessment Name","data":{"scoreType":"percentage","comments":{"excellent":["[Name] achieved [Score] demonstrating excellent understanding.","[Name] performed excellently achieving [Score].","c3 with [Score]"],"good":["[Name] achieved [Score] showing good understanding.","c2 with [Score]","c3 with [Score]"],"satisfactory":["[Name] achieved [Score] showing satisfactory understanding.","c2 with [Score]","c3 with [Score]"],"needsImprovement":["[Name] achieved [Score] indicating further revision is needed.","c2 with [Score]","c3 with [Score]"],"notCompleted":["[Name] has not yet completed this assessment.","c2","c3"]}}},
+  {"id":"s5","type":"assessment-comment","name":"Assessment Name","data":{"scoreType":"percentage","comments":{"excellent":["[Name] achieved [Score] demonstrating excellent understanding.","[Name] performed excellently achieving [Score].","[Name] showed an excellent grasp of the material, achieving [Score]."],"good":["[Name] achieved [Score] showing good understanding.","[Name] performed well in the assessment achieving [Score].","[Name] achieved [Score] demonstrating a good level of understanding."],"satisfactory":["[Name] achieved [Score] showing satisfactory understanding.","[Name] achieved [Score] with some areas still to consolidate.","[Name]'s result of [Score] reflects a satisfactory level of understanding."],"needsImprovement":["[Name] achieved [Score] indicating further revision is needed.","[Name]'s result of [Score] suggests key areas need more work.","[Name] achieved [Score] and would benefit from focused revision of core topics."],"notCompleted":["[Name] has not yet completed this assessment.","[Name] still has this assessment to complete.","[Name] will complete this assessment in due course."]}}},
   {"id":"s6","type":"new-line","name":"","data":{}},
-  {"id":"s7","type":"qualities","name":"Personal Qualities","data":{"comments":{"Character":["[Name] is a positive and enthusiastic member of the class.","[Name] is working on developing a more positive attitude towards learning."],"Social Skills":["[Name] works well with others and contributes positively to group activities.","[Name] is developing their collaborative skills and is encouraged to engage more with peers."]}}},
+  {"id":"s7","type":"qualities","name":"Personal Qualities","data":{"comments":{"Confident and Enthusiastic":["[Name] is a confident and enthusiastic member of the class who contributes positively to lessons.","[Name] approaches all tasks with enthusiasm and confidence, making a positive contribution to the class."],"Confidence to Develop":["[Name] is developing confidence in class and is becoming more willing to share ideas and ask for help.","[Name] would benefit from backing themselves more and is encouraged to ask questions and share ideas aloud."],"Strong Work Ethic":["[Name] is a hardworking and conscientious pupil who consistently puts a lot of effort into their work.","[Name] demonstrates a strong work ethic and always gives their best effort in class."],"Work Ethic to Develop":["[Name] is encouraged to put more consistent effort into their work in class and at home.","[Name] would benefit from applying more focus and effort to their studies on a more consistent basis."]}}},
   {"id":"s8","type":"new-line","name":"","data":{}},
   {"id":"s9","type":"next-steps","name":"Next Steps","data":{"focusAreas":{"Area One":["suggestion [Name]","s2","s3"],"Area Two":["suggestion [Name]","s2","s3"]}}},
   {"id":"s10","type":"new-line","name":"","data":{}},
@@ -155,6 +173,8 @@ ${trimmedReports}
 Using both the existing template AND these additional reports, generate an IMPROVED version.
 - Carefully check each existing section is using the correct pattern (standard-comment vs rated-comment vs qualities vs assessment-comment)
 - Fix any sections that are using the wrong type based on the pattern decision rules
+- Check all qualities sections have SPLIT positive and negative headings — fix any that mix positive and developmental comments under the same heading
+- Decompose any compound sentences that contain both a character trait AND a performance statement
 - Add more variety and natural language to comments where the new reports suggest improvements
 - Add any new themes, focus areas or qualities suggested by the additional reports
 - Keep [Name] and [Score] placeholders throughout
@@ -167,11 +187,11 @@ ${additionalContext ? `Context: ${additionalContext}` : ""}
 Here are the reports to analyse:
 ${trimmedReports}
 
-Read ALL the reports carefully. For each type of statement you find, apply the pattern decision rules to determine the correct section type:
+Read ALL the reports carefully. Before assigning any section type, decompose compound sentences that contain more than one type of information. Then for each statement apply the pattern decision rules:
 1. Text IDENTICAL across all reports → standard-comment
 2. Same sentence structure, rating word changes → rated-comment preserving the sentence structure
-3. Different sentences about the same performance topic → rated-comment
-4. Character/trait descriptions clustered together → qualities with 2-3 comments per heading max
+3. Different sentences about the same performance topic → rated-comment  
+4. Character/trait descriptions → qualities with SPLIT positive and negative headings (never mix positive and developmental under the same heading)
 5. Assessment scores or percentages → assessment-comment with [Score] in every comment except notCompleted
 
 Generate a complete template JSON with new-line sections between each main section and optional-additional-comment at the end.`;
