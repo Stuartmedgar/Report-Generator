@@ -236,6 +236,22 @@ export default function ManageTemplates() {
               </button>
             </Link>
 
+            {/* NEW: Import from Reports button */}
+            <Link to="/import-template" style={{ textDecoration: 'none' }}>
+              <button style={{
+                backgroundColor: '#8b5cf6',
+                color: 'white',
+                padding: '12px 20px',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}>
+                🪄 Import from Reports
+              </button>
+            </Link>
+
             <button
               onClick={handleBrowseTemplates}
               style={{
