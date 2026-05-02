@@ -1,5 +1,7 @@
 // netlify/functions/generate-template.js
 
+const https = require('https');
+
 const SECTION_TYPE_GUIDE = `
 You are an expert at analysing teacher-written school reports and converting them into structured report templates.
 
@@ -58,33 +60,6 @@ RETURN FORMAT (strict JSON, no other text):
     },
     {
       "id": "section_3",
-      "type": "assessment-comment",
-      "name": "Unit Assessment",
-      "data": {
-        "scoreType": "percentage",
-        "comments": {
-          "excellent": ["comment1", "comment2", "comment3", "comment4"],
-          "good": ["comment1", "comment2", "comment3", "comment4"],
-          "satisfactory": ["comment1", "comment2", "comment3", "comment4"],
-          "needsImprovement": ["comment1", "comment2", "comment3", "comment4"],
-          "notCompleted": ["comment1", "comment2", "comment3"]
-        }
-      }
-    },
-    {
-      "id": "section_4",
-      "type": "personalised-comment",
-      "name": "Section Name",
-      "data": {
-        "instruction": "Select the activity/area that applies to this student",
-        "categories": {
-          "Category One": ["comment1 with [Name]", "comment2", "comment3", "comment4"],
-          "Category Two": ["comment1 with [Name]", "comment2", "comment3", "comment4"]
-        }
-      }
-    },
-    {
-      "id": "section_5",
       "type": "next-steps",
       "name": "Next Steps",
       "data": {
@@ -95,7 +70,7 @@ RETURN FORMAT (strict JSON, no other text):
       }
     },
     {
-      "id": "section_6",
+      "id": "section_4",
       "type": "qualities",
       "name": "Personal Qualities",
       "data": {
@@ -106,7 +81,7 @@ RETURN FORMAT (strict JSON, no other text):
       }
     },
     {
-      "id": "section_7",
+      "id": "section_5",
       "type": "optional-additional-comment",
       "name": "Additional Comments",
       "data": {}
@@ -115,6 +90,45 @@ RETURN FORMAT (strict JSON, no other text):
 }
 `;
 
+function callAnthropicAPI(apiKey, userPrompt) {
+  return new Promise((resolve, reject) => {
+    const requestBody = JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4000,
+      system: SECTION_TYPE_GUIDE,
+      messages: [{ role: 'user', content: userPrompt }],
+    });
+
+    const options = {
+      hostname: 'api.anthropic.com',
+      path: '/v1/messages',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'Content-Length': Buffer.byteLength(requestBody),
+      },
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve({ ok: true, body: data });
+        } else {
+          resolve({ ok: false, status: res.statusCode, body: data });
+        }
+      });
+    });
+
+    req.on('error', (err) => reject(err));
+    req.write(requestBody);
+    req.end();
+  });
+}
+
 exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -122,7 +136,6 @@ exports.handler = async (event, context) => {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
 
-  // Handle preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
@@ -135,13 +148,12 @@ exports.handler = async (event, context) => {
     };
   }
 
-  // Check API key is configured
   if (!process.env.ANTHROPIC_API_KEY) {
     console.error('ANTHROPIC_API_KEY environment variable is not set');
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Server configuration error' }),
+      body: JSON.stringify({ error: 'Server configuration error - API key not set' }),
     };
   }
 
@@ -180,41 +192,24 @@ ${reportText}
 Analyse these reports and generate a complete template following the rules and format in your instructions. Make the template name reflect the subject and year group.`;
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4000,
-        system: SECTION_TYPE_GUIDE,
-        messages: [{ role: 'user', content: userPrompt }],
-      }),
-    });
+    const result = await callAnthropicAPI(process.env.ANTHROPIC_API_KEY, userPrompt);
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error('Anthropic API error:', response.status, errorBody);
+    if (!result.ok) {
+      console.error('Anthropic API error:', result.status, result.body);
       return {
         statusCode: 502,
         headers,
-        body: JSON.stringify({ error: 'Failed to contact AI service' }),
+        body: JSON.stringify({ error: 'Failed to contact AI service', details: result.body }),
       };
     }
 
-    const data = await response.json();
+    const data = JSON.parse(result.body);
     const rawText = data.content
       .filter(b => b.type === 'text')
       .map(b => b.text)
       .join('');
 
-    // Strip any accidental markdown fences
     const cleaned = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-
-    // Validate it's parseable JSON before sending back
     const parsed = JSON.parse(cleaned);
 
     if (!parsed.templateName || !parsed.sections || !Array.isArray(parsed.sections)) {
@@ -229,15 +224,6 @@ Analyse these reports and generate a complete template following the rules and f
 
   } catch (err) {
     console.error('Error generating template:', err);
-
-    if (err instanceof SyntaxError) {
-      return {
-        statusCode: 502,
-        headers,
-        body: JSON.stringify({ error: 'AI returned an unexpected response format. Please try again.' }),
-      };
-    }
-
     return {
       statusCode: 500,
       headers,
