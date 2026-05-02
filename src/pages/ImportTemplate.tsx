@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { Template, TemplateSection } from '../types';
 
-type Step = 'input' | 'generating' | 'preview' | 'saved';
+type Step = 'input' | 'generating' | 'preview' | 'refining' | 'saved';
 
 interface GeneratedTemplate {
   name: string;
@@ -25,12 +25,57 @@ export default function ImportTemplate() {
   const [reportText, setReportText] = useState('');
   const [additionalContext, setAdditionalContext] = useState('');
   const [generatedTemplate, setGeneratedTemplate] = useState<GeneratedTemplate | null>(null);
+  const [refineText, setRefineText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isMobile] = useState(window.innerWidth <= 768);
 
   const charCount = reportText.length;
   const charPercent = Math.min((charCount / CHAR_LIMIT) * 100, 100);
   const charColor = charCount >= CHAR_LIMIT ? '#ef4444' : charCount >= CHAR_LIMIT * 0.8 ? '#f59e0b' : '#10b981';
+
+  const refineCharCount = refineText.length;
+  const refineCharPercent = Math.min((refineCharCount / CHAR_LIMIT) * 100, 100);
+  const refineCharColor = refineCharCount >= CHAR_LIMIT ? '#ef4444' : refineCharCount >= CHAR_LIMIT * 0.8 ? '#f59e0b' : '#10b981';
+
+  const callGenerateFunction = async (isRefinement: boolean) => {
+    const response = await fetch('/.netlify/functions/generate-template', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subject,
+        yearGroup,
+        reportText: isRefinement ? refineText : reportText,
+        additionalContext,
+        isRefinement,
+        existingTemplate: isRefinement && generatedTemplate ? {
+          name: generatedTemplate.name,
+          sections: generatedTemplate.sections,
+        } : null,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || `Server error: ${response.status}`);
+    }
+
+    if (!data.templateName || !data.sections || !Array.isArray(data.sections)) {
+      throw new Error('Generated template has invalid structure.');
+    }
+
+    const sectionsWithIds = data.sections.map((s: any, i: number) => ({
+      ...s,
+      id: `imported_${Date.now()}_${i}`,
+    }));
+
+    return {
+      name: data.templateName,
+      subject,
+      yearGroup,
+      sections: sectionsWithIds,
+    };
+  };
 
   const handleGenerate = async () => {
     if (!reportText.trim()) {
@@ -50,44 +95,34 @@ export default function ImportTemplate() {
     setStep('generating');
 
     try {
-      const response = await fetch('/.netlify/functions/generate-template', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subject,
-          yearGroup,
-          reportText,
-          additionalContext,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || `Server error: ${response.status}`);
-      }
-
-      if (!data.templateName || !data.sections || !Array.isArray(data.sections)) {
-        throw new Error('Generated template has invalid structure.');
-      }
-
-      const sectionsWithIds = data.sections.map((s: any, i: number) => ({
-        ...s,
-        id: `imported_${Date.now()}_${i}`,
-      }));
-
-      setGeneratedTemplate({
-        name: data.templateName,
-        subject,
-        yearGroup,
-        sections: sectionsWithIds,
-      });
+      const result = await callGenerateFunction(false);
+      setGeneratedTemplate(result);
       setStep('preview');
-
     } catch (err: any) {
       console.error('Generation error:', err);
       setError(err.message || 'Something went wrong. Please try again.');
       setStep('input');
+    }
+  };
+
+  const handleRefine = async () => {
+    if (!refineText.trim() || refineCharCount < 200) {
+      setError('Please paste more reports to refine with — at least 200 characters needed.');
+      return;
+    }
+
+    setError(null);
+    setStep('generating');
+
+    try {
+      const result = await callGenerateFunction(true);
+      setGeneratedTemplate(result);
+      setRefineText('');
+      setStep('preview');
+    } catch (err: any) {
+      console.error('Refinement error:', err);
+      setError(err.message || 'Something went wrong during refinement. Please try again.');
+      setStep('preview');
     }
   };
 
@@ -159,7 +194,7 @@ export default function ImportTemplate() {
       case 'assessment-comment': {
         const total = Object.values(section.data?.comments || {})
           .reduce((sum: number, arr: any) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
-        return `${total} comments across 5 levels (${section.data?.scoreType || 'score'})`;
+        return `${total} comments across 5 levels (${section.data?.scoreType || 'score'}) — uses [Score] placeholder`;
       }
       case 'personalised-comment': {
         const cats = Object.keys(section.data?.categories || {});
@@ -223,9 +258,8 @@ export default function ImportTemplate() {
             </h3>
             <p style={{ margin: 0, fontSize: '13px', color: '#1e40af', lineHeight: '1.6' }}>
               Paste in reports you've written previously — up to {CHAR_LIMIT.toLocaleString()} characters.
-              Keep pasting until the counter turns amber or red. The AI will analyse the language,
-              identify patterns, and automatically build a complete template using the right section
-              types — rated comments, assessment scores, next steps, qualities, and more — all in your own voice.
+              Keep pasting until the counter turns amber or red. After generating you can paste in more
+              reports to refine and improve the template further.
             </p>
           </div>
 
@@ -299,7 +333,6 @@ export default function ImportTemplate() {
               </span>
             </div>
 
-            {/* Character progress bar */}
             <div style={{
               height: '4px', backgroundColor: '#e5e7eb', borderRadius: '2px', marginBottom: '12px'
             }}>
@@ -454,7 +487,7 @@ export default function ImportTemplate() {
                   ✅ Template Generated
                 </h1>
                 <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>
-                  Review the sections below before saving
+                  Review, refine with more reports, or save
                 </p>
               </div>
             </div>
@@ -485,6 +518,7 @@ export default function ImportTemplate() {
 
         <main style={{ maxWidth: '800px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
 
+          {/* Template name */}
           <div style={{
             backgroundColor: 'white', borderRadius: '10px',
             border: '1px solid #e5e7eb', padding: '20px', marginBottom: '16px',
@@ -507,6 +541,7 @@ export default function ImportTemplate() {
             </div>
           </div>
 
+          {/* Sections preview */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
             {generatedTemplate.sections.map((section, index) => (
               <div key={section.id} style={{
@@ -545,6 +580,76 @@ export default function ImportTemplate() {
             ))}
           </div>
 
+          {/* Refine with more reports */}
+          <div style={{
+            backgroundColor: 'white', borderRadius: '10px',
+            border: '2px solid #e5e7eb', padding: '20px', marginBottom: '16px',
+          }}>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '15px', fontWeight: '600', color: '#111827' }}>
+              🔄 Refine with More Reports
+            </h3>
+            <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#6b7280' }}>
+              Paste in another batch of reports to improve and enrich the template further.
+              The AI will use both the existing template and the new reports to produce a better version.
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>
+                Additional reports
+              </span>
+              <span style={{ fontSize: '12px', color: refineCharColor, fontWeight: '600' }}>
+                {refineCharCount.toLocaleString()} / {CHAR_LIMIT.toLocaleString()}
+              </span>
+            </div>
+
+            <div style={{
+              height: '4px', backgroundColor: '#e5e7eb', borderRadius: '2px', marginBottom: '10px'
+            }}>
+              <div style={{
+                height: '100%', width: `${refineCharPercent}%`,
+                backgroundColor: refineCharColor, borderRadius: '2px',
+                transition: 'width 0.2s, background-color 0.2s'
+              }} />
+            </div>
+
+            <textarea
+              value={refineText}
+              onChange={e => setRefineText(e.target.value.substring(0, CHAR_LIMIT))}
+              placeholder="Paste more reports here to refine the template..."
+              style={{
+                width: '100%', minHeight: '140px', padding: '12px',
+                border: '1px solid #d1d5db', borderRadius: '6px',
+                fontSize: '13px', lineHeight: '1.6', resize: 'vertical',
+                outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
+                marginBottom: '12px',
+              }}
+            />
+
+            {error && (
+              <div style={{
+                backgroundColor: '#fef2f2', border: '1px solid #fecaca',
+                borderRadius: '8px', padding: '10px 14px', marginBottom: '12px',
+                color: '#b91c1c', fontSize: '13px',
+              }}>
+                ⚠️ {error}
+              </div>
+            )}
+
+            <button
+              onClick={handleRefine}
+              disabled={refineCharCount < 200}
+              style={{
+                width: '100%', backgroundColor: refineCharCount >= 200 ? '#8b5cf6' : '#d1d5db',
+                color: 'white', padding: '12px', border: 'none', borderRadius: '8px',
+                fontSize: '14px', fontWeight: '600',
+                cursor: refineCharCount >= 200 ? 'pointer' : 'not-allowed',
+              }}
+            >
+              🔄 Refine Template
+            </button>
+          </div>
+
+          {/* Info box */}
           <div style={{
             backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0',
             borderRadius: '10px', padding: '16px', marginBottom: '24px',
@@ -554,8 +659,8 @@ export default function ImportTemplate() {
             </h3>
             <p style={{ margin: 0, fontSize: '13px', color: '#15803d', lineHeight: '1.6' }}>
               <strong>Save Template</strong> — saves directly to your template library ready to use.<br />
-              <strong>Save &amp; Edit</strong> — saves and opens in the template editor so you can
-              fine-tune any sections or comments before using it.
+              <strong>Save &amp; Edit</strong> — saves and opens in the template editor so you can fine-tune any sections.<br />
+              <strong>Refine</strong> — paste more reports to improve the template before saving.
             </p>
           </div>
 
@@ -622,6 +727,7 @@ export default function ImportTemplate() {
               onClick={() => {
                 setStep('input');
                 setReportText('');
+                setRefineText('');
                 setSubject('');
                 setYearGroup('');
                 setAdditionalContext('');
