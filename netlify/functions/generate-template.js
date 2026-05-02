@@ -50,7 +50,7 @@ function callAnthropicAPI(apiKey, userPrompt) {
     });
 
     req.on('error', (err) => reject(err));
-    req.setTimeout(9000, () => {
+    req.setTimeout(25000, () => {
       req.destroy();
       reject(new Error('Request timed out'));
     });
@@ -60,6 +60,9 @@ function callAnthropicAPI(apiKey, userPrompt) {
 }
 
 exports.handler = async (event, context) => {
+  // Tell Netlify to wait for the full response
+  context.callbackWaitsForEmptyEventLoop = false;
+
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -106,7 +109,9 @@ ${trimmedReports}
 Generate a complete template JSON for this subject. Include 3-4 sections that best fit the content plus optional-additional-comment at the end.`;
 
   try {
+    console.log('Calling Anthropic API...');
     const result = await callAnthropicAPI(process.env.ANTHROPIC_API_KEY, userPrompt);
+    console.log('Anthropic API responded:', result.ok, result.status);
 
     if (!result.ok) {
       console.error('Anthropic API error:', result.status, result.body);
@@ -130,6 +135,7 @@ Generate a complete template JSON for this subject. Include 3-4 sections that be
       throw new Error('Generated template has invalid structure');
     }
 
+    console.log('Template generated successfully:', parsed.templateName);
     return {
       statusCode: 200,
       headers,
