@@ -137,7 +137,7 @@ serve(async (req) => {
     });
   }
 
-  const trimmedReports = reportText.substring(0, 6000);
+  const trimmedReports = reportText.substring(0, 12000);
 
   let userPrompt: string;
 
@@ -189,7 +189,7 @@ Generate a complete template JSON with new-line sections between each main secti
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 4000,
+        max_tokens: 6000,
         system: SYSTEM_PROMPT,
         messages: [{ role: "user", content: userPrompt }],
       }),
