@@ -92,7 +92,7 @@ RETURN FORMAT:
 function callAnthropicAPI(apiKey, userPrompt) {
   return new Promise((resolve, reject) => {
     const requestBody = JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 3000,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userPrompt }],
