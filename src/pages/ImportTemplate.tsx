@@ -1,8 +1,8 @@
 // src/pages/ImportTemplate.tsx
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
-import { Template, TemplateSection } from '../types';
+import { TemplateSection } from '../types';
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 
@@ -378,21 +378,17 @@ export default function ImportTemplate() {
   const handleSave = () => {
     if (!generatedTemplate) return;
     addTemplate({
-      id: Date.now().toString(),
       name: generatedTemplate.name,
       sections: generatedTemplate.sections,
-      createdAt: new Date().toISOString(),
     });
     setStep('saved');
   };
 
   const handleEditFirst = () => {
     if (!generatedTemplate) return;
-    const template: Template = {
-      id: Date.now().toString(),
+    const template = {
       name: generatedTemplate.name,
       sections: generatedTemplate.sections,
-      createdAt: new Date().toISOString(),
     };
     addTemplate(template);
     navigate('/create-template', { state: { editTemplate: template } });
