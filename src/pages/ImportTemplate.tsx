@@ -8,6 +8,7 @@ import { TemplateSection } from '../types';
 
 type Step = 'paste' | 'preprocess' | 'generating' | 'preview' | 'saved';
 type StartMode = 'quick' | 'full' | null;
+type PronounSet = 'he/his' | 'she/her' | 'they/their';
 
 interface StandardCommentDraft {
   id: string;
@@ -62,30 +63,23 @@ function assembleFinalTemplate(aiSections: TemplateSection[], preDefinedSections
   preDefinedSections.standardComments.forEach((sc, i) => {
     standardLookup[sc.name] = {
       id: `predefined_standard_${i}_${Date.now()}`,
-      type: 'standard-comment',
-      name: sc.name,
-      data: { content: sc.content },
+      type: 'standard-comment', name: sc.name, data: { content: sc.content },
     };
   });
-
   const choiceLookup: Record<string, TemplateSection> = {};
   preDefinedSections.choiceComments.forEach((cc, i) => {
     const categories: Record<string, string[]> = {};
     cc.variants.forEach(v => { if (v.label && v.content) categories[v.label] = [v.content]; });
     choiceLookup[cc.name] = {
       id: `predefined_choice_${i}_${Date.now()}`,
-      type: 'qualities',
-      name: cc.name,
-      data: { comments: categories },
+      type: 'qualities', name: cc.name, data: { comments: categories },
     };
   });
 
   const assembled: TemplateSection[] = [];
   let idx = 0;
-
   aiSections.forEach(section => {
     const nameStr = section.name || '';
-
     if (nameStr.startsWith('STANDARD:')) {
       const key = nameStr.replace('STANDARD:', '').trim();
       if (standardLookup[key]) { assembled.push({ ...standardLookup[key], id: `assembled_${idx++}_${Date.now()}` }); return; }
@@ -100,10 +94,8 @@ function assembleFinalTemplate(aiSections: TemplateSection[], preDefinedSections
       const m2 = section.data.content.match(/\{\{CHOICE:(.+?)\}\}/);
       if (m2 && choiceLookup[m2[1]]) { assembled.push({ ...choiceLookup[m2[1]], id: `assembled_${idx++}_${Date.now()}` }); return; }
     }
-
     assembled.push({ ...section, id: `assembled_${idx++}_${Date.now()}` });
   });
-
   return assembled;
 }
 
@@ -117,6 +109,7 @@ export default function ImportTemplate() {
   const [startMode, setStartMode] = useState<StartMode>(null);
   const [subject, setSubject] = useState('');
   const [yearGroup, setYearGroup] = useState('');
+  const [pronounSet, setPronounSet] = useState<PronounSet>('they/their');
   const [rawReportText, setRawReportText] = useState('');
   const [additionalContext, setAdditionalContext] = useState('');
   const [generatedTemplate, setGeneratedTemplate] = useState<GeneratedTemplate | null>(null);
@@ -128,12 +121,10 @@ export default function ImportTemplate() {
   const [preDefinedSections, setPreDefinedSections] = useState<PreDefinedSections>({
     standardComments: [], choiceComments: [],
   });
-
   const [scName, setScName] = useState('');
   const [scContent, setScContent] = useState('');
   const [ccName, setCcName] = useState('');
   const [ccVariants, setCcVariants] = useState([{ label: '', content: '' }, { label: '', content: '' }]);
-
   const [refineText, setRefineText] = useState('');
   const [isRefining, setIsRefining] = useState(false);
   const [refineError, setRefineError] = useState<string | null>(null);
@@ -154,10 +145,7 @@ export default function ImportTemplate() {
 
   const handleAddStandardComment = () => {
     if (!scName.trim() || !scContent.trim()) return;
-    setPreDefinedSections(prev => ({
-      ...prev,
-      standardComments: [...prev.standardComments, { id: Date.now().toString(), name: scName.trim(), content: scContent.trim() }],
-    }));
+    setPreDefinedSections(prev => ({ ...prev, standardComments: [...prev.standardComments, { id: Date.now().toString(), name: scName.trim(), content: scContent.trim() }] }));
     setScName(''); setScContent('');
   };
 
@@ -165,10 +153,7 @@ export default function ImportTemplate() {
     if (!ccName.trim()) return;
     const validVariants = ccVariants.filter(v => v.label.trim() && v.content.trim());
     if (validVariants.length < 2) return;
-    setPreDefinedSections(prev => ({
-      ...prev,
-      choiceComments: [...prev.choiceComments, { id: Date.now().toString(), name: ccName.trim(), variants: validVariants }],
-    }));
+    setPreDefinedSections(prev => ({ ...prev, choiceComments: [...prev.choiceComments, { id: Date.now().toString(), name: ccName.trim(), variants: validVariants }] }));
     setCcName(''); setCcVariants([{ label: '', content: '' }, { label: '', content: '' }]);
   };
 
@@ -184,43 +169,30 @@ export default function ImportTemplate() {
 
   const callGenerateFunction = async (isRefinement: boolean, attempt = 1): Promise<GeneratedTemplate> => {
     if (attempt > 1) setGeneratingMessage('Retrying generation...');
-
-    const textToSend = isRefinement
-      ? refineText.substring(0, GENERATION_CHAR_LIMIT)
-      : cleanedText.substring(0, GENERATION_CHAR_LIMIT);
+    const textToSend = isRefinement ? refineText.substring(0, GENERATION_CHAR_LIMIT) : cleanedText.substring(0, GENERATION_CHAR_LIMIT);
 
     const response = await fetch('https://wozbrojwuzktwrzngllh.supabase.co/functions/v1/generate-template', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        subject, yearGroup,
+        subject, yearGroup, pronounSet,
         reportText: textToSend,
         additionalContext,
         hasPlaceholders: !isRefinement && !isQuickMode && (effectivePreDefined.standardComments.length + effectivePreDefined.choiceComments.length > 0),
         standardCommentNames: effectivePreDefined.standardComments.map(sc => sc.name),
         choiceCommentNames: effectivePreDefined.choiceComments.map(cc => cc.name),
         isRefinement,
-        existingTemplate: isRefinement && generatedTemplate
-          ? { name: generatedTemplate.name, sections: generatedTemplate.sections }
-          : null,
+        existingTemplate: isRefinement && generatedTemplate ? { name: generatedTemplate.name, sections: generatedTemplate.sections } : null,
       }),
     });
 
     const data = await response.json();
-
     if (!response.ok) {
-      if (attempt < MAX_RETRIES && response.status >= 500) {
-        await new Promise(r => setTimeout(r, 2000));
-        return callGenerateFunction(isRefinement, attempt + 1);
-      }
+      if (attempt < MAX_RETRIES && response.status >= 500) { await new Promise(r => setTimeout(r, 2000)); return callGenerateFunction(isRefinement, attempt + 1); }
       throw new Error(data.error || `Server error: ${response.status}`);
     }
-
     if (!data.templateName || !data.sections || !Array.isArray(data.sections)) {
-      if (attempt < MAX_RETRIES) {
-        await new Promise(r => setTimeout(r, 2000));
-        return callGenerateFunction(isRefinement, attempt + 1);
-      }
+      if (attempt < MAX_RETRIES) { await new Promise(r => setTimeout(r, 2000)); return callGenerateFunction(isRefinement, attempt + 1); }
       throw new Error('The template could not be generated correctly. Please try again.');
     }
 
@@ -239,8 +211,7 @@ export default function ImportTemplate() {
     setStep('generating');
     try {
       const result = await callGenerateFunction(false);
-      setGeneratedTemplate(result);
-      setStep('preview');
+      setGeneratedTemplate(result); setStep('preview');
     } catch (err: any) {
       setError(err.message || 'Something went wrong. Please try again.');
       setStep(isQuickMode ? 'paste' : 'preprocess');
@@ -253,9 +224,8 @@ export default function ImportTemplate() {
     try {
       const result = await callGenerateFunction(true);
       setGeneratedTemplate(result); setRefineText('');
-    } catch (err: any) {
-      setRefineError(err.message || 'Something went wrong. Please try again.');
-    } finally { setIsRefining(false); }
+    } catch (err: any) { setRefineError(err.message || 'Something went wrong. Please try again.'); }
+    finally { setIsRefining(false); }
   };
 
   const handleSave = () => {
@@ -274,6 +244,7 @@ export default function ImportTemplate() {
     setStep('paste'); setStartMode(null);
     setRawReportText(''); setRefineText('');
     setSubject(''); setYearGroup(''); setAdditionalContext('');
+    setPronounSet('they/their');
     setGeneratedTemplate(null);
     setPreDefinedSections({ standardComments: [], choiceComments: [] });
     setError(null); setRefineError(null);
@@ -281,19 +252,8 @@ export default function ImportTemplate() {
 
   // ─── SECTION HELPERS ─────────────────────────────────────────────────────
 
-  const getSectionTypeLabel = (type: string) => ({
-    'rated-comment': 'Rated Comment', 'standard-comment': 'Standard Comment',
-    'assessment-comment': 'Assessment Comment', 'personalised-comment': 'Personalised Comment',
-    'optional-additional-comment': 'Optional Comment', 'next-steps': 'Next Steps',
-    'qualities': 'Choice Comment', 'new-line': 'New Line',
-  }[type] || type);
-
-  const getSectionTypeColor = (type: string) => ({
-    'rated-comment': '#3b82f6', 'standard-comment': '#10b981',
-    'assessment-comment': '#8b5cf6', 'personalised-comment': '#f59e0b',
-    'optional-additional-comment': '#ef4444', 'next-steps': '#06b6d4',
-    'qualities': '#f59e0b', 'new-line': '#9ca3af',
-  }[type] || '#6b7280');
+  const getSectionTypeLabel = (type: string) => ({ 'rated-comment': 'Rated Comment', 'standard-comment': 'Standard Comment', 'assessment-comment': 'Assessment Comment', 'personalised-comment': 'Personalised Comment', 'optional-additional-comment': 'Optional Comment', 'next-steps': 'Next Steps', 'qualities': 'Choice Comment', 'new-line': 'New Line' }[type] || type);
+  const getSectionTypeColor = (type: string) => ({ 'rated-comment': '#3b82f6', 'standard-comment': '#10b981', 'assessment-comment': '#8b5cf6', 'personalised-comment': '#f59e0b', 'optional-additional-comment': '#ef4444', 'next-steps': '#06b6d4', 'qualities': '#f59e0b', 'new-line': '#9ca3af' }[type] || '#6b7280');
 
   const getSectionSummary = (section: TemplateSection): string => {
     switch (section.type) {
@@ -317,7 +277,13 @@ export default function ImportTemplate() {
   const btnP: React.CSSProperties = { backgroundColor: '#3b82f6', color: 'white', padding: '10px 18px', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' };
   const btnS: React.CSSProperties = { backgroundColor: '#f3f4f6', color: '#374151', padding: '10px 18px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' };
 
-  // ─── STEP: PASTE (combined for quick and full) ────────────────────────────
+  const pronounOptions: { value: PronounSet; label: string; example: string }[] = [
+    { value: 'he/his', label: 'He / His', example: 'He works hard. His effort is excellent.' },
+    { value: 'she/her', label: 'She / Her', example: 'She works hard. Her effort is excellent.' },
+    { value: 'they/their', label: 'They / Their', example: 'They work hard. Their effort is excellent.' },
+  ];
+
+  // ─── STEP: PASTE ─────────────────────────────────────────────────────────
 
   if (step === 'paste') {
     return (
@@ -332,36 +298,20 @@ export default function ImportTemplate() {
 
         <main style={{ maxWidth: '800px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
 
-          {/* Mode selection — shown if not yet chosen */}
+          {/* Mode selection */}
           {!startMode && (
             <div style={{ marginBottom: '24px' }}>
               <h2 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>How would you like to start?</h2>
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
-                <button
-                  onClick={() => setStartMode('quick')}
-                  style={{
-                    padding: '24px', border: '2px solid #3b82f6', borderRadius: '12px',
-                    backgroundColor: 'white', cursor: 'pointer', textAlign: 'left',
-                  }}
-                >
+                <button onClick={() => setStartMode('quick')} style={{ padding: '24px', border: '2px solid #3b82f6', borderRadius: '12px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}>
                   <div style={{ fontSize: '24px', marginBottom: '8px' }}>⚡</div>
                   <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827', marginBottom: '6px' }}>Quick Start</div>
-                  <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>
-                    Paste your reports and generate immediately. Best for shorter reports or when you want a fast first draft.
-                  </div>
+                  <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>Paste your reports and generate immediately. Best for shorter reports or a fast first draft.</div>
                 </button>
-                <button
-                  onClick={() => setStartMode('full')}
-                  style={{
-                    padding: '24px', border: '2px solid #8b5cf6', borderRadius: '12px',
-                    backgroundColor: 'white', cursor: 'pointer', textAlign: 'left',
-                  }}
-                >
+                <button onClick={() => setStartMode('full')} style={{ padding: '24px', border: '2px solid #8b5cf6', borderRadius: '12px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}>
                   <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔧</div>
                   <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827', marginBottom: '6px' }}>Full Import</div>
-                  <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>
-                    Identify repeated sections first to maximise the character limit and get a richer template. Best for longer or certificated reports.
-                  </div>
+                  <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>Identify repeated sections first to maximise the character limit. Best for longer or certificated reports.</div>
                 </button>
               </div>
             </div>
@@ -369,12 +319,10 @@ export default function ImportTemplate() {
 
           {startMode && (
             <>
-              {/* Info banner */}
+              {/* Mode banner */}
               <div style={{ backgroundColor: startMode === 'quick' ? '#eff6ff' : '#f5f3ff', border: `1px solid ${startMode === 'quick' ? '#bfdbfe' : '#ddd6fe'}`, borderRadius: '10px', padding: '14px 16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <p style={{ margin: 0, fontSize: '13px', color: startMode === 'quick' ? '#1e40af' : '#5b21b6', lineHeight: '1.5' }}>
-                  {startMode === 'quick'
-                    ? '⚡ Quick Start — paste your reports and generate immediately.'
-                    : '🔧 Full Import — paste all reports, then identify repeated sections to maximise quality.'}
+                <p style={{ margin: 0, fontSize: '13px', color: startMode === 'quick' ? '#1e40af' : '#5b21b6' }}>
+                  {startMode === 'quick' ? '⚡ Quick Start — paste your reports and generate immediately.' : '🔧 Full Import — paste all reports, then identify repeated sections on the next screen.'}
                 </p>
                 <button onClick={() => setStartMode(null)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', whiteSpace: 'nowrap', marginLeft: '12px' }}>Change</button>
               </div>
@@ -397,13 +345,38 @@ export default function ImportTemplate() {
                 </div>
               </div>
 
+              {/* Pronoun selector */}
+              <div style={card}>
+                <h2 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Pronoun Set</h2>
+                <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#6b7280' }}>
+                  Choose the pronoun set for this class. The template will use these consistently in all qualities comments,
+                  creating natural follow-on sentences like "She is highly motivated" after "[Name] is an enthusiastic pupil...".
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '10px' }}>
+                  {pronounOptions.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setPronounSet(opt.value)}
+                      style={{
+                        padding: '14px', borderRadius: '8px', cursor: 'pointer', textAlign: 'left',
+                        border: pronounSet === opt.value ? '2px solid #3b82f6' : '2px solid #e5e7eb',
+                        backgroundColor: pronounSet === opt.value ? '#eff6ff' : 'white',
+                      }}
+                    >
+                      <div style={{ fontSize: '15px', fontWeight: '700', color: pronounSet === opt.value ? '#1d4ed8' : '#111827', marginBottom: '4px' }}>{opt.label}</div>
+                      <div style={{ fontSize: '12px', color: '#6b7280', fontStyle: 'italic' }}>{opt.example}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Report text */}
               <div style={card}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                   <div>
                     <h2 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Paste Your Reports <span style={{ color: '#ef4444' }}>*</span></h2>
                     <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>
-                      {startMode === 'quick' ? 'Paste all your reports here — the more the better.' : 'Paste all your reports — no character limit at this stage.'}
+                      {startMode === 'quick' ? 'Paste all your reports — the more the better.' : 'Paste all your reports — no character limit at this stage.'}
                     </p>
                   </div>
                   <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500', whiteSpace: 'nowrap', marginLeft: '12px' }}>{rawCharCount.toLocaleString()} characters</span>
@@ -417,31 +390,18 @@ export default function ImportTemplate() {
                 <textarea value={additionalContext} onChange={e => setAdditionalContext(e.target.value)} placeholder="e.g. We teach swimming, gymnastics and games." style={{ ...txa, minHeight: '80px' }} />
               </div>
 
-              {error && (
-                <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', color: '#b91c1c', fontSize: '14px' }}>
-                  ⚠️ {error}
-                </div>
-              )}
+              {error && <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', color: '#b91c1c', fontSize: '14px' }}>⚠️ {error}</div>}
 
               {startMode === 'quick' ? (
-                <button onClick={handleGenerate} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px' }}>
-                  🪄 Generate Template
-                </button>
+                <button onClick={handleGenerate} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px' }}>🪄 Generate Template</button>
               ) : (
-                <button
-                  onClick={() => {
-                    if (!rawReportText.trim()) { setError('Please paste your reports first.'); return; }
-                    if (!subject.trim()) { setError('Please enter the subject.'); return; }
-                    setError(null); setStep('preprocess');
-                  }}
-                  style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px', backgroundColor: '#8b5cf6' }}
-                >
+                <button onClick={() => { if (!rawReportText.trim()) { setError('Please paste your reports first.'); return; } if (!subject.trim()) { setError('Please enter the subject.'); return; } setError(null); setStep('preprocess'); }} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px', backgroundColor: '#8b5cf6' }}>
                   Next: Identify Repeated Sections →
                 </button>
               )}
 
               <p style={{ textAlign: 'center', fontSize: '12px', color: '#9ca3af', marginTop: '12px' }}>
-                {startMode === 'quick' ? 'Generation typically takes 20–40 seconds.' : 'You\'ll identify repeated sections on the next screen.'}
+                Generation typically takes 20–40 seconds. Reports are not stored.
               </p>
             </>
           )}
@@ -454,7 +414,6 @@ export default function ImportTemplate() {
 
   if (step === 'preprocess') {
     const charColor = isOverLimit ? '#ef4444' : cleanedCharCount > GENERATION_CHAR_LIMIT * 0.8 ? '#f59e0b' : '#10b981';
-    const firstChunk = cleanedText.substring(0, GENERATION_CHAR_LIMIT);
 
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
@@ -491,9 +450,9 @@ export default function ImportTemplate() {
           <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '16px', marginBottom: '24px' }}>
             <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '600', color: '#92400e' }}>💡 What to do here</h3>
             <p style={{ margin: 0, fontSize: '13px', color: '#78350f', lineHeight: '1.7' }}>
-              Look through your reports and identify repeated text. Adding it here removes it from AI processing, freeing up space and making the AI's job easier.<br /><br />
-              <strong>Standard Comment</strong> — identical in every report (assessment analysis sentences, study info).<br />
-              <strong>Choice Comment</strong> — 2-3 different versions for different students (pathway paragraphs). Teacher picks which applies.
+              Identify text that is repeated across multiple reports.<br /><br />
+              <strong>Standard Comment</strong> — identical in every report.<br />
+              <strong>Choice Comment</strong> — 2-3 different versions for different students. Teacher picks which applies.
             </p>
           </div>
 
@@ -501,7 +460,6 @@ export default function ImportTemplate() {
           <div style={card}>
             <h2 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Standard Comments</h2>
             <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#6b7280' }}>Text that appears identically in every report.</p>
-
             {preDefinedSections.standardComments.length > 0 && (
               <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {preDefinedSections.standardComments.map(sc => (
@@ -515,7 +473,6 @@ export default function ImportTemplate() {
                 ))}
               </div>
             )}
-
             <div style={{ border: '1px dashed #d1d5db', borderRadius: '8px', padding: '16px', backgroundColor: '#f9fafb' }}>
               <div style={{ marginBottom: '10px' }}>
                 <label style={lbl}>Section Name</label>
@@ -534,8 +491,7 @@ export default function ImportTemplate() {
           {/* Choice Comments */}
           <div style={card}>
             <h2 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Choice Comments</h2>
-            <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#6b7280' }}>2-3 different versions of the same section for different students.</p>
-
+            <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#6b7280' }}>2-3 different versions for different students.</p>
             {preDefinedSections.choiceComments.length > 0 && (
               <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {preDefinedSections.choiceComments.map(cc => (
@@ -549,7 +505,6 @@ export default function ImportTemplate() {
                 ))}
               </div>
             )}
-
             <div style={{ border: '1px dashed #d1d5db', borderRadius: '8px', padding: '16px', backgroundColor: '#f9fafb' }}>
               <div style={{ marginBottom: '12px' }}>
                 <label style={lbl}>Section Name</label>
@@ -563,7 +518,7 @@ export default function ImportTemplate() {
                   </div>
                   <div>
                     <label style={{ ...lbl, fontSize: '12px' }}>Option {index + 1} — Text</label>
-                    <textarea value={variant.content} onChange={e => updateCcVariant(index, 'content', e.target.value)} placeholder="Paste this version of the text..." style={{ ...txa, minHeight: '80px' }} />
+                    <textarea value={variant.content} onChange={e => updateCcVariant(index, 'content', e.target.value)} placeholder="Paste this version..." style={{ ...txa, minHeight: '80px' }} />
                   </div>
                 </div>
               ))}
@@ -576,33 +531,20 @@ export default function ImportTemplate() {
             </div>
           </div>
 
-          {/* Overflow section — shown when still over limit */}
+          {/* Overflow */}
           {isOverLimit && (
             <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '16px', marginBottom: '16px' }}>
-              <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '600', color: '#b91c1c' }}>
-                ⚠️ {(cleanedCharCount - GENERATION_CHAR_LIMIT).toLocaleString()} characters over the limit
-              </h3>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '600', color: '#b91c1c' }}>⚠️ {(cleanedCharCount - GENERATION_CHAR_LIMIT).toLocaleString()} characters over the limit</h3>
               <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#b91c1c' }}>
-                The first {GENERATION_CHAR_LIMIT.toLocaleString()} characters will be used for generation.
-                Copy the overflow text below and paste it into the Refine box after generating to enrich the template further.
+                The first {GENERATION_CHAR_LIMIT.toLocaleString()} characters will be used. Copy the overflow below and paste it into the Refine box after generating.
               </p>
-
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '13px', fontWeight: '600', color: '#b91c1c' }}>
-                  Overflow text ({overflowText.length.toLocaleString()} characters) — copy this for refinement:
-                </span>
-                <button
-                  onClick={handleCopyOverflow}
-                  style={{ ...btnP, backgroundColor: overflowCopied ? '#10b981' : '#ef4444', padding: '6px 14px', fontSize: '13px' }}
-                >
+                <span style={{ fontSize: '13px', fontWeight: '600', color: '#b91c1c' }}>Overflow ({overflowText.length.toLocaleString()} chars) — copy for refinement:</span>
+                <button onClick={handleCopyOverflow} style={{ ...btnP, backgroundColor: overflowCopied ? '#10b981' : '#ef4444', padding: '6px 14px', fontSize: '13px' }}>
                   {overflowCopied ? '✅ Copied!' : '📋 Copy Overflow'}
                 </button>
               </div>
-              <textarea
-                readOnly
-                value={overflowText}
-                style={{ ...txa, minHeight: '120px', backgroundColor: '#fff5f5', color: '#7f1d1d', fontSize: '12px' }}
-              />
+              <textarea readOnly value={overflowText} style={{ ...txa, minHeight: '120px', backgroundColor: '#fff5f5', color: '#7f1d1d', fontSize: '12px' }} />
             </div>
           )}
 
@@ -613,12 +555,8 @@ export default function ImportTemplate() {
             </div>
           )}
 
-          <button onClick={handleGenerate} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px', backgroundColor: '#8b5cf6' }}>
-            🪄 Generate Template
-          </button>
-          <p style={{ textAlign: 'center', fontSize: '12px', color: '#9ca3af', marginTop: '12px' }}>
-            Generation typically takes 20–40 seconds. Reports are not stored.
-          </p>
+          <button onClick={handleGenerate} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px', backgroundColor: '#8b5cf6' }}>🪄 Generate Template</button>
+          <p style={{ textAlign: 'center', fontSize: '12px', color: '#9ca3af', marginTop: '12px' }}>Generation typically takes 20–40 seconds. Reports are not stored.</p>
         </main>
       </div>
     );
@@ -672,8 +610,13 @@ export default function ImportTemplate() {
                 <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>TEMPLATE NAME</p>
                 <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#111827' }}>{generatedTemplate.name}</h2>
               </div>
-              <div style={{ backgroundColor: '#eff6ff', color: '#1d4ed8', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: '500' }}>
-                {generatedTemplate.sections.length} sections
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <span style={{ backgroundColor: '#f3f4f6', color: '#374151', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '500' }}>
+                  {pronounSet === 'he/his' ? '👤 He/His' : pronounSet === 'she/her' ? '👤 She/Her' : '👤 They/Their'}
+                </span>
+                <div style={{ backgroundColor: '#eff6ff', color: '#1d4ed8', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: '500' }}>
+                  {generatedTemplate.sections.length} sections
+                </div>
               </div>
             </div>
           </div>
@@ -698,9 +641,7 @@ export default function ImportTemplate() {
           {/* Refine */}
           <div style={{ ...card, border: '2px solid #8b5cf6', marginBottom: '16px' }}>
             <h3 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: '600', color: '#111827' }}>🔄 Refine with More Reports</h3>
-            <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#6b7280' }}>
-              Paste more reports to improve the template. If you copied overflow text earlier, paste it here now.
-            </p>
+            <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#6b7280' }}>Paste more reports to improve the template. If you copied overflow text earlier, paste it here now.</p>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
               <span style={{ fontSize: '13px', color: '#374151' }}>Additional reports</span>
               <span style={{ fontSize: '12px', fontWeight: '600', color: refineCharCount > GENERATION_CHAR_LIMIT ? '#ef4444' : '#6b7280' }}>{refineCharCount.toLocaleString()} / {GENERATION_CHAR_LIMIT.toLocaleString()}</span>
