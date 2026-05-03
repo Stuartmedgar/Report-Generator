@@ -1,10 +1,11 @@
 // src/pages/ImportTemplate.tsx
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { Template, TemplateSection } from '../types';
 
 type Step = 'input' | 'generating' | 'preview' | 'saved';
+type InputMethod = 'upload' | 'paste';
 
 interface GeneratedTemplate {
   name: string;
@@ -14,12 +15,16 @@ interface GeneratedTemplate {
 }
 
 const CHAR_LIMIT = 24000;
+const MAX_RETRIES = 2;
 
 export default function ImportTemplate() {
   const navigate = useNavigate();
   const { addTemplate } = useData();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const refineFileInputRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState<Step>('input');
+  const [inputMethod, setInputMethod] = useState<InputMethod>('upload');
   const [subject, setSubject] = useState('');
   const [yearGroup, setYearGroup] = useState('');
   const [reportText, setReportText] = useState('');
@@ -29,6 +34,9 @@ export default function ImportTemplate() {
   const [isRefining, setIsRefining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refineError, setRefineError] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [generatingMessage, setGeneratingMessage] = useState('Building your template...');
   const [isMobile] = useState(window.innerWidth <= 768);
 
   const charCount = reportText.length;
@@ -39,7 +47,66 @@ export default function ImportTemplate() {
   const refineCharPercent = Math.min((refineCharCount / CHAR_LIMIT) * 100, 100);
   const refineCharColor = refineCharCount >= CHAR_LIMIT ? '#ef4444' : refineCharCount >= CHAR_LIMIT * 0.8 ? '#f59e0b' : '#10b981';
 
-  const callGenerateFunction = async (isRefinement: boolean) => {
+  // Extract text from a .docx file using mammoth
+  const extractTextFromDocx = async (file: File): Promise<string> => {
+    const mammoth = await import('mammoth');
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return result.value;
+  };
+
+  // Extract text from a .txt file
+  const extractTextFromTxt = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target?.result as string || '');
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsText(file);
+    });
+  };
+
+  const handleFileUpload = async (file: File, isRefine = false) => {
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!ext || !['docx', 'txt'].includes(ext)) {
+      setError('Please upload a .docx or .txt file.');
+      return;
+    }
+
+    setIsExtracting(true);
+    setError(null);
+
+    try {
+      let text = '';
+      if (ext === 'docx') {
+        text = await extractTextFromDocx(file);
+      } else {
+        text = await extractTextFromTxt(file);
+      }
+
+      if (!text.trim()) {
+        setError('The file appears to be empty or could not be read. Please try again.');
+        setIsExtracting(false);
+        return;
+      }
+
+      if (isRefine) {
+        setRefineText(text.substring(0, CHAR_LIMIT));
+      } else {
+        setReportText(text.substring(0, CHAR_LIMIT));
+        setUploadedFileName(file.name);
+      }
+    } catch (err) {
+      setError('Could not read the file. Please check it is a valid .docx or .txt file and try again.');
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  const callGenerateFunction = async (isRefinement: boolean, attempt = 1): Promise<GeneratedTemplate> => {
+    if (attempt > 1) {
+      setGeneratingMessage('Retrying generation...');
+    }
+
     const response = await fetch('https://wozbrojwuzktwrzngllh.supabase.co/functions/v1/generate-template', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -59,11 +126,21 @@ export default function ImportTemplate() {
     const data = await response.json();
 
     if (!response.ok) {
+      // Retry on server errors
+      if (attempt < MAX_RETRIES && response.status >= 500) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return callGenerateFunction(isRefinement, attempt + 1);
+      }
       throw new Error(data.error || `Server error: ${response.status}`);
     }
 
     if (!data.templateName || !data.sections || !Array.isArray(data.sections)) {
-      throw new Error('Generated template has invalid structure.');
+      // Retry on invalid structure
+      if (attempt < MAX_RETRIES) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return callGenerateFunction(isRefinement, attempt + 1);
+      }
+      throw new Error('The template could not be generated correctly. Please try again.');
     }
 
     const sectionsWithIds = data.sections.map((s: any, i: number) => ({
@@ -81,11 +158,11 @@ export default function ImportTemplate() {
 
   const handleGenerate = async () => {
     if (!reportText.trim()) {
-      setError('Please paste some reports before generating.');
+      setError('Please upload a file or paste some reports before generating.');
       return;
     }
     if (charCount < 200) {
-      setError('Please paste more report text — at least 200 characters needed for a good template.');
+      setError('Please provide more report text — at least 200 characters needed.');
       return;
     }
     if (!subject.trim()) {
@@ -94,6 +171,7 @@ export default function ImportTemplate() {
     }
 
     setError(null);
+    setGeneratingMessage('Analysing your reports...');
     setStep('generating');
 
     try {
@@ -109,7 +187,7 @@ export default function ImportTemplate() {
 
   const handleRefine = async () => {
     if (!refineText.trim() || refineCharCount < 200) {
-      setRefineError('Please paste more reports — at least 200 characters needed.');
+      setRefineError('Please provide more reports — at least 200 characters needed.');
       return;
     }
 
@@ -192,11 +270,11 @@ export default function ImportTemplate() {
       case 'assessment-comment': {
         const total = Object.values(section.data?.comments || {})
           .reduce((sum: number, arr: any) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
-        return `${total} comments across 5 levels (${section.data?.scoreType || 'score'}) — uses [Score] placeholder`;
+        return `${total} comments across 5 levels — uses [Score] placeholder`;
       }
       case 'personalised-comment': {
         const cats = Object.keys(section.data?.categories || {});
-        return `${cats.length} categories: ${cats.slice(0, 3).join(', ')}${cats.length > 3 ? '...' : ''}`;
+        return `${cats.length} options: ${cats.slice(0, 3).join(', ')}${cats.length > 3 ? '...' : ''}`;
       }
       case 'next-steps': {
         const areas = Object.keys(section.data?.focusAreas || {});
@@ -204,7 +282,7 @@ export default function ImportTemplate() {
       }
       case 'qualities': {
         const headings = Object.keys(section.data?.comments || {});
-        return `${headings.length} headings: ${headings.join(', ')}`;
+        return `${headings.length} quality buttons: ${headings.slice(0, 3).join(', ')}${headings.length > 3 ? '...' : ''}`;
       }
       case 'optional-additional-comment':
         return 'Free text box for personalised additions';
@@ -240,13 +318,14 @@ export default function ImportTemplate() {
               🪄 Import from Reports
             </h1>
             <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>
-              Paste existing reports and AI will build your template
+              Upload or paste existing reports and AI will build your template
             </p>
           </div>
         </header>
 
         <main style={{ maxWidth: '800px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
 
+          {/* How it works */}
           <div style={{
             backgroundColor: '#eff6ff', border: '1px solid #bfdbfe',
             borderRadius: '10px', padding: '16px', marginBottom: '24px',
@@ -255,12 +334,13 @@ export default function ImportTemplate() {
               💡 How this works
             </h3>
             <p style={{ margin: 0, fontSize: '13px', color: '#1e40af', lineHeight: '1.6' }}>
-              Paste in reports you've written previously — up to {CHAR_LIMIT.toLocaleString()} characters.
-              Keep pasting until the counter turns amber or red. After generating you can paste in more
-              reports to refine and improve the template further.
+              Upload a Word document or text file containing your reports, or paste them directly.
+              The AI will analyse the language, identify patterns, and automatically build a complete
+              template. After generating you can refine with more reports to improve it further.
             </p>
           </div>
 
+          {/* Template Details */}
           <div style={{
             backgroundColor: 'white', borderRadius: '10px',
             border: '1px solid #e5e7eb', padding: '20px', marginBottom: '16px',
@@ -310,55 +390,150 @@ export default function ImportTemplate() {
             </div>
           </div>
 
+          {/* Input method tabs */}
           <div style={{
             backgroundColor: 'white', borderRadius: '10px',
             border: '1px solid #e5e7eb', padding: '20px', marginBottom: '16px',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+            {/* Tab buttons */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+              <button
+                onClick={() => setInputMethod('upload')}
+                style={{
+                  flex: 1, padding: '10px', border: 'none', borderRadius: '8px',
+                  fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+                  backgroundColor: inputMethod === 'upload' ? '#3b82f6' : '#f3f4f6',
+                  color: inputMethod === 'upload' ? 'white' : '#6b7280',
+                }}
+              >
+                📁 Upload File
+              </button>
+              <button
+                onClick={() => setInputMethod('paste')}
+                style={{
+                  flex: 1, padding: '10px', border: 'none', borderRadius: '8px',
+                  fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+                  backgroundColor: inputMethod === 'paste' ? '#3b82f6' : '#f3f4f6',
+                  color: inputMethod === 'paste' ? 'white' : '#6b7280',
+                }}
+              >
+                📋 Paste Text
+              </button>
+            </div>
+
+            {/* Upload method */}
+            {inputMethod === 'upload' && (
               <div>
-                <h2 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>
-                  Paste Your Reports <span style={{ color: '#ef4444' }}>*</span>
-                </h2>
-                <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>
-                  Copy reports directly from Word. Keep pasting until the counter turns amber for best results.
+                <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#6b7280' }}>
+                  Upload a Word document (.docx) or text file (.txt) containing your reports.
+                  The more reports the better — a full class set works perfectly.
                 </p>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".docx,.txt"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileUpload(file);
+                    e.target.value = '';
+                  }}
+                  style={{ display: 'none' }}
+                />
+
+                {!uploadedFileName ? (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isExtracting}
+                    style={{
+                      width: '100%', padding: '32px', border: '2px dashed #d1d5db',
+                      borderRadius: '10px', backgroundColor: '#f9fafb',
+                      cursor: isExtracting ? 'not-allowed' : 'pointer',
+                      fontSize: '15px', color: '#6b7280', fontWeight: '500',
+                    }}
+                  >
+                    {isExtracting ? '⏳ Reading file...' : '📁 Click to upload .docx or .txt file'}
+                  </button>
+                ) : (
+                  <div style={{
+                    padding: '16px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0',
+                    borderRadius: '10px', display: 'flex', alignItems: 'center',
+                    justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px',
+                  }}>
+                    <div>
+                      <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '600', color: '#166534' }}>
+                        ✅ {uploadedFileName}
+                      </p>
+                      <p style={{ margin: 0, fontSize: '12px', color: '#15803d' }}>
+                        {charCount.toLocaleString()} characters extracted
+                        {charCount >= CHAR_LIMIT && ' (trimmed to maximum)'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setUploadedFileName(null);
+                        setReportText('');
+                        fileInputRef.current?.click();
+                      }}
+                      style={{
+                        backgroundColor: 'white', color: '#374151', padding: '6px 12px',
+                        border: '1px solid #d1d5db', borderRadius: '6px',
+                        fontSize: '13px', cursor: 'pointer',
+                      }}
+                    >
+                      Replace file
+                    </button>
+                  </div>
+                )}
               </div>
-              <span style={{
-                fontSize: '12px', color: charColor,
-                fontWeight: '600', whiteSpace: 'nowrap', marginLeft: '12px',
-              }}>
-                {charCount.toLocaleString()} / {CHAR_LIMIT.toLocaleString()}
-              </span>
-            </div>
+            )}
 
-            <div style={{
-              height: '4px', backgroundColor: '#e5e7eb', borderRadius: '2px', marginBottom: '12px'
-            }}>
-              <div style={{
-                height: '100%', width: `${charPercent}%`,
-                backgroundColor: charColor, borderRadius: '2px',
-                transition: 'width 0.2s, background-color 0.2s'
-              }} />
-            </div>
+            {/* Paste method */}
+            {inputMethod === 'paste' && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>
+                    Copy reports directly from Word and paste here. Keep pasting until the counter turns amber.
+                  </p>
+                  <span style={{
+                    fontSize: '12px', color: charColor,
+                    fontWeight: '600', whiteSpace: 'nowrap', marginLeft: '12px',
+                  }}>
+                    {charCount.toLocaleString()} / {CHAR_LIMIT.toLocaleString()}
+                  </span>
+                </div>
 
-            <textarea
-              value={reportText}
-              onChange={e => setReportText(e.target.value.substring(0, CHAR_LIMIT))}
-              placeholder={`Paste your reports here. Keep adding reports until the counter turns amber or red for the best quality template.\n\nFor example:\n\nJohn has shown excellent commitment throughout the year...\n\nSarah demonstrates good understanding of the subject...\n\n[Continue pasting more reports...]`}
-              style={{
-                width: '100%', minHeight: '280px', padding: '12px',
-                border: '1px solid #d1d5db', borderRadius: '6px',
-                fontSize: '13px', lineHeight: '1.6', resize: 'vertical',
-                outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
-              }}
-            />
-            {charCount >= CHAR_LIMIT && (
-              <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#ef4444' }}>
-                Maximum reached — the AI will use all {CHAR_LIMIT.toLocaleString()} characters you've provided.
-              </p>
+                <div style={{
+                  height: '4px', backgroundColor: '#e5e7eb', borderRadius: '2px', marginBottom: '12px'
+                }}>
+                  <div style={{
+                    height: '100%', width: `${charPercent}%`,
+                    backgroundColor: charColor, borderRadius: '2px',
+                    transition: 'width 0.2s, background-color 0.2s'
+                  }} />
+                </div>
+
+                <textarea
+                  value={reportText}
+                  onChange={e => setReportText(e.target.value.substring(0, CHAR_LIMIT))}
+                  placeholder="Paste your reports here..."
+                  style={{
+                    width: '100%', minHeight: '280px', padding: '12px',
+                    border: '1px solid #d1d5db', borderRadius: '6px',
+                    fontSize: '13px', lineHeight: '1.6', resize: 'vertical',
+                    outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
+                  }}
+                />
+                {charCount >= CHAR_LIMIT && (
+                  <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#ef4444' }}>
+                    Maximum reached — the AI will use all {CHAR_LIMIT.toLocaleString()} characters provided.
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
+          {/* Additional context */}
           <div style={{
             backgroundColor: 'white', borderRadius: '10px',
             border: '1px solid #e5e7eb', padding: '20px', marginBottom: '24px',
@@ -373,7 +548,7 @@ export default function ImportTemplate() {
             <textarea
               value={additionalContext}
               onChange={e => setAdditionalContext(e.target.value)}
-              placeholder="e.g. We teach swimming, gymnastics and games. Include a section for each activity. Also include an assessment section for our fitness test (scored out of 100)."
+              placeholder="e.g. We teach swimming, gymnastics and games. Include a section for each activity."
               style={{
                 width: '100%', minHeight: '80px', padding: '10px 12px',
                 border: '1px solid #d1d5db', borderRadius: '6px',
@@ -390,23 +565,34 @@ export default function ImportTemplate() {
               color: '#b91c1c', fontSize: '14px',
             }}>
               ⚠️ {error}
+              <button
+                onClick={handleGenerate}
+                style={{
+                  marginLeft: '12px', backgroundColor: '#ef4444', color: 'white',
+                  padding: '4px 10px', border: 'none', borderRadius: '4px',
+                  fontSize: '13px', cursor: 'pointer',
+                }}
+              >
+                Try again
+              </button>
             </div>
           )}
 
           <button
             onClick={handleGenerate}
+            disabled={isExtracting}
             style={{
-              width: '100%', backgroundColor: '#3b82f6', color: 'white',
-              padding: '16px', border: 'none', borderRadius: '10px',
-              fontSize: '16px', fontWeight: '600', cursor: 'pointer',
+              width: '100%', backgroundColor: isExtracting ? '#9ca3af' : '#3b82f6',
+              color: 'white', padding: '16px', border: 'none', borderRadius: '10px',
+              fontSize: '16px', fontWeight: '600',
+              cursor: isExtracting ? 'not-allowed' : 'pointer',
             }}
           >
             🪄 Generate Template
           </button>
 
           <p style={{ textAlign: 'center', fontSize: '12px', color: '#9ca3af', marginTop: '12px' }}>
-            Generation typically takes 15–25 seconds.
-            Report text is used only to generate the template and is not stored.
+            Generation typically takes 20–40 seconds. Reports are used only to generate the template and are not stored.
           </p>
         </main>
       </div>
@@ -430,8 +616,7 @@ export default function ImportTemplate() {
             Building Your Template
           </h2>
           <p style={{ margin: '0 0 24px 0', color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>
-            The AI is analysing your reports, identifying patterns, and selecting the best
-            section types for your template…
+            {generatingMessage}
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
             {[0, 1, 2].map(i => (
@@ -450,7 +635,7 @@ export default function ImportTemplate() {
             }
           `}</style>
           <p style={{ margin: '24px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>
-            This usually takes 15–25 seconds
+            This usually takes 20–40 seconds
           </p>
         </div>
       </div>
@@ -576,7 +761,7 @@ export default function ImportTemplate() {
             ))}
           </div>
 
-          {/* Refine with more reports */}
+          {/* Refine section */}
           <div style={{
             backgroundColor: 'white', borderRadius: '10px',
             border: '2px solid #8b5cf6', padding: '20px', marginBottom: '16px',
@@ -585,15 +770,38 @@ export default function ImportTemplate() {
               🔄 Refine with More Reports
             </h3>
             <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#6b7280' }}>
-              Paste in another batch of reports to improve and enrich the template further.
-              The AI will use both the existing template and the new reports to produce a better version.
+              Upload another file or paste more reports to improve and enrich the template.
               You can refine as many times as you like before saving.
             </p>
 
+            {/* Refine input tabs */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+              <input
+                ref={refineFileInputRef}
+                type="file"
+                accept=".docx,.txt"
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file, true);
+                  e.target.value = '';
+                }}
+                style={{ display: 'none' }}
+              />
+              <button
+                onClick={() => refineFileInputRef.current?.click()}
+                disabled={isExtracting}
+                style={{
+                  flex: 1, padding: '10px', border: '1px solid #d1d5db',
+                  borderRadius: '8px', backgroundColor: '#f9fafb',
+                  fontSize: '13px', cursor: 'pointer', color: '#374151', fontWeight: '500',
+                }}
+              >
+                {isExtracting ? '⏳ Reading...' : '📁 Upload file'}
+              </button>
+            </div>
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>
-                Additional reports
-              </span>
+              <span style={{ fontSize: '13px', color: '#6b7280' }}>Or paste additional reports:</span>
               <span style={{ fontSize: '12px', color: refineCharColor, fontWeight: '600' }}>
                 {refineCharCount.toLocaleString()} / {CHAR_LIMIT.toLocaleString()}
               </span>
@@ -612,9 +820,9 @@ export default function ImportTemplate() {
             <textarea
               value={refineText}
               onChange={e => setRefineText(e.target.value.substring(0, CHAR_LIMIT))}
-              placeholder="Paste more reports here to refine the template..."
+              placeholder="Paste more reports here..."
               style={{
-                width: '100%', minHeight: '140px', padding: '12px',
+                width: '100%', minHeight: '120px', padding: '12px',
                 border: '1px solid #d1d5db', borderRadius: '6px',
                 fontSize: '13px', lineHeight: '1.6', resize: 'vertical',
                 outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
@@ -626,9 +834,18 @@ export default function ImportTemplate() {
               <div style={{
                 backgroundColor: '#fef2f2', border: '1px solid #fecaca',
                 borderRadius: '8px', padding: '10px 14px', marginBottom: '12px',
-                color: '#b91c1c', fontSize: '13px',
+                color: '#b91c1c', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               }}>
-                ⚠️ {refineError}
+                <span>⚠️ {refineError}</span>
+                <button
+                  onClick={handleRefine}
+                  style={{
+                    backgroundColor: '#ef4444', color: 'white', padding: '4px 10px',
+                    border: 'none', borderRadius: '4px', fontSize: '13px', cursor: 'pointer',
+                  }}
+                >
+                  Try again
+                </button>
               </div>
             )}
 
@@ -647,7 +864,7 @@ export default function ImportTemplate() {
             </button>
           </div>
 
-          {/* Info box */}
+          {/* Info */}
           <div style={{
             backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0',
             borderRadius: '10px', padding: '16px', marginBottom: '24px',
@@ -656,9 +873,9 @@ export default function ImportTemplate() {
               💡 What happens next?
             </h3>
             <p style={{ margin: 0, fontSize: '13px', color: '#15803d', lineHeight: '1.6' }}>
-              <strong>Save Template</strong> — saves directly to your template library ready to use.<br />
-              <strong>Save &amp; Edit</strong> — saves and opens in the template editor so you can fine-tune any sections.<br />
-              <strong>Refine</strong> — paste more reports to improve the template before saving.
+              <strong>Save Template</strong> — saves to your library ready to use.<br />
+              <strong>Save &amp; Edit</strong> — saves and opens in the editor to fine-tune.<br />
+              <strong>Refine</strong> — add more reports to improve before saving.
             </p>
           </div>
 
@@ -730,6 +947,7 @@ export default function ImportTemplate() {
                 setYearGroup('');
                 setAdditionalContext('');
                 setGeneratedTemplate(null);
+                setUploadedFileName(null);
                 setError(null);
                 setRefineError(null);
               }}
