@@ -13,7 +13,7 @@ Teachers will use this template for years. Comments must sound like THEM — the
 EXTRACTION RULES:
 - Capture EVERY distinct quality or trait mentioned — even if it only appears in one report
 - Do NOT merge similar traits. "Picks up new skills day to day" and "natural ability" are DIFFERENT — each gets its own heading
-- Do NOT replace subject-specific language with generic alternatives. Preserve exact phrases like "extension material", "low stakes results", "group work", "picking up new concepts"
+- Do NOT replace subject-specific language with generic alternatives. Preserve exact phrases like "extension material", "low stakes results", "picking up new concepts"
 - Use the teacher's actual sentences and phrases. The teacher should recognise their own voice
 
 ═══════════════════════════════════════════════════════
@@ -31,54 +31,61 @@ ONLY split when a sentence genuinely contains TWO UNRELATED things joined awkwar
 The test: would a teacher naturally write this as one sentence? If yes — keep it whole.
 
 ═══════════════════════════════════════════════════════
-PRONOUN SYSTEM FOR QUALITIES
+PRONOUN SYSTEM FOR QUALITIES — PAIRED HEADINGS
 ═══════════════════════════════════════════════════════
-The teacher has selected a pronoun set for this template. Use it throughout ALL qualities comments.
+The teacher has selected a pronoun set. Use it consistently throughout ALL qualities comments.
 
 Pronoun sets:
 - He/His: he, him, his, himself
-- She/Her: she, her, hers, herself  
+- She/Her: she, her, hers, herself
 - They/Their: they, them, their, themselves
 
-QUALITIES COMMENT STRUCTURE — TWO TYPES PER HEADING:
+QUALITIES MUST USE PAIRED HEADINGS — THIS IS CRITICAL:
+For EACH distinct trait, generate TWO separate qualities sections with related headings:
 
-Type 1 — NAME-LED comments: Start with [Name]. These are the opening sentence about the student.
-Example (She/Her): "[Name] is an enthusiastic, conscientious pupil who makes positive contributions to class discussions and puts a lot of effort into her work in class."
+HEADING 1 — NAME-LED: Contains ONLY comments that start with [Name].
+Use [Name] at the start. Use the selected pronoun for possessives mid-sentence.
+Example heading: "Enthusiastic and Conscientious"
+Example comments:
+- "[Name] is an enthusiastic, conscientious pupil who makes positive contributions to class discussions and puts a lot of effort into her work in class, which is great to see."
+- "[Name] is a pleasant, enthusiastic pupil who is highly motivated and likes to challenge herself — keep it up!"
 
-Type 2 — PRONOUN-LED comments: Start with the pronoun. These are natural follow-on sentences designed to flow after a name-led comment. Do NOT use [Name] in these.
-Example (She/Her): "She is highly motivated and likes to challenge herself."
-Example (She/Her): "She is growing in confidence and is becoming more involved in lessons."
+HEADING 2 — FOLLOW-ON (pronoun-led): Contains ONLY comments that start with the selected pronoun. These are designed to flow naturally AFTER a name-led comment. Do NOT use [Name].
+Name the heading as the original heading + " - Follow On"
+Example heading: "Enthusiastic and Conscientious - Follow On"
+Example comments (using She/Her):
+- "She is growing in confidence all the time and is becoming more involved in lessons, which is really encouraging."
+- "She is highly motivated and likes to challenge herself, which is great to see."
+- "She puts a lot of effort into every task and is a pleasure to have in class."
 
-Generate BOTH types under each qualities heading:
-- 2 name-led comments (using [Name] and the correct pronoun for possessives)
-- 2-3 pronoun-led comments (starting directly with the pronoun)
+SAME PATTERN FOR DEVELOPMENTAL HEADINGS:
+HEADING 1 — NAME-LED developmental:
+"[Name] is not engaging enough at times — working on this will make a real difference."
+HEADING 2 — FOLLOW-ON developmental (heading name + " - Follow On"):
+"She is encouraged to engage more fully in lessons to make the progress she is capable of."
 
-This means teachers can pick a name-led comment first, then a pronoun-led follow-on, creating natural flowing report text.
+NEVER mix name-led and pronoun-led comments in the same heading.
+ALWAYS generate both paired headings for every trait — the name-led heading and its follow-on.
 
 ═══════════════════════════════════════════════════════
 DETECTING REPORT STRUCTURE
 ═══════════════════════════════════════════════════════
-Reports may be structured in different ways. Detect the structure and use it:
+Reports may be structured in different ways. Detect the structure and use it.
 
-STRUCTURED REPORTS (with headings):
-Look for section headings like:
-- Positive headings: "Strengths", "Positives", "What's Going Well", "Achievements", "Praise"
-- Developmental headings: "Areas for Development", "Next Steps", "To Improve", "Areas to Work On", "Development Points"
-- Other headings: "Assessment", "Participation", "Effort" etc.
+STRUCTURED REPORTS (with section headings):
+Look for headings like:
+- Positive: "Strengths", "Positives", "What's Going Well", "Achievements", "Praise"
+- Developmental: "Areas for Development", "Next Steps", "To Improve", "Areas to Work On"
+If found: text under positive headings → positive qualities and higher rated comment levels. Text under developmental headings → developmental qualities and next steps.
 
-If headings are found: text under positive headings → positive qualities and higher rated comment levels. Text under developmental headings → developmental qualities and next steps.
-
-UNSTRUCTURED REPORTS (no headings or inconsistent):
-Determine positive vs developmental from the language and tone:
-- Positive language, praise, strengths → positive qualities headings and higher rated comment levels
-- Improvement suggestions, challenges, areas to work on → developmental qualities headings and next steps
-
+UNSTRUCTURED REPORTS (no headings):
+Determine positive vs developmental from language and tone alone.
 This works generically for any subject and any reporting style.
 
 ═══════════════════════════════════════════════════════
 PLACEHOLDERS IN THE REPORT TEXT
 ═══════════════════════════════════════════════════════
-Text may contain {{STANDARD:Name}} and {{CHOICE:Name}} placeholders where pre-defined sections were removed.
+Text may contain {{STANDARD:Name}} and {{CHOICE:Name}} placeholders.
 Include them as marker sections at appropriate positions:
 - {{STANDARD:X}} → section with type "standard-comment" and name "STANDARD:X"
 - {{CHOICE:X}} → section with type "standard-comment" and name "CHOICE:X"
@@ -87,27 +94,27 @@ Do NOT generate content for these.
 ═══════════════════════════════════════════════════════
 LANGUAGE QUALITY AND TONE
 ═══════════════════════════════════════════════════════
-Correct poor grammar while preserving the teacher's voice and terminology.
+Correct poor grammar while preserving voice and terminology.
 
 PERSONALISING PHRASES — use from reports and generate similar ones:
-"which is great to see", "keep it up", "which is really encouraging", "this is something to be really proud of", "and this has had a real positive impact", "the more he/she/they do this the more confidence will grow"
+"which is great to see", "keep it up", "which is really encouraging", "this is something to be really proud of", "and this has had a real positive impact"
 
 TONAL RULES:
-POSITIVE → add warm affirming phrases. "[Name] puts real effort into every lesson, which is great to see — keep it up!"
-DEVELOPMENTAL → NEVER add positive phrases. Use "At times...", reframe around potential ("is more capable than he/she/they realises"), use forward-looking language ("working on this will make a real difference").
+POSITIVE → add warm affirming phrases naturally
+DEVELOPMENTAL → NEVER add positive phrases. Use "At times...", reframe around potential, use forward-looking language.
 
 ═══════════════════════════════════════════════════════
 STEP 1: ANALYSE ALL REPORTS THOROUGHLY
 ═══════════════════════════════════════════════════════
 Before assigning section types:
-1. Detect the report structure — are there section headings? What are they?
-2. List every distinct character trait mentioned (ALL of them, do not merge)
-3. Note all subject-specific language and phrases
-4. Note the selected pronoun set and apply it consistently
+1. Detect report structure — are there section headings?
+2. List every distinct character trait (ALL of them, do not merge)
+3. Note all subject-specific language
+4. Note the selected pronoun set — apply consistently
 5. Identify performance-varying statements
 6. Identify assessment scores
 7. Identify improvement suggestions
-8. Identify any identical repeated text
+8. Identify identical repeated text
 
 ═══════════════════════════════════════════════════════
 STEP 2: SECTION TYPE RULES
@@ -118,15 +125,13 @@ Word-for-word identical in every report regardless of performance.
 → type: "standard-comment", data.content: string
 
 PERSONALISED COMMENT — ONLY for student-specific variables
-ONLY when different students have genuinely different personal details — specific activity, instrument, topic, role.
+ONLY when different students have genuinely different personal details — specific activity, instrument, topic, role unique to that individual student.
 CORRECT: PE students doing different sports, Music students playing different instruments.
 WRONG: Different pathway paragraphs (use {{CHOICE:}} placeholders), different progress statements (use rated-comment).
 → type: "personalised-comment", data.instruction: string, data.categories: object with arrays of 3-4 comments using [Name]
 
 RATED COMMENT
 Same topic, different performance levels. Progress, effort, attainment, participation, focus, behaviour are ALWAYS rated-comment.
-Pattern A: Same sentence structure, rating word changes.
-Pattern B: Different sentences, same topic, different performance levels.
 → type: "rated-comment", data.comments: keys excellent/good/satisfactory/needsImprovement, each array of 4 comments using [Name] with correct pronoun for possessives. Apply TONAL RULES.
 
 ASSESSMENT COMMENT
@@ -134,50 +139,55 @@ ALWAYS for scores, percentages or grades. SEPARATE section per assessment.
 Every comment at excellent/good/satisfactory/needsImprovement MUST include [Score]. notCompleted must NOT.
 → type: "assessment-comment", data.scoreType: "percentage" or "outOf", data.comments: 4 per level with [Score], notCompleted: 2 without [Score]
 
-QUALITIES — EXHAUSTIVE WITH PRONOUN SYSTEM
-Every distinct trait gets its OWN heading. Positive and developmental versions of same trait get SEPARATE headings.
-Use report structure (headings if present, language/tone if not) to determine positive vs developmental.
-Keep sentences whole — do not break natural sentences apart.
+QUALITIES — EXHAUSTIVE WITH PAIRED HEADINGS
+Every distinct trait gets its OWN pair of headings.
+Positive and developmental versions of same trait get SEPARATE heading pairs.
+Use report structure to determine positive vs developmental.
+Keep sentences whole.
 
-Each heading has FOUR types of comment:
-- 2 name-led comments starting with [Name] (use correct pronoun for possessives mid-sentence)
-- 2-3 pronoun-led comments starting directly with the selected pronoun
+For each trait generate TWO sections in sequence:
+1. Name-led section: heading name only, ONLY [Name]-starting comments (2-3 comments)
+2. Follow-on section: heading name + " - Follow On", ONLY pronoun-starting comments (2-3 comments)
 
-→ type: "qualities", data.comments: object where each key is a directional heading, value is array of 4-5 comments (mix of name-led and pronoun-led)
+Place both sections together, separated by NO new-line between them (they are a pair).
+Add a new-line AFTER the pair before the next section.
+
+→ type: "qualities"
+→ data.comments: object with a SINGLE key matching the section heading, value is array of 2-3 comments
 
 NEXT STEPS
 Forward-looking improvement suggestions using subject-specific language.
 → type: "next-steps", data.focusAreas: object, each key is focus area, value array of 4 suggestions using [Name]
 
-NEW LINE: type "new-line", name: "", data: {}. Add between each main section.
+NEW LINE: type "new-line", name: "", data: {}. Add between major sections (not between paired quality headings).
 OPTIONAL ADDITIONAL COMMENT: always one at end. name: "Additional Comments", data: {}
 
 ═══════════════════════════════════════════════════════
 GENERAL RULES
 ═══════════════════════════════════════════════════════
-- Use [Name] for student name in name-led comments
-- Use selected pronoun consistently in pronoun-led comments and possessives throughout
+- Use [Name] for student name in name-led comments only
+- Use selected pronoun consistently in follow-on comments and possessives throughout
 - Use [Score] in every assessment comment except notCompleted
 - Generate 4 comments per level for rated-comment and assessment-comment
-- Generate 4-5 comments per heading for qualities (mix of name-led and pronoun-led)
-- Add new-line between each main section
+- Generate 2-3 comments per qualities section (name-led OR pronoun-led, never mixed)
+- Add new-line between major sections (not between paired qualities sections)
 - End with optional-additional-comment
 - Return ONLY valid JSON
 
-RETURN FORMAT — STRUCTURAL REFERENCE ONLY:
+RETURN FORMAT — STRUCTURAL REFERENCE (She/Her example):
 {"templateName":"string","sections":[
-  {"id":"s1","type":"rated-comment","name":"Overall Progress","data":{"comments":{"excellent":["[Name] comment, which is great to see.","Second with pronoun possessive e.g. his/her/their.","Third.","Fourth."],"good":["[Name] good comment.","Second.","Third.","Fourth."],"satisfactory":["At times [Name] satisfactory comment.","Second.","Third.","Fourth."],"needsImprovement":["At times [Name] developmental comment.","Second.","Third.","Fourth."]}}},
+  {"id":"s1","type":"rated-comment","name":"Overall Progress","data":{"comments":{"excellent":["[Name] is making excellent progress, which is great to see.","[Name] is progressing exceptionally well — keep it up!","Her effort and commitment are really paying off.","She is achieving at a high level and this is something to be proud of."],"good":["[Name] is making good progress.","[Name] is doing well and working hard.","Her engagement in lessons is positive.","She is developing well across the course."],"satisfactory":["At times [Name] is making satisfactory progress.","At times [Name] could push herself more.","She would benefit from more consistent effort.","She has the ability to achieve more with focus."],"needsImprovement":["At times [Name] is finding aspects of the course challenging.","At times [Name] is more capable than she realises.","She is encouraged to make use of the support available.","She would benefit from greater engagement in lessons."]}}},
   {"id":"s2","type":"new-line","name":"","data":{}},
-  {"id":"s3","type":"qualities","name":"Personal Qualities","data":{"comments":{
-    "Enthusiastic and Conscientious":["[Name] is an enthusiastic, conscientious pupil who makes positive contributions to class discussions and puts a lot of effort into her work in class, which is great to see.","[Name] is a pleasant, enthusiastic pupil who is highly motivated and likes to challenge herself — keep it up!","She is highly motivated and likes to challenge herself, which is really encouraging.","She is growing in confidence and is becoming more involved in lessons."],
-    "Needs to Engage More":["At times [Name] is not engaging enough in lessons to make the progress she is capable of.","At times [Name] loses focus quickly — working on this will make a real difference.","She is more capable than she realises and is encouraged to engage more fully.","She would benefit from greater focus and engagement during lessons."]
-  }}},
-  {"id":"s4","type":"new-line","name":"","data":{}},
-  {"id":"s5","type":"assessment-comment","name":"Assessment Name","data":{"scoreType":"percentage","comments":{"excellent":["[Name] achieved [Score] — great result, keep it up!","Second with [Score].","Third with [Score].","Fourth with [Score]."],"good":["[Name] achieved [Score].","Second.","Third.","Fourth."],"satisfactory":["[Name] achieved [Score] with areas to develop.","Second.","Third.","Fourth."],"needsImprovement":["[Name] achieved [Score] not fully reflecting capabilities.","Second.","Third.","Fourth."],"notCompleted":["[Name] has not yet completed this assessment.","Second."]}}},
-  {"id":"s6","type":"new-line","name":"","data":{}},
-  {"id":"s7","type":"next-steps","name":"Next Steps","data":{"focusAreas":{"Focus Area":["[Name] suggestion.","Second.","Third.","Fourth."]}}},
-  {"id":"s8","type":"new-line","name":"","data":{}},
-  {"id":"s9","type":"optional-additional-comment","name":"Additional Comments","data":{}}
+  {"id":"s3","type":"qualities","name":"Enthusiastic and Conscientious","data":{"comments":{"Enthusiastic and Conscientious":["[Name] is an enthusiastic, conscientious pupil who makes positive contributions to class discussions and puts a lot of effort into her work in class, which is great to see.","[Name] is a pleasant, enthusiastic pupil who is highly motivated and likes to challenge herself — keep it up!"]}}},
+  {"id":"s4","type":"qualities","name":"Enthusiastic and Conscientious - Follow On","data":{"comments":{"Enthusiastic and Conscientious - Follow On":["She is growing in confidence all the time and is becoming more involved in lessons, which is really encouraging.","She is highly motivated and likes to challenge herself, which is great to see.","She puts a lot of effort into every task and is a pleasure to have in class."]}}},
+  {"id":"s5","type":"qualities","name":"Needs to Engage More","data":{"comments":{"Needs to Engage More":["At times [Name] is not engaging enough in lessons to make the progress she is capable of.","At times [Name] loses focus quickly — working on this will make a real difference."]}}},
+  {"id":"s6","type":"qualities","name":"Needs to Engage More - Follow On","data":{"comments":{"Needs to Engage More - Follow On":["She is more capable than she realises and is encouraged to engage more fully.","She would benefit from greater focus and engagement during lessons.","She is encouraged to ask for help more often and take part in lessons."]}}},
+  {"id":"s7","type":"new-line","name":"","data":{}},
+  {"id":"s8","type":"assessment-comment","name":"Assessment Name","data":{"scoreType":"percentage","comments":{"excellent":["[Name] achieved [Score] — great result, keep it up!","[Name] performed excellently achieving [Score].","She achieved [Score] demonstrating excellent understanding.","She performed very well achieving [Score], which is something to be proud of."],"good":["[Name] achieved [Score] showing good understanding.","[Name] performed well achieving [Score].","She achieved [Score] demonstrating good understanding.","She performed well in the assessment achieving [Score]."],"satisfactory":["[Name] achieved [Score] with some areas to develop.","[Name] achieved [Score] showing understanding in several areas.","She achieved [Score] — there are areas of strength alongside areas to focus on.","She achieved [Score] and would benefit from focused revision."],"needsImprovement":["[Name] achieved [Score] which does not fully reflect her capabilities.","[Name] achieved [Score] — making use of support will make a real difference.","She achieved [Score] and is more capable than this result suggests.","She achieved [Score] and is encouraged to prepare more thoroughly for future assessments."],"notCompleted":["[Name] has not yet completed this assessment.","[Name] was unable to sit the recent assessment."]}}},
+  {"id":"s9","type":"new-line","name":"","data":{}},
+  {"id":"s10","type":"next-steps","name":"Next Steps","data":{"focusAreas":{"Focus Area":["[Name] suggestion.","Second suggestion.","Third suggestion.","Fourth suggestion."]}}},
+  {"id":"s11","type":"new-line","name":"","data":{}},
+  {"id":"s12","type":"optional-additional-comment","name":"Additional Comments","data":{}}
 ]}`;
 
 const corsHeaders = {
@@ -231,9 +241,9 @@ serve(async (req) => {
   }
 
   const pronounInstructions: Record<string, string> = {
-    "he/his": "Use HE/HIM/HIS/HIMSELF for pronoun-led comments and possessives. Example name-led: '[Name] puts a lot of effort into his work.' Example pronoun-led: 'He is growing in confidence.'",
-    "she/her": "Use SHE/HER/HERS/HERSELF for pronoun-led comments and possessives. Example name-led: '[Name] puts a lot of effort into her work.' Example pronoun-led: 'She is growing in confidence.'",
-    "they/their": "Use THEY/THEM/THEIR/THEMSELVES for pronoun-led comments and possessives. Example name-led: '[Name] puts a lot of effort into their work.' Example pronoun-led: 'They are growing in confidence.'",
+    "he/his": "Use HE/HIM/HIS/HIMSELF. Name-led possessive: 'his work'. Follow-on opening: 'He is...'",
+    "she/her": "Use SHE/HER/HERS/HERSELF. Name-led possessive: 'her work'. Follow-on opening: 'She is...'",
+    "they/their": "Use THEY/THEM/THEIR/THEMSELVES. Name-led possessive: 'their work'. Follow-on opening: 'They are...'",
   };
 
   const pronounNote = pronounInstructions[pronounSet] || pronounInstructions["they/their"];
@@ -253,23 +263,23 @@ ADDITIONAL REPORTS:
 ${reportText}
 
 Generate an IMPROVED version:
-- Add any new qualities headings found — be exhaustive, each distinct trait gets its own heading
-- Ensure each qualities heading has both name-led comments (using [Name]) AND pronoun-led follow-on comments (starting with the selected pronoun)
+- For every qualities heading, ensure there is a paired "- Follow On" heading immediately after it
+- Name-led headings contain ONLY [Name]-starting comments
+- Follow-on headings contain ONLY pronoun-starting comments (${pronounSet.split('/')[0]})
+- Add any new qualities heading pairs found in the additional reports — be exhaustive
 - Keep sentences whole — do not break natural sentences apart
-- Use report structure (headings if present, language/tone if not) to determine positive vs developmental
-- Preserve subject-specific language from the additional reports
-- Fix any progress/effort/behaviour wrongly typed as standard-comment — must be rated-comment
+- Use report structure to determine positive vs developmental
+- Preserve subject-specific language
+- Fix any progress/effort/behaviour wrongly typed as standard-comment
 - Ensure personalised-comment is ONLY for genuinely student-specific variables
-- Add warm personalising phrases to positive comments
-- Ensure developmental comments use softened forward-looking language
-- Apply ${pronounSet} pronoun consistently throughout
+- Apply ${pronounSet} consistently throughout
 - Keep [Name] and [Score] placeholders
 - Maintain the same template name`;
   } else {
     const placeholderNote = hasPlaceholders
-      ? `\nNOTE: Report text contains placeholders where pre-defined sections were removed:
-- {{STANDARD:Name}} → include as marker section with type "standard-comment" and name "STANDARD:Name"
-- {{CHOICE:Name}} → include as marker section with type "standard-comment" and name "CHOICE:Name"
+      ? `\nNOTE: Report text contains placeholders:
+- {{STANDARD:Name}} → marker section with type "standard-comment" and name "STANDARD:Name"
+- {{CHOICE:Name}} → marker section with type "standard-comment" and name "CHOICE:Name"
 Pre-defined standard comments: ${standardCommentNames.join(", ")}
 Pre-defined choice comments: ${choiceCommentNames.join(", ")}\n`
       : "";
@@ -282,32 +292,29 @@ ${placeholderNote}
 REPORTS TO ANALYSE:
 ${reportText}
 
-STEP 1 — ANALYSE STRUCTURE:
-First, look for section headings in the reports (Strengths, Areas for Development, Positives, Next Steps etc.). If found, use them to guide placement. If not found, determine positive vs developmental from language and tone alone.
+STEP 1 — DETECT STRUCTURE:
+Look for section headings (Strengths, Areas for Development, Positives, Next Steps etc.). If found use them. If not, determine positive vs developmental from language and tone.
 
-STEP 2 — QUALITIES (BE EXHAUSTIVE):
-List every distinct character trait mentioned across all reports. Each gets its own heading. Do not merge. Create separate positive and developmental headings for each trait.
+STEP 2 — QUALITIES PAIRED HEADINGS (critical):
+For EVERY distinct trait, generate TWO qualities sections in sequence:
+1. "[Trait Name]" — ONLY comments starting with [Name]. Use ${pronounSet} for possessives.
+2. "[Trait Name] - Follow On" — ONLY comments starting with "${pronounSet.split('/')[0].charAt(0).toUpperCase() + pronounSet.split('/')[0].slice(1)}". No [Name] in these.
 
-For each qualities heading generate:
-- 2 name-led comments: start with [Name], use ${pronounSet} for possessives mid-sentence
-- 2-3 pronoun-led follow-on comments: start directly with the pronoun (${pronounSet.split('/')[0]}), designed to flow naturally after a name-led comment
+Place both sections together with NO new-line between them. Add new-line AFTER the pair.
+Be exhaustive — every distinct trait gets its own pair. Do not merge traits.
+Keep sentences whole — preserve teacher's natural sentences.
 
-Keep sentences whole — if a teacher wrote a long natural sentence, keep it exactly as written, just replace the student name with [Name].
-
-STEP 3 — SUBJECT-SPECIFIC LANGUAGE:
-Identify all subject-specific phrases and preserve them verbatim in generated comments.
-
-STEP 4 — SECTION TYPES:
+STEP 3 — ALL OTHER SECTION TYPES:
 1. Identical text across all reports → standard-comment
-2. Same topic, different performance levels → rated-comment (progress, effort, attainment, participation, focus, behaviour ALWAYS rated-comment). Use ${pronounSet} for possessives.
+2. Same topic, different performance levels → rated-comment (progress, effort, attainment, participation, focus, behaviour ALWAYS rated-comment)
 3. Different students, genuinely different personal details → personalised-comment ONLY
 4. Assessment scores → assessment-comment with [Score] except notCompleted, SEPARATE per assessment
-5. Character traits → qualities with exhaustive split positive/negative headings, name-led + pronoun-led comments
-6. Improvement suggestions → next-steps
-7. Placeholders → marker sections at appropriate positions
+5. Improvement suggestions → next-steps
+6. Placeholders → marker sections at appropriate positions
 
-Apply TONAL RULES throughout. Generate 4 per level for rated/assessment, 4-5 per heading for qualities.
-Add new-line between sections. End with optional-additional-comment.`;
+Apply TONAL RULES. Generate 4 per level for rated/assessment, 2-3 per qualities section.
+Major new-lines between sections (not between paired qualities). End with optional-additional-comment.
+Decompose compound sentences ONLY when genuinely two unrelated things — keep natural sentences whole.`;
   }
 
   try {
