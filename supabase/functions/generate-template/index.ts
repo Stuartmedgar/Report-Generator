@@ -24,17 +24,17 @@ SECTION TYPE DEFINITIONS
 
 qualities — A box of clickable options. The teacher picks one option per section when writing a report. Use for any content that varies between students. This is the most commonly used type.
 
-standard-comment — Fixed text that appears identically in every report. The teacher does not choose — it appears automatically. Use only for text that is truly copy-pasted across all reports with only the pupil name changed.
+standard-comment — Fixed text that appears identically in every report. The teacher does not choose — it appears automatically. Use only for text that appears word-for-word identically in 80% or more of reports, ignoring only name and pronoun differences. If the teacher identified a standard-comment in the preprocessing step, it must appear exactly word-for-word with no additions or changes whatsoever.
 
-rated-comment — Four fixed performance levels: excellent, good, satisfactory, needsImprovement. Use only when the teacher clearly writes at these four distinct levels. Rare — qualities with performance-based headings is usually better.
+rated-comment — Four fixed performance levels: excellent, good, satisfactory, needsImprovement. Use only when the teacher's sentences clearly and naturally map to all four of these levels. If in doubt, qualities with judgement-based headings is better.
 
 assessment-comment — Use ONLY when a numeric score or percentage is given in the reports. Has five levels: excellent, good, satisfactory, needsImprovement, notCompleted. Every option except notCompleted must contain [Score]. If no numeric score appears in the reports, do not use this type — use qualities instead.
 
 If the teacher writes the same sentence for every student with only the score changing and makes no performance judgement, put that exact sentence under every level except notCompleted. The score is the only differentiator. For notCompleted use the sentence from the reports if one exists, otherwise generate one in the teacher's voice. An alternative is to use personalised-comment, which allows the teacher to type the score directly.
 
-If two assessment scores appear in one naturally flowing sentence, split them into two separate assessment-comment sections. Write each so that when combined they read as one natural sentence — the first ends without a full stop, the second begins with the connecting word (e.g. "and [Score] in..."). If the teacher gives a performance judgement after the scores, this judgement becomes a qualities section immediately after the assessment-comment sections, following all normal qualities rules — pronoun-led if that is the teacher's pattern at that position, headings derived from the actual sentences, teacher's voice throughout.
+If two assessment scores appear in one naturally flowing sentence, split them into two separate assessment-comment sections. Write each so that when combined they read as one natural sentence — the first ends without a full stop, the second begins with the connecting word (e.g. "and [Score] in..."). If the teacher gives a performance judgement after the scores, this judgement becomes a qualities section immediately after the assessment-comment sections, following all normal qualities rules.
 
-personalised-comment — A text field where the teacher types something unique to that individual student — a specific score, activity, instrument, role, or any other detail that varies per student and cannot be pre-written. Use when the teacher enters genuinely individual information rather than choosing from pre-written options. For assessment sentences where no performance judgement is made, this is a valid alternative to assessment-comment — the teacher simply types the score into the field.
+personalised-comment — A text field where the teacher types something unique to that individual student — a specific score, activity, instrument, role, or any other detail that varies per student and cannot be pre-written.
 
 next-steps — A box of improvement suggestions organised by topic. The teacher picks one topic per section. Each section represents one sentence position in the next steps paragraph.
 
@@ -48,18 +48,18 @@ THE ELEVEN RULES
 
 RULE 1: Read ALL reports before deciding anything. The pattern across all reports is the template — not one student's sentences. One report is not enough.
 
-RULE 2: Teachers write in sentence positions, not sections. Each sentence in a report has a job. Work through the reports sentence by sentence. Build one comment box per sentence position. Where reports have clear headings like "Strengths" and "Areas for Development", treat sentences under each heading as separate sentence positions — do not mix sentences from different positions in the same box.
+RULE 2: Teachers write in sentence positions, not sections. Each sentence in a report has a job. Work through the reports sentence by sentence. Build one comment box per sentence position. Where reports have clear headings like "Strengths" and "Areas for Development", treat sentences under each heading as separate sentence positions — do not mix sentences from different positions in the same box. Where the reports show a [Name]-led qualities sentence followed by a pronoun-led qualities sentence, these must be two separate sections — one [Name]-led, one pronoun-led.
 
 RULE 3: For each sentence position, ask one question — does this vary across students, and if so, how?
-- No meaningful variation → standard-comment
+- No meaningful variation → standard-comment (subject to the 80% rule in the definitions above)
 - Varies by trait, topic, pathway group, or performance description → qualities
-- Varies by a clear performance level → qualities with performance-based headings, or rated-comment only when the scale is genuinely obvious
+- Varies by a clear performance level on the same quality → qualities with performance-based headings derived from the teacher's own groupings. The heading names must clearly reflect the judgement being made so the teacher can instantly select the right level — "Excellent Effort and Behaviour", "Works Hard", "Effort Needs to Improve", "Lacks Focus and Motivation" rather than vague neutral headings. The judgement that the teacher has made about that student must be obvious from the heading name alone. Only use rated-comment when the teacher's sentences clearly and naturally map to all four levels: excellent, good, satisfactory, needsImprovement. If in doubt, qualities with judgement-based headings is better.
 
-RULE 4: The qualities section type is the most versatile and should be used for almost all varying content. Headings within a qualities section are groupings of similar sentences — they can be traits, topics, pathway groups, performance descriptions, or anything else that reflects how the teacher's sentences naturally group together.
+RULE 4: The qualities section type is the most versatile and should be used for almost all varying content. Headings within a qualities section are groupings of similar sentences. Every quality identified and reported on by the teacher must appear as a heading option in the template — nothing is dropped.
 
-RULE 5: standard-comment is rare. Only use it when a block of text is truly word-for-word identical across all reports, ignoring only name and pronoun differences — just as a teacher would copy and paste a paragraph changing only the pupil's name. If consecutive identical sentences form one natural paragraph, keep them as one standard-comment. If there is any meaningful variation in the content words across students, it is not a standard-comment.
+RULE 5: standard-comment is rare. Only use it when a block of text appears word-for-word identically in 80% or more of reports, ignoring only name and pronoun differences. If the teacher identified a standard-comment in preprocessing, reproduce it exactly word-for-word with no additions or changes. If consecutive identical sentences form one natural paragraph they can be one standard-comment. If there is meaningful variation it is not a standard-comment.
 
-RULE 6: Heading names should be short, neutral, and derived directly from what the sentences say — not editorial interpretations of why a student is in that group. "Works Well in a Team" not "Positive collaboration skills despite social distractions". The teacher picks the heading that fits — the heading name should make that choice obvious at a glance.
+RULE 6: Heading names should be short and derived directly from what the sentences say. Where the sentences reflect a performance judgement, the heading name must make that judgement clear and immediately obvious to the teacher picking it.
 
 RULE 7: The teacher's actual sentences from the reports are the options. Copy them exactly — do not paraphrase, do not improve them, do not make them more formal or more elaborate. Every sentence that appears in the reports must appear as an option somewhere in the template. When generating a second variety option, write it as if you are the teacher writing another version of the same sentence — same words where possible, same short direct style, same level of formality. If the teacher writes short plain sentences, the variety options must also be short and plain. Read the teacher's sentences carefully and match their exact register before generating anything.
 
@@ -91,20 +91,24 @@ const MAPPING_SYSTEM = `${KNOWLEDGE_BASE}
 
 Your task is to analyse the reports and produce a detailed STRUCTURE MAP — not a template yet.
 
-For each sentence position in the reports, produce:
+Work through the reports sentence by sentence. For each distinct sentence position, identify:
 - The position number
 - What this sentence does
-- Whether it uses [Name] or pronoun at this position
-- Whether it varies, and if so how
-- The section type this should become
-- The headings you would group the sentences under, with the actual sentences from the reports listed under each heading
+- Whether it uses [Name] or pronoun — this determines whether the section is [Name]-led or pronoun-led
+- Whether it varies, and if so how (fixed / varies by trait or topic / varies by performance level)
+- The section type
+- The headings, with the teacher's actual sentences listed exactly under each heading
 
-CRITICAL: List the teacher's actual sentences exactly as written. Do not paraphrase or improve them.
+CRITICAL RULES FOR MAPPING:
+- Each sentence position gets its own section — do not combine multiple sentence positions into one
+- If a [Name]-led sentence is followed by a pronoun-led sentence, these are TWO separate positions requiring TWO separate sections
+- Where sentences reflect a performance judgement, the heading name must make that judgement immediately obvious
+- Every sentence from every report must appear somewhere in the map
+- List sentences exactly as written — do not paraphrase
 
 Return ONLY valid JSON, no markdown, no backticks:
 {
   "reportStructure": "Brief description of overall report format",
-  "sectionOrder": ["description of section 1", "description of section 2"],
   "positions": [
     {
       "position": 1,
@@ -114,7 +118,7 @@ Return ONLY valid JSON, no markdown, no backticks:
       "sectionType": "qualities",
       "headings": [
         {
-          "name": "Short neutral heading name",
+          "name": "Judgement-clear heading name",
           "examples": ["Exact sentence from reports", "Another exact sentence"]
         }
       ]
@@ -128,14 +132,14 @@ const GENERATION_SYSTEM = `${KNOWLEDGE_BASE}
 
 Your task is to generate a complete report template in JSON format.
 
-When given a structure map, use it faithfully — sections in the order specified, headings as specified, example sentences as the options. Add variety options in the teacher's voice following Rule 7. Ensure at least 2 options per heading.
+When given a structure map, use it faithfully — sections in the order specified, headings as specified, example sentences as the starting options. Add variety options in the teacher's voice following Rule 7. Ensure at least 2 options per heading.
 
 When generating without a map, apply all eleven rules directly.
 
 For qualities sections: all options use [Name] OR all use the selected pronoun — never mix.
 For next-steps sections: 3-4 options per focus area.
 For assessment-comment sections: 4 options per level each containing [Score]. notCompleted: 2 options without [Score].
-For standard-comment sections: the fixed content as identified.
+For standard-comment sections: reproduce exactly as identified — no additions, no changes.
 
 Add new-line sections between major sections.
 End with optional-additional-comment.
@@ -260,7 +264,7 @@ Remember the two guiding principles — every sentence from the reports must app
 - Add new heading options to existing sections where new sentences appear — copy them exactly
 - Add new sections if reports reveal sentence positions not yet captured
 - Ensure all headings have at least 2 options — add variety in the teacher's exact voice
-- Check any standard-comments for real variation — convert to qualities if needed
+- Check any standard-comments — do they appear in 80%+ of reports? If not convert to qualities
 - Keep [Name] and [Score] placeholders
 - Maintain same template name`;
 
@@ -294,11 +298,11 @@ Remember the two guiding principles — every sentence from the reports must app
     }
   }
 
-  // ─── MODE: GENERATE (two-call) ────────────────────────────────────────────
+  // ─── MODE: GENERATE (two-call, both Sonnet) ───────────────────────────────
 
   const placeholderNote = hasPlaceholders
     ? `\nReport text contains placeholders where repeated sections were removed:
-- {{STANDARD:Name}} → will become a standard-comment section
+- {{STANDARD:Name}} → will become a standard-comment section reproduced exactly word-for-word
 - {{CHOICE:Name}} → will become a qualities section
 Pre-defined standard: ${standardCommentNames.join(", ")}
 Pre-defined choice: ${choiceCommentNames.join(", ")}\n`
@@ -308,15 +312,15 @@ Pre-defined choice: ${choiceCommentNames.join(", ")}\n`
     ? `\nDetected structure — respect this section order:\n${detectedStructure.map((s: any, i: number) => `${i + 1}. ${s.type} — ${s.description}`).join('\n')}\n`
     : "";
 
-  // ── CALL 1: MAP ────────────────────────────────────────────────────────────
+  // ── CALL 1: MAP (Sonnet) ───────────────────────────────────────────────────
   let structureMap: any = null;
   try {
     const mapResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 4000,
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 6000,
         system: MAPPING_SYSTEM,
         messages: [{
           role: "user",
@@ -330,8 +334,11 @@ ${structureNote}
 REPORTS:
 ${reportText.substring(0, GENERATION_CHAR_LIMIT)}
 
-Read ALL reports. Apply all eleven rules. Produce the structure map.
-List the teacher's actual sentences exactly as written under each heading.`,
+Read ALL reports carefully. Work sentence by sentence.
+Identify every distinct sentence position.
+Keep [Name]-led and pronoun-led positions as separate sections.
+List the teacher's actual sentences exactly as written.
+Produce the structure map.`,
         }],
       }),
     });
@@ -347,7 +354,7 @@ List the teacher's actual sentences exactly as written under each heading.`,
     console.log("Structure mapping failed:", err);
   }
 
-  // ── CALL 2: GENERATE ───────────────────────────────────────────────────────
+  // ── CALL 2: GENERATE (Sonnet) ─────────────────────────────────────────────
   const generationPrompt = structureMap
     ? `Subject: ${subject}
 Year Group: ${yearGroup || "Not specified"}
@@ -357,11 +364,11 @@ ${additionalContext ? `Context: ${additionalContext}` : ""}
 STRUCTURE MAP:
 ${JSON.stringify(structureMap, null, 2)}
 
-ORIGINAL REPORTS (use these to verify every sentence is captured and to match the teacher's voice exactly):
+ORIGINAL REPORTS (use to verify every sentence is captured and to match the teacher's voice exactly):
 ${reportText.substring(0, 12000)}
 
 Generate the complete template using the structure map.
-Follow the two guiding principles — every sentence from the reports must appear as an option, and all options must sound like the teacher wrote them.
+Follow the two guiding principles — every sentence from the reports must appear as an option, all options must sound like the teacher wrote them.
 Follow the map faithfully. Add variety options in the teacher's exact voice following Rule 7.
 Ensure at least 2 options per heading.
 Template name should reflect subject and year group.`
@@ -376,7 +383,7 @@ REPORTS:
 ${reportText.substring(0, GENERATION_CHAR_LIMIT)}
 
 Apply all eleven rules and both guiding principles.
-Work sentence by sentence. Build one section per sentence position.
+Work sentence by sentence. Keep [Name]-led and pronoun-led positions as separate sections.
 Copy the teacher's actual sentences exactly as options.
 Add variety in the teacher's exact voice.
 Ensure at least 2 options per heading.`;
@@ -414,7 +421,6 @@ Ensure at least 2 options per heading.`;
 
     if (!parsed.templateName || !parsed.sections || !Array.isArray(parsed.sections)) throw new Error("Generated template has invalid structure");
 
-    // Fix personalised-comment categories that are strings instead of arrays
     parsed.sections = parsed.sections.map((section: any) => {
       if (section.type === 'personalised-comment' && section.data?.categories) {
         const fixed: Record<string, string[]> = {};
