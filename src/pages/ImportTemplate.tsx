@@ -21,12 +21,14 @@ interface StandardCommentDraft {
   id: string;
   name: string;
   content: string;
+  fuzzy: boolean;
 }
 
 interface ChoiceCommentDraft {
   id: string;
   name: string;
   variants: { label: string; content: string }[];
+  fuzzy: boolean;
 }
 
 interface PreDefinedSections {
@@ -45,24 +47,104 @@ const GENERATION_CHAR_LIMIT = 24000;
 const MAX_RETRIES = 2;
 const SUPABASE_URL = 'https://wozbrojwuzktwrzngllh.supabase.co/functions/v1/generate-template';
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
+// ─── FUZZY MATCHING ───────────────────────────────────────────────────────────
+
+// Extract distinctive words (longer than 4 chars, not pronouns/articles/common words)
+const IGNORE_WORDS = new Set([
+  'he', 'she', 'they', 'his', 'her', 'their', 'him', 'them', 'himself', 'herself', 'themselves',
+  'the', 'and', 'that', 'this', 'with', 'have', 'from', 'been', 'also', 'which', 'into',
+  'name', 'will', 'also', 'some', 'been', 'were', 'when', 'your', 'more', 'than',
+]);
+
+function getDistinctiveWords(text: string): Set<string> {
+  return new Set(
+    text.toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length > 4 && !IGNORE_WORDS.has(w))
+  );
+}
+
+function fuzzyMatch(paragraph: string, template: string, threshold = 0.75): boolean {
+  const paraWords = getDistinctiveWords(paragraph);
+  const templateWords = getDistinctiveWords(template);
+  if (templateWords.size === 0 || paraWords.size === 0) return false;
+
+  let matches = 0;
+  templateWords.forEach(word => {
+    if (paraWords.has(word)) matches++;
+  });
+
+  const score = matches / templateWords.size;
+  return score >= threshold;
+}
+
+// Split text into paragraphs/sentences for matching
+function splitIntoParagraphs(text: string): string[] {
+  return text
+    .split(/\n+/)
+    .map(p => p.trim())
+    .filter(p => p.length > 30);
+}
 
 function buildCleanedText(rawText: string, preDefinedSections: PreDefinedSections): string {
   let cleaned = rawText;
+
   preDefinedSections.standardComments.forEach(sc => {
-    if (sc.content.trim()) {
+    if (!sc.content.trim()) return;
+
+    if (sc.fuzzy) {
+      // Fuzzy replacement — find and replace similar paragraphs
+      const paragraphs = splitIntoParagraphs(cleaned);
+      paragraphs.forEach(para => {
+        if (fuzzyMatch(para, sc.content)) {
+          // Escape for use in replacement
+          const escapedPara = para.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          try {
+            cleaned = cleaned.replace(new RegExp(escapedPara, 'g'), `{{STANDARD:${sc.name}}}`);
+          } catch {
+            // If regex fails, skip this paragraph
+          }
+        }
+      });
+    } else {
+      // Exact replacement
       const escaped = sc.content.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      cleaned = cleaned.replace(new RegExp(escaped, 'g'), `{{STANDARD:${sc.name}}}`);
+      try {
+        cleaned = cleaned.replace(new RegExp(escaped, 'g'), `{{STANDARD:${sc.name}}}`);
+      } catch {
+        // Skip if regex fails
+      }
     }
   });
+
   preDefinedSections.choiceComments.forEach(cc => {
     cc.variants.forEach(variant => {
-      if (variant.content.trim()) {
+      if (!variant.content.trim()) return;
+
+      if (cc.fuzzy) {
+        const paragraphs = splitIntoParagraphs(cleaned);
+        paragraphs.forEach(para => {
+          if (fuzzyMatch(para, variant.content)) {
+            const escapedPara = para.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            try {
+              cleaned = cleaned.replace(new RegExp(escapedPara, 'g'), `{{CHOICE:${cc.name}}}`);
+            } catch {
+              // Skip if regex fails
+            }
+          }
+        });
+      } else {
         const escaped = variant.content.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        cleaned = cleaned.replace(new RegExp(escaped, 'g'), `{{CHOICE:${cc.name}}}`);
+        try {
+          cleaned = cleaned.replace(new RegExp(escaped, 'g'), `{{CHOICE:${cc.name}}}`);
+        } catch {
+          // Skip if regex fails
+        }
       }
     });
   });
+
   return cleaned;
 }
 
@@ -134,16 +216,22 @@ export default function ImportTemplate() {
   const [isMobile] = useState(window.innerWidth <= 768);
   const [overflowCopied, setOverflowCopied] = useState(false);
 
-  // Structure detection
   const [detectedStructure, setDetectedStructure] = useState<DetectedSection[] | null>(null);
   const [formatNotes, setFormatNotes] = useState('');
   const [useDetectedStructure, setUseDetectedStructure] = useState(true);
 
   const [preDefinedSections, setPreDefinedSections] = useState<PreDefinedSections>({ standardComments: [], choiceComments: [] });
+
+  // Standard comment draft
   const [scName, setScName] = useState('');
   const [scContent, setScContent] = useState('');
+  const [scFuzzy, setScFuzzy] = useState(false);
+
+  // Choice comment draft
   const [ccName, setCcName] = useState('');
   const [ccVariants, setCcVariants] = useState([{ label: '', content: '' }, { label: '', content: '' }]);
+  const [ccFuzzy, setCcFuzzy] = useState(false);
+
   const [refineText, setRefineText] = useState('');
   const [isRefining, setIsRefining] = useState(false);
   const [refineError, setRefineError] = useState<string | null>(null);
@@ -164,16 +252,22 @@ export default function ImportTemplate() {
 
   const handleAddStandardComment = () => {
     if (!scName.trim() || !scContent.trim()) return;
-    setPreDefinedSections(prev => ({ ...prev, standardComments: [...prev.standardComments, { id: Date.now().toString(), name: scName.trim(), content: scContent.trim() }] }));
-    setScName(''); setScContent('');
+    setPreDefinedSections(prev => ({
+      ...prev,
+      standardComments: [...prev.standardComments, { id: Date.now().toString(), name: scName.trim(), content: scContent.trim(), fuzzy: scFuzzy }],
+    }));
+    setScName(''); setScContent(''); setScFuzzy(false);
   };
 
   const handleAddChoiceComment = () => {
     if (!ccName.trim()) return;
     const validVariants = ccVariants.filter(v => v.label.trim() && v.content.trim());
     if (validVariants.length < 2) return;
-    setPreDefinedSections(prev => ({ ...prev, choiceComments: [...prev.choiceComments, { id: Date.now().toString(), name: ccName.trim(), variants: validVariants }] }));
-    setCcName(''); setCcVariants([{ label: '', content: '' }, { label: '', content: '' }]);
+    setPreDefinedSections(prev => ({
+      ...prev,
+      choiceComments: [...prev.choiceComments, { id: Date.now().toString(), name: ccName.trim(), variants: validVariants, fuzzy: ccFuzzy }],
+    }));
+    setCcName(''); setCcVariants([{ label: '', content: '' }, { label: '', content: '' }]); setCcFuzzy(false);
   };
 
   const updateCcVariant = (index: number, field: 'label' | 'content', value: string) => {
@@ -186,7 +280,6 @@ export default function ImportTemplate() {
     setTimeout(() => setOverflowCopied(false), 3000);
   };
 
-  // Detect structure using fast Haiku call
   const handleDetectStructure = async () => {
     setStep('detecting');
     setError(null);
@@ -200,21 +293,16 @@ export default function ImportTemplate() {
           mode: 'detect',
         }),
       });
-
       const data = await response.json();
-
       if (!response.ok || !data.detectedStructure) {
-        // If detection fails just skip to generation
         setDetectedStructure(null);
         setStep('confirm');
         return;
       }
-
       setDetectedStructure(data.detectedStructure);
       setFormatNotes(data.formatNotes || '');
       setStep('confirm');
     } catch {
-      // If detection fails just skip to generation
       setDetectedStructure(null);
       setStep('confirm');
     }
@@ -222,10 +310,7 @@ export default function ImportTemplate() {
 
   const callGenerateFunction = async (isRefinement: boolean, attempt = 1): Promise<GeneratedTemplate> => {
     if (attempt > 1) setGeneratingMessage('Retrying generation...');
-
-    const textToSend = isRefinement
-      ? refineText.substring(0, GENERATION_CHAR_LIMIT)
-      : cleanedText.substring(0, GENERATION_CHAR_LIMIT);
+    const textToSend = isRefinement ? refineText.substring(0, GENERATION_CHAR_LIMIT) : cleanedText.substring(0, GENERATION_CHAR_LIMIT);
 
     const response = await fetch(SUPABASE_URL, {
       method: 'POST',
@@ -248,7 +333,6 @@ export default function ImportTemplate() {
     });
 
     const data = await response.json();
-
     if (!response.ok) {
       if (attempt < MAX_RETRIES && response.status >= 500) { await new Promise(r => setTimeout(r, 2000)); return callGenerateFunction(isRefinement, attempt + 1); }
       throw new Error(data.error || `Server error: ${response.status}`);
@@ -340,6 +424,31 @@ export default function ImportTemplate() {
     { value: 'they/their', label: 'They / Their', example: 'They work hard. Their effort is excellent.' },
   ];
 
+  const FuzzyToggle = ({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', padding: '10px 12px', backgroundColor: value ? '#eff6ff' : '#f9fafb', border: `1px solid ${value ? '#bfdbfe' : '#e5e7eb'}`, borderRadius: '6px' }}>
+      <button
+        onClick={() => onChange(!value)}
+        style={{
+          width: '40px', height: '22px', borderRadius: '11px', border: 'none', cursor: 'pointer', position: 'relative',
+          backgroundColor: value ? '#3b82f6' : '#d1d5db', transition: 'background-color 0.2s', flexShrink: 0,
+        }}
+      >
+        <div style={{
+          width: '16px', height: '16px', borderRadius: '50%', backgroundColor: 'white',
+          position: 'absolute', top: '3px', left: value ? '21px' : '3px', transition: 'left 0.2s',
+        }} />
+      </button>
+      <div>
+        <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', color: value ? '#1d4ed8' : '#374151' }}>
+          {value ? '🔍 Fuzzy Match ON' : '🔍 Fuzzy Match OFF'}
+        </p>
+        <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>
+          {value ? 'Will match similar paragraphs even with name/pronoun differences' : 'Turn on if this text varies only by name or pronoun (he/she/his/her)'}
+        </p>
+      </div>
+    </div>
+  );
+
   // ─── STEP: PASTE ─────────────────────────────────────────────────────────
 
   if (step === 'paste') {
@@ -367,7 +476,7 @@ export default function ImportTemplate() {
                 <button onClick={() => setStartMode('full')} style={{ padding: '24px', border: '2px solid #8b5cf6', borderRadius: '12px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}>
                   <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔧</div>
                   <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827', marginBottom: '6px' }}>Full Import</div>
-                  <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>Identify repeated sections first to maximise quality. Best for longer reports.</div>
+                  <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>Identify repeated sections first to maximise quality. Best for longer, structured reports.</div>
                 </button>
               </div>
             </div>
@@ -401,7 +510,7 @@ export default function ImportTemplate() {
 
               <div style={card}>
                 <h2 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Pronoun Set</h2>
-                <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#6b7280' }}>Choose the pronoun set for this class. Used consistently in all qualities comments.</p>
+                <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#6b7280' }}>Choose the pronoun set for this class.</p>
                 <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '10px' }}>
                   {pronounOptions.map(opt => (
                     <button key={opt.value} onClick={() => setPronounSet(opt.value)} style={{ padding: '14px', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', border: pronounSet === opt.value ? '2px solid #3b82f6' : '2px solid #e5e7eb', backgroundColor: pronounSet === opt.value ? '#eff6ff' : 'white' }}>
@@ -425,7 +534,7 @@ export default function ImportTemplate() {
 
               <div style={card}>
                 <h2 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Additional Context <span style={{ fontSize: '13px', fontWeight: '400', color: '#9ca3af' }}>(optional)</span></h2>
-                <textarea value={additionalContext} onChange={e => setAdditionalContext(e.target.value)} placeholder="e.g. Reports cover source analysis and extended writing skills." style={{ ...txa, minHeight: '80px' }} />
+                <textarea value={additionalContext} onChange={e => setAdditionalContext(e.target.value)} placeholder="e.g. Reports cover source analysis, essay writing and historical knowledge." style={{ ...txa, minHeight: '80px' }} />
               </div>
 
               {error && <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', color: '#b91c1c', fontSize: '14px' }}>⚠️ {error}</div>}
@@ -434,8 +543,7 @@ export default function ImportTemplate() {
                 <button onClick={() => {
                   if (!rawReportText.trim()) { setError('Please paste your reports first.'); return; }
                   if (!subject.trim()) { setError('Please enter the subject.'); return; }
-                  setError(null);
-                  handleDetectStructure();
+                  setError(null); handleDetectStructure();
                 }} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px' }}>
                   Next: Review Format →
                 </button>
@@ -443,8 +551,7 @@ export default function ImportTemplate() {
                 <button onClick={() => {
                   if (!rawReportText.trim()) { setError('Please paste your reports first.'); return; }
                   if (!subject.trim()) { setError('Please enter the subject.'); return; }
-                  setError(null);
-                  setStep('preprocess');
+                  setError(null); setStep('preprocess');
                 }} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px', backgroundColor: '#8b5cf6' }}>
                   Next: Identify Repeated Sections →
                 </button>
@@ -474,6 +581,7 @@ export default function ImportTemplate() {
 
         <main style={{ maxWidth: '800px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
 
+          {/* Character count */}
           <div style={{ backgroundColor: isOverLimit ? '#fef2f2' : '#f0fdf4', border: `1px solid ${isOverLimit ? '#fecaca' : '#bbf7d0'}`, borderRadius: '10px', padding: '16px', marginBottom: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
               <div>
@@ -492,23 +600,29 @@ export default function ImportTemplate() {
             </div>
           </div>
 
+          {/* Instructions */}
           <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '16px', marginBottom: '24px' }}>
             <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '600', color: '#92400e' }}>💡 What to do here</h3>
             <p style={{ margin: 0, fontSize: '13px', color: '#78350f', lineHeight: '1.7' }}>
-              <strong>Standard Comment</strong> — identical in every report.<br />
+              Identify text repeated across reports. Use <strong>Fuzzy Match</strong> for paragraphs that appear in every report but vary only by student name or pronoun (he/she/his/her).<br /><br />
+              <strong>Standard Comment</strong> — identical (or near-identical) in every report.<br />
               <strong>Choice Comment</strong> — 2-3 different versions for different students.
             </p>
           </div>
 
+          {/* Standard Comments */}
           <div style={card}>
             <h2 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Standard Comments</h2>
-            <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#6b7280' }}>Text that appears identically in every report.</p>
+            <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#6b7280' }}>Text that appears in every report. Use fuzzy match if it varies only by name or pronoun.</p>
+
             {preDefinedSections.standardComments.length > 0 && (
               <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {preDefinedSections.standardComments.map(sc => (
                   <div key={sc.id} style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: '600', color: '#166534' }}>✅ {sc.name}</p>
+                      <p style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: '600', color: '#166534' }}>
+                        ✅ {sc.name} {sc.fuzzy && <span style={{ fontSize: '11px', backgroundColor: '#dbeafe', color: '#1d4ed8', padding: '1px 6px', borderRadius: '4px', marginLeft: '4px' }}>Fuzzy</span>}
+                      </p>
                       <p style={{ margin: 0, fontSize: '12px', color: '#15803d' }}>{sc.content.substring(0, 80)}{sc.content.length > 80 ? '...' : ''}</p>
                     </div>
                     <button onClick={() => setPreDefinedSections(prev => ({ ...prev, standardComments: prev.standardComments.filter(x => x.id !== sc.id) }))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '18px' }}>×</button>
@@ -516,30 +630,36 @@ export default function ImportTemplate() {
                 ))}
               </div>
             )}
+
             <div style={{ border: '1px dashed #d1d5db', borderRadius: '8px', padding: '16px', backgroundColor: '#f9fafb' }}>
               <div style={{ marginBottom: '10px' }}>
                 <label style={lbl}>Section Name</label>
-                <input type="text" value={scName} onChange={e => setScName(e.target.value)} placeholder="e.g. Assessment Analysis" style={inp} />
+                <input type="text" value={scName} onChange={e => setScName(e.target.value)} placeholder="e.g. Course Content" style={inp} />
               </div>
               <div style={{ marginBottom: '10px' }}>
-                <label style={lbl}>Paste the repeated text</label>
-                <textarea value={scContent} onChange={e => setScContent(e.target.value)} placeholder="Paste the identical text here..." style={{ ...txa, minHeight: '80px' }} />
+                <label style={lbl}>Paste the text (from one report — fuzzy match handles name/pronoun variations)</label>
+                <textarea value={scContent} onChange={e => setScContent(e.target.value)} placeholder="Paste the text as it appears in one report..." style={{ ...txa, minHeight: '80px' }} />
               </div>
+              <FuzzyToggle value={scFuzzy} onChange={setScFuzzy} />
               <button onClick={handleAddStandardComment} disabled={!scName.trim() || !scContent.trim()} style={{ ...btnP, backgroundColor: scName.trim() && scContent.trim() ? '#10b981' : '#9ca3af', cursor: scName.trim() && scContent.trim() ? 'pointer' : 'not-allowed' }}>
                 + Add Standard Comment
               </button>
             </div>
           </div>
 
+          {/* Choice Comments */}
           <div style={card}>
             <h2 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Choice Comments</h2>
-            <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#6b7280' }}>2-3 different versions for different students.</p>
+            <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#6b7280' }}>2-3 different versions for different students. Use fuzzy match if versions vary by name/pronoun.</p>
+
             {preDefinedSections.choiceComments.length > 0 && (
               <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {preDefinedSections.choiceComments.map(cc => (
                   <div key={cc.id} style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
                     <div>
-                      <p style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: '600', color: '#92400e' }}>✅ {cc.name}</p>
+                      <p style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: '600', color: '#92400e' }}>
+                        ✅ {cc.name} {cc.fuzzy && <span style={{ fontSize: '11px', backgroundColor: '#dbeafe', color: '#1d4ed8', padding: '1px 6px', borderRadius: '4px', marginLeft: '4px' }}>Fuzzy</span>}
+                      </p>
                       <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>{cc.variants.length} options: {cc.variants.map(v => v.label).join(', ')}</p>
                     </div>
                     <button onClick={() => setPreDefinedSections(prev => ({ ...prev, choiceComments: prev.choiceComments.filter(x => x.id !== cc.id) }))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '18px' }}>×</button>
@@ -547,6 +667,7 @@ export default function ImportTemplate() {
                 ))}
               </div>
             )}
+
             <div style={{ border: '1px dashed #d1d5db', borderRadius: '8px', padding: '16px', backgroundColor: '#f9fafb' }}>
               <div style={{ marginBottom: '12px' }}>
                 <label style={lbl}>Section Name</label>
@@ -559,11 +680,12 @@ export default function ImportTemplate() {
                     <input type="text" value={variant.label} onChange={e => updateCcVariant(index, 'label', e.target.value)} placeholder="e.g. Standard Pathway" style={inp} />
                   </div>
                   <div>
-                    <label style={{ ...lbl, fontSize: '12px' }}>Option {index + 1} — Text</label>
+                    <label style={{ ...lbl, fontSize: '12px' }}>Option {index + 1} — Text (from one report)</label>
                     <textarea value={variant.content} onChange={e => updateCcVariant(index, 'content', e.target.value)} placeholder="Paste this version..." style={{ ...txa, minHeight: '80px' }} />
                   </div>
                 </div>
               ))}
+              <FuzzyToggle value={ccFuzzy} onChange={setCcFuzzy} />
               <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                 <button onClick={() => setCcVariants(prev => [...prev, { label: '', content: '' }])} style={{ ...btnS, fontSize: '13px' }}>+ Add Another Option</button>
                 <button onClick={handleAddChoiceComment} disabled={!ccName.trim() || ccVariants.filter(v => v.label && v.content).length < 2} style={{ ...btnP, backgroundColor: ccName.trim() && ccVariants.filter(v => v.label && v.content).length >= 2 ? '#f59e0b' : '#9ca3af', cursor: ccName.trim() && ccVariants.filter(v => v.label && v.content).length >= 2 ? 'pointer' : 'not-allowed' }}>
@@ -573,6 +695,7 @@ export default function ImportTemplate() {
             </div>
           </div>
 
+          {/* Overflow */}
           {isOverLimit && (
             <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '16px', marginBottom: '16px' }}>
               <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '600', color: '#b91c1c' }}>⚠️ {(cleanedCharCount - GENERATION_CHAR_LIMIT).toLocaleString()} characters over the limit</h3>
@@ -584,6 +707,13 @@ export default function ImportTemplate() {
                 </button>
               </div>
               <textarea readOnly value={overflowText} style={{ ...txa, minHeight: '120px', backgroundColor: '#fff5f5', color: '#7f1d1d', fontSize: '12px' }} />
+            </div>
+          )}
+
+          {error && (
+            <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', color: '#b91c1c', fontSize: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>⚠️ {error}</span>
+              <button onClick={handleDetectStructure} style={{ ...btnP, backgroundColor: '#ef4444', padding: '6px 12px', fontSize: '13px' }}>Try again</button>
             </div>
           )}
 
@@ -634,14 +764,11 @@ export default function ImportTemplate() {
             <>
               <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '16px', marginBottom: '24px' }}>
                 <h3 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: '600', color: '#166534' }}>✅ Format Detected</h3>
-                <p style={{ margin: 0, fontSize: '13px', color: '#15803d' }}>
-                  The AI has analysed your reports and detected the format below. Choose whether to keep this format or let the AI decide the best structure.
-                </p>
+                <p style={{ margin: 0, fontSize: '13px', color: '#15803d' }}>Choose whether to keep this format or let the AI decide the best structure.</p>
               </div>
 
               <div style={card}>
                 <h2 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Detected Report Structure</h2>
-
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
                   {detectedStructure.map((section, index) => (
                     <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
@@ -662,16 +789,10 @@ export default function ImportTemplate() {
                 )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <button
-                    onClick={() => { setUseDetectedStructure(true); handleGenerate(); }}
-                    style={{ ...btnP, width: '100%', padding: '14px', fontSize: '15px', backgroundColor: '#10b981' }}
-                  >
+                  <button onClick={() => { setUseDetectedStructure(true); handleGenerate(); }} style={{ ...btnP, width: '100%', padding: '14px', fontSize: '15px', backgroundColor: '#10b981' }}>
                     ✅ Keep This Format & Generate
                   </button>
-                  <button
-                    onClick={() => { setUseDetectedStructure(false); handleGenerate(); }}
-                    style={{ ...btnS, width: '100%', padding: '14px', fontSize: '15px' }}
-                  >
+                  <button onClick={() => { setUseDetectedStructure(false); handleGenerate(); }} style={{ ...btnS, width: '100%', padding: '14px', fontSize: '15px' }}>
                     🔀 Let AI Decide the Best Structure
                   </button>
                 </div>
@@ -681,7 +802,7 @@ export default function ImportTemplate() {
             <>
               <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '16px', marginBottom: '24px' }}>
                 <h3 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: '600', color: '#92400e' }}>⚠️ Could not detect format</h3>
-                <p style={{ margin: 0, fontSize: '13px', color: '#78350f' }}>The AI will decide the best structure for your template based on the content of your reports.</p>
+                <p style={{ margin: 0, fontSize: '13px', color: '#78350f' }}>The AI will decide the best structure based on the content of your reports.</p>
               </div>
               <button onClick={() => { setUseDetectedStructure(false); handleGenerate(); }} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px' }}>
                 🪄 Generate Template
