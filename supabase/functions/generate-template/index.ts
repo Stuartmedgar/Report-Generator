@@ -9,6 +9,16 @@ const GENERATION_CHAR_LIMIT = 24000;
 const KNOWLEDGE_BASE = `You are an expert at analysing teacher-written school reports and building report templates.
 
 ═══════════════════════════════════════════════════════
+GUIDING PHILOSOPHY
+═══════════════════════════════════════════════════════
+
+PRINCIPLE 1: The teacher should be able to use the finished template to recreate the exact reports that were shared. Every sentence from every report should be findable as an option somewhere in the template.
+
+PRINCIPLE 2: The teacher should be able to use the finished template to write a new set of reports that they would recognise as their own — same voice, same vocabulary, same sentence structure, same tone.
+
+These two principles govern every decision. If a sentence from the reports is missing from the template, that is an error. If a generated variety option sounds like it was written by AI rather than the teacher, that is an error.
+
+═══════════════════════════════════════════════════════
 SECTION TYPE DEFINITIONS
 ═══════════════════════════════════════════════════════
 
@@ -38,7 +48,7 @@ THE ELEVEN RULES
 
 RULE 1: Read ALL reports before deciding anything. The pattern across all reports is the template — not one student's sentences. One report is not enough.
 
-RULE 2: Teachers write in sentence positions, not sections. Each sentence in a report has a job. Work through the reports sentence by sentence. Build one comment box per sentence position. Where reports have clear headings like "Strengths" and "Areas for Development", treat sentences under each heading as separate sentence positions — do not mix positive and developmental sentences in the same section.
+RULE 2: Teachers write in sentence positions, not sections. Each sentence in a report has a job. Work through the reports sentence by sentence. Build one comment box per sentence position. Where reports have clear headings like "Strengths" and "Areas for Development", treat sentences under each heading as separate sentence positions — do not mix sentences from different positions in the same box.
 
 RULE 3: For each sentence position, ask one question — does this vary across students, and if so, how?
 - No meaningful variation → standard-comment
@@ -51,7 +61,7 @@ RULE 5: standard-comment is rare. Only use it when a block of text is truly word
 
 RULE 6: Heading names should be short, neutral, and derived directly from what the sentences say — not editorial interpretations of why a student is in that group. "Works Well in a Team" not "Positive collaboration skills despite social distractions". The teacher picks the heading that fits — the heading name should make that choice obvious at a glance.
 
-RULE 7: The teacher's actual sentences are the content. Read the sentences at each position across all reports. Group the ones that say the same thing in different words under the same heading. Never impose headings from outside — derive them from the sentences. Always generate at least 2 options per heading. The second option must be written in the teacher's own voice — same vocabulary, same sentence structure, same tone, same level of formality. The teacher should read every option and think "I wrote this." Never generate options that sound formal, corporate, or AI-written.
+RULE 7: The teacher's actual sentences from the reports are the options. Copy them exactly — do not paraphrase, do not improve them, do not make them more formal or more elaborate. Every sentence that appears in the reports must appear as an option somewhere in the template. When generating a second variety option, write it as if you are the teacher writing another version of the same sentence — same words where possible, same short direct style, same level of formality. If the teacher writes short plain sentences, the variety options must also be short and plain. Read the teacher's sentences carefully and match their exact register before generating anything.
 
 RULE 8: Detect and mirror the teacher's name/pronoun pattern at each sentence position. If sentence position 2 uses pronouns in the reports, all options in that section must start with the selected pronoun. If it uses [Name], all options start with [Name]. Never mix within a section. Avoid name overuse — consecutive sentences both using [Name] looks copy-pasted and unnatural.
 
@@ -87,7 +97,9 @@ For each sentence position in the reports, produce:
 - Whether it uses [Name] or pronoun at this position
 - Whether it varies, and if so how
 - The section type this should become
-- The headings you would group the sentences under, with 2 example sentences per heading drawn from the actual reports
+- The headings you would group the sentences under, with the actual sentences from the reports listed under each heading
+
+CRITICAL: List the teacher's actual sentences exactly as written. Do not paraphrase or improve them.
 
 Return ONLY valid JSON, no markdown, no backticks:
 {
@@ -103,7 +115,7 @@ Return ONLY valid JSON, no markdown, no backticks:
       "headings": [
         {
           "name": "Short neutral heading name",
-          "examples": ["Actual sentence from reports", "Another actual sentence"]
+          "examples": ["Exact sentence from reports", "Another exact sentence"]
         }
       ]
     }
@@ -116,7 +128,7 @@ const GENERATION_SYSTEM = `${KNOWLEDGE_BASE}
 
 Your task is to generate a complete report template in JSON format.
 
-When given a structure map, use it faithfully — sections in the order specified, headings as specified, example sentences as starting options. Add variety options in the teacher's voice. Ensure at least 2 options per heading.
+When given a structure map, use it faithfully — sections in the order specified, headings as specified, example sentences as the options. Add variety options in the teacher's voice following Rule 7. Ensure at least 2 options per heading.
 
 When generating without a map, apply all eleven rules directly.
 
@@ -243,10 +255,11 @@ ${JSON.stringify(existingTemplate, null, 2)}
 ADDITIONAL REPORTS:
 ${reportText.substring(0, GENERATION_CHAR_LIMIT)}
 
-Improve the existing template using the additional reports and all eleven rules:
-- Add new heading options to existing sections where new sentences appear
+Improve the existing template using the additional reports and all eleven rules.
+Remember the two guiding principles — every sentence from the reports must appear as an option, and all options must sound like the teacher wrote them.
+- Add new heading options to existing sections where new sentences appear — copy them exactly
 - Add new sections if reports reveal sentence positions not yet captured
-- Ensure all headings have at least 2 options — add variety in the teacher's voice where needed
+- Ensure all headings have at least 2 options — add variety in the teacher's exact voice
 - Check any standard-comments for real variation — convert to qualities if needed
 - Keep [Name] and [Score] placeholders
 - Maintain same template name`;
@@ -317,7 +330,8 @@ ${structureNote}
 REPORTS:
 ${reportText.substring(0, GENERATION_CHAR_LIMIT)}
 
-Read ALL reports. Apply all eleven rules. Produce the structure map.`,
+Read ALL reports. Apply all eleven rules. Produce the structure map.
+List the teacher's actual sentences exactly as written under each heading.`,
         }],
       }),
     });
@@ -343,11 +357,12 @@ ${additionalContext ? `Context: ${additionalContext}` : ""}
 STRUCTURE MAP:
 ${JSON.stringify(structureMap, null, 2)}
 
-ORIGINAL REPORTS (for reference when adding variety options):
+ORIGINAL REPORTS (use these to verify every sentence is captured and to match the teacher's voice exactly):
 ${reportText.substring(0, 12000)}
 
 Generate the complete template using the structure map.
-Follow the map faithfully. Add variety options in the teacher's voice.
+Follow the two guiding principles — every sentence from the reports must appear as an option, and all options must sound like the teacher wrote them.
+Follow the map faithfully. Add variety options in the teacher's exact voice following Rule 7.
 Ensure at least 2 options per heading.
 Template name should reflect subject and year group.`
     : `Subject: ${subject}
@@ -360,10 +375,10 @@ ${structureNote}
 REPORTS:
 ${reportText.substring(0, GENERATION_CHAR_LIMIT)}
 
-Apply all eleven rules. Work sentence by sentence.
-Build one section per sentence position.
-Group the teacher's actual sentences under headings.
-Add variety in the teacher's voice.
+Apply all eleven rules and both guiding principles.
+Work sentence by sentence. Build one section per sentence position.
+Copy the teacher's actual sentences exactly as options.
+Add variety in the teacher's exact voice.
 Ensure at least 2 options per heading.`;
 
   try {
