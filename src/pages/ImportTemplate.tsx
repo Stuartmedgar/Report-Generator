@@ -91,7 +91,7 @@ function buildSameStatementSection(name: string, examples: string[]): BuiltSecti
     cleaned = replaceScoresWithPlaceholder(cleaned);
     return cleaned;
   });
-  const unique = [...new Set(cleanedComments)];
+  const unique = Array.from(new Set(cleanedComments));
   return {
     id: `section_${Date.now()}`,
     type: 'personalised-comment',
@@ -121,7 +121,7 @@ function buildExactSection(name: string, positionType: string, openerType: Opene
 
   return {
     sectionName: name,
-    headings: [{ name: 'Option', comments: [...new Set(cleanedComments)] }],
+    headings: [{ name: 'Option', comments: Array.from(new Set(cleanedComments)) }],
   };
 }
 
