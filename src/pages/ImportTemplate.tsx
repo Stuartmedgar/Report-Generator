@@ -6,196 +6,70 @@ import { TemplateSection } from '../types';
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 
-type Step = 'paste' | 'preprocess' | 'detecting' | 'confirm' | 'generating' | 'preview' | 'saved';
-type StartMode = 'quick' | 'full' | null;
-type PronounSet = 'he/his' | 'she/her' | 'they/their';
+type WizardStep =
+  | 'paste'
+  | 'preprocess'
+  | 'q1_progress'
+  | 'q2_qualities'
+  | 'q2a_copy_qualities'
+  | 'q3_different_qualities'
+  | 'q3a_copy_qualities'
+  | 'q4_assessment'
+  | 'q5_nextsteps'
+  | 'q5a_more_nextsteps'
+  | 'generating'
+  | 'preview'
+  | 'saved';
 
-interface DetectedSection {
-  position: number;
-  type: string;
-  description: string;
-  example: string;
+type PronounSet = 'he/his' | 'she/her' | 'they/their';
+type OpenerType = 'name' | 'pronoun';
+
+interface BuiltSection {
+  id: string;
+  type: 'qualities' | 'next-steps' | 'assessment-comment' | 'standard-comment';
+  name: string;
+  openerType: OpenerType;
+  positionType: string;
+  data: any;
 }
 
 interface StandardCommentDraft {
   id: string;
   name: string;
   content: string;
-  fuzzy: boolean;
-}
-
-interface ChoiceCommentDraft {
-  id: string;
-  name: string;
-  variants: { label: string; content: string }[];
-  fuzzy: boolean;
-}
-
-interface PreDefinedSections {
-  standardComments: StandardCommentDraft[];
-  choiceComments: ChoiceCommentDraft[];
 }
 
 interface GeneratedTemplate {
   name: string;
-  subject: string;
-  yearGroup: string;
   sections: TemplateSection[];
 }
 
-const GENERATION_CHAR_LIMIT = 24000;
-const MAX_RETRIES = 2;
 const SUPABASE_URL = 'https://wozbrojwuzktwrzngllh.supabase.co/functions/v1/generate-template';
 
-// ─── FUZZY MATCHING ───────────────────────────────────────────────────────────
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
 
-// Extract distinctive words (longer than 4 chars, not pronouns/articles/common words)
-const IGNORE_WORDS = new Set([
-  'he', 'she', 'they', 'his', 'her', 'their', 'him', 'them', 'himself', 'herself', 'themselves',
-  'the', 'and', 'that', 'this', 'with', 'have', 'from', 'been', 'also', 'which', 'into',
-  'name', 'will', 'also', 'some', 'been', 'were', 'when', 'your', 'more', 'than',
-]);
-
-function getDistinctiveWords(text: string): Set<string> {
-  return new Set(
-    text.toLowerCase()
-      .replace(/[^\w\s]/g, ' ')
-      .split(/\s+/)
-      .filter(w => w.length > 4 && !IGNORE_WORDS.has(w))
-  );
+function getPronounCapital(pronounSet: PronounSet): string {
+  return pronounSet.split('/')[0].charAt(0).toUpperCase() + pronounSet.split('/')[0].slice(1);
 }
 
-function fuzzyMatch(paragraph: string, template: string, threshold = 0.75): boolean {
-  const paraWords = getDistinctiveWords(paragraph);
-  const templateWords = getDistinctiveWords(template);
-  if (templateWords.size === 0 || paraWords.size === 0) return false;
-
-  let matches = 0;
-  templateWords.forEach(word => {
-    if (paraWords.has(word)) matches++;
+async function callGroup(params: {
+  subject: string;
+  yearGroup: string;
+  reportText: string;
+  pronounSet: PronounSet;
+  examples: string[];
+  positionType: string;
+  openerType: OpenerType;
+  sectionName: string;
+}): Promise<{ sectionName: string; headings: { name: string; comments: string[] }[] }> {
+  const response = await fetch(SUPABASE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode: 'group', ...params }),
   });
-
-  const score = matches / templateWords.size;
-  return score >= threshold;
+  if (!response.ok) throw new Error('Failed to group sentences');
+  return response.json();
 }
-
-// Split text into paragraphs/sentences for matching
-function splitIntoParagraphs(text: string): string[] {
-  return text
-    .split(/\n+/)
-    .map(p => p.trim())
-    .filter(p => p.length > 30);
-}
-
-function buildCleanedText(rawText: string, preDefinedSections: PreDefinedSections): string {
-  let cleaned = rawText;
-
-  preDefinedSections.standardComments.forEach(sc => {
-    if (!sc.content.trim()) return;
-
-    if (sc.fuzzy) {
-      // Fuzzy replacement — find and replace similar paragraphs
-      const paragraphs = splitIntoParagraphs(cleaned);
-      paragraphs.forEach(para => {
-        if (fuzzyMatch(para, sc.content)) {
-          // Escape for use in replacement
-          const escapedPara = para.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          try {
-            cleaned = cleaned.replace(new RegExp(escapedPara, 'g'), `{{STANDARD:${sc.name}}}`);
-          } catch {
-            // If regex fails, skip this paragraph
-          }
-        }
-      });
-    } else {
-      // Exact replacement
-      const escaped = sc.content.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      try {
-        cleaned = cleaned.replace(new RegExp(escaped, 'g'), `{{STANDARD:${sc.name}}}`);
-      } catch {
-        // Skip if regex fails
-      }
-    }
-  });
-
-  preDefinedSections.choiceComments.forEach(cc => {
-    cc.variants.forEach(variant => {
-      if (!variant.content.trim()) return;
-
-      if (cc.fuzzy) {
-        const paragraphs = splitIntoParagraphs(cleaned);
-        paragraphs.forEach(para => {
-          if (fuzzyMatch(para, variant.content)) {
-            const escapedPara = para.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            try {
-              cleaned = cleaned.replace(new RegExp(escapedPara, 'g'), `{{CHOICE:${cc.name}}}`);
-            } catch {
-              // Skip if regex fails
-            }
-          }
-        });
-      } else {
-        const escaped = variant.content.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        try {
-          cleaned = cleaned.replace(new RegExp(escaped, 'g'), `{{CHOICE:${cc.name}}}`);
-        } catch {
-          // Skip if regex fails
-        }
-      }
-    });
-  });
-
-  return cleaned;
-}
-
-function assembleFinalTemplate(aiSections: TemplateSection[], preDefinedSections: PreDefinedSections): TemplateSection[] {
-  const standardLookup: Record<string, TemplateSection> = {};
-  preDefinedSections.standardComments.forEach((sc, i) => {
-    standardLookup[sc.name] = { id: `predefined_standard_${i}_${Date.now()}`, type: 'standard-comment', name: sc.name, data: { content: sc.content } };
-  });
-  const choiceLookup: Record<string, TemplateSection> = {};
-  preDefinedSections.choiceComments.forEach((cc, i) => {
-    const categories: Record<string, string[]> = {};
-    cc.variants.forEach(v => { if (v.label && v.content) categories[v.label] = [v.content]; });
-    choiceLookup[cc.name] = { id: `predefined_choice_${i}_${Date.now()}`, type: 'qualities', name: cc.name, data: { comments: categories } };
-  });
-
-  const assembled: TemplateSection[] = [];
-  let idx = 0;
-  aiSections.forEach(section => {
-    const nameStr = section.name || '';
-    if (nameStr.startsWith('STANDARD:')) {
-      const key = nameStr.replace('STANDARD:', '').trim();
-      if (standardLookup[key]) { assembled.push({ ...standardLookup[key], id: `assembled_${idx++}_${Date.now()}` }); return; }
-    }
-    if (nameStr.startsWith('CHOICE:')) {
-      const key = nameStr.replace('CHOICE:', '').trim();
-      if (choiceLookup[key]) { assembled.push({ ...choiceLookup[key], id: `assembled_${idx++}_${Date.now()}` }); return; }
-    }
-    if (section.type === 'standard-comment' && section.data?.content) {
-      const m1 = section.data.content.match(/\{\{STANDARD:(.+?)\}\}/);
-      if (m1 && standardLookup[m1[1]]) { assembled.push({ ...standardLookup[m1[1]], id: `assembled_${idx++}_${Date.now()}` }); return; }
-      const m2 = section.data.content.match(/\{\{CHOICE:(.+?)\}\}/);
-      if (m2 && choiceLookup[m2[1]]) { assembled.push({ ...choiceLookup[m2[1]], id: `assembled_${idx++}_${Date.now()}` }); return; }
-    }
-    assembled.push({ ...section, id: `assembled_${idx++}_${Date.now()}` });
-  });
-  return assembled;
-}
-
-const getSectionTypeLabel = (type: string) => ({
-  'rated-comment': 'Rated Comment', 'standard-comment': 'Standard Comment',
-  'assessment-comment': 'Assessment Comment', 'personalised-comment': 'Personalised Comment',
-  'optional-additional-comment': 'Optional Comment', 'next-steps': 'Next Steps',
-  'qualities': 'Choice Comment', 'new-line': 'New Line',
-}[type] || type);
-
-const getSectionTypeColor = (type: string) => ({
-  'rated-comment': '#3b82f6', 'standard-comment': '#10b981',
-  'assessment-comment': '#8b5cf6', 'personalised-comment': '#f59e0b',
-  'optional-additional-comment': '#ef4444', 'next-steps': '#06b6d4',
-  'qualities': '#f59e0b', 'new-line': '#9ca3af',
-}[type] || '#6b7280');
 
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 
@@ -203,174 +77,206 @@ export default function ImportTemplate() {
   const navigate = useNavigate();
   const { addTemplate } = useData();
 
-  const [step, setStep] = useState<Step>('paste');
-  const [startMode, setStartMode] = useState<StartMode>(null);
+  // Core state
+  const [step, setStep] = useState<WizardStep>('paste');
   const [subject, setSubject] = useState('');
   const [yearGroup, setYearGroup] = useState('');
   const [pronounSet, setPronounSet] = useState<PronounSet>('they/their');
   const [rawReportText, setRawReportText] = useState('');
-  const [additionalContext, setAdditionalContext] = useState('');
-  const [generatedTemplate, setGeneratedTemplate] = useState<GeneratedTemplate | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [generatingMessage, setGeneratingMessage] = useState('Analysing your reports...');
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
   const [isMobile] = useState(window.innerWidth <= 768);
-  const [overflowCopied, setOverflowCopied] = useState(false);
 
-  const [detectedStructure, setDetectedStructure] = useState<DetectedSection[] | null>(null);
-  const [formatNotes, setFormatNotes] = useState('');
-  const [useDetectedStructure, setUseDetectedStructure] = useState(true);
-
-  const [preDefinedSections, setPreDefinedSections] = useState<PreDefinedSections>({ standardComments: [], choiceComments: [] });
-
-  // Standard comment draft
+  // Preprocessing
+  const [standardComments, setStandardComments] = useState<StandardCommentDraft[]>([]);
   const [scName, setScName] = useState('');
   const [scContent, setScContent] = useState('');
-  const [scFuzzy, setScFuzzy] = useState(false);
 
-  // Choice comment draft
-  const [ccName, setCcName] = useState('');
-  const [ccVariants, setCcVariants] = useState([{ label: '', content: '' }, { label: '', content: '' }]);
-  const [ccFuzzy, setCcFuzzy] = useState(false);
+  // Built sections — accumulate as teacher works through questions
+  const [builtSections, setBuiltSections] = useState<BuiltSection[]>([]);
 
+  // Current question state
+  const [currentExamples, setCurrentExamples] = useState<string[]>(['', '', '', '', '']);
+  const [currentSectionName, setCurrentSectionName] = useState('');
+
+  // Track which qualities group we're on (for q3/q3a)
+  const [qualitiesGroupIndex, setQualitiesGroupIndex] = useState(0);
+
+  // Next steps tracking
+  const [nextStepsSentenceIndex, setNextStepsSentenceIndex] = useState(1);
+
+  // Generated template
+  const [generatedTemplate, setGeneratedTemplate] = useState<GeneratedTemplate | null>(null);
+
+  // Refine
   const [refineText, setRefineText] = useState('');
   const [isRefining, setIsRefining] = useState(false);
-  const [refineError, setRefineError] = useState<string | null>(null);
 
-  // ─── COMPUTED ──────────────────────────────────────────────────────────────
+  // ─── SHARED STYLES ──────────────────────────────────────────────────────
 
-  const isQuickMode = startMode === 'quick';
-  const effectivePreDefined = isQuickMode ? { standardComments: [], choiceComments: [] } : preDefinedSections;
-  const cleanedText = buildCleanedText(rawReportText, effectivePreDefined);
-  const cleanedCharCount = cleanedText.length;
-  const rawCharCount = rawReportText.length;
-  const charsSaved = rawCharCount - cleanedCharCount;
-  const isOverLimit = cleanedCharCount > GENERATION_CHAR_LIMIT;
-  const overflowText = isOverLimit ? cleanedText.substring(GENERATION_CHAR_LIMIT) : '';
-  const refineCharCount = refineText.length;
+  const card: React.CSSProperties = { backgroundColor: 'white', borderRadius: '10px', border: '1px solid #e5e7eb', padding: '20px', marginBottom: '16px' };
+  const lbl: React.CSSProperties = { display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' };
+  const inp: React.CSSProperties = { width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' };
+  const txa: React.CSSProperties = { width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical' };
+  const btnP: React.CSSProperties = { backgroundColor: '#3b82f6', color: 'white', padding: '10px 18px', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' };
+  const btnS: React.CSSProperties = { backgroundColor: '#f3f4f6', color: '#374151', padding: '10px 18px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' };
+  const btnG: React.CSSProperties = { backgroundColor: '#10b981', color: 'white', padding: '10px 18px', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' };
 
-  // ─── HANDLERS ──────────────────────────────────────────────────────────────
+  const pronounCapital = getPronounCapital(pronounSet);
+
+  // ─── HANDLERS ──────────────────────────────────────────────────────────
+
+  const resetExamples = () => setCurrentExamples(['', '', '', '', '']);
+
+  const getValidExamples = () => currentExamples.filter(e => e.trim().length > 10);
 
   const handleAddStandardComment = () => {
     if (!scName.trim() || !scContent.trim()) return;
-    setPreDefinedSections(prev => ({
-      ...prev,
-      standardComments: [...prev.standardComments, { id: Date.now().toString(), name: scName.trim(), content: scContent.trim(), fuzzy: scFuzzy }],
-    }));
-    setScName(''); setScContent(''); setScFuzzy(false);
+    setStandardComments(prev => [...prev, { id: Date.now().toString(), name: scName.trim(), content: scContent.trim() }]);
+    setScName(''); setScContent('');
   };
 
-  const handleAddChoiceComment = () => {
-    if (!ccName.trim()) return;
-    const validVariants = ccVariants.filter(v => v.label.trim() && v.content.trim());
-    if (validVariants.length < 2) return;
-    setPreDefinedSections(prev => ({
-      ...prev,
-      choiceComments: [...prev.choiceComments, { id: Date.now().toString(), name: ccName.trim(), variants: validVariants, fuzzy: ccFuzzy }],
-    }));
-    setCcName(''); setCcVariants([{ label: '', content: '' }, { label: '', content: '' }]); setCcFuzzy(false);
-  };
-
-  const updateCcVariant = (index: number, field: 'label' | 'content', value: string) => {
-    setCcVariants(prev => prev.map((v, i) => i === index ? { ...v, [field]: value } : v));
-  };
-
-  const handleCopyOverflow = () => {
-    navigator.clipboard.writeText(overflowText);
-    setOverflowCopied(true);
-    setTimeout(() => setOverflowCopied(false), 3000);
-  };
-
-  const handleDetectStructure = async () => {
-    setStep('detecting');
+  const handleGroupAndAdd = async (
+    positionType: string,
+    openerType: OpenerType,
+    sectionName: string,
+    nextStep: WizardStep
+  ) => {
+    const examples = getValidExamples();
+    if (examples.length === 0) {
+      setError('Please paste at least one example sentence.');
+      return;
+    }
     setError(null);
+    setIsLoading(true);
+    setLoadingMessage('Reading your reports and grouping sentences...');
+    try {
+      const result = await callGroup({
+        subject, yearGroup, reportText: rawReportText,
+        pronounSet, examples, positionType, openerType, sectionName,
+      });
+
+      const newSection: BuiltSection = {
+        id: `section_${Date.now()}`,
+        type: positionType === 'next-steps' ? 'next-steps' : 'qualities',
+        name: result.sectionName || sectionName,
+        openerType,
+        positionType,
+        data: positionType === 'next-steps'
+          ? { focusAreas: Object.fromEntries(result.headings.map(h => [h.name, h.comments])) }
+          : { comments: Object.fromEntries(result.headings.map(h => [h.name, h.comments])) },
+      };
+
+      setBuiltSections(prev => [...prev, newSection]);
+      resetExamples();
+      setCurrentSectionName('');
+      setStep(nextStep);
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCopySection = (openerType: OpenerType, sourceStep: WizardStep, repeatStep: WizardStep) => {
+    // Find the last section of the relevant type and copy it with different opener
+    const lastSection = [...builtSections].reverse().find(s =>
+      s.positionType === (sourceStep.includes('q2') ? 'qualities_1' : 'qualities_2')
+    ) || builtSections[builtSections.length - 1];
+
+    if (!lastSection) return;
+
+    // Copy the section with new opener type
+    const copiedSection: BuiltSection = {
+      ...lastSection,
+      id: `section_${Date.now()}`,
+      openerType,
+      name: lastSection.name + (openerType === 'pronoun' ? ` — ${pronounCapital}-led` : ' — [Name]-led'),
+    };
+
+    // Rewrite comments with correct opener
+    if (copiedSection.type === 'qualities' && copiedSection.data?.comments) {
+      const rewrittenComments: Record<string, string[]> = {};
+      Object.entries(copiedSection.data.comments).forEach(([heading, comments]) => {
+        rewrittenComments[heading] = (comments as string[]).map(comment => {
+          if (openerType === 'pronoun') {
+            return comment.replace(/^\[Name\]/, pronounCapital);
+          } else {
+            return comment.replace(new RegExp(`^${pronounCapital}`, 'i'), '[Name]');
+          }
+        });
+      });
+      copiedSection.data = { comments: rewrittenComments };
+    }
+
+    setBuiltSections(prev => [...prev, copiedSection]);
+    setStep(repeatStep);
+  };
+
+  const handleAssemble = async () => {
+    setIsLoading(true);
+    setLoadingMessage('Assembling your template...');
+    setStep('generating');
     try {
       const response = await fetch(SUPABASE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          mode: 'assemble',
           subject, yearGroup, pronounSet,
-          reportText: cleanedText.substring(0, GENERATION_CHAR_LIMIT),
-          mode: 'detect',
+          builtSections: [
+            ...standardComments.map(sc => ({
+              id: sc.id, type: 'standard-comment', name: sc.name,
+              positionType: 'standard', openerType: 'name',
+              data: { content: sc.content },
+            })),
+            ...builtSections,
+          ],
+          standardCommentNames: standardComments.map(sc => `${sc.name}: ${sc.content}`),
         }),
       });
+
+      if (!response.ok) throw new Error('Assembly failed');
       const data = await response.json();
-      if (!response.ok || !data.detectedStructure) {
-        setDetectedStructure(null);
-        setStep('confirm');
-        return;
-      }
-      setDetectedStructure(data.detectedStructure);
-      setFormatNotes(data.formatNotes || '');
-      setStep('confirm');
-    } catch {
-      setDetectedStructure(null);
-      setStep('confirm');
-    }
-  };
-
-  const callGenerateFunction = async (isRefinement: boolean, attempt = 1): Promise<GeneratedTemplate> => {
-    if (attempt > 1) setGeneratingMessage('Retrying generation...');
-    const textToSend = isRefinement ? refineText.substring(0, GENERATION_CHAR_LIMIT) : cleanedText.substring(0, GENERATION_CHAR_LIMIT);
-
-    const response = await fetch(SUPABASE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        subject, yearGroup, pronounSet,
-        reportText: textToSend,
-        additionalContext,
-        mode: 'generate',
-        hasPlaceholders: !isRefinement && !isQuickMode && (effectivePreDefined.standardComments.length + effectivePreDefined.choiceComments.length > 0),
-        standardCommentNames: effectivePreDefined.standardComments.map(sc => sc.name),
-        choiceCommentNames: effectivePreDefined.choiceComments.map(cc => cc.name),
-        isRefinement,
-        detectedStructure: useDetectedStructure ? detectedStructure : null,
-        useDetectedStructure,
-        existingTemplate: isRefinement && generatedTemplate
-          ? { name: generatedTemplate.name, sections: generatedTemplate.sections }
-          : null,
-      }),
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      if (attempt < MAX_RETRIES && response.status >= 500) { await new Promise(r => setTimeout(r, 2000)); return callGenerateFunction(isRefinement, attempt + 1); }
-      throw new Error(data.error || `Server error: ${response.status}`);
-    }
-    if (!data.templateName || !data.sections || !Array.isArray(data.sections)) {
-      if (attempt < MAX_RETRIES) { await new Promise(r => setTimeout(r, 2000)); return callGenerateFunction(isRefinement, attempt + 1); }
-      throw new Error('The template could not be generated correctly. Please try again.');
-    }
-
-    const assembled = isQuickMode
-      ? data.sections.map((s: TemplateSection, i: number) => ({ ...s, id: `assembled_${i}_${Date.now()}` }))
-      : assembleFinalTemplate(data.sections, preDefinedSections);
-
-    return { name: data.templateName, subject, yearGroup, sections: assembled };
-  };
-
-  const handleGenerate = async () => {
-    setError(null);
-    setGeneratingMessage('Analysing your reports...');
-    setStep('generating');
-    try {
-      const result = await callGenerateFunction(false);
-      setGeneratedTemplate(result);
+      if (!data.templateName || !data.sections) throw new Error('Invalid template structure');
+      setGeneratedTemplate({ name: data.templateName, sections: data.sections });
       setStep('preview');
     } catch (err: any) {
-      setError(err.message || 'Something went wrong. Please try again.');
-      setStep('confirm');
+      setError(err.message || 'Assembly failed. Please try again.');
+      setStep('q5a_more_nextsteps');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleRefine = async () => {
-    if (!refineText.trim() || refineCharCount < 200) { setRefineError('Please paste more reports — at least 200 characters needed.'); return; }
-    setRefineError(null); setIsRefining(true);
+    if (!refineText.trim() || refineText.length < 200) {
+      setError('Please paste more reports — at least 200 characters needed.');
+      return;
+    }
+    setError(null);
+    setIsRefining(true);
     try {
-      const result = await callGenerateFunction(true);
-      setGeneratedTemplate(result); setRefineText('');
-    } catch (err: any) { setRefineError(err.message || 'Something went wrong.'); }
-    finally { setIsRefining(false); }
+      const response = await fetch(SUPABASE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'refine',
+          subject, yearGroup, pronounSet,
+          existingTemplate: { name: generatedTemplate?.name, sections: generatedTemplate?.sections },
+          refineText,
+        }),
+      });
+      if (!response.ok) throw new Error('Refinement failed');
+      const data = await response.json();
+      setGeneratedTemplate({ name: data.templateName, sections: data.sections });
+      setRefineText('');
+    } catch (err: any) {
+      setError(err.message || 'Refinement failed.');
+    } finally {
+      setIsRefining(false);
+    }
   };
 
   const handleSave = () => {
@@ -386,37 +292,37 @@ export default function ImportTemplate() {
   };
 
   const handleReset = () => {
-    setStep('paste'); setStartMode(null);
-    setRawReportText(''); setRefineText('');
-    setSubject(''); setYearGroup(''); setAdditionalContext('');
-    setPronounSet('they/their');
-    setDetectedStructure(null); setFormatNotes(''); setUseDetectedStructure(true);
-    setGeneratedTemplate(null);
-    setPreDefinedSections({ standardComments: [], choiceComments: [] });
-    setError(null); setRefineError(null);
+    setStep('paste'); setSubject(''); setYearGroup(''); setRawReportText('');
+    setPronounSet('they/their'); setStandardComments([]); setBuiltSections([]);
+    setGeneratedTemplate(null); setError(null); resetExamples();
+    setQualitiesGroupIndex(0); setNextStepsSentenceIndex(1);
   };
 
   const getSectionSummary = (section: TemplateSection): string => {
     switch (section.type) {
-      case 'rated-comment': { const t = Object.values(section.data?.comments || {}).reduce((s: number, a: any) => s + (Array.isArray(a) ? a.length : 0), 0); return `${t} comments across 4 levels`; }
-      case 'standard-comment': return ((section.data?.content || '') as string).substring(0, 80) + '...';
-      case 'assessment-comment': { const t = Object.values(section.data?.comments || {}).reduce((s: number, a: any) => s + (Array.isArray(a) ? a.length : 0), 0); return `${t} comments across 5 levels — uses [Score]`; }
       case 'qualities': { const h = Object.keys(section.data?.comments || {}); return `${h.length} options: ${h.slice(0, 3).join(', ')}${h.length > 3 ? '...' : ''}`; }
+      case 'standard-comment': return ((section.data?.content || '') as string).substring(0, 80) + '...';
+      case 'assessment-comment': return 'Assessment with [Score]';
       case 'next-steps': { const a = Object.keys(section.data?.focusAreas || {}); return `${a.length} focus areas`; }
-      case 'optional-additional-comment': return 'Free text box';
       case 'new-line': return 'Line break';
+      case 'optional-additional-comment': return 'Free text box';
       default: return '';
     }
   };
 
-  // ─── SHARED STYLES ────────────────────────────────────────────────────────
+  const getSectionTypeColor = (type: string) => ({
+    'rated-comment': '#3b82f6', 'standard-comment': '#10b981',
+    'assessment-comment': '#8b5cf6', 'next-steps': '#06b6d4',
+    'qualities': '#f59e0b', 'new-line': '#9ca3af',
+    'optional-additional-comment': '#ef4444',
+  }[type] || '#6b7280');
 
-  const card: React.CSSProperties = { backgroundColor: 'white', borderRadius: '10px', border: '1px solid #e5e7eb', padding: '20px', marginBottom: '16px' };
-  const lbl: React.CSSProperties = { display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' };
-  const inp: React.CSSProperties = { width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' };
-  const txa: React.CSSProperties = { width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical' };
-  const btnP: React.CSSProperties = { backgroundColor: '#3b82f6', color: 'white', padding: '10px 18px', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' };
-  const btnS: React.CSSProperties = { backgroundColor: '#f3f4f6', color: '#374151', padding: '10px 18px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' };
+  const getSectionTypeLabel = (type: string) => ({
+    'rated-comment': 'Rated Comment', 'standard-comment': 'Standard Comment',
+    'assessment-comment': 'Assessment', 'next-steps': 'Next Steps',
+    'qualities': 'Choice Comment', 'new-line': 'New Line',
+    'optional-additional-comment': 'Optional Comment',
+  }[type] || type);
 
   const pronounOptions: { value: PronounSet; label: string; example: string }[] = [
     { value: 'he/his', label: 'He / His', example: 'He works hard. His effort is excellent.' },
@@ -424,435 +330,542 @@ export default function ImportTemplate() {
     { value: 'they/their', label: 'They / Their', example: 'They work hard. Their effort is excellent.' },
   ];
 
-  const FuzzyToggle = ({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', padding: '10px 12px', backgroundColor: value ? '#eff6ff' : '#f9fafb', border: `1px solid ${value ? '#bfdbfe' : '#e5e7eb'}`, borderRadius: '6px' }}>
-      <button
-        onClick={() => onChange(!value)}
-        style={{
-          width: '40px', height: '22px', borderRadius: '11px', border: 'none', cursor: 'pointer', position: 'relative',
-          backgroundColor: value ? '#3b82f6' : '#d1d5db', transition: 'background-color 0.2s', flexShrink: 0,
-        }}
-      >
-        <div style={{
-          width: '16px', height: '16px', borderRadius: '50%', backgroundColor: 'white',
-          position: 'absolute', top: '3px', left: value ? '21px' : '3px', transition: 'left 0.2s',
-        }} />
-      </button>
-      <div>
-        <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', color: value ? '#1d4ed8' : '#374151' }}>
-          {value ? '🔍 Fuzzy Match ON' : '🔍 Fuzzy Match OFF'}
-        </p>
-        <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>
-          {value ? 'Will match similar paragraphs even with name/pronoun differences' : 'Turn on if this text varies only by name or pronoun (he/she/his/her)'}
-        </p>
+  // ─── LOADING SCREEN ──────────────────────────────────────────────────────
+
+  if (isLoading && step === 'generating') {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '48px 40px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: '400px' }}>
+          <div style={{ fontSize: '48px', marginBottom: '20px' }}>🪄</div>
+          <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#111827' }}>Building Your Template</h2>
+          <p style={{ margin: '0 0 24px 0', color: '#6b7280', fontSize: '14px' }}>{loadingMessage}</p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+            {[0,1,2].map(i => <div key={i} style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#3b82f6', animation: 'pulse 1.2s ease-in-out infinite', animationDelay: `${i * 0.2}s` }} />)}
+          </div>
+          <style>{`@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}`}</style>
+        </div>
       </div>
+    );
+  }
+
+  // ─── QUESTION LOADING ─────────────────────────────────────────────────────
+
+  if (isLoading) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '48px 40px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: '400px' }}>
+          <div style={{ fontSize: '48px', marginBottom: '20px' }}>🔍</div>
+          <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#111827' }}>Reading Your Reports</h2>
+          <p style={{ margin: '0 0 24px 0', color: '#6b7280', fontSize: '14px' }}>{loadingMessage}</p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+            {[0,1,2].map(i => <div key={i} style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#8b5cf6', animation: 'pulse 1.2s ease-in-out infinite', animationDelay: `${i * 0.2}s` }} />)}
+          </div>
+          <style>{`@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}`}</style>
+          <p style={{ margin: '20px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>This usually takes 10–20 seconds</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── HEADER COMPONENT ─────────────────────────────────────────────────────
+
+  const Header = ({ title, subtitle, onBack }: { title: string; subtitle?: string; onBack?: () => void }) => (
+    <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: isMobile ? '16px' : '20px 24px', display: 'flex', alignItems: 'center', gap: '16px', position: 'sticky', top: 0, zIndex: 10 }}>
+      {onBack && <button onClick={onBack} style={btnS}>← Back</button>}
+      {!onBack && <Link to="/manage-templates" style={{ textDecoration: 'none' }}><button style={btnS}>← Back</button></Link>}
+      <div>
+        <h1 style={{ margin: 0, fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: '#111827' }}>{title}</h1>
+        {subtitle && <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>{subtitle}</p>}
+      </div>
+    </header>
+  );
+
+  const ExampleBoxes = ({ count = 5, label = 'Paste an example sentence' }: { count?: number; label?: string }) => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i}>
+          <label style={{ ...lbl, fontSize: '12px', color: '#9ca3af' }}>Example {i + 1} {i > 1 ? '(optional)' : ''}</label>
+          <input
+            type="text"
+            value={currentExamples[i] || ''}
+            onChange={e => {
+              const updated = [...currentExamples];
+              updated[i] = e.target.value;
+              setCurrentExamples(updated);
+            }}
+            placeholder={label}
+            style={inp}
+          />
+        </div>
+      ))}
     </div>
   );
+
+  const BuiltSectionsList = () => (
+    builtSections.length > 0 ? (
+      <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '12px', marginBottom: '16px' }}>
+        <p style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: '600', color: '#166534' }}>✅ Sections built so far:</p>
+        {builtSections.map((s, i) => (
+          <p key={s.id} style={{ margin: '2px 0', fontSize: '12px', color: '#15803d' }}>
+            {i + 1}. {s.name} ({s.openerType === 'pronoun' ? pronounCapital + '-led' : '[Name]-led'})
+          </p>
+        ))}
+      </div>
+    ) : null
+  );
+
+  const ErrorBox = () => error ? (
+    <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', color: '#b91c1c', fontSize: '14px' }}>
+      ⚠️ {error}
+    </div>
+  ) : null;
 
   // ─── STEP: PASTE ─────────────────────────────────────────────────────────
 
   if (step === 'paste') {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-        <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: isMobile ? '16px' : '20px 24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <Link to="/manage-templates" style={{ textDecoration: 'none' }}><button style={btnS}>← Back</button></Link>
-          <div>
-            <h1 style={{ margin: 0, fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: '#111827' }}>🪄 Import from Reports</h1>
-            <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Paste your reports and AI will build your template</p>
-          </div>
-        </header>
-
+        <Header title="🪄 Import from Reports" subtitle="Build a template from your existing reports" />
         <main style={{ maxWidth: '800px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
 
-          {!startMode && (
-            <div style={{ marginBottom: '24px' }}>
-              <h2 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>How would you like to start?</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
-                <button onClick={() => setStartMode('quick')} style={{ padding: '24px', border: '2px solid #3b82f6', borderRadius: '12px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}>
-                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>⚡</div>
-                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827', marginBottom: '6px' }}>Quick Start</div>
-                  <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>Paste and generate immediately. Best for shorter reports or a fast first draft.</div>
-                </button>
-                <button onClick={() => setStartMode('full')} style={{ padding: '24px', border: '2px solid #8b5cf6', borderRadius: '12px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}>
-                  <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔧</div>
-                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827', marginBottom: '6px' }}>Full Import</div>
-                  <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>Identify repeated sections first to maximise quality. Best for longer, structured reports.</div>
-                </button>
+          <div style={card}>
+            <h2 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Template Details</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={lbl}>Subject <span style={{ color: '#ef4444' }}>*</span></label>
+                <input type="text" value={subject} onChange={e => setSubject(e.target.value)} placeholder="e.g. History" style={inp} />
+              </div>
+              <div>
+                <label style={lbl}>Year Group</label>
+                <select value={yearGroup} onChange={e => setYearGroup(e.target.value)} style={inp}>
+                  <option value="">Select year group...</option>
+                  {['S1','S2','S3','S4','S5','S6','Mixed'].map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
               </div>
             </div>
-          )}
+          </div>
 
-          {startMode && (
-            <>
-              <div style={{ backgroundColor: startMode === 'quick' ? '#eff6ff' : '#f5f3ff', border: `1px solid ${startMode === 'quick' ? '#bfdbfe' : '#ddd6fe'}`, borderRadius: '10px', padding: '14px 16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <p style={{ margin: 0, fontSize: '13px', color: startMode === 'quick' ? '#1e40af' : '#5b21b6' }}>
-                  {startMode === 'quick' ? '⚡ Quick Start — paste and generate immediately.' : '🔧 Full Import — paste all reports, then identify repeated sections.'}
-                </p>
-                <button onClick={() => setStartMode(null)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', whiteSpace: 'nowrap', marginLeft: '12px' }}>Change</button>
-              </div>
-
-              <div style={card}>
-                <h2 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Template Details</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
-                  <div>
-                    <label style={lbl}>Subject <span style={{ color: '#ef4444' }}>*</span></label>
-                    <input type="text" value={subject} onChange={e => setSubject(e.target.value)} placeholder="e.g. History" style={inp} />
-                  </div>
-                  <div>
-                    <label style={lbl}>Year Group</label>
-                    <select value={yearGroup} onChange={e => setYearGroup(e.target.value)} style={inp}>
-                      <option value="">Select year group...</option>
-                      {['S1','S2','S3','S4','S5','S6','Mixed'].map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div style={card}>
-                <h2 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Pronoun Set</h2>
-                <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#6b7280' }}>Choose the pronoun set for this class.</p>
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '10px' }}>
-                  {pronounOptions.map(opt => (
-                    <button key={opt.value} onClick={() => setPronounSet(opt.value)} style={{ padding: '14px', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', border: pronounSet === opt.value ? '2px solid #3b82f6' : '2px solid #e5e7eb', backgroundColor: pronounSet === opt.value ? '#eff6ff' : 'white' }}>
-                      <div style={{ fontSize: '15px', fontWeight: '700', color: pronounSet === opt.value ? '#1d4ed8' : '#111827', marginBottom: '4px' }}>{opt.label}</div>
-                      <div style={{ fontSize: '12px', color: '#6b7280', fontStyle: 'italic' }}>{opt.example}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div style={card}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                  <div>
-                    <h2 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Paste Your Reports <span style={{ color: '#ef4444' }}>*</span></h2>
-                    <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Paste all your reports — the more the better.</p>
-                  </div>
-                  <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500', whiteSpace: 'nowrap', marginLeft: '12px' }}>{rawCharCount.toLocaleString()} characters</span>
-                </div>
-                <textarea value={rawReportText} onChange={e => setRawReportText(e.target.value)} placeholder="Paste your reports here..." style={{ ...txa, minHeight: '320px' }} />
-              </div>
-
-              <div style={card}>
-                <h2 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Additional Context <span style={{ fontSize: '13px', fontWeight: '400', color: '#9ca3af' }}>(optional)</span></h2>
-                <textarea value={additionalContext} onChange={e => setAdditionalContext(e.target.value)} placeholder="e.g. Reports cover source analysis, essay writing and historical knowledge." style={{ ...txa, minHeight: '80px' }} />
-              </div>
-
-              {error && <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', color: '#b91c1c', fontSize: '14px' }}>⚠️ {error}</div>}
-
-              {startMode === 'quick' ? (
-                <button onClick={() => {
-                  if (!rawReportText.trim()) { setError('Please paste your reports first.'); return; }
-                  if (!subject.trim()) { setError('Please enter the subject.'); return; }
-                  setError(null); handleDetectStructure();
-                }} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px' }}>
-                  Next: Review Format →
+          <div style={card}>
+            <h2 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Pronoun Set</h2>
+            <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#6b7280' }}>Choose the pronoun set for this class.</p>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '10px' }}>
+              {pronounOptions.map(opt => (
+                <button key={opt.value} onClick={() => setPronounSet(opt.value)} style={{ padding: '14px', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', border: pronounSet === opt.value ? '2px solid #3b82f6' : '2px solid #e5e7eb', backgroundColor: pronounSet === opt.value ? '#eff6ff' : 'white' }}>
+                  <div style={{ fontSize: '15px', fontWeight: '700', color: pronounSet === opt.value ? '#1d4ed8' : '#111827', marginBottom: '4px' }}>{opt.label}</div>
+                  <div style={{ fontSize: '12px', color: '#6b7280', fontStyle: 'italic' }}>{opt.example}</div>
                 </button>
-              ) : (
-                <button onClick={() => {
-                  if (!rawReportText.trim()) { setError('Please paste your reports first.'); return; }
-                  if (!subject.trim()) { setError('Please enter the subject.'); return; }
-                  setError(null); setStep('preprocess');
-                }} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px', backgroundColor: '#8b5cf6' }}>
-                  Next: Identify Repeated Sections →
-                </button>
-              )}
-              <p style={{ textAlign: 'center', fontSize: '12px', color: '#9ca3af', marginTop: '12px' }}>Generation typically takes 20–40 seconds. Reports are not stored.</p>
-            </>
-          )}
+              ))}
+            </div>
+          </div>
+
+          <div style={card}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+              <div>
+                <h2 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Paste Your Reports <span style={{ color: '#ef4444' }}>*</span></h2>
+                <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Paste all your reports together — the more the better.</p>
+              </div>
+              <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap', marginLeft: '12px' }}>{rawReportText.length.toLocaleString()} chars</span>
+            </div>
+            <textarea value={rawReportText} onChange={e => setRawReportText(e.target.value)} placeholder="Paste your reports here..." style={{ ...txa, minHeight: '320px' }} />
+          </div>
+
+          <ErrorBox />
+
+          <button onClick={() => {
+            if (!subject.trim()) { setError('Please enter the subject.'); return; }
+            if (!rawReportText.trim()) { setError('Please paste your reports.'); return; }
+            setError(null);
+            setStep('preprocess');
+          }} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px' }}>
+            Next: Identify Fixed Sections →
+          </button>
+          <p style={{ textAlign: 'center', fontSize: '12px', color: '#9ca3af', marginTop: '12px' }}>Reports are not stored after processing.</p>
         </main>
       </div>
     );
   }
 
-  // ─── STEP: PRE-PROCESS ────────────────────────────────────────────────────
+  // ─── STEP: PREPROCESS ────────────────────────────────────────────────────
 
   if (step === 'preprocess') {
-    const charColor = isOverLimit ? '#ef4444' : cleanedCharCount > GENERATION_CHAR_LIMIT * 0.8 ? '#f59e0b' : '#10b981';
-
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-        <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: isMobile ? '16px' : '20px 24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button onClick={() => setStep('paste')} style={btnS}>← Back</button>
-          <div>
-            <h1 style={{ margin: 0, fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: '#111827' }}>🪄 Import from Reports</h1>
-            <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Step 2 — Identify repeated sections</p>
-          </div>
-        </header>
-
+        <Header title="🪄 Import from Reports" subtitle="Step 2 — Identify fixed sections" onBack={() => setStep('paste')} />
         <main style={{ maxWidth: '800px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
 
-          {/* Character count */}
-          <div style={{ backgroundColor: isOverLimit ? '#fef2f2' : '#f0fdf4', border: `1px solid ${isOverLimit ? '#fecaca' : '#bbf7d0'}`, borderRadius: '10px', padding: '16px', marginBottom: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-              <div>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '600', color: isOverLimit ? '#b91c1c' : '#166534' }}>
-                  {isOverLimit ? '⚠️ Still over the generation limit' : '✅ Ready to generate'}
-                </h3>
-                <p style={{ margin: 0, fontSize: '13px', color: isOverLimit ? '#b91c1c' : '#15803d' }}>
-                  {rawCharCount.toLocaleString()} pasted → <strong>{cleanedCharCount.toLocaleString()}</strong> after removing repeated sections
-                  {charsSaved > 0 && ` (${charsSaved.toLocaleString()} saved)`} — limit is {GENERATION_CHAR_LIMIT.toLocaleString()}
-                </p>
-              </div>
-              <span style={{ fontSize: '20px', fontWeight: '700', color: charColor }}>{cleanedCharCount.toLocaleString()} / {GENERATION_CHAR_LIMIT.toLocaleString()}</span>
-            </div>
-            <div style={{ height: '6px', backgroundColor: '#e5e7eb', borderRadius: '3px', marginTop: '12px' }}>
-              <div style={{ height: '100%', width: `${Math.min((cleanedCharCount / GENERATION_CHAR_LIMIT) * 100, 100)}%`, backgroundColor: charColor, borderRadius: '3px', transition: 'width 0.3s' }} />
-            </div>
-          </div>
-
-          {/* Instructions */}
           <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '16px', marginBottom: '24px' }}>
             <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '600', color: '#92400e' }}>💡 What to do here</h3>
-            <p style={{ margin: 0, fontSize: '13px', color: '#78350f', lineHeight: '1.7' }}>
-              Identify text repeated across reports. Use <strong>Fuzzy Match</strong> for paragraphs that appear in every report but vary only by student name or pronoun (he/she/his/her).<br /><br />
-              <strong>Standard Comment</strong> — identical (or near-identical) in every report.<br />
-              <strong>Choice Comment</strong> — 2-3 different versions for different students.
+            <p style={{ margin: 0, fontSize: '13px', color: '#78350f', lineHeight: '1.6' }}>
+              If your reports contain any text that appears <strong>word-for-word in every report</strong> — like a course description, department information, or closing statement — add it here. This text will appear automatically in every report without the teacher needing to choose it.
             </p>
           </div>
 
-          {/* Standard Comments */}
-          <div style={card}>
-            <h2 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Standard Comments</h2>
-            <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#6b7280' }}>Text that appears in every report. Use fuzzy match if it varies only by name or pronoun.</p>
-
-            {preDefinedSections.standardComments.length > 0 && (
-              <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {preDefinedSections.standardComments.map(sc => (
-                  <div key={sc.id} style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: '600', color: '#166534' }}>
-                        ✅ {sc.name} {sc.fuzzy && <span style={{ fontSize: '11px', backgroundColor: '#dbeafe', color: '#1d4ed8', padding: '1px 6px', borderRadius: '4px', marginLeft: '4px' }}>Fuzzy</span>}
-                      </p>
-                      <p style={{ margin: 0, fontSize: '12px', color: '#15803d' }}>{sc.content.substring(0, 80)}{sc.content.length > 80 ? '...' : ''}</p>
-                    </div>
-                    <button onClick={() => setPreDefinedSections(prev => ({ ...prev, standardComments: prev.standardComments.filter(x => x.id !== sc.id) }))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '18px' }}>×</button>
+          {standardComments.length > 0 && (
+            <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {standardComments.map(sc => (
+                <div key={sc.id} style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: '600', color: '#166534' }}>✅ {sc.name}</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#15803d' }}>{sc.content.substring(0, 100)}{sc.content.length > 100 ? '...' : ''}</p>
                   </div>
-                ))}
-              </div>
-            )}
-
-            <div style={{ border: '1px dashed #d1d5db', borderRadius: '8px', padding: '16px', backgroundColor: '#f9fafb' }}>
-              <div style={{ marginBottom: '10px' }}>
-                <label style={lbl}>Section Name</label>
-                <input type="text" value={scName} onChange={e => setScName(e.target.value)} placeholder="e.g. Course Content" style={inp} />
-              </div>
-              <div style={{ marginBottom: '10px' }}>
-                <label style={lbl}>Paste the text (from one report — fuzzy match handles name/pronoun variations)</label>
-                <textarea value={scContent} onChange={e => setScContent(e.target.value)} placeholder="Paste the text as it appears in one report..." style={{ ...txa, minHeight: '80px' }} />
-              </div>
-              <FuzzyToggle value={scFuzzy} onChange={setScFuzzy} />
-              <button onClick={handleAddStandardComment} disabled={!scName.trim() || !scContent.trim()} style={{ ...btnP, backgroundColor: scName.trim() && scContent.trim() ? '#10b981' : '#9ca3af', cursor: scName.trim() && scContent.trim() ? 'pointer' : 'not-allowed' }}>
-                + Add Standard Comment
-              </button>
-            </div>
-          </div>
-
-          {/* Choice Comments */}
-          <div style={card}>
-            <h2 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Choice Comments</h2>
-            <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#6b7280' }}>2-3 different versions for different students. Use fuzzy match if versions vary by name/pronoun.</p>
-
-            {preDefinedSections.choiceComments.length > 0 && (
-              <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {preDefinedSections.choiceComments.map(cc => (
-                  <div key={cc.id} style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                    <div>
-                      <p style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: '600', color: '#92400e' }}>
-                        ✅ {cc.name} {cc.fuzzy && <span style={{ fontSize: '11px', backgroundColor: '#dbeafe', color: '#1d4ed8', padding: '1px 6px', borderRadius: '4px', marginLeft: '4px' }}>Fuzzy</span>}
-                      </p>
-                      <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>{cc.variants.length} options: {cc.variants.map(v => v.label).join(', ')}</p>
-                    </div>
-                    <button onClick={() => setPreDefinedSections(prev => ({ ...prev, choiceComments: prev.choiceComments.filter(x => x.id !== cc.id) }))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '18px' }}>×</button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div style={{ border: '1px dashed #d1d5db', borderRadius: '8px', padding: '16px', backgroundColor: '#f9fafb' }}>
-              <div style={{ marginBottom: '12px' }}>
-                <label style={lbl}>Section Name</label>
-                <input type="text" value={ccName} onChange={e => setCcName(e.target.value)} placeholder="e.g. Pathway Information" style={inp} />
-              </div>
-              {ccVariants.map((variant, index) => (
-                <div key={index} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '12px', marginBottom: '10px', backgroundColor: 'white' }}>
-                  <div style={{ marginBottom: '8px' }}>
-                    <label style={{ ...lbl, fontSize: '12px' }}>Option {index + 1} — Button Label</label>
-                    <input type="text" value={variant.label} onChange={e => updateCcVariant(index, 'label', e.target.value)} placeholder="e.g. Standard Pathway" style={inp} />
-                  </div>
-                  <div>
-                    <label style={{ ...lbl, fontSize: '12px' }}>Option {index + 1} — Text (from one report)</label>
-                    <textarea value={variant.content} onChange={e => updateCcVariant(index, 'content', e.target.value)} placeholder="Paste this version..." style={{ ...txa, minHeight: '80px' }} />
-                  </div>
+                  <button onClick={() => setStandardComments(prev => prev.filter(x => x.id !== sc.id))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '18px' }}>×</button>
                 </div>
               ))}
-              <FuzzyToggle value={ccFuzzy} onChange={setCcFuzzy} />
-              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                <button onClick={() => setCcVariants(prev => [...prev, { label: '', content: '' }])} style={{ ...btnS, fontSize: '13px' }}>+ Add Another Option</button>
-                <button onClick={handleAddChoiceComment} disabled={!ccName.trim() || ccVariants.filter(v => v.label && v.content).length < 2} style={{ ...btnP, backgroundColor: ccName.trim() && ccVariants.filter(v => v.label && v.content).length >= 2 ? '#f59e0b' : '#9ca3af', cursor: ccName.trim() && ccVariants.filter(v => v.label && v.content).length >= 2 ? 'pointer' : 'not-allowed' }}>
-                  + Add Choice Comment
-                </button>
-              </div>
             </div>
+          )}
+
+          <div style={card}>
+            <h2 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Add Standard Comment</h2>
+            <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#6b7280' }}>Text that is identical in every report.</p>
+            <div style={{ marginBottom: '10px' }}>
+              <label style={lbl}>Section Name</label>
+              <input type="text" value={scName} onChange={e => setScName(e.target.value)} placeholder="e.g. Course Content, Department Information" style={inp} />
+            </div>
+            <div style={{ marginBottom: '12px' }}>
+              <label style={lbl}>Paste the exact text</label>
+              <textarea value={scContent} onChange={e => setScContent(e.target.value)} placeholder="Paste the identical text here — exactly as it appears in the reports..." style={{ ...txa, minHeight: '100px' }} />
+            </div>
+            <button onClick={handleAddStandardComment} disabled={!scName.trim() || !scContent.trim()} style={{ ...btnG, opacity: scName.trim() && scContent.trim() ? 1 : 0.5, cursor: scName.trim() && scContent.trim() ? 'pointer' : 'not-allowed' }}>
+              + Add Standard Comment
+            </button>
           </div>
 
-          {/* Overflow */}
-          {isOverLimit && (
-            <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '16px', marginBottom: '16px' }}>
-              <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '600', color: '#b91c1c' }}>⚠️ {(cleanedCharCount - GENERATION_CHAR_LIMIT).toLocaleString()} characters over the limit</h3>
-              <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#b91c1c' }}>The first {GENERATION_CHAR_LIMIT.toLocaleString()} characters will be used. Copy the overflow below and paste it into the Refine box after generating.</p>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '13px', fontWeight: '600', color: '#b91c1c' }}>Overflow ({overflowText.length.toLocaleString()} chars):</span>
-                <button onClick={handleCopyOverflow} style={{ ...btnP, backgroundColor: overflowCopied ? '#10b981' : '#ef4444', padding: '6px 14px', fontSize: '13px' }}>
-                  {overflowCopied ? '✅ Copied!' : '📋 Copy Overflow'}
-                </button>
-              </div>
-              <textarea readOnly value={overflowText} style={{ ...txa, minHeight: '120px', backgroundColor: '#fff5f5', color: '#7f1d1d', fontSize: '12px' }} />
-            </div>
-          )}
-
-          {error && (
-            <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', color: '#b91c1c', fontSize: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>⚠️ {error}</span>
-              <button onClick={handleDetectStructure} style={{ ...btnP, backgroundColor: '#ef4444', padding: '6px 12px', fontSize: '13px' }}>Try again</button>
-            </div>
-          )}
-
-          <button onClick={handleDetectStructure} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px', backgroundColor: '#8b5cf6' }}>
-            Next: Review Format →
+          <button onClick={() => { setStep('q1_progress'); }} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px' }}>
+            Next: Build Your Template →
           </button>
-          <p style={{ textAlign: 'center', fontSize: '12px', color: '#9ca3af', marginTop: '12px' }}>Generation typically takes 20–40 seconds. Reports are not stored.</p>
+          <p style={{ textAlign: 'center', fontSize: '13px', color: '#9ca3af', marginTop: '8px' }}>You can skip this step if your reports don't have fixed identical sections.</p>
         </main>
       </div>
     );
   }
 
-  // ─── STEP: DETECTING ─────────────────────────────────────────────────────
+  // ─── QUESTION LAYOUT WRAPPER ─────────────────────────────────────────────
 
-  if (step === 'detecting') {
-    return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '48px 40px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: '400px' }}>
-          <div style={{ fontSize: '48px', marginBottom: '20px' }}>🔍</div>
-          <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#111827' }}>Detecting Report Format</h2>
-          <p style={{ margin: '0 0 24px 0', color: '#6b7280', fontSize: '14px' }}>Analysing the structure of your reports...</p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-            {[0,1,2].map(i => <div key={i} style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#8b5cf6', animation: 'pulse 1.2s ease-in-out infinite', animationDelay: `${i * 0.2}s` }} />)}
-          </div>
-          <style>{`@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}`}</style>
-          <p style={{ margin: '24px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>This usually takes 5–10 seconds</p>
+  const QuestionLayout = ({ question, description, children, onNo, noLabel = 'No — skip this', onBack }: {
+    question: string;
+    description?: string;
+    children: React.ReactNode;
+    onNo: () => void;
+    noLabel?: string;
+    onBack?: () => void;
+  }) => (
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+      <Header title="🪄 Import from Reports" subtitle="Building your template" onBack={onBack} />
+      <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+        <BuiltSectionsList />
+        <div style={card}>
+          <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>{question}</h2>
+          {description && <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280', lineHeight: '1.6' }}>{description}</p>}
+          <ErrorBox />
+          {children}
+          <button onClick={onNo} style={{ ...btnS, width: '100%', marginTop: '10px' }}>{noLabel}</button>
         </div>
-      </div>
+      </main>
+    </div>
+  );
+
+  // ─── Q1: PROGRESS ─────────────────────────────────────────────────────────
+
+  if (step === 'q1_progress') {
+    return (
+      <QuestionLayout
+        question="Do your reports include a sentence about each pupil's progress or how they are doing overall?"
+        description="This is usually the opening sentence of the report. Paste 3–5 examples from different reports showing different levels of progress."
+        onNo={() => setStep('q2_qualities')}
+        noLabel="No — my reports don't include a progress statement"
+        onBack={() => setStep('preprocess')}
+      >
+        <ExampleBoxes label="Paste a progress sentence from one report..." />
+        <button onClick={() => handleGroupAndAdd('progress', 'name', 'Opening Statement', 'q2_qualities')}
+          style={{ ...btnP, width: '100%', marginTop: '16px', padding: '14px' }}>
+          ✓ Read my reports and group these sentences
+        </button>
+      </QuestionLayout>
     );
   }
 
-  // ─── STEP: CONFIRM STRUCTURE ──────────────────────────────────────────────
+  // ─── Q2: QUALITIES ────────────────────────────────────────────────────────
 
-  if (step === 'confirm') {
+  if (step === 'q2_qualities') {
+    return (
+      <QuestionLayout
+        question="Do your reports include sentences describing the pupil's personal qualities?"
+        description="Things like effort, behaviour, attitude, working style, character. Paste 3–5 examples from different reports — include both positive and less positive examples if your reports have both."
+        onNo={() => setStep('q4_assessment')}
+        noLabel="No — my reports don't include qualities statements"
+        onBack={() => setStep('q1_progress')}
+      >
+        <ExampleBoxes label="Paste a qualities sentence from one report..." />
+        <button onClick={() => {
+          setQualitiesGroupIndex(1);
+          handleGroupAndAdd('qualities', 'name', 'Personal Qualities', 'q2a_copy_qualities');
+        }} style={{ ...btnP, width: '100%', marginTop: '16px', padding: '14px' }}>
+          ✓ Read my reports and group these sentences
+        </button>
+      </QuestionLayout>
+    );
+  }
+
+  // ─── Q2a: COPY QUALITIES ─────────────────────────────────────────────────
+
+  if (step === 'q2a_copy_qualities') {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-        <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: isMobile ? '16px' : '20px 24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button onClick={() => setStep(isQuickMode ? 'paste' : 'preprocess')} style={btnS}>← Back</button>
-          <div>
-            <h1 style={{ margin: 0, fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: '#111827' }}>🪄 Import from Reports</h1>
-            <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Review detected format</p>
-          </div>
-        </header>
-
-        <main style={{ maxWidth: '800px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
-
-          {detectedStructure ? (
-            <>
-              <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '16px', marginBottom: '24px' }}>
-                <h3 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: '600', color: '#166534' }}>✅ Format Detected</h3>
-                <p style={{ margin: 0, fontSize: '13px', color: '#15803d' }}>Choose whether to keep this format or let the AI decide the best structure.</p>
-              </div>
-
-              <div style={card}>
-                <h2 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Detected Report Structure</h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
-                  {detectedStructure.map((section, index) => (
-                    <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                      <span style={{ backgroundColor: '#f3f4f6', color: '#6b7280', fontSize: '11px', fontWeight: '700', padding: '2px 7px', borderRadius: '4px', flexShrink: 0 }}>{section.position}</span>
-                      <span style={{ backgroundColor: getSectionTypeColor(section.type), color: 'white', fontSize: '11px', fontWeight: '600', padding: '2px 8px', borderRadius: '4px', flexShrink: 0 }}>{getSectionTypeLabel(section.type)}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ fontSize: '13px', fontWeight: '500', color: '#111827' }}>{section.description}</span>
-                        {section.example && <span style={{ fontSize: '12px', color: '#9ca3af', marginLeft: '8px', fontStyle: 'italic' }}>"{section.example}..."</span>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {formatNotes && (
-                  <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '12px', marginBottom: '20px' }}>
-                    <p style={{ margin: 0, fontSize: '13px', color: '#78350f' }}>📝 {formatNotes}</p>
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <button onClick={() => { setUseDetectedStructure(true); handleGenerate(); }} style={{ ...btnP, width: '100%', padding: '14px', fontSize: '15px', backgroundColor: '#10b981' }}>
-                    ✅ Keep This Format & Generate
-                  </button>
-                  <button onClick={() => { setUseDetectedStructure(false); handleGenerate(); }} style={{ ...btnS, width: '100%', padding: '14px', fontSize: '15px' }}>
-                    🔀 Let AI Decide the Best Structure
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '16px', marginBottom: '24px' }}>
-                <h3 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: '600', color: '#92400e' }}>⚠️ Could not detect format</h3>
-                <p style={{ margin: 0, fontSize: '13px', color: '#78350f' }}>The AI will decide the best structure based on the content of your reports.</p>
-              </div>
-              <button onClick={() => { setUseDetectedStructure(false); handleGenerate(); }} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px' }}>
-                🪄 Generate Template
+        <Header title="🪄 Import from Reports" subtitle="Building your template" onBack={() => setStep('q2_qualities')} />
+        <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+          <BuiltSectionsList />
+          <div style={card}>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>
+              Would you like to copy this qualities statement so that you can add another pupil quality to your report?
+            </h2>
+            <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280', lineHeight: '1.6' }}>
+              You can choose to have this statement with name or pronoun to make it read better.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button onClick={() => handleCopySection('name', 'q2a_copy_qualities', 'q2a_copy_qualities')}
+                style={{ ...btnP, padding: '14px', textAlign: 'left' }}>
+                Yes, copy with [Name]
               </button>
-            </>
-          )}
-
-          {error && (
-            <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px 16px', marginTop: '16px', color: '#b91c1c', fontSize: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>⚠️ {error}</span>
-              <button onClick={handleGenerate} style={{ ...btnP, backgroundColor: '#ef4444', padding: '6px 12px', fontSize: '13px' }}>Try again</button>
+              <button onClick={() => handleCopySection('pronoun', 'q2a_copy_qualities', 'q2a_copy_qualities')}
+                style={{ ...btnP, padding: '14px', textAlign: 'left', backgroundColor: '#8b5cf6' }}>
+                Yes, copy with {pronounCapital} ({pronounSet.split('/')[0]})
+              </button>
+              <button onClick={() => setStep('q3_different_qualities')}
+                style={{ ...btnS, padding: '14px' }}>
+                No — move on
+              </button>
             </div>
-          )}
+          </div>
         </main>
       </div>
     );
   }
 
-  // ─── STEP: GENERATING ────────────────────────────────────────────────────
+  // ─── Q3: DIFFERENT QUALITIES ─────────────────────────────────────────────
 
-  if (step === 'generating') {
+  if (step === 'q3_different_qualities') {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-        <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '48px 40px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: '400px' }}>
-          <div style={{ fontSize: '48px', marginBottom: '20px' }}>🪄</div>
-          <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#111827' }}>Building Your Template</h2>
-          <p style={{ margin: '0 0 24px 0', color: '#6b7280', fontSize: '14px', lineHeight: '1.6' }}>{generatingMessage}</p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-            {[0,1,2].map(i => <div key={i} style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#3b82f6', animation: 'pulse 1.2s ease-in-out infinite', animationDelay: `${i * 0.2}s` }} />)}
+      <QuestionLayout
+        question="Do your reports include a different type of quality statement from another part of the report?"
+        description="For example, a sentence about classroom participation, specific skills, or a different aspect of the pupil's character that you haven't already covered."
+        onNo={() => setStep('q4_assessment')}
+        noLabel="No — move on to assessment"
+        onBack={() => setStep('q2a_copy_qualities')}
+      >
+        <ExampleBoxes label="Paste an example of this different quality statement..." />
+        <button onClick={() => {
+          setQualitiesGroupIndex(prev => prev + 1);
+          handleGroupAndAdd('qualities', 'name', `Personal Qualities ${qualitiesGroupIndex + 1}`, 'q3a_copy_qualities');
+        }} style={{ ...btnP, width: '100%', marginTop: '16px', padding: '14px' }}>
+          ✓ Read my reports and group these sentences
+        </button>
+      </QuestionLayout>
+    );
+  }
+
+  // ─── Q3a: COPY DIFFERENT QUALITIES ───────────────────────────────────────
+
+  if (step === 'q3a_copy_qualities') {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+        <Header title="🪄 Import from Reports" subtitle="Building your template" onBack={() => setStep('q3_different_qualities')} />
+        <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+          <BuiltSectionsList />
+          <div style={card}>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>
+              Would you like to copy this qualities statement so that you can add another pupil quality to your report?
+            </h2>
+            <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280', lineHeight: '1.6' }}>
+              You can choose to have this statement with name or pronoun to make it read better.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button onClick={() => handleCopySection('name', 'q3a_copy_qualities', 'q3a_copy_qualities')}
+                style={{ ...btnP, padding: '14px', textAlign: 'left' }}>
+                Yes, copy with [Name]
+              </button>
+              <button onClick={() => handleCopySection('pronoun', 'q3a_copy_qualities', 'q3a_copy_qualities')}
+                style={{ ...btnP, padding: '14px', textAlign: 'left', backgroundColor: '#8b5cf6' }}>
+                Yes, copy with {pronounCapital} ({pronounSet.split('/')[0]})
+              </button>
+              <button onClick={() => setStep('q3_different_qualities')}
+                style={{ ...btnS, padding: '14px' }}>
+                No, but add another different quality type
+              </button>
+              <button onClick={() => setStep('q4_assessment')}
+                style={{ ...btnS, padding: '14px' }}>
+                No — move on to assessment
+              </button>
+            </div>
           </div>
-          <style>{`@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}`}</style>
-          <p style={{ margin: '24px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>This usually takes 20–40 seconds</p>
-        </div>
+        </main>
       </div>
     );
   }
 
-  // ─── STEP: PREVIEW ───────────────────────────────────────────────────────
+  // ─── Q4: ASSESSMENT ───────────────────────────────────────────────────────
+
+  if (step === 'q4_assessment') {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+        <Header title="🪄 Import from Reports" subtitle="Building your template" onBack={() => setStep('q3_different_qualities')} />
+        <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+          <BuiltSectionsList />
+          <div style={card}>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>
+              Do your reports include assessment scores or percentages?
+            </h2>
+            <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280', lineHeight: '1.6' }}>
+              If your reports mention a specific score like 72% or 34/50, we can create an assessment section where you enter the score for each pupil.
+            </p>
+            <ErrorBox />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button onClick={() => {
+                // Add assessment-comment placeholder section
+                const assessmentSection: BuiltSection = {
+                  id: `section_${Date.now()}`,
+                  type: 'assessment-comment',
+                  name: 'Assessment',
+                  openerType: 'name',
+                  positionType: 'assessment',
+                  data: {
+                    scoreType: 'percentage',
+                    comments: {
+                      excellent: ['[Name] scored [Score] — an excellent result, well done!', '[Name] achieved [Score] — a fantastic result, keep it up!', '[Name] scored [Score], which is an excellent achievement.', '[Name] achieved [Score] — a great result to be really proud of.'],
+                      good: ['[Name] scored [Score] — a good result.', '[Name] achieved [Score] — a solid performance.', '[Name] scored [Score], showing good understanding of the content.', '[Name] achieved [Score] — a positive result.'],
+                      satisfactory: ['[Name] scored [Score] — a satisfactory result with some areas to develop.', '[Name] achieved [Score], with areas of strength alongside areas to work on.', '[Name] scored [Score] — there are areas to develop going forward.', '[Name] achieved [Score] and would benefit from focused revision.'],
+                      needsImprovement: ['[Name] scored [Score] — this does not fully reflect their capabilities.', '[Name] achieved [Score], though they are more capable than this result suggests.', '[Name] scored [Score] and is encouraged to make use of the support available.', '[Name] achieved [Score] — greater preparation will make a real difference.'],
+                      notCompleted: ['[Name] has not yet completed this assessment.', '[Name] was absent for this assessment.'],
+                    },
+                  },
+                };
+                setBuiltSections(prev => [...prev, assessmentSection]);
+                setStep('q5_nextsteps');
+              }} style={{ ...btnP, padding: '14px', textAlign: 'left' }}>
+                Yes — my reports include numeric scores or percentages
+              </button>
+              <button onClick={() => {
+                resetExamples();
+                // Will handle as qualities
+                setStep('q4_assessment_qualities');
+              }} style={{ ...btnP, padding: '14px', textAlign: 'left', backgroundColor: '#8b5cf6' }}>
+                Yes — my reports describe assessment performance but without a specific score
+              </button>
+              <button onClick={() => setStep('q5_nextsteps')} style={{ ...btnS, padding: '14px' }}>
+                No — my reports don't include assessment information
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // ─── Q4 QUALITIES ASSESSMENT ──────────────────────────────────────────────
+
+  if (step === 'q4_assessment_qualities') {
+    return (
+      <QuestionLayout
+        question="Paste examples of how you describe assessment performance"
+        description="Since there's no specific score, we'll create a qualities section where you can choose the right description for each pupil. Paste 3–5 examples showing different levels of performance."
+        onNo={() => setStep('q5_nextsteps')}
+        noLabel="Skip this"
+        onBack={() => setStep('q4_assessment')}
+      >
+        <ExampleBoxes label="Paste an assessment description from one report..." />
+        <button onClick={() => handleGroupAndAdd('assessment', 'name', 'Assessment Performance', 'q5_nextsteps')}
+          style={{ ...btnP, width: '100%', marginTop: '16px', padding: '14px' }}>
+          ✓ Read my reports and group these sentences
+        </button>
+      </QuestionLayout>
+    );
+  }
+
+  // ─── Q5: NEXT STEPS ───────────────────────────────────────────────────────
+
+  if (step === 'q5_nextsteps') {
+    return (
+      <QuestionLayout
+        question="Do your reports include next steps or improvement suggestions?"
+        description="Paste 3–5 examples of the first next steps sentence from different reports. If your reports always start next steps with a phrase like 'Moving forward,' include that in your examples."
+        onNo={handleAssemble}
+        noLabel="No — generate my template now"
+        onBack={() => setStep('q4_assessment')}
+      >
+        <ExampleBoxes label="Paste a next steps sentence from one report..." />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px' }}>
+          <button onClick={() => {
+            setNextStepsSentenceIndex(1);
+            handleGroupAndAdd('next-steps', 'name', 'Next Steps', 'q5a_more_nextsteps');
+          }} style={{ ...btnP, padding: '14px' }}>
+            ✓ Yes, starting with [Name] — read my reports and group these
+          </button>
+          <button onClick={() => {
+            setNextStepsSentenceIndex(1);
+            handleGroupAndAdd('next-steps', 'pronoun', 'Next Steps', 'q5a_more_nextsteps');
+          }} style={{ ...btnP, padding: '14px', backgroundColor: '#8b5cf6' }}>
+            ✓ Yes, starting with {pronounCapital} — read my reports and group these
+          </button>
+        </div>
+      </QuestionLayout>
+    );
+  }
+
+  // ─── Q5a: MORE NEXT STEPS ─────────────────────────────────────────────────
+
+  if (step === 'q5a_more_nextsteps') {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+        <Header title="🪄 Import from Reports" subtitle="Building your template" onBack={() => setStep('q5_nextsteps')} />
+        <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+          <BuiltSectionsList />
+          <div style={card}>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>
+              Would you like to add another next steps sentence to your report?
+            </h2>
+            <p style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#6b7280', lineHeight: '1.6' }}>
+              You can choose to have this statement with name or pronoun to make it read better.
+            </p>
+
+            <div style={{ marginBottom: '16px' }}>
+              <p style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '500', color: '#374151' }}>Paste 3–5 examples of the next sentence in your next steps paragraph:</p>
+              <ExampleBoxes count={5} label="Paste a next steps sentence..." />
+            </div>
+
+            <ErrorBox />
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button onClick={() => {
+                setNextStepsSentenceIndex(prev => prev + 1);
+                handleGroupAndAdd('next-steps', 'name', `Next Steps — Sentence ${nextStepsSentenceIndex + 1}`, 'q5a_more_nextsteps');
+              }} style={{ ...btnP, padding: '14px' }}>
+                Yes, starting with [Name]
+              </button>
+              <button onClick={() => {
+                setNextStepsSentenceIndex(prev => prev + 1);
+                handleGroupAndAdd('next-steps', 'pronoun', `Next Steps — Sentence ${nextStepsSentenceIndex + 1}`, 'q5a_more_nextsteps');
+              }} style={{ ...btnP, padding: '14px', backgroundColor: '#8b5cf6' }}>
+                Yes, starting with {pronounCapital} ({pronounSet.split('/')[0]})
+              </button>
+              <button onClick={handleAssemble} style={{ ...btnG, padding: '14px' }}>
+                No — generate my template now 🪄
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // ─── STEP: PREVIEW ────────────────────────────────────────────────────────
 
   if (step === 'preview' && generatedTemplate) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
         <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: isMobile ? '16px' : '20px 24px' }}>
           <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <button onClick={() => setStep('confirm')} style={btnS}>← Back</button>
-              <div>
-                <h1 style={{ margin: 0, fontSize: isMobile ? '16px' : '20px', fontWeight: '700', color: '#111827' }}>✅ Template Generated</h1>
-                <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Review, refine with more reports, or save</p>
-              </div>
+            <div>
+              <h1 style={{ margin: 0, fontSize: isMobile ? '16px' : '20px', fontWeight: '700', color: '#111827' }}>✅ Template Generated</h1>
+              <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Review, refine, or save</p>
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={handleEditFirst} style={btnS}>Save & Edit</button>
@@ -869,16 +882,8 @@ export default function ImportTemplate() {
                 <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>TEMPLATE NAME</p>
                 <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#111827' }}>{generatedTemplate.name}</h2>
               </div>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <span style={{ backgroundColor: '#f3f4f6', color: '#374151', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '500' }}>
-                  {pronounSet === 'he/his' ? '👤 He/His' : pronounSet === 'she/her' ? '👤 She/Her' : '👤 They/Their'}
-                </span>
-                {useDetectedStructure && detectedStructure && (
-                  <span style={{ backgroundColor: '#f0fdf4', color: '#166534', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '500' }}>📐 Teacher Format</span>
-                )}
-                <div style={{ backgroundColor: '#eff6ff', color: '#1d4ed8', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: '500' }}>
-                  {generatedTemplate.sections.length} sections
-                </div>
+              <div style={{ backgroundColor: '#eff6ff', color: '#1d4ed8', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: '500' }}>
+                {generatedTemplate.sections.length} sections
               </div>
             </div>
           </div>
@@ -902,29 +907,13 @@ export default function ImportTemplate() {
 
           <div style={{ ...card, border: '2px solid #8b5cf6', marginBottom: '16px' }}>
             <h3 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: '600', color: '#111827' }}>🔄 Refine with More Reports</h3>
-            <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#6b7280' }}>Paste more reports to improve the template. Paste overflow text here if you copied it earlier.</p>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <span style={{ fontSize: '13px', color: '#374151' }}>Additional reports</span>
-              <span style={{ fontSize: '12px', fontWeight: '600', color: refineCharCount > GENERATION_CHAR_LIMIT ? '#ef4444' : '#6b7280' }}>{refineCharCount.toLocaleString()} / {GENERATION_CHAR_LIMIT.toLocaleString()}</span>
-            </div>
-            <textarea value={refineText} onChange={e => setRefineText(e.target.value.substring(0, GENERATION_CHAR_LIMIT))} placeholder="Paste more reports here..." style={{ ...txa, minHeight: '120px', marginBottom: '12px' }} />
-            {refineError && (
-              <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '10px', marginBottom: '10px', color: '#b91c1c', fontSize: '13px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>⚠️ {refineError}</span>
-                <button onClick={handleRefine} style={{ ...btnP, backgroundColor: '#ef4444', padding: '4px 10px', fontSize: '12px' }}>Try again</button>
-              </div>
-            )}
-            <button onClick={handleRefine} disabled={refineCharCount < 200 || isRefining} style={{ width: '100%', padding: '12px', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', backgroundColor: isRefining ? '#9ca3af' : refineCharCount >= 200 ? '#8b5cf6' : '#d1d5db', color: 'white', cursor: refineCharCount >= 200 && !isRefining ? 'pointer' : 'not-allowed' }}>
+            <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#6b7280' }}>Paste more reports to add additional options and improve variety.</p>
+            <textarea value={refineText} onChange={e => setRefineText(e.target.value)} placeholder="Paste more reports here..." style={{ ...txa, minHeight: '120px', marginBottom: '12px' }} />
+            {error && <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '10px', marginBottom: '10px', color: '#b91c1c', fontSize: '13px' }}>⚠️ {error}</div>}
+            <button onClick={handleRefine} disabled={refineText.length < 200 || isRefining}
+              style={{ width: '100%', padding: '12px', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', backgroundColor: isRefining ? '#9ca3af' : refineText.length >= 200 ? '#8b5cf6' : '#d1d5db', color: 'white', cursor: refineText.length >= 200 && !isRefining ? 'pointer' : 'not-allowed' }}>
               {isRefining ? '🔄 Refining...' : '🔄 Refine Template'}
             </button>
-          </div>
-
-          <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '16px', marginBottom: '24px' }}>
-            <p style={{ margin: 0, fontSize: '13px', color: '#15803d', lineHeight: '1.6' }}>
-              <strong>Save Template</strong> — saves to your library ready to use.<br />
-              <strong>Save &amp; Edit</strong> — saves and opens in the editor to fine-tune.<br />
-              <strong>Refine</strong> — add more reports to improve before saving.
-            </p>
           </div>
 
           <div style={{ display: 'flex', gap: '10px' }}>
@@ -936,7 +925,7 @@ export default function ImportTemplate() {
     );
   }
 
-  // ─── STEP: SAVED ─────────────────────────────────────────────────────────
+  // ─── STEP: SAVED ──────────────────────────────────────────────────────────
 
   if (step === 'saved') {
     return (
@@ -945,7 +934,7 @@ export default function ImportTemplate() {
           <div style={{ fontSize: '56px', marginBottom: '16px' }}>🎉</div>
           <h2 style={{ margin: '0 0 8px 0', fontSize: '22px', fontWeight: '700', color: '#111827' }}>Template Saved!</h2>
           <p style={{ margin: '0 0 8px 0', color: '#374151', fontWeight: '600', fontSize: '16px' }}>{generatedTemplate?.name}</p>
-          <p style={{ margin: '0 0 32px 0', color: '#6b7280', fontSize: '14px' }}>Your template is ready to use. You can edit it at any time from the Manage Templates page.</p>
+          <p style={{ margin: '0 0 32px 0', color: '#6b7280', fontSize: '14px' }}>Your template is ready to use.</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
               <button style={{ ...btnP, width: '100%', padding: '14px', fontSize: '15px' }}>Go to Templates</button>
