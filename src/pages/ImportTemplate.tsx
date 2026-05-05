@@ -6,205 +6,103 @@ import { TemplateSection } from '../types';
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 
-type WizardStep =
-  | 'paste'
-  | 'preprocess'
-  | 'q1_progress'
-  | 'q2_qualities'
-  | 'q2a_copy_qualities'
-  | 'q3_different_qualities'
-  | 'q3a_copy_qualities'
-  | 'q4_assessment'
-  | 'q4_assessment_type'
-  | 'q4_assessment_count'
-  | 'q4_assessment_sentence_type'
-  | 'q4_assessment_examples'
-  | 'q4_assessment_part2'
-  | 'q4_assessment_part3'
-  | 'q4_assessment_judgement'
-  | 'q4_assessment_qualities'
-  | 'q5_nextsteps'
-  | 'q5a_more_nextsteps'
-  | 'add_sections'
-  | 'add_standard'
-  | 'add_qualities'
-  | 'add_nextsteps'
-  | 'generating'
-  | 'preview'
-  | 'saved';
-
 type PronounSet = 'he/his' | 'she/her' | 'they/their';
 type OpenerType = 'name' | 'pronoun';
-type AssessmentType = 'same-statement' | 'different-statements';
-type AssessmentCount = 'one' | 'multiple';
-type AssessmentSentenceType = 'one-sentence' | 'separate';
-type GroupMode = 'find-more' | 'use-exactly';
+type MainStep = 'paste' | 'builder' | 'generating' | 'preview' | 'saved';
+type SectionStep =
+  | 'menu'
+  | 'rating_name' | 'rating_scale' | 'rating_examples' | 'rating_building'
+  | 'qualities_selected' | 'qualities_building' | 'qualities_copy'
+  | 'standard_type' | 'standard_single' | 'standard_multi'
+  | 'assessment_flow'
+  | 'development_selected' | 'development_building' | 'development_more'
+  | 'nextsteps_selected' | 'nextsteps_building' | 'nextsteps_more';
 
 interface BuiltSection {
   id: string;
-  type: 'qualities' | 'next-steps' | 'assessment-comment' | 'standard-comment' | 'personalised-comment' | 'optional-additional-comment';
+  type: 'qualities' | 'next-steps' | 'assessment-comment' | 'standard-comment' | 'personalised-comment' | 'rated-comment' | 'optional-additional-comment';
   name: string;
   openerType: OpenerType;
-  positionType: string;
   data: any;
 }
 
-interface StandardCommentDraft {
-  id: string;
-  name: string;
-  content: string;
+interface AssessmentState {
+  statementType: 'same' | 'different' | null;
+  count: 'one' | 'multiple' | null;
+  sentenceType: 'one-sentence' | 'separate' | null;
+  totalParts: number;
+  partIndex: number;
+  examples: string[];
+  wantsJudgement: boolean | null;
 }
 
-interface GeneratedTemplate {
-  name: string;
-  sections: TemplateSection[];
-}
+interface GeneratedTemplate { name: string; sections: TemplateSection[]; }
 
 const SUPABASE_URL = 'https://wozbrojwuzktwrzngllh.supabase.co/functions/v1/generate-template';
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function getPronounCapital(p: PronounSet) { return p.split('/')[0].charAt(0).toUpperCase() + p.split('/')[0].slice(1); }
+function getPronounFull(p: PronounSet) { return ({ "he/his": "HE/HIM/HIS/HIMSELF", "she/her": "SHE/HER/HERS/HERSELF", "they/their": "THEY/THEM/THEIR/THEMSELVES" } as Record<string, string>)[p] || "THEY/THEM/THEIR/THEMSELVES"; }
+function stripPercent(text: string) { return text.replace(/\[Score\]%/g, '[Score]').replace(/\b\d{1,3}%/g, '[Score]').replace(/\b\d{1,3}\/\d{1,3}\b/g, '[Score]'); }
 
-function getPronounCapital(pronounSet: PronounSet): string {
-  return pronounSet.split('/')[0].charAt(0).toUpperCase() + pronounSet.split('/')[0].slice(1);
-}
-
-function replaceScoresWithPlaceholder(text: string): string {
-  return text
-    .replace(/\b\d{1,3}%/g, '[Score]')
-    .replace(/\b\d{1,3}\/\d{1,3}\b/g, '[Score]')
-    .replace(/\b\d{1,3} out of \d{1,3}\b/gi, '[Score]');
-}
-
-function replaceNamesWithPlaceholder(text: string): string {
-  // Replace capitalised words that aren't subject/topic names
-  const subjectWords = new Set(['Queen', 'Death', 'Scots', 'Romans', 'Black', 'Mary', 'History', 'Maths', 'Mathematics', 'English', 'Science', 'French', 'Spanish', 'PE', 'Art', 'Music', 'Drama', 'Business', 'Geography', 'Biology', 'Chemistry', 'Physics', 'Computing', 'National', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'January', 'February', 'March', 'April', 'June', 'July', 'August', 'September', 'October', 'November', 'December', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6']);
-  return text.replace(/\b([A-Z][a-z]{1,})\b/g, (match) => {
-    if (subjectWords.has(match)) return match;
-    return '[Name]';
-  });
-}
-
-function buildSameStatementSection(name: string, examples: string[]): BuiltSection {
-  const validExamples = examples.filter(e => e.trim().length > 5);
-  const cleanedComments = validExamples.map(e => {
-    let cleaned = replaceNamesWithPlaceholder(e.trim());
-    cleaned = replaceScoresWithPlaceholder(cleaned);
-    return cleaned;
-  });
-  const unique = Array.from(new Set(cleanedComments));
-  return {
-    id: `section_${Date.now()}`,
-    type: 'personalised-comment',
-    name,
-    openerType: 'name',
-    positionType: 'personalised-comment',
-    data: {
-      instruction: 'Enter the assessment score for this pupil',
-      categories: { 'Assessment Score': unique.length > 0 ? unique : ['[Name] scored [Score] in the assessment.'] },
-    },
-  };
-}
-
-// Build section directly from teacher's examples without calling Claude
-function buildExactSection(name: string, positionType: string, openerType: OpenerType, pronounCapital: string, examples: string[]): { sectionName: string; headings: { name: string; comments: string[] }[] } {
-  const cleanedComments = examples
-    .filter(e => e.trim().length > 5)
-    .map(e => {
-      let cleaned = replaceNamesWithPlaceholder(e.trim());
-      cleaned = replaceScoresWithPlaceholder(cleaned);
-      // Apply opener type
-      if (openerType === 'pronoun') {
-        cleaned = cleaned.replace(/^\[Name\]/, pronounCapital);
-      }
-      return cleaned;
-    });
-
-  return {
-    sectionName: name,
-    headings: [{ name: 'Option', comments: Array.from(new Set(cleanedComments)) }],
-  };
-}
-
-async function callGroup(params: {
-  subject: string;
-  yearGroup: string;
-  reportText: string;
-  pronounSet: PronounSet;
-  examples: string[];
-  positionType: string;
-  openerType: OpenerType;
-  sectionName: string;
-}): Promise<{ sectionName: string; headings: { name: string; comments: string[] }[] }> {
-  const response = await fetch(SUPABASE_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mode: 'group', ...params }),
-  });
-  if (!response.ok) throw new Error('Failed to group sentences');
-  return response.json();
-}
-
-async function callRewrite(params: {
-  pronounSet: PronounSet;
-  openerType: OpenerType;
-  sourceSection: any;
-}): Promise<{ sectionName: string; headings: { name: string; comments: string[] }[] }> {
-  const response = await fetch(SUPABASE_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mode: 'rewrite', ...params }),
-  });
-  if (!response.ok) throw new Error('Failed to rewrite section');
-  return response.json();
-}
-
-// ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
+// ─── COMPONENT ────────────────────────────────────────────────────────────────
 
 export default function ImportTemplate() {
   const navigate = useNavigate();
   const { addTemplate } = useData();
 
-  const [step, setStep] = useState<WizardStep>('paste');
+  // Core
+  const [mainStep, setMainStep] = useState<MainStep>('paste');
+  const [sectionStep, setSectionStep] = useState<SectionStep>('menu');
   const [subject, setSubject] = useState('');
   const [yearGroup, setYearGroup] = useState('');
   const [pronounSet, setPronounSet] = useState<PronounSet>('they/their');
   const [rawReportText, setRawReportText] = useState('');
+  const [builtSections, setBuiltSections] = useState<BuiltSection[]>([]);
+  const [generatedTemplate, setGeneratedTemplate] = useState<GeneratedTemplate | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [isMobile] = useState(window.innerWidth <= 768);
 
-  const [standardComments, setStandardComments] = useState<StandardCommentDraft[]>([]);
-  const [scName, setScName] = useState('');
-  const [scContent, setScContent] = useState('');
+  // Rating section state
+  const [ratingName, setRatingName] = useState('');
+  const [ratingScale, setRatingScale] = useState<'four-level' | 'own' | null>(null);
+  const [ratingExamples, setRatingExamples] = useState(['', '', '', '', '']);
 
-  const [builtSections, setBuiltSections] = useState<BuiltSection[]>([]);
-  const [currentExamples, setCurrentExamples] = useState<string[]>(['', '', '', '', '']);
-  const [qualitiesGroupIndex, setQualitiesGroupIndex] = useState(0);
-  const [nextStepsSentenceIndex, setNextStepsSentenceIndex] = useState(1);
+  // Qualities section state
+  const [qualitiesName, setQualitiesName] = useState('Personal Qualities');
+  const [qualitiesSelected, setQualitiesSelected] = useState('');
+  const [qualitiesOpener, setQualitiesOpener] = useState<OpenerType>('name');
   const [lastQualitiesResult, setLastQualitiesResult] = useState<any>(null);
-  const [groupMode, setGroupMode] = useState<GroupMode>('find-more');
+  const [qualitiesCopyOpener, setQualitiesCopyOpener] = useState<OpenerType>('pronoun');
 
-  // Add sections state
-  const [addSectionType, setAddSectionType] = useState<string>('');
-  const [addSectionName, setAddSectionName] = useState('');
-  const [addSectionContent, setAddSectionContent] = useState('');
-  const [addSectionOpener, setAddSectionOpener] = useState<OpenerType>('name');
-  const [addSectionExamples, setAddSectionExamples] = useState<string[]>(['', '', '', '', '']);
+  // Standard comment state
+  const [standardName, setStandardName] = useState('');
+  const [standardContent, setStandardContent] = useState('');
+  const [multiOptions, setMultiOptions] = useState<{ label: string; content: string }[]>([{ label: '', content: '' }]);
 
-  // Assessment flow
-  const [assessmentType, setAssessmentType] = useState<AssessmentType>('same-statement');
-  const [assessmentCount, setAssessmentCount] = useState<AssessmentCount>('one');
-  const [assessmentSentenceType, setAssessmentSentenceType] = useState<AssessmentSentenceType>('separate');
-  const [assessmentPartIndex, setAssessmentPartIndex] = useState(1);
-  const [totalAssessmentParts, setTotalAssessmentParts] = useState(2);
+  // Development/next steps state
+  const [devName, setDevName] = useState('');
+  const [devSelected, setDevSelected] = useState('');
+  const [devOpener, setDevOpener] = useState<OpenerType>('name');
+  const [devType, setDevType] = useState<'development' | 'nextsteps'>('development');
+  const [devSentenceIndex, setDevSentenceIndex] = useState(1);
 
-  const [generatedTemplate, setGeneratedTemplate] = useState<GeneratedTemplate | null>(null);
+  // Assessment state
+  const [assessment, setAssessment] = useState<AssessmentState>({
+    statementType: null, count: null, sentenceType: null,
+    totalParts: 2, partIndex: 1, examples: ['', '', '', '', ''],
+    wantsJudgement: null,
+  });
+  const [assessmentStep, setAssessmentStep] = useState<'type' | 'count' | 'sentence_type' | 'examples' | 'part2' | 'part3' | 'judgement' | 'judgement_examples'>('type');
+
+  // Refine
   const [refineText, setRefineText] = useState('');
   const [isRefining, setIsRefining] = useState(false);
 
-  // ─── STYLES ────────────────────────────────────────────────────────────────
+  const pronounCapital = getPronounCapital(pronounSet);
 
+  // ─── STYLES ────────────────────────────────────────────────────────────────
   const card: React.CSSProperties = { backgroundColor: 'white', borderRadius: '10px', border: '1px solid #e5e7eb', padding: '20px', marginBottom: '16px' };
   const lbl: React.CSSProperties = { display: 'block', fontSize: '13px', fontWeight: '500', color: '#374151', marginBottom: '6px' };
   const inp: React.CSSProperties = { width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', outline: 'none', boxSizing: 'border-box' };
@@ -214,832 +112,735 @@ export default function ImportTemplate() {
   const btnG: React.CSSProperties = { backgroundColor: '#10b981', color: 'white', padding: '10px 18px', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' };
   const btnV: React.CSSProperties = { backgroundColor: '#8b5cf6', color: 'white', padding: '10px 18px', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' };
 
-  const pronounCapital = getPronounCapital(pronounSet);
+  // ─── API CALLS ─────────────────────────────────────────────────────────────
 
-  // ─── HANDLERS ─────────────────────────────────────────────────────────────
-
-  const resetExamples = () => setCurrentExamples(['', '', '', '', '']);
-  const getValidExamples = () => currentExamples.filter(e => e.trim().length > 5);
-
-  const handleAddStandardComment = () => {
-    if (!scName.trim() || !scContent.trim()) return;
-    setStandardComments(prev => [...prev, { id: Date.now().toString(), name: scName.trim(), content: scContent.trim() }]);
-    setScName(''); setScContent('');
+  const callApi = async (body: any) => {
+    const response = await fetch(SUPABASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!response.ok) throw new Error('API call failed');
+    return response.json();
   };
 
-  const addSectionFromResult = (result: any, positionType: string, openerType: OpenerType): BuiltSection => {
-    const isNextSteps = positionType === 'next-steps' || positionType === 'development';
-    return {
-      id: `section_${Date.now()}`,
-      type: isNextSteps ? 'next-steps' : positionType === 'assessment-comment' ? 'assessment-comment' : 'qualities',
-      name: result.sectionName,
-      openerType,
-      positionType,
-      data: isNextSteps
-        ? { focusAreas: Object.fromEntries(result.headings.map((h: any) => [h.name, h.comments])) }
-        : positionType === 'assessment-comment'
-        ? { scoreType: 'percentage', comments: buildAssessmentComments(result.headings) }
-        : { comments: Object.fromEntries(result.headings.map((h: any) => [h.name, h.comments])) },
-    };
+  // ─── SECTION HANDLERS ─────────────────────────────────────────────────────
+
+  const addSection = (section: BuiltSection) => {
+    setBuiltSections(prev => [...prev, section]);
+    setSectionStep('menu');
+    setError(null);
   };
 
-  const handleGroupAndAdd = async (positionType: string, openerType: OpenerType, sectionName: string, nextStep: WizardStep, useExactly = false) => {
-    const examples = getValidExamples();
+  const handleBuildRating = async () => {
+    const examples = ratingExamples.filter(e => e.trim().length > 5);
     if (examples.length === 0) { setError('Please paste at least one example sentence.'); return; }
-    setError(null);
     setIsLoading(true);
-    setLoadingMessage(useExactly ? 'Building section from your examples...' : 'Reading your reports and grouping sentences...');
-
+    setLoadingMessage('Building your rating section...');
     try {
-      let result: any;
-      if (useExactly) {
-        result = buildExactSection(sectionName, positionType, openerType, pronounCapital, examples);
+      const result = await callApi({ mode: 'rating', subject, yearGroup, reportText: rawReportText, pronounSet, sectionName: ratingName, scaleType: ratingScale, examples });
+      if (result.type === 'rated-comment') {
+        addSection({ id: `s_${Date.now()}`, type: 'rated-comment', name: ratingName, openerType: 'name', data: { comments: result.result } });
       } else {
-        result = await callGroup({ subject, yearGroup, reportText: rawReportText, pronounSet, examples, positionType, openerType, sectionName });
+        addSection({ id: `s_${Date.now()}`, type: 'qualities', name: ratingName, openerType: 'name', data: { comments: Object.fromEntries(result.result.headings.map((h: any) => [h.name, h.comments])) } });
       }
-
-      const newSection = addSectionFromResult(result, positionType, openerType);
-      setBuiltSections(prev => [...prev, newSection]);
-
-      if (positionType !== 'next-steps' && positionType !== 'development' && positionType !== 'assessment-comment') {
-        setLastQualitiesResult(result);
-      }
-
-      resetExamples();
-      setGroupMode('find-more');
-      setStep(nextStep);
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+      setRatingName(''); setRatingScale(null); setRatingExamples(['', '', '', '', '']);
+    } catch { setError('Building failed. Please try again.'); }
+    finally { setIsLoading(false); }
   };
 
-  const handleCopySection = async (openerType: OpenerType, repeatStep: WizardStep) => {
-    if (!lastQualitiesResult) return;
-    setError(null);
+  const handleBuildQualities = async () => {
+    if (!qualitiesSelected.trim()) { setError('Please paste your selected quality sentences.'); return; }
     setIsLoading(true);
-    setLoadingMessage('Rewriting section with ' + (openerType === 'pronoun' ? pronounCapital : '[Name]') + '...');
+    setLoadingMessage('Extracting quality sentences from your reports...');
     try {
-      const rewritten = await callRewrite({ pronounSet, openerType, sourceSection: lastQualitiesResult });
-      const newSection: BuiltSection = {
-        id: `section_${Date.now()}`,
-        type: 'qualities',
-        name: rewritten.sectionName + (openerType === 'pronoun' ? ` — ${pronounCapital}-led` : ' — [Name]-led'),
-        openerType,
-        positionType: 'qualities',
-        data: { comments: Object.fromEntries(rewritten.headings.map((h: any) => [h.name, h.comments])) },
-      };
+      const result = await callApi({ mode: 'extract-qualities', subject, yearGroup, reportText: rawReportText, pronounSet, sectionName: qualitiesName, openerType: qualitiesOpener, selectedText: qualitiesSelected });
+      const newSection: BuiltSection = { id: `s_${Date.now()}`, type: 'qualities', name: result.sectionName || qualitiesName, openerType: qualitiesOpener, data: { comments: Object.fromEntries(result.headings.map((h: any) => [h.name, h.comments])) } };
       setBuiltSections(prev => [...prev, newSection]);
-      setStep(repeatStep);
-    } catch (err: any) {
-      setError(err.message || 'Rewrite failed. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+      setLastQualitiesResult(result);
+      setSectionStep('qualities_copy');
+    } catch { setError('Extraction failed. Please try again.'); }
+    finally { setIsLoading(false); }
   };
 
-  const buildAssessmentComments = (headings: any[]) => {
-    const levels: Record<string, string[]> = { excellent: [], good: [], satisfactory: [], needsImprovement: [], notCompleted: [] };
-    headings.forEach(h => {
-      const name = h.name.toLowerCase();
-      if (name.includes('excellent') || name.includes('strong') || name.includes('outstanding') || name.includes('very well')) levels.excellent.push(...h.comments);
-      else if (name.includes('good') || name.includes('solid') || name.includes('well')) levels.good.push(...h.comments);
-      else if (name.includes('satisfactory') || name.includes('some') || name.includes('challenge')) levels.satisfactory.push(...h.comments);
-      else if (name.includes('improvement') || name.includes('weak') || name.includes('poor') || name.includes('difficult')) levels.needsImprovement.push(...h.comments);
-      else if (name.includes('completed') || name.includes('absent') || name.includes('missed')) levels.notCompleted.push(...h.comments);
-      else levels.good.push(...h.comments);
-    });
-    if (levels.excellent.length === 0) levels.excellent = ['[Name] scored [Score] — an excellent result, keep it up!', '[Name] achieved [Score] — a fantastic result.', '[Name] scored [Score], showing excellent understanding.', '[Name] achieved [Score] — a great result to be really proud of.'];
-    if (levels.good.length === 0) levels.good = ['[Name] scored [Score] — a good result.', '[Name] achieved [Score] — a solid performance.', '[Name] scored [Score], demonstrating good understanding.', '[Name] achieved [Score] — a positive result.'];
-    if (levels.satisfactory.length === 0) levels.satisfactory = ['[Name] scored [Score] with some areas to develop.', '[Name] achieved [Score] — there are areas to work on going forward.', '[Name] scored [Score], showing understanding in several areas.', '[Name] achieved [Score] and would benefit from focused revision.'];
-    if (levels.needsImprovement.length === 0) levels.needsImprovement = ['[Name] scored [Score] — this does not fully reflect their capabilities.', '[Name] achieved [Score], though they are more capable than this result suggests.', '[Name] scored [Score] and is encouraged to make use of support available.', '[Name] achieved [Score] — greater preparation will make a real difference.'];
-    if (levels.notCompleted.length === 0) levels.notCompleted = ['[Name] has not yet completed this assessment.', '[Name] was absent for this assessment.'];
-    return levels;
+  const handleCopyQualities = async (openerType: OpenerType) => {
+    if (!lastQualitiesResult) return;
+    setIsLoading(true);
+    setLoadingMessage('Rewriting with ' + (openerType === 'pronoun' ? pronounCapital : '[Name]') + '...');
+    try {
+      const rewritten = await callApi({ mode: 'rewrite', pronounSet, openerType, sourceSection: lastQualitiesResult });
+      const lastSection = builtSections[builtSections.length - 1];
+      addSection({ id: `s_${Date.now()}`, type: 'qualities', name: (lastSection?.name || qualitiesName) + (openerType === 'pronoun' ? ` — ${pronounCapital}-led` : ' — [Name]-led'), openerType, data: { comments: Object.fromEntries(rewritten.headings.map((h: any) => [h.name, h.comments])) } });
+    } catch { setError('Rewrite failed. Please try again.'); }
+    finally { setIsLoading(false); }
+  };
+
+  const handleBuildDevelopment = async () => {
+    if (!devSelected.trim()) { setError('Please paste your selected sentences.'); return; }
+    setIsLoading(true);
+    setLoadingMessage('Extracting and grouping sentences...');
+    try {
+      const result = await callApi({ mode: 'extract-development', subject, yearGroup, reportText: rawReportText, pronounSet, sectionName: devName, openerType: devOpener, positionType: devType, selectedText: devSelected });
+      const sName = devType === 'nextsteps' && devSentenceIndex > 1 ? `${devName} — Sentence ${devSentenceIndex}` : (result.sectionName || devName);
+      addSection({ id: `s_${Date.now()}`, type: 'next-steps', name: sName, openerType: devOpener, data: { focusAreas: result.focusAreas || {} } });
+      setDevSentenceIndex(prev => prev + 1);
+      setSectionStep(devType === 'nextsteps' ? 'nextsteps_more' : 'development_more');
+    } catch { setError('Extraction failed. Please try again.'); }
+    finally { setIsLoading(false); }
+  };
+
+  const handleAddStandardSingle = () => {
+    if (!standardName.trim() || !standardContent.trim()) { setError('Please enter both a name and the text.'); return; }
+    addSection({ id: `s_${Date.now()}`, type: 'standard-comment', name: standardName.trim(), openerType: 'name', data: { content: standardContent.trim() } });
+    setStandardName(''); setStandardContent('');
+  };
+
+  const handleAddStandardMulti = () => {
+    const valid = multiOptions.filter(o => o.label.trim() && o.content.trim());
+    if (!standardName.trim() || valid.length === 0) { setError('Please enter a section name and at least one option.'); return; }
+    const comments: Record<string, string[]> = {};
+    valid.forEach(o => { comments[o.label.trim()] = [o.content.trim()]; });
+    addSection({ id: `s_${Date.now()}`, type: 'qualities', name: standardName.trim(), openerType: 'name', data: { comments } });
+    setStandardName(''); setMultiOptions([{ label: '', content: '' }]);
+  };
+
+  const handleBuildAssessmentSame = (examples: string[], name: string) => {
+    const cleaned = examples.filter(e => e.trim()).map(e => stripPercent(e.trim().replace(/\b[A-Z][a-z]{2,}\b/g, (m) => ['Monday','Tuesday','Wednesday','Thursday','Friday','National','Maths','Mathematics','English','History','Science','French','Spanish','Biology','Chemistry','Physics','Computing','Geography','Drama','Music','Art','Business','Black','Death','Mary','Queen','Scots','Romans'].includes(m) ? m : '[Name]')));
+    addSection({ id: `s_${Date.now()}`, type: 'personalised-comment', name, openerType: 'name', data: { instruction: 'Enter the assessment score for this pupil', categories: { 'Assessment Score': Array.from(new Set(cleaned)).filter(Boolean) || ['[Name] scored [Score] in the assessment.'] } } });
   };
 
   const handleAssemble = () => {
     setIsLoading(true);
     setLoadingMessage('Assembling your template...');
-    setStep('generating');
-
-    const allSections: BuiltSection[] = [
-      ...standardComments.map(sc => ({
-        id: sc.id,
-        type: 'standard-comment' as const,
-        name: sc.name,
-        positionType: 'standard',
-        openerType: 'name' as OpenerType,
-        data: { content: sc.content },
-      })),
-      ...builtSections,
-    ];
-
-    // Mechanical assembly — no API call needed
-    fetch(SUPABASE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'assemble', subject, yearGroup, pronounSet, builtSections: allSections }),
-    })
-      .then(r => r.json())
-      .then(data => {
-        if (!data.templateName || !data.sections) throw new Error('Invalid template structure');
-        setGeneratedTemplate({ name: data.templateName, sections: data.sections });
-        setStep('preview');
-      })
-      .catch(err => {
-        setError(err.message || 'Assembly failed. Please try again.');
-        setStep('add_sections');
-      })
+    setMainStep('generating');
+    callApi({ mode: 'assemble', subject, yearGroup, builtSections })
+      .then(data => { setGeneratedTemplate({ name: data.templateName, sections: data.sections }); setMainStep('preview'); })
+      .catch(err => { setError(err.message); setMainStep('builder'); setSectionStep('menu'); })
       .finally(() => setIsLoading(false));
   };
 
   const handleRefine = async () => {
-    if (!refineText.trim() || refineText.length < 200) { setError('Please paste more reports — at least 200 characters needed.'); return; }
-    setError(null); setIsRefining(true);
+    if (refineText.length < 200) { setError('Please paste more reports.'); return; }
+    setIsRefining(true); setError(null);
     try {
-      const response = await fetch(SUPABASE_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: 'refine', subject, yearGroup, pronounSet, existingTemplate: { name: generatedTemplate?.name, sections: generatedTemplate?.sections }, refineText }),
-      });
-      if (!response.ok) throw new Error('Refinement failed');
-      const data = await response.json();
+      const data = await callApi({ mode: 'refine', subject, yearGroup, pronounSet, existingTemplate: { name: generatedTemplate?.name, sections: generatedTemplate?.sections }, refineText });
       setGeneratedTemplate({ name: data.templateName, sections: data.sections });
       setRefineText('');
-    } catch (err: any) { setError(err.message || 'Refinement failed.'); }
+    } catch { setError('Refinement failed.'); }
     finally { setIsRefining(false); }
   };
 
-  const handleSave = () => {
-    if (!generatedTemplate) return;
-    addTemplate({ name: generatedTemplate.name, sections: generatedTemplate.sections });
-    setStep('saved');
-  };
+  const handleSave = () => { if (!generatedTemplate) return; addTemplate({ name: generatedTemplate.name, sections: generatedTemplate.sections }); setMainStep('saved'); };
+  const handleEditFirst = () => { if (!generatedTemplate) return; addTemplate({ name: generatedTemplate.name, sections: generatedTemplate.sections }); navigate('/create-template', { state: { editTemplate: { name: generatedTemplate.name, sections: generatedTemplate.sections } } }); };
+  const handleReset = () => { setMainStep('paste'); setSectionStep('menu'); setSubject(''); setYearGroup(''); setRawReportText(''); setPronounSet('they/their'); setBuiltSections([]); setGeneratedTemplate(null); setError(null); setRatingName(''); setRatingScale(null); setRatingExamples(['','','','','']); setQualitiesSelected(''); setDevSelected(''); setDevSentenceIndex(1); setLastQualitiesResult(null); };
 
-  const handleEditFirst = () => {
-    if (!generatedTemplate) return;
-    addTemplate({ name: generatedTemplate.name, sections: generatedTemplate.sections });
-    navigate('/create-template', { state: { editTemplate: { name: generatedTemplate.name, sections: generatedTemplate.sections } } });
-  };
+  // ─── SHARED ────────────────────────────────────────────────────────────────
 
-  const handleReset = () => {
-    setStep('paste'); setSubject(''); setYearGroup(''); setRawReportText('');
-    setPronounSet('they/their'); setStandardComments([]); setBuiltSections([]);
-    setGeneratedTemplate(null); setError(null); resetExamples();
-    setQualitiesGroupIndex(0); setNextStepsSentenceIndex(1);
-    setAssessmentPartIndex(1); setLastQualitiesResult(null); setGroupMode('find-more');
-  };
-
-  const getSectionSummary = (section: TemplateSection): string => {
-    switch (section.type) {
-      case 'qualities': { const h = Object.keys(section.data?.comments || {}); return `${h.length} options: ${h.slice(0, 3).join(', ')}${h.length > 3 ? '...' : ''}`; }
-      case 'standard-comment': return ((section.data?.content || '') as string).substring(0, 80) + '...';
-      case 'assessment-comment': return 'Assessment with [Score] — 5 levels';
-      case 'personalised-comment': return 'Teacher enters score per pupil';
-      case 'next-steps': { const a = Object.keys(section.data?.focusAreas || {}); return `${a.length} focus areas`; }
-      case 'new-line': return 'Line break';
-      case 'optional-additional-comment': return 'Free text box';
-      default: return '';
-    }
-  };
-
-  const getSectionTypeColor = (type: string) => ({ 'standard-comment': '#10b981', 'assessment-comment': '#8b5cf6', 'personalised-comment': '#f59e0b', 'next-steps': '#06b6d4', 'qualities': '#f59e0b', 'new-line': '#9ca3af', 'optional-additional-comment': '#ef4444' }[type] || '#6b7280');
-  const getSectionTypeLabel = (type: string) => ({ 'standard-comment': 'Standard Comment', 'assessment-comment': 'Assessment', 'personalised-comment': 'Score Entry', 'next-steps': 'Next Steps', 'qualities': 'Choice Comment', 'new-line': 'New Line', 'optional-additional-comment': 'Optional Comment' }[type] || type);
-
-  const pronounOptions: { value: PronounSet; label: string; example: string }[] = [
-    { value: 'he/his', label: 'He / His', example: 'He works hard. His effort is excellent.' },
-    { value: 'she/her', label: 'She / Her', example: 'She works hard. Her effort is excellent.' },
-    { value: 'they/their', label: 'They / Their', example: 'They work hard. Their effort is excellent.' },
-  ];
-
-  // ─── SHARED COMPONENTS ────────────────────────────────────────────────────
-
-  const Header = ({ title, subtitle, onBack }: { title: string; subtitle?: string; onBack?: () => void }) => (
+  const Header = ({ onBack, subtitle }: { onBack?: () => void; subtitle?: string }) => (
     <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: isMobile ? '16px' : '20px 24px', display: 'flex', alignItems: 'center', gap: '16px', position: 'sticky', top: 0, zIndex: 10 }}>
       {onBack ? <button onClick={onBack} style={btnS}>← Back</button> : <Link to="/manage-templates" style={{ textDecoration: 'none' }}><button style={btnS}>← Back</button></Link>}
       <div>
-        <h1 style={{ margin: 0, fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: '#111827' }}>{title}</h1>
+        <h1 style={{ margin: 0, fontSize: isMobile ? '18px' : '22px', fontWeight: '700', color: '#111827' }}>🪄 Import from Reports</h1>
         {subtitle && <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>{subtitle}</p>}
       </div>
     </header>
   );
 
-  const ExampleBoxes = ({ count = 5, label = 'Paste an example sentence', examples: exs = currentExamples, onChange = (i: number, v: string) => { const u = [...currentExamples]; u[i] = v; setCurrentExamples(u); } }: { count?: number; label?: string; examples?: string[]; onChange?: (i: number, v: string) => void }) => (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i}>
-          <label style={{ ...lbl, fontSize: '12px', color: '#9ca3af' }}>Example {i + 1}{i > 1 ? ' (optional)' : ''}</label>
-          <input type="text" value={exs[i] || ''} onChange={e => onChange(i, e.target.value)} placeholder={label} style={inp} />
-        </div>
-      ))}
-    </div>
-  );
+  const ErrorBox = () => error ? <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', color: '#b91c1c', fontSize: '14px' }}>⚠️ {error}</div> : null;
 
-  const GroupModeToggle = () => (
-    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', marginTop: '4px' }}>
-      <button
-        onClick={() => setGroupMode('find-more')}
-        style={{ flex: 1, padding: '10px', borderRadius: '8px', border: groupMode === 'find-more' ? '2px solid #3b82f6' : '1px solid #d1d5db', backgroundColor: groupMode === 'find-more' ? '#eff6ff' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: groupMode === 'find-more' ? '600' : '400', color: groupMode === 'find-more' ? '#1d4ed8' : '#374151' }}
-      >
-        🔍 Read all my reports and find more versions
-      </button>
-      <button
-        onClick={() => setGroupMode('use-exactly')}
-        style={{ flex: 1, padding: '10px', borderRadius: '8px', border: groupMode === 'use-exactly' ? '2px solid #10b981' : '1px solid #d1d5db', backgroundColor: groupMode === 'use-exactly' ? '#f0fdf4' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: groupMode === 'use-exactly' ? '600' : '400', color: groupMode === 'use-exactly' ? '#166534' : '#374151' }}
-      >
-        ✓ Use exactly these options as they are
-      </button>
-    </div>
-  );
-
-  const BuiltSectionsList = () => builtSections.length > 0 ? (
+  const BuiltList = () => builtSections.length > 0 ? (
     <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '12px', marginBottom: '16px' }}>
-      <p style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: '600', color: '#166534' }}>✅ Sections built so far ({builtSections.length}):</p>
-      {builtSections.map((s, i) => <p key={s.id} style={{ margin: '2px 0', fontSize: '12px', color: '#15803d' }}>{i + 1}. {s.name} ({s.openerType === 'pronoun' ? pronounCapital + '-led' : '[Name]-led'})</p>)}
+      <p style={{ margin: '0 0 6px 0', fontSize: '12px', fontWeight: '600', color: '#166534' }}>✅ Sections added ({builtSections.length}):</p>
+      {builtSections.map((s, i) => <p key={s.id} style={{ margin: '2px 0', fontSize: '12px', color: '#15803d' }}>{i + 1}. {s.name} — {s.type}</p>)}
     </div>
   ) : null;
 
-  const ErrorBox = () => error ? (
-    <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', color: '#b91c1c', fontSize: '14px' }}>⚠️ {error}</div>
-  ) : null;
+  const OpenerChoice = ({ value, onChange }: { value: OpenerType; onChange: (v: OpenerType) => void }) => (
+    <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+      <button onClick={() => onChange('name')} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: value === 'name' ? '2px solid #3b82f6' : '1px solid #d1d5db', backgroundColor: value === 'name' ? '#eff6ff' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: value === 'name' ? '600' : '400', color: value === 'name' ? '#1d4ed8' : '#374151' }}>Starts with [Name]</button>
+      <button onClick={() => onChange('pronoun')} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: value === 'pronoun' ? '2px solid #8b5cf6' : '1px solid #d1d5db', backgroundColor: value === 'pronoun' ? '#f5f3ff' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: value === 'pronoun' ? '600' : '400', color: value === 'pronoun' ? '#5b21b6' : '#374151' }}>Starts with {pronounCapital}</button>
+    </div>
+  );
 
-  const LoadingScreen = ({ icon, title, message }: { icon: string; title: string; message: string }) => (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+  const LoadingScreen = ({ icon, title, msg }: { icon: string; title: string; msg: string }) => (
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '48px 40px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: '400px' }}>
         <div style={{ fontSize: '48px', marginBottom: '20px' }}>{icon}</div>
         <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#111827' }}>{title}</h2>
-        <p style={{ margin: '0 0 24px 0', color: '#6b7280', fontSize: '14px' }}>{message}</p>
+        <p style={{ margin: '0 0 24px 0', color: '#6b7280', fontSize: '14px' }}>{msg}</p>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
-          {[0,1,2].map(i => <div key={i} style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#3b82f6', animation: 'pulse 1.2s ease-in-out infinite', animationDelay: `${i * 0.2}s` }} />)}
+          {[0,1,2].map(i => <div key={i} style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#3b82f6', animation: 'pulse 1.2s ease-in-out infinite', animationDelay: `${i*0.2}s` }} />)}
         </div>
         <style>{`@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}`}</style>
       </div>
     </div>
   );
 
-  const QuestionLayout = ({ question, description, children, onNo, noLabel = 'No — skip this', onBack }: { question: string; description?: string; children: React.ReactNode; onNo: () => void; noLabel?: string; onBack?: () => void }) => (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-      <Header title="🪄 Import from Reports" subtitle="Building your template" onBack={onBack} />
-      <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
-        <BuiltSectionsList />
-        <div style={card}>
-          <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>{question}</h2>
-          {description && <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280', lineHeight: '1.6' }}>{description}</p>}
-          <ErrorBox />
-          {children}
-          <button onClick={onNo} style={{ ...btnS, width: '100%', marginTop: '10px' }}>{noLabel}</button>
-        </div>
-      </main>
-    </div>
-  );
-
-  const ChoiceLayout = ({ question, description, children, onBack }: { question: string; description?: string; children: React.ReactNode; onBack?: () => void }) => (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-      <Header title="🪄 Import from Reports" subtitle="Building your template" onBack={onBack} />
-      <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
-        <BuiltSectionsList />
-        <div style={card}>
-          <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>{question}</h2>
-          {description && <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280', lineHeight: '1.6' }}>{description}</p>}
-          <ErrorBox />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>{children}</div>
-        </div>
-      </main>
-    </div>
-  );
+  const getSectionTypeColor = (type: string) => ({ 'standard-comment': '#10b981', 'assessment-comment': '#8b5cf6', 'personalised-comment': '#f59e0b', 'next-steps': '#06b6d4', 'qualities': '#f59e0b', 'rated-comment': '#3b82f6', 'new-line': '#9ca3af', 'optional-additional-comment': '#ef4444' }[type] || '#6b7280');
+  const getSectionTypeLabel = (type: string) => ({ 'standard-comment': 'Standard Comment', 'assessment-comment': 'Assessment', 'personalised-comment': 'Score Entry', 'next-steps': 'Next Steps', 'qualities': 'Choice Comment', 'rated-comment': 'Rated Comment', 'new-line': 'New Line', 'optional-additional-comment': 'Optional Comment' }[type] || type);
+  const getSectionSummary = (section: TemplateSection): string => {
+    switch (section.type) {
+      case 'qualities': { const h = Object.keys(section.data?.comments || {}); return `${h.length} options: ${h.slice(0,3).join(', ')}${h.length>3?'...':''}`; }
+      case 'rated-comment': return '4-level rating: excellent / good / satisfactory / needs improvement';
+      case 'standard-comment': return ((section.data?.content||'') as string).substring(0,80)+'...';
+      case 'assessment-comment': return 'Assessment with [Score] — 5 levels';
+      case 'personalised-comment': return 'Teacher enters score per pupil';
+      case 'next-steps': { const a = Object.keys(section.data?.focusAreas||{}); return `${a.length} focus areas`; }
+      case 'new-line': return 'Line break';
+      case 'optional-additional-comment': return 'Free text box';
+      default: return '';
+    }
+  };
 
   // ─── LOADING ──────────────────────────────────────────────────────────────
-
-  if (isLoading && step === 'generating') return <LoadingScreen icon="🪄" title="Building Your Template" message={loadingMessage} />;
-  if (isLoading) return <LoadingScreen icon="🔍" title="Reading Your Reports" message={loadingMessage} />;
+  if (isLoading && mainStep === 'generating') return <LoadingScreen icon="🪄" title="Building Your Template" msg={loadingMessage} />;
+  if (isLoading) return <LoadingScreen icon="🔍" title="Reading Your Reports" msg={loadingMessage} />;
 
   // ─── STEP: PASTE ──────────────────────────────────────────────────────────
-
-  if (step === 'paste') return (
+  if (mainStep === 'paste') return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-      <Header title="🪄 Import from Reports" subtitle="Build a template from your existing reports" />
+      <Header subtitle="Build a template from your existing reports" />
       <main style={{ maxWidth: '800px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
         <div style={card}>
           <h2 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Template Details</h2>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }}>
             <div><label style={lbl}>Subject <span style={{ color: '#ef4444' }}>*</span></label><input type="text" value={subject} onChange={e => setSubject(e.target.value)} placeholder="e.g. History" style={inp} /></div>
-            <div><label style={lbl}>Year Group</label><select value={yearGroup} onChange={e => setYearGroup(e.target.value)} style={inp}><option value="">Select year group...</option>{['S1','S2','S3','S4','S5','S6','Mixed'].map(y => <option key={y} value={y}>{y}</option>)}</select></div>
+            <div><label style={lbl}>Year Group</label><select value={yearGroup} onChange={e => setYearGroup(e.target.value)} style={inp}><option value="">Select...</option>{['S1','S2','S3','S4','S5','S6','Mixed'].map(y=><option key={y} value={y}>{y}</option>)}</select></div>
           </div>
         </div>
         <div style={card}>
           <h2 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Pronoun Set</h2>
           <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#6b7280' }}>Choose the pronoun set for this class.</p>
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '10px' }}>
-            {pronounOptions.map(opt => (
-              <button key={opt.value} onClick={() => setPronounSet(opt.value)} style={{ padding: '14px', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', border: pronounSet === opt.value ? '2px solid #3b82f6' : '2px solid #e5e7eb', backgroundColor: pronounSet === opt.value ? '#eff6ff' : 'white' }}>
-                <div style={{ fontSize: '15px', fontWeight: '700', color: pronounSet === opt.value ? '#1d4ed8' : '#111827', marginBottom: '4px' }}>{opt.label}</div>
-                <div style={{ fontSize: '12px', color: '#6b7280', fontStyle: 'italic' }}>{opt.example}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap: '10px' }}>
+            {(['he/his','she/her','they/their'] as PronounSet[]).map(p => (
+              <button key={p} onClick={() => setPronounSet(p)} style={{ padding: '14px', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', border: pronounSet===p ? '2px solid #3b82f6' : '2px solid #e5e7eb', backgroundColor: pronounSet===p ? '#eff6ff' : 'white' }}>
+                <div style={{ fontSize: '15px', fontWeight: '700', color: pronounSet===p ? '#1d4ed8' : '#111827', marginBottom: '4px' }}>{p === 'he/his' ? 'He / His' : p === 'she/her' ? 'She / Her' : 'They / Their'}</div>
+                <div style={{ fontSize: '12px', color: '#6b7280', fontStyle: 'italic' }}>{p === 'he/his' ? 'He works hard. His effort is excellent.' : p === 'she/her' ? 'She works hard. Her effort is excellent.' : 'They work hard. Their effort is excellent.'}</div>
               </button>
             ))}
           </div>
         </div>
         <div style={card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-            <div><h2 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Paste Your Reports <span style={{ color: '#ef4444' }}>*</span></h2><p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Paste all your reports together — the more the better.</p></div>
+            <div><h2 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Paste Your Reports <span style={{ color: '#ef4444' }}>*</span></h2><p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Paste all your reports — the more the better.</p></div>
             <span style={{ fontSize: '12px', color: '#6b7280', whiteSpace: 'nowrap', marginLeft: '12px' }}>{rawReportText.length.toLocaleString()} chars</span>
           </div>
           <textarea value={rawReportText} onChange={e => setRawReportText(e.target.value)} placeholder="Paste your reports here..." style={{ ...txa, minHeight: '320px' }} />
         </div>
         <ErrorBox />
-        <button onClick={() => { if (!subject.trim()) { setError('Please enter the subject.'); return; } if (!rawReportText.trim()) { setError('Please paste your reports.'); return; } setError(null); setStep('preprocess'); }} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px' }}>Next: Identify Fixed Sections →</button>
+        <button onClick={() => { if (!subject.trim()) { setError('Please enter the subject.'); return; } if (!rawReportText.trim()) { setError('Please paste your reports.'); return; } setError(null); setMainStep('builder'); setSectionStep('menu'); }} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px' }}>Start Building My Template →</button>
         <p style={{ textAlign: 'center', fontSize: '12px', color: '#9ca3af', marginTop: '12px' }}>Reports are not stored after processing.</p>
       </main>
     </div>
   );
 
-  // ─── STEP: PREPROCESS ─────────────────────────────────────────────────────
+  // ─── STEP: BUILDER ────────────────────────────────────────────────────────
+  if (mainStep === 'builder') {
 
-  if (step === 'preprocess') return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-      <Header title="🪄 Import from Reports" subtitle="Step 2 — Identify fixed sections" onBack={() => setStep('paste')} />
-      <main style={{ maxWidth: '800px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
-        <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '16px', marginBottom: '24px' }}>
-          <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: '600', color: '#92400e' }}>💡 What to do here</h3>
-          <p style={{ margin: 0, fontSize: '13px', color: '#78350f', lineHeight: '1.6' }}>If your reports contain text that appears <strong>word-for-word in every report</strong> — like course descriptions, department information, or closing statements — add it here. This text appears automatically in every report without the teacher needing to choose it.</p>
-        </div>
-        {standardComments.length > 0 && (
-          <div style={{ marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {standardComments.map(sc => (
-              <div key={sc.id} style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                <div style={{ flex: 1 }}><p style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: '600', color: '#166534' }}>✅ {sc.name}</p><p style={{ margin: 0, fontSize: '12px', color: '#15803d' }}>{sc.content.substring(0, 100)}{sc.content.length > 100 ? '...' : ''}</p></div>
-                <button onClick={() => setStandardComments(prev => prev.filter(x => x.id !== sc.id))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '18px' }}>×</button>
+    // ── MENU ──────────────────────────────────────────────────────────────────
+    if (sectionStep === 'menu') return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+        <Header onBack={() => setMainStep('paste')} subtitle="Add sections in the order they appear in your reports" />
+        <main style={{ maxWidth: '800px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+          <BuiltList />
+          <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '16px', marginBottom: '20px' }}>
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: '600', color: '#92400e' }}>💡 How this works</h3>
+            <p style={{ margin: 0, fontSize: '13px', color: '#78350f', lineHeight: '1.6' }}>Work through your report from top to bottom. For each section in your report, pick the type below and we'll help you build it. Add as many sections as you need, then generate your template.</p>
+          </div>
+          <div style={card}>
+            <h2 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>What's the next section in your report?</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2,1fr)', gap: '12px' }}>
+              {[
+                { icon: '⭐', title: 'Rating / Judgement Statement', desc: 'e.g. progress, effort, behaviour — where you rate how well each pupil is doing', step: 'rating_name' as SectionStep },
+                { icon: '🎯', title: 'Pupil Qualities', desc: 'Character, attitude, working style, participation — what you say about each pupil as a person', step: 'qualities_selected' as SectionStep },
+                { icon: '📌', title: 'Standard Comment or Comments', desc: 'Fixed text or a set of options the teacher selects — no AI involvement', step: 'standard_type' as SectionStep },
+                { icon: '📊', title: 'Assessment Score', desc: 'Reporting on test or assessment results, with or without a numeric score', step: 'assessment_flow' as SectionStep },
+                { icon: '📈', title: 'Areas for Development', desc: 'What the pupil needs to improve — development sentences grouped by topic', step: 'development_selected' as SectionStep },
+                { icon: '🚀', title: 'Next Steps', desc: 'Forward-looking improvement suggestions, often starting with "Moving forward,"', step: 'nextsteps_selected' as SectionStep },
+                { icon: '✏️', title: 'Optional Comment Box', desc: 'A free text box the teacher fills in per pupil', step: 'menu' as SectionStep, action: () => { addSection({ id: `s_${Date.now()}`, type: 'optional-additional-comment', name: 'Additional Comments', openerType: 'name', data: {} }); } },
+              ].map(item => (
+                <button key={item.title} onClick={() => { if (item.action) { item.action(); } else { setSectionStep(item.step); setError(null); } }}
+                  style={{ padding: '18px', border: '2px solid #e5e7eb', borderRadius: '10px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left', transition: 'border-color 0.15s' }}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = '#3b82f6')}
+                  onMouseLeave={e => (e.currentTarget.style.borderColor = '#e5e7eb')}>
+                  <div style={{ fontSize: '22px', marginBottom: '8px' }}>{item.icon}</div>
+                  <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827', marginBottom: '4px' }}>{item.title}</div>
+                  <div style={{ fontSize: '12px', color: '#6b7280', lineHeight: '1.5' }}>{item.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+          {builtSections.length > 0 && (
+            <button onClick={handleAssemble} style={{ ...btnG, width: '100%', padding: '16px', fontSize: '16px' }}>🪄 Generate My Template</button>
+          )}
+        </main>
+      </div>
+    );
+
+    // ── RATING: NAME ──────────────────────────────────────────────────────────
+    if (sectionStep === 'rating_name') return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+        <Header onBack={() => setSectionStep('menu')} subtitle="Rating / Judgement Statement" />
+        <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+          <div style={card}>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>What are you rating or judging?</h2>
+            <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>This will become the name of the section. e.g. "Progress", "Effort", "Behaviour", "Attainment"</p>
+            <ErrorBox />
+            <input type="text" value={ratingName} onChange={e => setRatingName(e.target.value)} placeholder="e.g. Overall Progress" style={{ ...inp, marginBottom: '16px' }} />
+            <button onClick={() => { if (!ratingName.trim()) { setError('Please enter what you are rating.'); return; } setError(null); setSectionStep('rating_scale'); }} style={{ ...btnP, width: '100%', padding: '14px' }}>Next →</button>
+            <button onClick={() => setSectionStep('menu')} style={{ ...btnS, width: '100%', marginTop: '8px' }}>Cancel</button>
+          </div>
+        </main>
+      </div>
+    );
+
+    // ── RATING: SCALE ─────────────────────────────────────────────────────────
+    if (sectionStep === 'rating_scale') return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+        <Header onBack={() => setSectionStep('rating_name')} subtitle={`Rating — ${ratingName}`} />
+        <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+          <div style={card}>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>How do you rate {ratingName.toLowerCase()} in your reports?</h2>
+            <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>Choose the scale that best matches how you write your reports.</p>
+            <ErrorBox />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button onClick={() => { setRatingScale('four-level'); setSectionStep('rating_examples'); }} style={{ ...btnP, padding: '18px', textAlign: 'left' }}>
+                <div style={{ fontWeight: '700', marginBottom: '4px' }}>A) Standard 4-level scale</div>
+                <div style={{ fontSize: '13px', opacity: 0.9 }}>Excellent · Good · Satisfactory · Needs Improvement — Claude will map your sentences to these four levels</div>
+              </button>
+              <button onClick={() => { setRatingScale('own'); setSectionStep('rating_examples'); }} style={{ ...btnV, padding: '18px', textAlign: 'left' }}>
+                <div style={{ fontWeight: '700', marginBottom: '4px' }}>B) My own scale from my reports</div>
+                <div style={{ fontSize: '13px', opacity: 0.9 }}>Claude will identify your own groupings from your reports and create headings that match your language</div>
+              </button>
+            </div>
+            <button onClick={() => setSectionStep('menu')} style={{ ...btnS, width: '100%', marginTop: '10px' }}>Cancel</button>
+          </div>
+        </main>
+      </div>
+    );
+
+    // ── RATING: EXAMPLES ──────────────────────────────────────────────────────
+    if (sectionStep === 'rating_examples') return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+        <Header onBack={() => setSectionStep('rating_scale')} subtitle={`Rating — ${ratingName}`} />
+        <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+          <div style={card}>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>Paste example sentences about {ratingName.toLowerCase()}</h2>
+            <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6b7280' }}>
+              {ratingScale === 'four-level' ? 'Paste 3–5 examples showing different levels — excellent, good, satisfactory, needs improvement. Claude will map them to the 4 levels and generate any missing options.' : 'Paste 3–5 examples showing your different groupings. Claude will identify your own scale and create headings that match your language.'}
+            </p>
+            <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 12px', marginBottom: '16px' }}>
+              <p style={{ margin: 0, fontSize: '13px', color: '#1e40af' }}>💡 Replace any pupil names in your examples with [Name] before pasting.</p>
+            </div>
+            <ErrorBox />
+            {ratingExamples.map((ex, i) => (
+              <div key={i} style={{ marginBottom: '8px' }}>
+                <label style={{ ...lbl, fontSize: '12px', color: '#9ca3af' }}>Example {i+1}{i>1?' (optional)':''}</label>
+                <input type="text" value={ex} onChange={e => { const u = [...ratingExamples]; u[i]=e.target.value; setRatingExamples(u); }} placeholder={`Paste an example ${ratingName.toLowerCase()} sentence...`} style={inp} />
               </div>
             ))}
+            <button onClick={handleBuildRating} style={{ ...btnP, width: '100%', marginTop: '16px', padding: '14px' }}>✓ Read my reports and build this section</button>
+            <button onClick={() => setSectionStep('menu')} style={{ ...btnS, width: '100%', marginTop: '8px' }}>Cancel</button>
           </div>
-        )}
-        <div style={card}>
-          <h2 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Add Standard Comment</h2>
-          <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#6b7280' }}>Text that is identical in every report.</p>
-          <div style={{ marginBottom: '10px' }}><label style={lbl}>Section Name</label><input type="text" value={scName} onChange={e => setScName(e.target.value)} placeholder="e.g. Course Content, Assessment Analysis" style={inp} /></div>
-          <div style={{ marginBottom: '12px' }}><label style={lbl}>Paste the exact text</label><textarea value={scContent} onChange={e => setScContent(e.target.value)} placeholder="Paste the identical text here..." style={{ ...txa, minHeight: '100px' }} /></div>
-          <button onClick={handleAddStandardComment} disabled={!scName.trim() || !scContent.trim()} style={{ ...btnG, opacity: scName.trim() && scContent.trim() ? 1 : 0.5, cursor: scName.trim() && scContent.trim() ? 'pointer' : 'not-allowed' }}>+ Add Standard Comment</button>
-        </div>
-        <button onClick={() => setStep('q1_progress')} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px' }}>Next: Build Your Template →</button>
-        <p style={{ textAlign: 'center', fontSize: '13px', color: '#9ca3af', marginTop: '8px' }}>You can skip this if your reports don't have fixed identical sections.</p>
-      </main>
-    </div>
-  );
-
-  // ─── Q1: PROGRESS ─────────────────────────────────────────────────────────
-
-  if (step === 'q1_progress') return (
-    <QuestionLayout question="Do your reports include a sentence about each pupil's progress or how they are doing overall?" description="This is usually the opening sentence. Paste 3–5 examples from different reports showing different levels of progress." onNo={() => setStep('q2_qualities')} noLabel="No — my reports don't include a progress statement" onBack={() => setStep('preprocess')}>
-      <GroupModeToggle />
-      <ExampleBoxes label="Paste a progress sentence from one report..." />
-      <button onClick={() => handleGroupAndAdd('progress', 'name', 'Opening Statement', 'q2_qualities', groupMode === 'use-exactly')} style={{ ...btnP, width: '100%', marginTop: '16px', padding: '14px' }}>
-        {groupMode === 'use-exactly' ? '✓ Use exactly these options' : '✓ Read my reports and group these sentences'}
-      </button>
-    </QuestionLayout>
-  );
-
-  // ─── Q2: QUALITIES ────────────────────────────────────────────────────────
-
-  if (step === 'q2_qualities') return (
-    <QuestionLayout question="Do your reports include sentences describing the pupil's personal qualities?" description="Things like effort, behaviour, attitude, working style, character. Paste 3–5 examples — include both positive and less positive examples if your reports have both." onNo={() => setStep('q4_assessment')} noLabel="No — move on to assessment" onBack={() => setStep('q1_progress')}>
-      <GroupModeToggle />
-      <ExampleBoxes label="Paste a qualities sentence from one report..." />
-      <button onClick={() => { setQualitiesGroupIndex(1); handleGroupAndAdd('qualities', 'name', 'Personal Qualities', 'q2a_copy_qualities', groupMode === 'use-exactly'); }} style={{ ...btnP, width: '100%', marginTop: '16px', padding: '14px' }}>
-        {groupMode === 'use-exactly' ? '✓ Use exactly these options' : '✓ Read my reports and group these sentences'}
-      </button>
-    </QuestionLayout>
-  );
-
-  // ─── Q2a: COPY QUALITIES ─────────────────────────────────────────────────
-
-  if (step === 'q2a_copy_qualities') return (
-    <ChoiceLayout question="Would you like to copy this qualities statement so that you can add another pupil quality to your report?" description="You can choose to have this statement with name or pronoun to make it read better." onBack={() => setStep('q2_qualities')}>
-      <button onClick={() => handleCopySection('name', 'q2a_copy_qualities')} style={{ ...btnP, padding: '14px' }}>Yes, copy with [Name]</button>
-      <button onClick={() => handleCopySection('pronoun', 'q2a_copy_qualities')} style={{ ...btnV, padding: '14px' }}>Yes, copy with {pronounCapital} ({pronounSet.split('/')[0]})</button>
-      <button onClick={() => setStep('q3_different_qualities')} style={{ ...btnS, padding: '14px' }}>No — move on</button>
-    </ChoiceLayout>
-  );
-
-  // ─── Q3: DIFFERENT QUALITIES ─────────────────────────────────────────────
-
-  if (step === 'q3_different_qualities') return (
-    <QuestionLayout question="Do your reports include a different type of quality statement from another part of the report?" description="For example, a sentence about classroom participation, specific skills, a pathway paragraph, or a different aspect of the pupil's character not already covered." onNo={() => setStep('q4_assessment')} noLabel="No — move on to assessment" onBack={() => setStep('q2a_copy_qualities')}>
-      <GroupModeToggle />
-      <ExampleBoxes label="Paste an example of this different quality statement..." />
-      <button onClick={() => { setQualitiesGroupIndex(prev => prev + 1); handleGroupAndAdd('qualities', 'name', `Personal Qualities ${qualitiesGroupIndex + 1}`, 'q3a_copy_qualities', groupMode === 'use-exactly'); }} style={{ ...btnP, width: '100%', marginTop: '16px', padding: '14px' }}>
-        {groupMode === 'use-exactly' ? '✓ Use exactly these options' : '✓ Read my reports and group these sentences'}
-      </button>
-    </QuestionLayout>
-  );
-
-  // ─── Q3a: COPY DIFFERENT QUALITIES ───────────────────────────────────────
-
-  if (step === 'q3a_copy_qualities') return (
-    <ChoiceLayout question="Would you like to copy this qualities statement so that you can add another pupil quality to your report?" description="You can choose to have this statement with name or pronoun to make it read better." onBack={() => setStep('q3_different_qualities')}>
-      <button onClick={() => handleCopySection('name', 'q3a_copy_qualities')} style={{ ...btnP, padding: '14px' }}>Yes, copy with [Name]</button>
-      <button onClick={() => handleCopySection('pronoun', 'q3a_copy_qualities')} style={{ ...btnV, padding: '14px' }}>Yes, copy with {pronounCapital} ({pronounSet.split('/')[0]})</button>
-      <button onClick={() => setStep('q3_different_qualities')} style={{ ...btnS, padding: '14px' }}>No, but add another different quality type</button>
-      <button onClick={() => setStep('q4_assessment')} style={{ ...btnS, padding: '14px' }}>No — move on to assessment</button>
-    </ChoiceLayout>
-  );
-
-  // ─── Q4: ASSESSMENT ───────────────────────────────────────────────────────
-
-  if (step === 'q4_assessment') return (
-    <ChoiceLayout question="Do your reports include assessment scores or percentages?" description="If your reports mention assessment results we'll create the right type of section for them." onBack={() => setStep('q3_different_qualities')}>
-      <button onClick={() => setStep('q4_assessment_type')} style={{ ...btnP, padding: '14px' }}>Yes — my reports include assessment information</button>
-      <button onClick={() => setStep('q5_nextsteps')} style={{ ...btnS, padding: '14px' }}>No — move on to next steps</button>
-    </ChoiceLayout>
-  );
-
-  // ─── Q4: ASSESSMENT TYPE ─────────────────────────────────────────────────
-
-  if (step === 'q4_assessment_type') return (
-    <ChoiceLayout question="How do you report on the assessment score?" onBack={() => setStep('q4_assessment')}>
-      <button onClick={() => { setAssessmentType('same-statement'); setStep('q4_assessment_count'); }} style={{ ...btnP, padding: '16px', textAlign: 'left' }}>
-        <div style={{ fontWeight: '700', marginBottom: '4px' }}>A) Same or similar statement for every pupil</div>
-        <div style={{ fontSize: '13px', opacity: 0.9 }}>Only the name and score change — e.g. "[Name] scored X% in the end of unit assessment"</div>
-      </button>
-      <button onClick={() => { setAssessmentType('different-statements'); setStep('q4_assessment_count'); }} style={{ ...btnV, padding: '16px', textAlign: 'left' }}>
-        <div style={{ fontWeight: '700', marginBottom: '4px' }}>B) Different statements depending on how well the pupil did</div>
-        <div style={{ fontSize: '13px', opacity: 0.9 }}>e.g. "performed excellently" for high scorers, "found the assessment challenging" for lower scorers</div>
-      </button>
-    </ChoiceLayout>
-  );
-
-  // ─── Q4: ASSESSMENT COUNT ────────────────────────────────────────────────
-
-  if (step === 'q4_assessment_count') return (
-    <ChoiceLayout question="How many assessments do you report on?" onBack={() => setStep('q4_assessment_type')}>
-      <button onClick={() => { setAssessmentCount('one'); setAssessmentPartIndex(1); setStep('q4_assessment_examples'); }} style={{ ...btnP, padding: '14px' }}>A) One assessment only</button>
-      <button onClick={() => { setAssessmentCount('multiple'); setStep('q4_assessment_sentence_type'); }} style={{ ...btnV, padding: '14px' }}>B) More than one assessment</button>
-    </ChoiceLayout>
-  );
-
-  // ─── Q4: ASSESSMENT SENTENCE TYPE ────────────────────────────────────────
-
-  if (step === 'q4_assessment_sentence_type') return (
-    <ChoiceLayout question="How do you write about multiple assessments?" onBack={() => setStep('q4_assessment_count')}>
-      <button onClick={() => { setAssessmentSentenceType('one-sentence'); setAssessmentPartIndex(1); setStep('q4_assessment_examples'); }} style={{ ...btnP, padding: '16px', textAlign: 'left' }}>
-        <div style={{ fontWeight: '700', marginBottom: '4px' }}>A) One sentence covers all scores</div>
-        <div style={{ fontSize: '13px', opacity: 0.9 }}>e.g. "[Name] scored X% in Test 1 and Y% in Test 2"</div>
-      </button>
-      <button onClick={() => { setAssessmentSentenceType('separate'); setAssessmentPartIndex(1); setStep('q4_assessment_examples'); }} style={{ ...btnV, padding: '16px', textAlign: 'left' }}>
-        <div style={{ fontWeight: '700', marginBottom: '4px' }}>B) A different sentence for each assessment</div>
-        <div style={{ fontSize: '13px', opacity: 0.9 }}>Each assessment gets its own separate statement</div>
-      </button>
-    </ChoiceLayout>
-  );
-
-  // ─── Q4: ASSESSMENT EXAMPLES ─────────────────────────────────────────────
-
-  if (step === 'q4_assessment_examples') {
-    const isOneSentenceMultiple = assessmentCount === 'multiple' && assessmentSentenceType === 'one-sentence';
-    const isSeparateMultiple = assessmentCount === 'multiple' && assessmentSentenceType === 'separate';
-    const partDesc = isOneSentenceMultiple
-      ? assessmentPartIndex === 1 ? 'This is the start of the sentence including the first score. e.g. "[Name] scored X% in the Mary Queen of Scots assessment". We will link this to the next part.' : `This is part ${assessmentPartIndex}. e.g. "and Y% in the Black Death assessment." Start with the connecting word.`
-      : assessmentType === 'same-statement'
-      ? 'Paste 1–2 examples of the sentence you use. We will replace the actual score with [Score] so the teacher can type the score for each pupil.'
-      : 'Paste 3–5 examples showing different performance levels so we can create options for each level.';
-
-    return (
-      <QuestionLayout
-        question={isOneSentenceMultiple ? `Paste examples of part ${assessmentPartIndex} of your assessment sentence` : isSeparateMultiple ? `Paste examples for assessment ${assessmentPartIndex}` : 'Paste examples of your assessment statement'}
-        description={partDesc}
-        onNo={() => setStep('q5_nextsteps')}
-        noLabel="Skip assessment section"
-        onBack={() => setStep(assessmentCount === 'multiple' ? 'q4_assessment_sentence_type' : 'q4_assessment_count')}
-      >
-        <ExampleBoxes count={assessmentType === 'same-statement' ? 2 : 5} label="Paste an example from one report..." />
-        {isOneSentenceMultiple && (
-          <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '12px', marginBottom: '12px', marginTop: '8px' }}>
-            <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#1e40af' }}>How many scores are in your sentence?</p>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              {[2, 3].map(n => <button key={n} onClick={() => setTotalAssessmentParts(n)} style={{ padding: '6px 14px', borderRadius: '6px', border: totalAssessmentParts === n ? '2px solid #3b82f6' : '1px solid #d1d5db', backgroundColor: totalAssessmentParts === n ? '#eff6ff' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>{n} scores</button>)}
-            </div>
-          </div>
-        )}
-        <button onClick={() => {
-          const examples = getValidExamples();
-          if (examples.length === 0) { setError('Please paste at least one example.'); return; }
-          setError(null);
-          if (assessmentType === 'same-statement') {
-            const sectionLabel = isOneSentenceMultiple ? `Assessment — Part ${assessmentPartIndex}` : isSeparateMultiple ? `Assessment ${assessmentPartIndex}` : 'Assessment';
-            const newSection = buildSameStatementSection(sectionLabel, examples);
-            setBuiltSections(prev => [...prev, newSection]);
-            resetExamples();
-            const hasMoreParts = (isOneSentenceMultiple && assessmentPartIndex < totalAssessmentParts) || (isSeparateMultiple && assessmentPartIndex < 3);
-            if (hasMoreParts) { setAssessmentPartIndex(prev => prev + 1); setStep('q4_assessment_part2'); }
-            else setStep('q4_assessment_judgement');
-          } else {
-            const sectionLabel = isOneSentenceMultiple ? `Assessment — Part ${assessmentPartIndex}` : isSeparateMultiple ? `Assessment ${assessmentPartIndex}` : 'Assessment';
-            const hasMoreParts = (isOneSentenceMultiple && assessmentPartIndex < totalAssessmentParts) || (isSeparateMultiple && assessmentPartIndex < 3);
-            const nextStep: WizardStep = hasMoreParts ? 'q4_assessment_part2' : 'q4_assessment_judgement';
-            handleGroupAndAdd('assessment-comment', 'name', sectionLabel, nextStep, false);
-            if (hasMoreParts) setAssessmentPartIndex(prev => prev + 1);
-          }
-        }} style={{ ...btnP, width: '100%', marginTop: '16px', padding: '14px' }}>
-          ✓ {assessmentType === 'same-statement' ? 'Create this assessment section' : 'Read my reports and group these statements'}
-        </button>
-      </QuestionLayout>
-    );
-  }
-
-  // ─── Q4: ASSESSMENT PART 2/3 ─────────────────────────────────────────────
-
-  if (step === 'q4_assessment_part2' || step === 'q4_assessment_part3') {
-    const isOneSentence = assessmentSentenceType === 'one-sentence';
-    return (
-      <QuestionLayout
-        question={`Would you like to add ${isOneSentence ? `part ${assessmentPartIndex} of the assessment sentence` : `another assessment`}?`}
-        description={isOneSentence ? `Add the next part of your assessment sentence. It will join the previous part to read as one natural sentence.` : `Add another assessment section for a different test.`}
-        onNo={() => setStep('q4_assessment_judgement')}
-        noLabel="No — no more assessment parts"
-        onBack={() => setStep('q4_assessment_examples')}
-      >
-        <ExampleBoxes count={assessmentType === 'same-statement' ? 2 : 5} label="Paste an example..." />
-        <button onClick={() => {
-          const examples = getValidExamples();
-          if (examples.length === 0) { setError('Please paste at least one example.'); return; }
-          setError(null);
-          const sectionLabel = isOneSentence ? `Assessment — Part ${assessmentPartIndex}` : `Assessment ${assessmentPartIndex}`;
-          const nextStep: WizardStep = step === 'q4_assessment_part2' ? 'q4_assessment_part3' : 'q4_assessment_judgement';
-          if (assessmentType === 'same-statement') {
-            const newSection = buildSameStatementSection(sectionLabel, examples);
-            setBuiltSections(prev => [...prev, newSection]);
-            resetExamples();
-            setAssessmentPartIndex(prev => prev + 1);
-            setStep(nextStep);
-          } else {
-            handleGroupAndAdd('assessment-comment', 'name', sectionLabel, nextStep, false);
-            setAssessmentPartIndex(prev => prev + 1);
-          }
-        }} style={{ ...btnP, width: '100%', marginTop: '16px', padding: '14px' }}>✓ Add this assessment section</button>
-      </QuestionLayout>
-    );
-  }
-
-  // ─── Q4: ASSESSMENT JUDGEMENT ────────────────────────────────────────────
-
-  if (step === 'q4_assessment_judgement') return (
-    <ChoiceLayout question="Would you like to add a judgement statement after the assessment score?" description="For example, a comment about how well the pupil did overall — as a separate qualities section the teacher can choose from." onBack={() => setStep('q4_assessment_examples')}>
-      <button onClick={() => { resetExamples(); setStep('q4_assessment_qualities'); }} style={{ ...btnP, padding: '14px' }}>Yes — add a judgement comment section</button>
-      <button onClick={() => setStep('q5_nextsteps')} style={{ ...btnS, padding: '14px' }}>No — move on to next steps</button>
-    </ChoiceLayout>
-  );
-
-  // ─── Q4: ASSESSMENT QUALITIES ────────────────────────────────────────────
-
-  if (step === 'q4_assessment_qualities') return (
-    <QuestionLayout question="Paste examples of your assessment judgement statements" description="Sentences commenting on how well the pupil did — different statements for different performance levels. Paste 3–5 examples." onNo={() => setStep('q5_nextsteps')} noLabel="Skip this" onBack={() => setStep('q4_assessment_judgement')}>
-      <GroupModeToggle />
-      <ExampleBoxes label="Paste a judgement statement from one report..." />
-      <button onClick={() => handleGroupAndAdd('qualities', 'pronoun', 'Assessment Reflection', 'q5_nextsteps', groupMode === 'use-exactly')} style={{ ...btnP, width: '100%', marginTop: '16px', padding: '14px' }}>
-        {groupMode === 'use-exactly' ? '✓ Use exactly these options' : '✓ Read my reports and group these statements'}
-      </button>
-    </QuestionLayout>
-  );
-
-  // ─── Q5: NEXT STEPS ───────────────────────────────────────────────────────
-
-  if (step === 'q5_nextsteps') return (
-    <QuestionLayout question="Do your reports include next steps or areas for development?" description="These can be improvement suggestions, development areas, or anything the pupil needs to work on. Paste 3–5 examples of the first sentence. If they always start with a phrase like 'Moving forward,' include that." onNo={() => setStep('add_sections')} noLabel="No — move on to final review" onBack={() => setStep('q4_assessment')}>
-      <GroupModeToggle />
-      <ExampleBoxes label="Paste a next steps or development sentence from one report..." />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px' }}>
-        <button onClick={() => { setNextStepsSentenceIndex(1); handleGroupAndAdd('next-steps', 'name', 'Next Steps', 'q5a_more_nextsteps', groupMode === 'use-exactly'); }} style={{ ...btnP, padding: '14px' }}>
-          {groupMode === 'use-exactly' ? '✓ Yes, use exactly these, starting with [Name]' : '✓ Yes, starting with [Name]'}
-        </button>
-        <button onClick={() => { setNextStepsSentenceIndex(1); handleGroupAndAdd('next-steps', 'pronoun', 'Next Steps', 'q5a_more_nextsteps', groupMode === 'use-exactly'); }} style={{ ...btnV, padding: '14px' }}>
-          {groupMode === 'use-exactly' ? `✓ Yes, use exactly these, starting with ${pronounCapital}` : `✓ Yes, starting with ${pronounCapital} (${pronounSet.split('/')[0]})`}
-        </button>
+        </main>
       </div>
-    </QuestionLayout>
-  );
+    );
 
-  // ─── Q5a: MORE NEXT STEPS ─────────────────────────────────────────────────
-
-  if (step === 'q5a_more_nextsteps') return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-      <Header title="🪄 Import from Reports" subtitle="Building your template" onBack={() => setStep('q5_nextsteps')} />
-      <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
-        <BuiltSectionsList />
-        <div style={card}>
-          <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>Would you like to add another next steps sentence to your report?</h2>
-          <p style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#6b7280', lineHeight: '1.6' }}>You can choose to have this statement with name or pronoun to make it read better. Paste 3–5 examples of the next sentence.</p>
-          <GroupModeToggle />
-          <ExampleBoxes count={5} label="Paste a next steps sentence..." />
-          <ErrorBox />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '16px' }}>
-            <button onClick={() => { setNextStepsSentenceIndex(prev => prev + 1); handleGroupAndAdd('next-steps', 'name', `Next Steps — Sentence ${nextStepsSentenceIndex + 1}`, 'q5a_more_nextsteps', groupMode === 'use-exactly'); }} style={{ ...btnP, padding: '14px' }}>Yes, starting with [Name]</button>
-            <button onClick={() => { setNextStepsSentenceIndex(prev => prev + 1); handleGroupAndAdd('next-steps', 'pronoun', `Next Steps — Sentence ${nextStepsSentenceIndex + 1}`, 'q5a_more_nextsteps', groupMode === 'use-exactly'); }} style={{ ...btnV, padding: '14px' }}>Yes, starting with {pronounCapital} ({pronounSet.split('/')[0]})</button>
-            <button onClick={() => setStep('add_sections')} style={{ ...btnG, padding: '14px' }}>No — move on to final review</button>
+    // ── QUALITIES: SELECTED ───────────────────────────────────────────────────
+    if (sectionStep === 'qualities_selected') return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+        <Header onBack={() => setSectionStep('menu')} subtitle="Pupil Qualities" />
+        <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+          <div style={card}>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>Paste quality sentences from your reports</h2>
+            <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6b7280' }}>Copy and paste just the quality/character sentences from several of your reports — not the whole reports, just the sentences describing each pupil's qualities, effort, behaviour and working style. Include a range of different types of pupil. Claude will use these to find all quality sentences across all your reports.</p>
+            <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 12px', marginBottom: '16px' }}>
+              <p style={{ margin: 0, fontSize: '13px', color: '#1e40af' }}>💡 Replace any pupil names with [Name] before pasting.</p>
+            </div>
+            <div style={{ marginBottom: '12px' }}>
+              <label style={lbl}>Section name</label>
+              <input type="text" value={qualitiesName} onChange={e => setQualitiesName(e.target.value)} placeholder="e.g. Personal Qualities" style={inp} />
+            </div>
+            <div style={{ marginBottom: '12px' }}>
+              <label style={lbl}>Does this sentence use the pupil's name or pronoun?</label>
+              <OpenerChoice value={qualitiesOpener} onChange={setQualitiesOpener} />
+            </div>
+            <label style={lbl}>Paste your selected quality sentences</label>
+            <textarea value={qualitiesSelected} onChange={e => setQualitiesSelected(e.target.value)} placeholder="Paste quality sentences from several reports here..." style={{ ...txa, minHeight: '200px', marginBottom: '16px' }} />
+            <ErrorBox />
+            <button onClick={handleBuildQualities} style={{ ...btnP, width: '100%', padding: '14px' }}>✓ Extract and group all quality sentences</button>
+            <button onClick={() => setSectionStep('menu')} style={{ ...btnS, width: '100%', marginTop: '8px' }}>Cancel</button>
           </div>
-        </div>
-      </main>
-    </div>
-  );
+        </main>
+      </div>
+    );
 
-  // ─── STEP: ADD SECTIONS ───────────────────────────────────────────────────
-
-  if (step === 'add_sections') return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-      <Header title="🪄 Import from Reports" subtitle="Final review — add anything missing" onBack={() => setStep('q5a_more_nextsteps')} />
-      <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
-        <BuiltSectionsList />
-
-        <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '16px', marginBottom: '20px' }}>
-          <h3 style={{ margin: '0 0 6px 0', fontSize: '14px', fontWeight: '600', color: '#92400e' }}>💡 Anything missing?</h3>
-          <p style={{ margin: 0, fontSize: '13px', color: '#78350f', lineHeight: '1.6' }}>This is your chance to add any sections you forgot or that the wizard didn't ask about — pathway paragraphs, assessment analysis notes, closing statements, or anything else your reports include.</p>
-        </div>
-
-        <div style={card}>
-          <h2 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Add a section</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: '10px', marginBottom: '16px' }}>
-            <button onClick={() => setStep('add_standard')} style={{ padding: '16px', border: '2px solid #10b981', borderRadius: '10px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}>
-              <div style={{ fontSize: '20px', marginBottom: '6px' }}>📌</div>
-              <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827', marginBottom: '4px' }}>Standard Comment</div>
-              <div style={{ fontSize: '12px', color: '#6b7280' }}>Fixed text that appears in every report automatically</div>
-            </button>
-            <button onClick={() => setStep('add_qualities')} style={{ padding: '16px', border: '2px solid #f59e0b', borderRadius: '10px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}>
-              <div style={{ fontSize: '20px', marginBottom: '6px' }}>🎯</div>
-              <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827', marginBottom: '4px' }}>Choice Comment</div>
-              <div style={{ fontSize: '12px', color: '#6b7280' }}>Options the teacher chooses between for each pupil</div>
-            </button>
-            <button onClick={() => setStep('add_nextsteps')} style={{ padding: '16px', border: '2px solid #06b6d4', borderRadius: '10px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}>
-              <div style={{ fontSize: '20px', marginBottom: '6px' }}>📈</div>
-              <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827', marginBottom: '4px' }}>Next Steps</div>
-              <div style={{ fontSize: '12px', color: '#6b7280' }}>Improvement suggestions organised by topic</div>
-            </button>
-            <button onClick={() => {
-              const optionalSection: BuiltSection = { id: `section_${Date.now()}`, type: 'optional-additional-comment', name: 'Additional Comments', openerType: 'name', positionType: 'optional', data: {} };
-              setBuiltSections(prev => [...prev, optionalSection]);
-            }} style={{ padding: '16px', border: '2px solid #ef4444', borderRadius: '10px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}>
-              <div style={{ fontSize: '20px', marginBottom: '6px' }}>✏️</div>
-              <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827', marginBottom: '4px' }}>Optional Comment Box</div>
-              <div style={{ fontSize: '12px', color: '#6b7280' }}>Free text the teacher types per pupil</div>
-            </button>
-          </div>
-          <ErrorBox />
-          <button onClick={handleAssemble} style={{ ...btnG, width: '100%', padding: '16px', fontSize: '16px' }}>
-            🪄 Generate My Template
-          </button>
-        </div>
-      </main>
-    </div>
-  );
-
-  // ─── STEP: ADD STANDARD ───────────────────────────────────────────────────
-
-  if (step === 'add_standard') return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-      <Header title="🪄 Import from Reports" subtitle="Add a standard comment" onBack={() => setStep('add_sections')} />
-      <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
-        <div style={card}>
-          <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>Add a Standard Comment</h2>
-          <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>Text that appears identically in every report. Paste it exactly as it appears.</p>
-          <div style={{ marginBottom: '12px' }}><label style={lbl}>Section Name</label><input type="text" value={addSectionName} onChange={e => setAddSectionName(e.target.value)} placeholder="e.g. Assessment Analysis, Pathway Information" style={inp} /></div>
-          <div style={{ marginBottom: '16px' }}><label style={lbl}>Text content</label><textarea value={addSectionContent} onChange={e => setAddSectionContent(e.target.value)} placeholder="Paste the text here..." style={{ ...txa, minHeight: '120px' }} /></div>
-          <ErrorBox />
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={() => setStep('add_sections')} style={{ ...btnS, flex: 1 }}>Cancel</button>
-            <button onClick={() => {
-              if (!addSectionName.trim() || !addSectionContent.trim()) { setError('Please enter a name and content.'); return; }
-              const newSection: BuiltSection = { id: `section_${Date.now()}`, type: 'standard-comment', name: addSectionName.trim(), openerType: 'name', positionType: 'standard', data: { content: addSectionContent.trim() } };
-              setBuiltSections(prev => [...prev, newSection]);
-              setAddSectionName(''); setAddSectionContent(''); setError(null);
-              setStep('add_sections');
-            }} style={{ ...btnG, flex: 1 }}>Add Section</button>
-          </div>
-        </div>
-      </main>
-    </div>
-  );
-
-  // ─── STEP: ADD QUALITIES ─────────────────────────────────────────────────
-
-  if (step === 'add_qualities') return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-      <Header title="🪄 Import from Reports" subtitle="Add a choice comment" onBack={() => setStep('add_sections')} />
-      <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
-        <div style={card}>
-          <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>Add a Choice Comment</h2>
-          <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>Paste examples of the sentences you use for this section. Claude will read your reports and group them into options.</p>
-          <div style={{ marginBottom: '12px' }}><label style={lbl}>Section Name</label><input type="text" value={addSectionName} onChange={e => setAddSectionName(e.target.value)} placeholder="e.g. Pathway Information, Closing Comment" style={inp} /></div>
-          <div style={{ marginBottom: '12px' }}>
-            <label style={lbl}>Opener</label>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => setAddSectionOpener('name')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: addSectionOpener === 'name' ? '2px solid #3b82f6' : '1px solid #d1d5db', backgroundColor: addSectionOpener === 'name' ? '#eff6ff' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: addSectionOpener === 'name' ? '600' : '400' }}>Starts with [Name]</button>
-              <button onClick={() => setAddSectionOpener('pronoun')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: addSectionOpener === 'pronoun' ? '2px solid #8b5cf6' : '1px solid #d1d5db', backgroundColor: addSectionOpener === 'pronoun' ? '#f5f3ff' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: addSectionOpener === 'pronoun' ? '600' : '400' }}>Starts with {pronounCapital}</button>
+    // ── QUALITIES: COPY ───────────────────────────────────────────────────────
+    if (sectionStep === 'qualities_copy') return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+        <Header onBack={() => setSectionStep('menu')} subtitle="Pupil Qualities" />
+        <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+          <BuiltList />
+          <div style={card}>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>Would you like to add another version of this qualities section?</h2>
+            <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>You can create a copy where every sentence starts with {pronounCapital} instead of [Name] — or another [Name]-led copy. This lets teachers pick a name-led sentence and a pronoun-led follow-on sentence to build a natural flowing paragraph.</p>
+            <ErrorBox />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button onClick={() => handleCopyQualities('pronoun')} style={{ ...btnV, padding: '14px' }}>Yes — create a {pronounCapital}-led copy</button>
+              <button onClick={() => handleCopyQualities('name')} style={{ ...btnP, padding: '14px' }}>Yes — create a [Name]-led copy</button>
+              <button onClick={() => setSectionStep('menu')} style={{ ...btnS, padding: '14px' }}>No — that's enough qualities sections</button>
             </div>
           </div>
-          <div style={{ marginBottom: '12px' }}>
-            <GroupModeToggle />
-          </div>
-          <ExampleBoxes
-            count={5}
-            label="Paste an example sentence..."
-            examples={addSectionExamples}
-            onChange={(i, v) => { const u = [...addSectionExamples]; u[i] = v; setAddSectionExamples(u); }}
-          />
-          <ErrorBox />
-          <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-            <button onClick={() => setStep('add_sections')} style={{ ...btnS, flex: 1 }}>Cancel</button>
-            <button onClick={async () => {
-              const examples = addSectionExamples.filter(e => e.trim().length > 5);
-              if (!addSectionName.trim() || examples.length === 0) { setError('Please enter a name and at least one example.'); return; }
-              setError(null);
-              setIsLoading(true);
-              setLoadingMessage('Building this section...');
-              try {
-                let result: any;
-                if (groupMode === 'use-exactly') {
-                  result = buildExactSection(addSectionName.trim(), 'qualities', addSectionOpener, pronounCapital, examples);
-                } else {
-                  result = await callGroup({ subject, yearGroup, reportText: rawReportText, pronounSet, examples, positionType: 'qualities', openerType: addSectionOpener, sectionName: addSectionName.trim() });
-                }
-                const newSection = addSectionFromResult(result, 'qualities', addSectionOpener);
-                setBuiltSections(prev => [...prev, newSection]);
-                setAddSectionName(''); setAddSectionExamples(['', '', '', '', '']); setGroupMode('find-more');
-                setStep('add_sections');
-              } catch (err: any) { setError(err.message || 'Failed to build section.'); }
-              finally { setIsLoading(false); }
-            }} style={{ ...btnG, flex: 1 }}>Add Section</button>
-          </div>
-        </div>
-      </main>
-    </div>
-  );
+        </main>
+      </div>
+    );
 
-  // ─── STEP: ADD NEXT STEPS ─────────────────────────────────────────────────
-
-  if (step === 'add_nextsteps') return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-      <Header title="🪄 Import from Reports" subtitle="Add a next steps section" onBack={() => setStep('add_sections')} />
-      <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
-        <div style={card}>
-          <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>Add a Next Steps Section</h2>
-          <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>Paste examples of the improvement suggestions you use. Claude will group them by topic.</p>
-          <div style={{ marginBottom: '12px' }}><label style={lbl}>Section Name</label><input type="text" value={addSectionName} onChange={e => setAddSectionName(e.target.value)} placeholder="e.g. Areas for Development, Next Steps" style={inp} /></div>
-          <div style={{ marginBottom: '12px' }}>
-            <label style={lbl}>Opener</label>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => setAddSectionOpener('name')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: addSectionOpener === 'name' ? '2px solid #3b82f6' : '1px solid #d1d5db', backgroundColor: addSectionOpener === 'name' ? '#eff6ff' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: addSectionOpener === 'name' ? '600' : '400' }}>Starts with [Name]</button>
-              <button onClick={() => setAddSectionOpener('pronoun')} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: addSectionOpener === 'pronoun' ? '2px solid #8b5cf6' : '1px solid #d1d5db', backgroundColor: addSectionOpener === 'pronoun' ? '#f5f3ff' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: addSectionOpener === 'pronoun' ? '600' : '400' }}>Starts with {pronounCapital}</button>
+    // ── STANDARD: TYPE ────────────────────────────────────────────────────────
+    if (sectionStep === 'standard_type') return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+        <Header onBack={() => setSectionStep('menu')} subtitle="Standard Comment or Comments" />
+        <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+          <div style={card}>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>What type of standard comment is this?</h2>
+            <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6b7280' }}>No AI will be involved — you paste exactly what you want to appear.</p>
+            <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 12px', marginBottom: '20px' }}>
+              <p style={{ margin: 0, fontSize: '13px', color: '#1e40af' }}>💡 Replace any pupil names with [Name] before pasting.</p>
             </div>
+            <ErrorBox />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button onClick={() => setSectionStep('standard_single')} style={{ ...btnP, padding: '18px', textAlign: 'left' }}>
+                <div style={{ fontWeight: '700', marginBottom: '4px' }}>A) One sentence or paragraph that appears in almost all reports</div>
+                <div style={{ fontSize: '13px', opacity: 0.9 }}>e.g. a course description, assessment analysis note, department information. Appears automatically — teacher can exclude for individuals if needed.</div>
+              </button>
+              <button onClick={() => setSectionStep('standard_multi')} style={{ ...btnV, padding: '18px', textAlign: 'left' }}>
+                <div style={{ fontWeight: '700', marginBottom: '4px' }}>B) Different sentences for different pupils</div>
+                <div style={{ fontSize: '13px', opacity: 0.9 }}>e.g. pathway options, course levels. You give each option a button label and paste the text — teacher picks the right one when writing each report.</div>
+              </button>
+            </div>
+            <button onClick={() => setSectionStep('menu')} style={{ ...btnS, width: '100%', marginTop: '10px' }}>Cancel</button>
           </div>
-          <div style={{ marginBottom: '12px' }}><GroupModeToggle /></div>
-          <ExampleBoxes
-            count={5}
-            label="Paste an improvement suggestion..."
-            examples={addSectionExamples}
-            onChange={(i, v) => { const u = [...addSectionExamples]; u[i] = v; setAddSectionExamples(u); }}
-          />
-          <ErrorBox />
-          <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-            <button onClick={() => setStep('add_sections')} style={{ ...btnS, flex: 1 }}>Cancel</button>
-            <button onClick={async () => {
-              const examples = addSectionExamples.filter(e => e.trim().length > 5);
-              if (!addSectionName.trim() || examples.length === 0) { setError('Please enter a name and at least one example.'); return; }
-              setError(null);
-              setIsLoading(true);
-              setLoadingMessage('Building this section...');
-              try {
-                let result: any;
-                if (groupMode === 'use-exactly') {
-                  result = buildExactSection(addSectionName.trim(), 'next-steps', addSectionOpener, pronounCapital, examples);
-                } else {
-                  result = await callGroup({ subject, yearGroup, reportText: rawReportText, pronounSet, examples, positionType: 'next-steps', openerType: addSectionOpener, sectionName: addSectionName.trim() });
-                }
-                const newSection = addSectionFromResult(result, 'next-steps', addSectionOpener);
-                setBuiltSections(prev => [...prev, newSection]);
-                setAddSectionName(''); setAddSectionExamples(['', '', '', '', '']); setGroupMode('find-more');
-                setStep('add_sections');
-              } catch (err: any) { setError(err.message || 'Failed to build section.'); }
-              finally { setIsLoading(false); }
-            }} style={{ ...btnG, flex: 1 }}>Add Section</button>
+        </main>
+      </div>
+    );
+
+    // ── STANDARD: SINGLE ──────────────────────────────────────────────────────
+    if (sectionStep === 'standard_single') return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+        <Header onBack={() => setSectionStep('standard_type')} subtitle="Standard Comment" />
+        <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+          <div style={card}>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>Enter your standard comment</h2>
+            <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>This will appear automatically in every report. Replace any pupil names with [Name] before pasting.</p>
+            <ErrorBox />
+            <div style={{ marginBottom: '12px' }}><label style={lbl}>Section name</label><input type="text" value={standardName} onChange={e => setStandardName(e.target.value)} placeholder="e.g. Course Content, Assessment Analysis" style={inp} /></div>
+            <div style={{ marginBottom: '16px' }}><label style={lbl}>Text (paste exactly as it should appear)</label><textarea value={standardContent} onChange={e => setStandardContent(e.target.value)} placeholder="Paste the text here — with [Name] instead of pupil names..." style={{ ...txa, minHeight: '120px' }} /></div>
+            <button onClick={handleAddStandardSingle} style={{ ...btnG, width: '100%', padding: '14px' }}>Add Standard Comment</button>
+            <button onClick={() => setSectionStep('menu')} style={{ ...btnS, width: '100%', marginTop: '8px' }}>Cancel</button>
           </div>
+        </main>
+      </div>
+    );
+
+    // ── STANDARD: MULTI ───────────────────────────────────────────────────────
+    if (sectionStep === 'standard_multi') return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+        <Header onBack={() => setSectionStep('standard_type')} subtitle="Standard Comments — Multiple Options" />
+        <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+          <div style={card}>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>Enter your comment options</h2>
+            <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6b7280' }}>Give each option a button label (what the teacher will click) and paste the text. Replace any pupil names with [Name].</p>
+            <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 12px', marginBottom: '16px' }}>
+              <p style={{ margin: 0, fontSize: '13px', color: '#1e40af' }}>💡 The button label is what the teacher sees and clicks — e.g. "National 5 Pathway", "National 4 Pathway"</p>
+            </div>
+            <ErrorBox />
+            <div style={{ marginBottom: '16px' }}><label style={lbl}>Section name</label><input type="text" value={standardName} onChange={e => setStandardName(e.target.value)} placeholder="e.g. Pathway Information" style={inp} /></div>
+            {multiOptions.map((opt, i) => (
+              <div key={i} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '14px', marginBottom: '10px', backgroundColor: '#f9fafb' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#374151' }}>Option {i+1}</span>
+                  {i > 0 && <button onClick={() => setMultiOptions(prev => prev.filter((_,j) => j !== i))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '18px' }}>×</button>}
+                </div>
+                <div style={{ marginBottom: '8px' }}><label style={{ ...lbl, fontSize: '12px' }}>Button label</label><input type="text" value={opt.label} onChange={e => { const u=[...multiOptions]; u[i]={...u[i],label:e.target.value}; setMultiOptions(u); }} placeholder="e.g. National 5 Pathway" style={inp} /></div>
+                <div><label style={{ ...lbl, fontSize: '12px' }}>Text (with [Name] instead of pupil names)</label><textarea value={opt.content} onChange={e => { const u=[...multiOptions]; u[i]={...u[i],content:e.target.value}; setMultiOptions(u); }} placeholder="Paste the text for this option..." style={{ ...txa, minHeight: '100px' }} /></div>
+              </div>
+            ))}
+            <button onClick={() => setMultiOptions(prev => [...prev, { label: '', content: '' }])} style={{ ...btnS, width: '100%', marginBottom: '12px' }}>+ Add Another Option</button>
+            <button onClick={handleAddStandardMulti} style={{ ...btnG, width: '100%', padding: '14px' }}>Add Section</button>
+            <button onClick={() => setSectionStep('menu')} style={{ ...btnS, width: '100%', marginTop: '8px' }}>Cancel</button>
+          </div>
+        </main>
+      </div>
+    );
+
+    // ── ASSESSMENT FLOW ───────────────────────────────────────────────────────
+    if (sectionStep === 'assessment_flow') {
+
+      if (assessmentStep === 'type') return (
+        <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+          <Header onBack={() => { setSectionStep('menu'); setAssessmentStep('type'); }} subtitle="Assessment Score" />
+          <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+            <div style={card}>
+              <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>How do you report on the assessment score?</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+                <button onClick={() => { setAssessment(a => ({...a, statementType: 'same'})); setAssessmentStep('count'); }} style={{ ...btnP, padding: '18px', textAlign: 'left' }}>
+                  <div style={{ fontWeight: '700', marginBottom: '4px' }}>A) Same or similar statement for every pupil</div>
+                  <div style={{ fontSize: '13px', opacity: 0.9 }}>Only the name and score change — e.g. "[Name] scored [Score] in the end of unit assessment"</div>
+                </button>
+                <button onClick={() => { setAssessment(a => ({...a, statementType: 'different'})); setAssessmentStep('count'); }} style={{ ...btnV, padding: '18px', textAlign: 'left' }}>
+                  <div style={{ fontWeight: '700', marginBottom: '4px' }}>B) Different statements depending on performance</div>
+                  <div style={{ fontSize: '13px', opacity: 0.9 }}>e.g. "performed excellently" for high scores, "found it challenging" for lower scores</div>
+                </button>
+              </div>
+              <button onClick={() => setSectionStep('menu')} style={{ ...btnS, width: '100%', marginTop: '10px' }}>Cancel</button>
+            </div>
+          </main>
         </div>
-      </main>
+      );
+
+      if (assessmentStep === 'count') return (
+        <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+          <Header onBack={() => setAssessmentStep('type')} subtitle="Assessment Score" />
+          <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+            <div style={card}>
+              <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>How many assessments do you report on?</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+                <button onClick={() => { setAssessment(a => ({...a, count: 'one', partIndex: 1})); setAssessmentStep('examples'); }} style={{ ...btnP, padding: '14px' }}>A) One assessment only</button>
+                <button onClick={() => { setAssessment(a => ({...a, count: 'multiple'})); setAssessmentStep('sentence_type'); }} style={{ ...btnV, padding: '14px' }}>B) More than one assessment</button>
+              </div>
+              <button onClick={() => setSectionStep('menu')} style={{ ...btnS, width: '100%', marginTop: '10px' }}>Cancel</button>
+            </div>
+          </main>
+        </div>
+      );
+
+      if (assessmentStep === 'sentence_type') return (
+        <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+          <Header onBack={() => setAssessmentStep('count')} subtitle="Assessment Score" />
+          <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+            <div style={card}>
+              <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>How do you write about multiple assessments?</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+                <button onClick={() => { setAssessment(a => ({...a, sentenceType: 'one-sentence', partIndex: 1})); setAssessmentStep('examples'); }} style={{ ...btnP, padding: '18px', textAlign: 'left' }}>
+                  <div style={{ fontWeight: '700', marginBottom: '4px' }}>A) One sentence covers all scores</div>
+                  <div style={{ fontSize: '13px', opacity: 0.9 }}>e.g. "[Name] scored [Score] in Test 1 and [Score] in Test 2"</div>
+                </button>
+                <button onClick={() => { setAssessment(a => ({...a, sentenceType: 'separate', partIndex: 1})); setAssessmentStep('examples'); }} style={{ ...btnV, padding: '18px', textAlign: 'left' }}>
+                  <div style={{ fontWeight: '700', marginBottom: '4px' }}>B) A different sentence for each assessment</div>
+                  <div style={{ fontSize: '13px', opacity: 0.9 }}>Each assessment gets its own separate statement</div>
+                </button>
+              </div>
+              <button onClick={() => setSectionStep('menu')} style={{ ...btnS, width: '100%', marginTop: '10px' }}>Cancel</button>
+            </div>
+          </main>
+        </div>
+      );
+
+      if (assessmentStep === 'examples' || assessmentStep === 'part2' || assessmentStep === 'part3') {
+        const isOneSentence = assessment.count === 'multiple' && assessment.sentenceType === 'one-sentence';
+        const isSeparate = assessment.count === 'multiple' && assessment.sentenceType === 'separate';
+        const partLabel = isOneSentence ? ` — Part ${assessment.partIndex}` : isSeparate ? ` ${assessment.partIndex}` : '';
+        const sectionLabel = `Assessment${partLabel}`;
+        const desc = isOneSentence && assessment.partIndex === 1
+          ? 'Paste the start of the sentence including the first score. e.g. "[Name] scored [Score] in the MQS assessment". We will link this to the next part.'
+          : isOneSentence
+          ? `Part ${assessment.partIndex} of the sentence. e.g. "and [Score] in the Black Death assessment." Start with the connecting word.`
+          : assessment.statementType === 'same'
+          ? 'Replace the actual score with [Score] and any pupil names with [Name] before pasting.'
+          : 'Paste 3–5 examples showing different performance levels.';
+
+        return (
+          <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+            <Header onBack={() => setAssessmentStep(assessmentStep === 'examples' ? 'count' : 'examples')} subtitle="Assessment Score" />
+            <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+              <div style={card}>
+                <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>
+                  {isOneSentence ? `Part ${assessment.partIndex} of your assessment sentence` : isSeparate ? `Assessment ${assessment.partIndex}` : 'Your assessment statement'}
+                </h2>
+                <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#6b7280' }}>{desc}</p>
+                {isOneSentence && assessment.partIndex === 1 && (
+                  <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
+                    <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#1e40af' }}>How many scores in your sentence?</p>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {[2,3].map(n => <button key={n} onClick={() => setAssessment(a => ({...a, totalParts: n}))} style={{ padding: '6px 14px', borderRadius: '6px', border: assessment.totalParts===n ? '2px solid #3b82f6' : '1px solid #d1d5db', backgroundColor: assessment.totalParts===n ? '#eff6ff' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>{n} scores</button>)}
+                    </div>
+                  </div>
+                )}
+                <ErrorBox />
+                {assessment.examples.map((ex, i) => (
+                  <div key={i} style={{ marginBottom: '8px' }}>
+                    <label style={{ ...lbl, fontSize: '12px', color: '#9ca3af' }}>Example {i+1}{i>1?' (optional)':''}</label>
+                    <input type="text" value={ex} onChange={e => { const u=[...assessment.examples]; u[i]=e.target.value; setAssessment(a => ({...a, examples: u})); }} placeholder="Paste an example..." style={inp} />
+                  </div>
+                ))}
+                <button onClick={() => {
+                  const examples = assessment.examples.filter(e => e.trim());
+                  if (examples.length === 0) { setError('Please paste at least one example.'); return; }
+                  setError(null);
+                  if (assessment.statementType === 'same') {
+                    handleBuildAssessmentSame(examples, sectionLabel);
+                  } else {
+                    // Different statements — use rating mode with assessment-comment
+                    setIsLoading(true);
+                    setLoadingMessage('Building assessment section...');
+                    callApi({ mode: 'rating', subject, yearGroup, reportText: rawReportText, pronounSet, sectionName: sectionLabel, scaleType: 'four-level', examples })
+                      .then(result => {
+                        const comments = result.result || {};
+                        // Strip % from all assessment comments
+                        Object.keys(comments).forEach(k => { comments[k] = (comments[k] as string[]).map(stripPercent); });
+                        if (!comments.notCompleted || comments.notCompleted.length === 0) { comments.notCompleted = ['[Name] has not yet completed this assessment.', '[Name] was absent for this assessment.']; }
+                        addSection({ id: `s_${Date.now()}`, type: 'assessment-comment', name: sectionLabel, openerType: 'name', data: { scoreType: 'percentage', comments } });
+                      })
+                      .catch(() => setError('Failed. Please try again.'))
+                      .finally(() => setIsLoading(false));
+                  }
+                  // Determine next step
+                  const hasMoreParts = (isOneSentence && assessment.partIndex < assessment.totalParts) || (isSeparate && assessment.partIndex < 3);
+                  if (hasMoreParts) { setAssessment(a => ({...a, partIndex: a.partIndex + 1, examples: ['','','','','']})); setAssessmentStep('part2'); }
+                  else { setAssessment(a => ({...a, examples: ['','','','','']})); setAssessmentStep('judgement'); }
+                }} style={{ ...btnP, width: '100%', marginTop: '16px', padding: '14px' }}>
+                  ✓ {assessment.statementType === 'same' ? 'Create this assessment section' : 'Read my reports and build this section'}
+                </button>
+                <button onClick={() => setSectionStep('menu')} style={{ ...btnS, width: '100%', marginTop: '8px' }}>Cancel</button>
+              </div>
+            </main>
+          </div>
+        );
+      }
+
+      if (assessmentStep === 'judgement') return (
+        <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+          <Header onBack={() => setAssessmentStep('examples')} subtitle="Assessment Score" />
+          <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+            <BuiltList />
+            <div style={card}>
+              <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>Would you like to add a judgement statement after the assessment score?</h2>
+              <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>A separate qualities section the teacher chooses from — commenting on how well the pupil did overall.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <button onClick={() => setAssessmentStep('judgement_examples')} style={{ ...btnP, padding: '14px' }}>Yes — add a judgement comment section</button>
+                <button onClick={() => { setAssessmentStep('type'); setSectionStep('menu'); }} style={{ ...btnS, padding: '14px' }}>No — assessment sections are done</button>
+              </div>
+            </div>
+          </main>
+        </div>
+      );
+
+      if (assessmentStep === 'judgement_examples') return (
+        <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+          <Header onBack={() => setAssessmentStep('judgement')} subtitle="Assessment Judgement" />
+          <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+            <div style={card}>
+              <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>Paste examples of your assessment judgement statements</h2>
+              <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#6b7280' }}>Different statements for different performance levels. Replace pupil names with [Name].</p>
+              <ErrorBox />
+              {assessment.examples.map((ex, i) => (
+                <div key={i} style={{ marginBottom: '8px' }}>
+                  <label style={{ ...lbl, fontSize: '12px', color: '#9ca3af' }}>Example {i+1}{i>1?' (optional)':''}</label>
+                  <input type="text" value={ex} onChange={e => { const u=[...assessment.examples]; u[i]=e.target.value; setAssessment(a => ({...a, examples: u})); }} placeholder="Paste a judgement statement..." style={inp} />
+                </div>
+              ))}
+              <button onClick={async () => {
+                const examples = assessment.examples.filter(e => e.trim());
+                if (examples.length === 0) { setError('Please paste at least one example.'); return; }
+                setError(null); setIsLoading(true); setLoadingMessage('Building judgement section...');
+                try {
+                  const result = await callApi({ mode: 'extract-qualities', subject, yearGroup, reportText: rawReportText, pronounSet, sectionName: 'Assessment Reflection', openerType: 'pronoun', selectedText: examples.join('\n') });
+                  addSection({ id: `s_${Date.now()}`, type: 'qualities', name: result.sectionName || 'Assessment Reflection', openerType: 'pronoun', data: { comments: Object.fromEntries(result.headings.map((h: any) => [h.name, h.comments])) } });
+                  setAssessmentStep('type');
+                } catch { setError('Failed. Please try again.'); }
+                finally { setIsLoading(false); }
+              }} style={{ ...btnP, width: '100%', marginTop: '16px', padding: '14px' }}>✓ Build judgement section</button>
+              <button onClick={() => setSectionStep('menu')} style={{ ...btnS, width: '100%', marginTop: '8px' }}>Cancel</button>
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    // ── DEVELOPMENT / NEXT STEPS: SELECTED ────────────────────────────────────
+    const isDevOrNS = sectionStep === 'development_selected' || sectionStep === 'nextsteps_selected' || sectionStep === 'development_building' || sectionStep === 'nextsteps_building' || sectionStep === 'development_more' || sectionStep === 'nextsteps_more';
+    if (isDevOrNS) {
+      const isNS = sectionStep === 'nextsteps_selected' || sectionStep === 'nextsteps_building' || sectionStep === 'nextsteps_more';
+      const currentType: 'development' | 'nextsteps' = isNS ? 'nextsteps' : 'development';
+
+      if (sectionStep === 'development_selected' || sectionStep === 'nextsteps_selected') return (
+        <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+          <Header onBack={() => setSectionStep('menu')} subtitle={isNS ? 'Next Steps' : 'Areas for Development'} />
+          <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+            <div style={card}>
+              <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>Paste {isNS ? 'next steps' : 'areas for development'} sentences from your reports</h2>
+              <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6b7280' }}>
+                {isNS ? 'Copy just the next steps sentences from several of your reports. If they always start with a phrase like "Moving forward," include that. Claude will group them by topic.' : 'Copy just the development sentences from several reports — what each pupil needs to improve. Claude will group them by topic. Don\'t include any "Next Steps:" headings or standard closing advice.'}
+              </p>
+              <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 12px', marginBottom: '16px' }}>
+                <p style={{ margin: 0, fontSize: '13px', color: '#1e40af' }}>💡 Replace any pupil names with [Name] before pasting.</p>
+              </div>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={lbl}>Section name</label>
+                <input type="text" value={devName} onChange={e => setDevName(e.target.value)} placeholder={isNS ? 'e.g. Next Steps, Moving Forward' : 'e.g. Areas for Development'} style={inp} />
+              </div>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={lbl}>Does the first sentence use the pupil's name or pronoun?</label>
+                <OpenerChoice value={devOpener} onChange={setDevOpener} />
+              </div>
+              <label style={lbl}>Paste your selected sentences</label>
+              <textarea value={devSelected} onChange={e => setDevSelected(e.target.value)} placeholder={`Paste ${isNS ? 'next steps' : 'development'} sentences from several reports here...`} style={{ ...txa, minHeight: '180px', marginBottom: '16px' }} />
+              <ErrorBox />
+              <button onClick={() => { setDevType(currentType); setDevSentenceIndex(1); handleBuildDevelopment(); }} style={{ ...btnP, width: '100%', padding: '14px' }}>✓ Group these into topics</button>
+              <button onClick={() => setSectionStep('menu')} style={{ ...btnS, width: '100%', marginTop: '8px' }}>Cancel</button>
+            </div>
+          </main>
+        </div>
+      );
+
+      if (sectionStep === 'development_more' || sectionStep === 'nextsteps_more') return (
+        <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+          <Header onBack={() => setSectionStep('menu')} subtitle={isNS ? 'Next Steps' : 'Areas for Development'} />
+          <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
+            <BuiltList />
+            <div style={card}>
+              <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>Would you like to add another {isNS ? 'next steps' : 'development'} sentence?</h2>
+              <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>If your reports have a second or third sentence at this point, you can add it now. Choose whether it uses the pupil's name or pronoun.</p>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={lbl}>Opener for the next sentence</label>
+                <OpenerChoice value={devOpener} onChange={setDevOpener} />
+              </div>
+              <label style={lbl}>Paste examples of the next sentence</label>
+              <textarea value={devSelected} onChange={e => setDevSelected(e.target.value)} placeholder="Paste examples of the next sentence from several reports..." style={{ ...txa, minHeight: '150px', marginBottom: '16px' }} />
+              <ErrorBox />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <button onClick={() => { setDevType(currentType); handleBuildDevelopment(); }} style={{ ...btnP, padding: '14px' }}>Yes — add another sentence</button>
+                <button onClick={() => setSectionStep('menu')} style={{ ...btnG, padding: '14px' }}>No — move on</button>
+              </div>
+            </div>
+          </main>
+        </div>
+      );
+    }
+  }
+
+  // ─── GENERATING ───────────────────────────────────────────────────────────
+  if (mainStep === 'generating') return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '48px 40px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: '400px' }}>
+        <div style={{ fontSize: '48px', marginBottom: '20px' }}>🪄</div>
+        <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#111827' }}>Building Your Template</h2>
+        <p style={{ margin: '0 0 24px 0', color: '#6b7280', fontSize: '14px' }}>Assembling all your sections...</p>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+          {[0,1,2].map(i => <div key={i} style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#3b82f6', animation: 'pulse 1.2s ease-in-out infinite', animationDelay: `${i*0.2}s` }} />)}
+        </div>
+        <style>{`@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}`}</style>
+      </div>
     </div>
   );
 
-  // ─── STEP: PREVIEW ────────────────────────────────────────────────────────
-
-  if (step === 'preview' && generatedTemplate) return (
+  // ─── PREVIEW ──────────────────────────────────────────────────────────────
+  if (mainStep === 'preview' && generatedTemplate) return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: isMobile ? '16px' : '20px 24px' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
           <div><h1 style={{ margin: 0, fontSize: isMobile ? '16px' : '20px', fontWeight: '700', color: '#111827' }}>✅ Template Generated</h1><p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Review, refine, or save</p></div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={handleEditFirst} style={btnS}>Save & Edit</button>
-            <button onClick={handleSave} style={btnP}>Save Template</button>
-          </div>
+          <div style={{ display: 'flex', gap: '8px' }}><button onClick={handleEditFirst} style={{ ...{ backgroundColor: '#f3f4f6', color: '#374151', padding: '10px 18px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' } }}>Save & Edit</button><button onClick={handleSave} style={btnP}>Save Template</button></div>
         </div>
       </header>
       <main style={{ maxWidth: '800px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
         <div style={{ ...card, marginBottom: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ flex: 1 }}><p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>TEMPLATE NAME</p><h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#111827' }}>{generatedTemplate.name}</h2></div>
             <div style={{ backgroundColor: '#eff6ff', color: '#1d4ed8', padding: '6px 12px', borderRadius: '6px', fontSize: '13px', fontWeight: '500' }}>{generatedTemplate.sections.length} sections</div>
           </div>
@@ -1048,13 +849,13 @@ export default function ImportTemplate() {
           {generatedTemplate.sections.map((section, index) => (
             <div key={section.id} style={{ ...card, marginBottom: 0, padding: '14px 16px' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                <span style={{ backgroundColor: '#f3f4f6', color: '#6b7280', fontSize: '11px', fontWeight: '600', padding: '2px 6px', borderRadius: '4px', flexShrink: 0, marginTop: '2px' }}>{index + 1}</span>
+                <span style={{ backgroundColor: '#f3f4f6', color: '#6b7280', fontSize: '11px', fontWeight: '600', padding: '2px 6px', borderRadius: '4px', flexShrink: 0, marginTop: '2px' }}>{index+1}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
                     <span style={{ backgroundColor: getSectionTypeColor(section.type), color: 'white', fontSize: '11px', fontWeight: '600', padding: '2px 8px', borderRadius: '4px' }}>{getSectionTypeLabel(section.type)}</span>
                     {section.name && section.type !== 'new-line' && <span style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>{section.name}</span>}
                   </div>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#6b7280', lineHeight: '1.5' }}>{getSectionSummary(section)}</p>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{getSectionSummary(section)}</p>
                 </div>
               </div>
             </div>
@@ -1062,7 +863,7 @@ export default function ImportTemplate() {
         </div>
         <div style={{ ...card, border: '2px solid #8b5cf6', marginBottom: '16px' }}>
           <h3 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: '600', color: '#111827' }}>🔄 Refine with More Reports</h3>
-          <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#6b7280' }}>Paste more reports to add additional options and improve variety.</p>
+          <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#6b7280' }}>Paste more reports to add additional options.</p>
           <textarea value={refineText} onChange={e => setRefineText(e.target.value)} placeholder="Paste more reports here..." style={{ ...txa, minHeight: '120px', marginBottom: '12px' }} />
           {error && <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '10px', marginBottom: '10px', color: '#b91c1c', fontSize: '13px' }}>⚠️ {error}</div>}
           <button onClick={handleRefine} disabled={refineText.length < 200 || isRefining} style={{ width: '100%', padding: '12px', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', backgroundColor: isRefining ? '#9ca3af' : refineText.length >= 200 ? '#8b5cf6' : '#d1d5db', color: 'white', cursor: refineText.length >= 200 && !isRefining ? 'pointer' : 'not-allowed' }}>
@@ -1070,16 +871,15 @@ export default function ImportTemplate() {
           </button>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={handleEditFirst} style={{ ...btnS, flex: 1, padding: '14px', fontSize: '15px' }}>✏️ Save & Edit</button>
+          <button onClick={handleEditFirst} style={{ ...{ backgroundColor: '#f3f4f6', color: '#374151', padding: '14px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '15px', fontWeight: '500', cursor: 'pointer' }, flex: 1 }}>✏️ Save & Edit</button>
           <button onClick={handleSave} style={{ ...btnP, flex: 1, padding: '14px', fontSize: '15px' }}>✅ Save Template</button>
         </div>
       </main>
     </div>
   );
 
-  // ─── STEP: SAVED ──────────────────────────────────────────────────────────
-
-  if (step === 'saved') return (
+  // ─── SAVED ────────────────────────────────────────────────────────────────
+  if (mainStep === 'saved') return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '48px 40px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: '400px' }}>
         <div style={{ fontSize: '56px', marginBottom: '16px' }}>🎉</div>
@@ -1088,7 +888,7 @@ export default function ImportTemplate() {
         <p style={{ margin: '0 0 32px 0', color: '#6b7280', fontSize: '14px' }}>Your template is ready to use.</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <Link to="/manage-templates" style={{ textDecoration: 'none' }}><button style={{ ...btnP, width: '100%', padding: '14px', fontSize: '15px' }}>Go to Templates</button></Link>
-          <button onClick={handleReset} style={{ ...btnS, width: '100%', padding: '14px', fontSize: '15px' }}>Import Another Template</button>
+          <button onClick={handleReset} style={{ ...{ backgroundColor: '#f3f4f6', color: '#374151', padding: '14px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '15px', fontWeight: '500', cursor: 'pointer' }, width: '100%' }}>Import Another Template</button>
         </div>
       </div>
     </div>

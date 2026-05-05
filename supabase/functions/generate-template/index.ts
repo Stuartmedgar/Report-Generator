@@ -10,57 +10,89 @@ PRINCIPLE 1: The teacher should be able to use the finished template to recreate
 
 PRINCIPLE 2: The teacher should be able to use the finished template to write a new set of reports that they would recognise as their own — same voice, same vocabulary, same sentence structure, same tone.
 
-RULE 7: The teacher's actual sentences are the options. Copy them exactly but replace any student names with [Name] and any scores/percentages with [Score]. When generating a variety option, write it as if you are the teacher — same words where possible, same short direct style. Never generate options that sound formal, corporate, or AI-written.
+RULE 7: The teacher's actual sentences are the options. Copy them exactly but replace any student names with [Name] and any numeric scores with [Score] (removing any % sign — the teacher will add % themselves when writing). When generating a variety option, write it as if you are the teacher — same words, same short direct style, same level of formality. Never generate options that sound formal, corporate, or AI-written.
 
-CRITICAL — NAME REPLACEMENT: Every sentence you output must have ALL student names replaced with [Name]. The pronoun pattern must be consistent within each section.`;
+CRITICAL: Replace ALL student names with [Name]. Replace ALL numeric scores and percentages with [Score] — remove the % symbol entirely. Keep pronoun pattern consistent within each section.`;
 
-const GROUPING_SYSTEM = `${KNOWLEDGE_BASE}
+const RATING_SYSTEM = `${KNOWLEDGE_BASE}
 
-Your task is to analyse teacher-written reports and group sentences at a specific position into headings for a template.
+Your task is to build a RATING/JUDGEMENT section from teacher-written report sentences.
 
-The teacher has identified a sentence position and provided examples. You must:
-1. Read ALL the reports provided
-2. Find every sentence at that position across all reports
-3. Group similar sentences together under short, clear heading names
-4. Where the position reflects a performance judgement, heading names must make that judgement immediately obvious
-5. Copy sentences exactly as written BUT replace ALL student names with [Name] and any scores/percentages with [Score]
-6. Generate one additional variety option per heading in the teacher's exact voice — also using [Name]
-7. Ensure every option in a section uses the same opener — all [Name] OR all pronoun — never mix
+The teacher has provided example sentences that vary by performance level. You must:
+1. Read ALL the example sentences provided
+2. Also scan the full reports provided for any additional sentences at this position
+3. Group sentences by performance level under the appropriate heading
+4. Replace ALL student names with [Name] and all scores with [Score] (no % symbol)
+5. Generate additional variety options in the teacher's exact voice where needed
+6. All options must use [Name] as the opener
 
-PRONOUN CONSISTENCY: If the section is pronoun-led, every option must start with the pronoun. If [Name]-led, every option must start with [Name].
+FOR RATED-COMMENT (4-level scale):
+Map sentences to: excellent, good, satisfactory, needsImprovement
+Generate options for any level that has fewer than 3 sentences
+Return 4 options per level
 
-Return ONLY valid JSON, no markdown, no backticks:
+FOR QUALITIES (teacher's own scale):
+Derive the heading names from the teacher's own language and groupings
+Each heading represents a distinct performance group the teacher uses
+2-3 options per heading
+
+Return ONLY valid JSON, no markdown:
 {
-  "sectionName": "Short descriptive name for this section",
-  "headings": [
-    {
-      "name": "Short clear heading name",
-      "comments": ["Sentence with [Name]", "Another sentence", "Generated variety option"]
-    }
-  ]
+  "type": "rated-comment" or "qualities",
+  "sectionName": "string",
+  "result": {
+    For rated-comment: {"excellent": ["..."], "good": ["..."], "satisfactory": ["..."], "needsImprovement": ["..."], "notCompleted": ["[Name] has not completed this.", "[Name] was absent for this."]}
+    For qualities: {"headings": [{"name": "heading name", "comments": ["option 1", "option 2"]}]}
+  }
 }`;
 
-const REWRITE_SYSTEM = `${KNOWLEDGE_BASE}
+const QUALITIES_SYSTEM = `${KNOWLEDGE_BASE}
 
-Your task is to rewrite a qualities section so that every comment uses a consistent opener.
+Your task is to extract ALL quality sentences from a teacher's report text and group them into a template section.
 
-Rules:
-- If rewriting as [Name]-led: every comment must start with [Name]. Replace pronoun openers with [Name].
-- If rewriting as pronoun-led: every comment must start with the selected pronoun. Replace [Name] openers with the pronoun.
-- Keep the rest of each sentence exactly the same.
-- Replace any student names mid-sentence with [Name].
-- Keep possessives consistent.
-- Do not change heading names.
+The teacher has pasted selected quality sentences from their reports. You must:
+1. Read the selected examples carefully to understand what quality sentences look like in these reports
+2. Scan ALL the full reports provided for any additional quality sentences not in the selection
+3. Group similar sentences under short, clear heading names
+4. Heading names must make any judgement immediately obvious where relevant (e.g. "Excellent Effort and Behaviour", "Can Lack Focus")
+5. Replace ALL student names with [Name]
+6. Generate one additional variety option per heading in the teacher's exact voice
+7. The specified opener ([Name] or pronoun) must be used consistently for ALL options
 
-Return ONLY valid JSON, no markdown, no backticks:
+DO NOT include sentences about progress, assessment scores, or next steps — only character, behaviour, attitude, effort, working style sentences.
+
+Return ONLY valid JSON, no markdown:
 {
   "sectionName": "string",
   "headings": [
-    {
-      "name": "heading name unchanged",
-      "comments": ["Rewritten comment 1", "Rewritten comment 2"]
-    }
+    {"name": "Short clear heading", "comments": ["option 1", "option 2", "option 3"]}
   ]
+}`;
+
+const DEVELOPMENT_SYSTEM = `${KNOWLEDGE_BASE}
+
+Your task is to extract ALL areas for development or next steps sentences from a teacher's report text and group them by topic.
+
+The teacher has pasted selected sentences. You must:
+1. Read the selected examples to understand what development sentences look like in these reports
+2. Scan ALL the full reports for additional sentences at this position
+3. IGNORE any "Next Steps:" or "Areas for Development:" headings — these are section headers, not content
+4. IGNORE any standard closing sentences like "Regular revision is advised..." — these are standard comments, not individual development points
+5. Group sentences about the SAME topic under the same focus area heading
+6. Different focus areas must cover DIFFERENT topics
+7. Options within a focus area are different phrasings of the SAME topic
+8. Replace ALL student names with [Name]
+9. Preserve any fixed opening phrase the teacher always uses (e.g. "Moving forward,")
+10. Generate variety options in the teacher's exact voice
+11. The specified opener ([Name] or pronoun) must be used consistently for ALL options
+
+Return ONLY valid JSON, no markdown:
+{
+  "sectionName": "string",
+  "focusAreas": {
+    "Topic Name": ["option 1", "option 2", "option 3"],
+    "Another Topic": ["option 1", "option 2", "option 3"]
+  }
 }`;
 
 const corsHeaders = {
@@ -69,91 +101,44 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-// ─── MECHANICAL ASSEMBLY ──────────────────────────────────────────────────────
-// Converts builtSections directly to template JSON without any AI involvement
-
-function mechanicalAssemble(params: {
-  subject: string;
-  yearGroup: string;
-  builtSections: any[];
-}): { templateName: string; sections: any[] } {
+function mechanicalAssemble(params: { subject: string; yearGroup: string; builtSections: any[] }): { templateName: string; sections: any[] } {
   const { subject, yearGroup, builtSections } = params;
-
   const templateName = [subject, yearGroup].filter(Boolean).join(' ') + ' Report Template';
-
   const sections: any[] = [];
   let idCounter = 0;
   const makeId = () => `s${++idCounter}_${Date.now()}`;
 
   builtSections.forEach((section, index) => {
-    // Add new-line before each section except the first
     if (index > 0 && section.type !== 'new-line') {
       sections.push({ id: makeId(), type: 'new-line', name: '', data: {} });
     }
-
     if (section.type === 'standard-comment') {
-      sections.push({
-        id: makeId(),
-        type: 'standard-comment',
-        name: section.name || 'Standard Comment',
-        data: { content: section.data?.content || section.data?.comment || '' },
-      });
+      sections.push({ id: makeId(), type: 'standard-comment', name: section.name || 'Standard Comment', data: { content: section.data?.content || '' } });
     } else if (section.type === 'qualities') {
-      sections.push({
-        id: makeId(),
-        type: 'qualities',
-        name: section.name || 'Qualities',
-        data: { comments: section.data?.comments || {} },
-      });
+      sections.push({ id: makeId(), type: 'qualities', name: section.name || 'Qualities', data: { comments: section.data?.comments || {} } });
+    } else if (section.type === 'rated-comment') {
+      sections.push({ id: makeId(), type: 'rated-comment', name: section.name || 'Rating', data: { comments: section.data?.comments || {} } });
     } else if (section.type === 'next-steps') {
-      sections.push({
-        id: makeId(),
-        type: 'next-steps',
-        name: section.name || 'Next Steps',
-        data: { focusAreas: section.data?.focusAreas || {} },
-      });
+      sections.push({ id: makeId(), type: 'next-steps', name: section.name || 'Next Steps', data: { focusAreas: section.data?.focusAreas || {} } });
     } else if (section.type === 'assessment-comment') {
-      sections.push({
-        id: makeId(),
-        type: 'assessment-comment',
-        name: section.name || 'Assessment',
-        data: {
-          scoreType: section.data?.scoreType || 'percentage',
-          comments: section.data?.comments || {},
-        },
-      });
+      sections.push({ id: makeId(), type: 'assessment-comment', name: section.name || 'Assessment', data: { scoreType: section.data?.scoreType || 'percentage', comments: section.data?.comments || {} } });
     } else if (section.type === 'personalised-comment') {
-      sections.push({
-        id: makeId(),
-        type: 'personalised-comment',
-        name: section.name || 'Assessment',
-        data: {
-          instruction: section.data?.instruction || 'Enter the score for this pupil',
-          categories: section.data?.categories || {},
-        },
-      });
-    } else if (section.type === 'new-line') {
-      // Skip — we add new-lines automatically between sections
+      sections.push({ id: makeId(), type: 'personalised-comment', name: section.name || 'Assessment', data: { instruction: section.data?.instruction || 'Enter the score for this pupil', categories: section.data?.categories || {} } });
     } else if (section.type === 'optional-additional-comment') {
-      sections.push({
-        id: makeId(),
-        type: 'optional-additional-comment',
-        name: section.name || 'Additional Comments',
-        data: {},
-      });
+      sections.push({ id: makeId(), type: 'optional-additional-comment', name: section.name || 'Additional Comments', data: {} });
     }
   });
 
-  // Always end with optional-additional-comment if not already present
   const lastMeaningful = [...sections].reverse().find(s => s.type !== 'new-line');
   if (!lastMeaningful || lastMeaningful.type !== 'optional-additional-comment') {
-    if (sections.length > 0) {
-      sections.push({ id: makeId(), type: 'new-line', name: '', data: {} });
-    }
+    sections.push({ id: makeId(), type: 'new-line', name: '', data: {} });
     sections.push({ id: makeId(), type: 'optional-additional-comment', name: 'Additional Comments', data: {} });
   }
-
   return { templateName, sections };
+}
+
+function stripPercent(text: string): string {
+  return text.replace(/\[Score\]%/g, '[Score]').replace(/(\d+)%/g, '[Score]').replace(/(\d+\/\d+)/g, '[Score]');
 }
 
 serve(async (req) => {
@@ -163,9 +148,9 @@ serve(async (req) => {
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) return new Response(JSON.stringify({ error: "API key not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-  let mode, subject, yearGroup, reportText, pronounSet,
-      examples, positionType, openerType, sectionName,
-      builtSections, existingTemplate, refineText, sourceSection;
+  let mode, subject, yearGroup, reportText, pronounSet, examples, openerType,
+      sectionName, builtSections, existingTemplate, refineText, sourceSection,
+      scaleType, positionType, selectedText;
 
   try {
     const body = await req.json();
@@ -175,29 +160,24 @@ serve(async (req) => {
     reportText = body.reportText || "";
     pronounSet = body.pronounSet || "they/their";
     examples = body.examples || [];
-    positionType = body.positionType || "qualities";
     openerType = body.openerType || "name";
     sectionName = body.sectionName || "";
     builtSections = body.builtSections || [];
     existingTemplate = body.existingTemplate || null;
     refineText = body.refineText || "";
     sourceSection = body.sourceSection || null;
+    scaleType = body.scaleType || "own"; // "four-level" or "own"
+    positionType = body.positionType || "qualities"; // "qualities", "development", "nextsteps", "rating"
+    selectedText = body.selectedText || ""; // teacher's selected quality/development sentences
   } catch {
     return new Response(JSON.stringify({ error: "Invalid request body" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   const pronounCapital = pronounSet.split('/')[0].charAt(0).toUpperCase() + pronounSet.split('/')[0].slice(1);
-  const pronounFull = ({
-    "he/his": "HE/HIM/HIS/HIMSELF",
-    "she/her": "SHE/HER/HERS/HERSELF",
-    "they/their": "THEY/THEM/THEIR/THEMSELVES",
-  } as Record<string, string>)[pronounSet] || "THEY/THEM/THEIR/THEMSELVES";
+  const pronounFull = ({ "he/his": "HE/HIM/HIS/HIMSELF", "she/her": "SHE/HER/HERS/HERSELF", "they/their": "THEY/THEM/THEIR/THEMSELVES" } as Record<string, string>)[pronounSet] || "THEY/THEM/THEIR/THEMSELVES";
 
-  // ─── MODE: ASSEMBLE (mechanical — no AI) ─────────────────────────────────
+  // ─── MODE: ASSEMBLE ───────────────────────────────────────────────────────
   if (mode === "assemble") {
-    if (!builtSections || builtSections.length === 0) {
-      return new Response(JSON.stringify({ error: "No sections to assemble" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
     const result = mechanicalAssemble({ subject, yearGroup, builtSections });
     return new Response(JSON.stringify(result), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
@@ -205,98 +185,104 @@ serve(async (req) => {
   // ─── MODE: REWRITE ────────────────────────────────────────────────────────
   if (mode === "rewrite") {
     if (!sourceSection) return new Response(JSON.stringify({ error: "sourceSection is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
     const openerInstruction = openerType === "pronoun"
       ? `Rewrite every comment to start with ${pronounCapital}. Replace [Name] openers with ${pronounCapital}. Use ${pronounFull} for possessives mid-sentence.`
       : `Rewrite every comment to start with [Name]. Replace pronoun openers with [Name]. Keep correct pronoun possessives mid-sentence.`;
-
     try {
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 3000,
-          system: REWRITE_SYSTEM,
-          messages: [{
-            role: "user",
-            content: `Selected pronoun set: ${pronounFull}\n${openerInstruction}\n\nSECTION TO REWRITE:\n${JSON.stringify(sourceSection, null, 2)}\n\nRewrite every comment with the correct opener. Keep sentence structure identical otherwise.`,
-          }],
+          model: "claude-sonnet-4-20250514", max_tokens: 4000,
+          system: `${KNOWLEDGE_BASE}\n\nRewrite a qualities section so every comment uses a consistent opener. If [Name]-led: every comment starts with [Name]. If pronoun-led: every comment starts with the selected pronoun. Keep everything else identical. Return ONLY valid JSON: {"sectionName":"string","headings":[{"name":"string","comments":["..."]}]}`,
+          messages: [{ role: "user", content: `${openerInstruction}\n\nSECTION:\n${JSON.stringify(sourceSection, null, 2)}` }],
         }),
       });
-
-      if (!response.ok) return new Response(JSON.stringify({ error: "Rewrite failed" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       const data = await response.json();
-      const rawText = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
-      const cleaned = rawText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      try {
-        return new Response(JSON.stringify(JSON.parse(cleaned)), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      } catch {
-        return new Response(JSON.stringify({ error: "Rewrite parsing failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
+      const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
+      return new Response(JSON.stringify(JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim())), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } catch {
       return new Response(JSON.stringify({ error: "Rewrite failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
   }
 
-  // ─── MODE: GROUP ──────────────────────────────────────────────────────────
-  if (mode === "group") {
-    if (!reportText || examples.length === 0) return new Response(JSON.stringify({ error: "reportText and examples are required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
-    const openerInstruction = openerType === "pronoun"
-      ? `All comments must start with ${pronounCapital} — never with [Name]. Replace student names with [Name] first, then rewrite openers to use ${pronounCapital}. Use ${pronounFull} for possessives.`
-      : `All comments must start with [Name] — never with a student name or pronoun. Replace ALL student names with [Name]. Use ${pronounFull} for possessives mid-sentence.`;
-
-    const positionInstructions: Record<string, string> = {
-      progress: `PROGRESS sentence — usually the opening. Find every sentence describing overall progress. Group by performance level with judgement-clear headings. ${openerInstruction}`,
-      qualities: `QUALITIES sentence. Find every sentence describing character, behaviour, attitude, effort, or working style. Group by quality with judgement-clear headings where relevant. ${openerInstruction}`,
-      development: `AREAS FOR DEVELOPMENT / NEXT STEPS sentences. Find every developmental or improvement sentence at this position. Group by topic — different focus areas must cover DIFFERENT topics. Options within a focus area are different phrasings of the SAME topic. ${openerInstruction}`,
-      "next-steps": `NEXT STEPS sentence. Find every improvement suggestion at this position. Group by topic — different focus areas cover DIFFERENT topics. Preserve any fixed opening phrase (e.g. "Moving forward,"). ${openerInstruction}`,
-      assessment: `ASSESSMENT description (no numeric score). Find every assessment description. Group by performance level with judgement-clear headings. ${openerInstruction}`,
-      "assessment-comment": `ASSESSMENT COMMENT — teacher uses different sentences by performance level. Find every assessment sentence. Group into performance levels. Replace names with [Name] and actual scores with [Score]. ${openerInstruction}`,
-    };
-
-    const instruction = positionInstructions[positionType] || positionInstructions.qualities;
-
+  // ─── MODE: RATING ─────────────────────────────────────────────────────────
+  if (mode === "rating") {
+    const openerInstruction = `All options must start with [Name]. Replace ALL student names with [Name]. Replace ALL scores/percentages with [Score] (no % symbol).`;
+    const scaleInstruction = scaleType === "four-level"
+      ? `Use the 4-level rated-comment structure: excellent, good, satisfactory, needsImprovement. Map the teacher's sentences to these levels. Generate options for any level with fewer than 3 sentences. Return type: "rated-comment".`
+      : `Derive headings from the teacher's own language and groupings. Each heading = a distinct performance group from the reports. Return type: "qualities".`;
     try {
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 4000,
-          system: GROUPING_SYSTEM,
+          model: "claude-sonnet-4-20250514", max_tokens: 4000,
+          system: RATING_SYSTEM,
           messages: [{
-            role: "user",
-            content: `Subject: ${subject}
-Year Group: ${yearGroup || "Not specified"}
-Selected pronoun set: ${pronounFull}
-Section: ${sectionName || positionType}
-
-Teacher's example sentences (replace any student names with [Name]):
-${examples.map((e: string, i: number) => `Example ${i + 1}: ${e}`).join('\n')}
-
-${instruction}
-
-REPORTS (find ALL sentences at this position, replace student names with [Name] and scores with [Score]):
-${reportText.substring(0, GENERATION_CHAR_LIMIT)}
-
-Group all sentences found. Generate one variety option per heading in the teacher's exact voice. Replace ALL student names with [Name] and all scores with [Score].`,
+            role: "user", content: `Subject: ${subject}\nYear Group: ${yearGroup || "Not specified"}\nSection name: ${sectionName}\n${openerInstruction}\n${scaleInstruction}\n\nTeacher's example sentences:\n${examples.map((e: string, i: number) => `${i + 1}: ${e}`).join('\n')}\n\nFULL REPORTS (scan for additional sentences at this position):\n${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
           }],
         }),
       });
-
-      if (!response.ok) return new Response(JSON.stringify({ error: "Failed to contact AI service" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       const data = await response.json();
-      const rawText = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
-      const cleaned = rawText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      try {
-        return new Response(JSON.stringify(JSON.parse(cleaned)), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      } catch {
-        return new Response(JSON.stringify({ error: "Could not group sentences. Please try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
+      const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
+      const parsed = JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
+      // Strip % from all comments
+      if (parsed.result?.excellent) { Object.keys(parsed.result).forEach(k => { parsed.result[k] = parsed.result[k].map(stripPercent); }); }
+      if (parsed.result?.headings) { parsed.result.headings = parsed.result.headings.map((h: any) => ({ ...h, comments: h.comments.map(stripPercent) })); }
+      return new Response(JSON.stringify(parsed), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: "Rating grouping failed. Please try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+  }
+
+  // ─── MODE: EXTRACT-QUALITIES ──────────────────────────────────────────────
+  if (mode === "extract-qualities") {
+    const openerInstruction = openerType === "pronoun"
+      ? `All options must start with ${pronounCapital}. Replace [Name] openers with ${pronounCapital}. Use ${pronounFull} for possessives.`
+      : `All options must start with [Name]. Replace ALL student names with [Name]. Use ${pronounFull} for possessives mid-sentence.`;
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514", max_tokens: 6000,
+          system: QUALITIES_SYSTEM,
+          messages: [{
+            role: "user", content: `Subject: ${subject}\nYear Group: ${yearGroup || "Not specified"}\nSection name: ${sectionName}\n${openerInstruction}\n\nTEACHER'S SELECTED QUALITY SENTENCES (use these to understand the pattern):\n${selectedText}\n\nFULL REPORTS (scan ALL of these for additional quality sentences matching the pattern):\n${reportText.substring(0, GENERATION_CHAR_LIMIT)}\n\nExtract ALL quality/character sentences. Group them. Build the section.`,
+          }],
+        }),
+      });
+      const data = await response.json();
+      const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
+      return new Response(JSON.stringify(JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim())), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } catch {
-      return new Response(JSON.stringify({ error: "Grouping failed. Please try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Quality extraction failed. Please try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+  }
+
+  // ─── MODE: EXTRACT-DEVELOPMENT ────────────────────────────────────────────
+  if (mode === "extract-development") {
+    const openerInstruction = openerType === "pronoun"
+      ? `All options must start with ${pronounCapital}. Replace [Name] openers with ${pronounCapital}.`
+      : `All options must start with [Name]. Replace ALL student names with [Name].`;
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514", max_tokens: 6000,
+          system: DEVELOPMENT_SYSTEM,
+          messages: [{
+            role: "user", content: `Subject: ${subject}\nYear Group: ${yearGroup || "Not specified"}\nSection name: ${sectionName}\nPosition type: ${positionType}\n${openerInstruction}\n\nTEACHER'S SELECTED SENTENCES:\n${selectedText}\n\nFULL REPORTS:\n${reportText.substring(0, GENERATION_CHAR_LIMIT)}\n\nExtract and group sentences. Ignore section headings and standard closing advice.`,
+          }],
+        }),
+      });
+      const data = await response.json();
+      const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
+      return new Response(JSON.stringify(JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim())), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    } catch {
+      return new Response(JSON.stringify({ error: "Development extraction failed. Please try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
   }
 
@@ -307,49 +293,19 @@ Group all sentences found. Generate one variety option per heading in the teache
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 16000,
-          system: `${KNOWLEDGE_BASE}
-
-Generate a complete report template in JSON format. Return ONLY valid JSON.
-
-JSON structure:
-{"templateName":"string","sections":[
-  {"id":"s1","type":"qualities","name":"Name","data":{"comments":{"Heading":["Option 1","Option 2"]}}},
-  {"id":"s2","type":"new-line","name":"","data":{}},
-  {"id":"s3","type":"standard-comment","name":"Name","data":{"content":"text"}},
-  {"id":"s4","type":"assessment-comment","name":"Name","data":{"scoreType":"percentage","comments":{"excellent":["..."],"good":["..."],"satisfactory":["..."],"needsImprovement":["..."],"notCompleted":["..."]}}},
-  {"id":"s5","type":"next-steps","name":"Name","data":{"focusAreas":{"Topic":["Option 1","Option 2","Option 3"]}}},
-  {"id":"s6","type":"personalised-comment","name":"Name","data":{"instruction":"Enter score","categories":{"Score":["[Name] scored [Score]"]}}},
-  {"id":"s7","type":"optional-additional-comment","name":"Additional Comments","data":{}}
-]}`,
+          model: "claude-sonnet-4-20250514", max_tokens: 16000,
+          system: `${KNOWLEDGE_BASE}\n\nImprove an existing report template using additional reports. Return ONLY valid JSON with same structure as input. Replace ALL student names with [Name]. Replace ALL scores with [Score] — no % symbol. Keep same template name.`,
           messages: [{
-            role: "user",
-            content: `Subject: ${subject}
-Year Group: ${yearGroup || "Not specified"}
-Selected pronoun set: ${pronounFull}
-
-EXISTING TEMPLATE:
-${JSON.stringify(existingTemplate, null, 2)}
-
-ADDITIONAL REPORTS:
-${refineText.substring(0, GENERATION_CHAR_LIMIT)}
-
-Improve the template using the additional reports. Replace ALL student names with [Name] and scores with [Score]. Add new options where new sentences appear. Add new sections if new positions are found. Keep same template name.`,
+            role: "user", content: `Subject: ${subject}\nYear Group: ${yearGroup || "Not specified"}\nPronoun set: ${pronounFull}\n\nEXISTING TEMPLATE:\n${JSON.stringify(existingTemplate, null, 2)}\n\nADDITIONAL REPORTS:\n${refineText.substring(0, GENERATION_CHAR_LIMIT)}\n\nAdd new options where new sentences appear. Add new sections if new positions are found.`,
           }],
         }),
       });
-
-      if (!response.ok) return new Response(JSON.stringify({ error: "Failed to contact AI service" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       const data = await response.json();
-      const rawText = data.content.filter((b: { type: string }) => b.type === "text").map((b: { text: string }) => b.text).join("");
-      const cleaned = rawText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      let parsed;
-      try { parsed = JSON.parse(cleaned); }
-      catch { return new Response(JSON.stringify({ error: "Refinement failed." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
+      const raw = data.content.filter((b: { type: string }) => b.type === "text").map((b: { text: string }) => b.text).join("");
+      const parsed = JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
       return new Response(JSON.stringify(parsed), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } catch (err) {
-      return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Refinement failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Refinement failed." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
   }
 
