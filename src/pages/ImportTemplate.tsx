@@ -63,6 +63,44 @@ function getPronounCapital(pronounSet: PronounSet): string {
   return pronounSet.split('/')[0].charAt(0).toUpperCase() + pronounSet.split('/')[0].slice(1);
 }
 
+// Replace actual scores/percentages with [Score] placeholder
+function replaceScoresWithPlaceholder(text: string): string {
+  return text
+    .replace(/\b\d{1,3}%/g, '[Score]')
+    .replace(/\b\d{1,3}\/\d{1,3}\b/g, '[Score]')
+    .replace(/\b\d{1,3} out of \d{1,3}\b/gi, '[Score]');
+}
+
+// Build a clean personalised-comment from teacher's example sentences
+function buildSameStatementSection(name: string, examples: string[]): BuiltSection {
+  const validExamples = examples.filter(e => e.trim().length > 5);
+  const cleanedComments = validExamples.map(e => {
+    let cleaned = e.trim();
+    // Replace names (simple heuristic - capitalised words that aren't common words)
+    cleaned = cleaned.replace(/\b[A-Z][a-z]{1,}\b(?!\s+(?:Queen|Death|Scots|Romans|Black|Mary|History|Maths|English|Science|French|Spanish|PE|Art|Music|Drama|Business|Geography|Biology|Chemistry|Physics|Computing))/g, '[Name]');
+    // Replace scores
+    cleaned = replaceScoresWithPlaceholder(cleaned);
+    return cleaned;
+  });
+
+  // Deduplicate
+  const unique = [...new Set(cleanedComments)];
+
+  return {
+    id: `section_${Date.now()}`,
+    type: 'personalised-comment',
+    name,
+    openerType: 'name',
+    positionType: 'personalised-comment',
+    data: {
+      instruction: 'Enter the assessment score for this pupil',
+      categories: {
+        'Assessment Score': unique.length > 0 ? unique : ['[Name] scored [Score] in the assessment.'],
+      },
+    },
+  };
+}
+
 async function callGroup(params: {
   subject: string;
   yearGroup: string;
@@ -79,6 +117,20 @@ async function callGroup(params: {
     body: JSON.stringify({ mode: 'group', ...params }),
   });
   if (!response.ok) throw new Error('Failed to group sentences');
+  return response.json();
+}
+
+async function callRewrite(params: {
+  pronounSet: PronounSet;
+  openerType: OpenerType;
+  sourceSection: { sectionName: string; headings: { name: string; comments: string[] }[] };
+}): Promise<{ sectionName: string; headings: { name: string; comments: string[] }[] }> {
+  const response = await fetch(SUPABASE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode: 'rewrite', ...params }),
+  });
+  if (!response.ok) throw new Error('Failed to rewrite section');
   return response.json();
 }
 
@@ -104,11 +156,13 @@ export default function ImportTemplate() {
 
   const [builtSections, setBuiltSections] = useState<BuiltSection[]>([]);
   const [currentExamples, setCurrentExamples] = useState<string[]>(['', '', '', '', '']);
-  const [currentSectionName, setCurrentSectionName] = useState('');
   const [qualitiesGroupIndex, setQualitiesGroupIndex] = useState(0);
   const [nextStepsSentenceIndex, setNextStepsSentenceIndex] = useState(1);
 
-  // Assessment flow state
+  // Track last built qualities section for copy
+  const [lastQualitiesResult, setLastQualitiesResult] = useState<{ sectionName: string; headings: { name: string; comments: string[] }[] } | null>(null);
+
+  // Assessment flow
   const [assessmentType, setAssessmentType] = useState<AssessmentType>('same-statement');
   const [assessmentCount, setAssessmentCount] = useState<AssessmentCount>('one');
   const [assessmentSentenceType, setAssessmentSentenceType] = useState<AssessmentSentenceType>('separate');
@@ -143,6 +197,23 @@ export default function ImportTemplate() {
     setScName(''); setScContent('');
   };
 
+  const addSectionFromResult = (result: { sectionName: string; headings: { name: string; comments: string[] }[] }, positionType: string, openerType: OpenerType): BuiltSection => {
+    return {
+      id: `section_${Date.now()}`,
+      type: positionType === 'next-steps' ? 'next-steps'
+        : positionType === 'assessment-comment' ? 'assessment-comment'
+        : 'qualities',
+      name: result.sectionName,
+      openerType,
+      positionType,
+      data: positionType === 'next-steps'
+        ? { focusAreas: Object.fromEntries(result.headings.map(h => [h.name, h.comments])) }
+        : positionType === 'assessment-comment'
+        ? { scoreType: 'percentage', comments: buildAssessmentComments(result.headings) }
+        : { comments: Object.fromEntries(result.headings.map(h => [h.name, h.comments])) },
+    };
+  };
+
   const handleGroupAndAdd = async (positionType: string, openerType: OpenerType, sectionName: string, nextStep: WizardStep) => {
     const examples = getValidExamples();
     if (examples.length === 0) { setError('Please paste at least one example sentence.'); return; }
@@ -151,25 +222,41 @@ export default function ImportTemplate() {
     setLoadingMessage('Reading your reports and grouping sentences...');
     try {
       const result = await callGroup({ subject, yearGroup, reportText: rawReportText, pronounSet, examples, positionType, openerType, sectionName });
-      const newSection: BuiltSection = {
-        id: `section_${Date.now()}`,
-        type: positionType === 'next-steps' ? 'next-steps' : positionType === 'personalised-comment' ? 'personalised-comment' : positionType === 'assessment-comment' ? 'assessment-comment' : 'qualities',
-        name: result.sectionName || sectionName,
-        openerType, positionType,
-        data: positionType === 'next-steps'
-          ? { focusAreas: Object.fromEntries(result.headings.map(h => [h.name, h.comments])) }
-          : positionType === 'personalised-comment'
-          ? { instruction: 'Enter the assessment score for this pupil', categories: Object.fromEntries(result.headings.map(h => [h.name, h.comments])) }
-          : positionType === 'assessment-comment'
-          ? { scoreType: 'percentage', comments: buildAssessmentComments(result.headings) }
-          : { comments: Object.fromEntries(result.headings.map(h => [h.name, h.comments])) },
-      };
+      const newSection = addSectionFromResult(result, positionType, openerType);
       setBuiltSections(prev => [...prev, newSection]);
+      // Store result for qualities so we can copy it
+      if (positionType !== 'next-steps' && positionType !== 'assessment-comment') {
+        setLastQualitiesResult(result);
+      }
       resetExamples();
-      setCurrentSectionName('');
       setStep(nextStep);
     } catch (err: any) {
       setError(err.message || 'Something went wrong. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // BUG FIX: Use Claude to properly rewrite the section with correct opener
+  const handleCopySection = async (openerType: OpenerType, repeatStep: WizardStep) => {
+    if (!lastQualitiesResult) return;
+    setError(null);
+    setIsLoading(true);
+    setLoadingMessage('Rewriting section with ' + (openerType === 'pronoun' ? pronounCapital : '[Name]') + '...');
+    try {
+      const rewritten = await callRewrite({ pronounSet, openerType, sourceSection: lastQualitiesResult });
+      const newSection: BuiltSection = {
+        id: `section_${Date.now()}`,
+        type: 'qualities',
+        name: rewritten.sectionName + (openerType === 'pronoun' ? ` — ${pronounCapital}-led` : ' — [Name]-led'),
+        openerType,
+        positionType: 'qualities',
+        data: { comments: Object.fromEntries(rewritten.headings.map(h => [h.name, h.comments])) },
+      };
+      setBuiltSections(prev => [...prev, newSection]);
+      setStep(repeatStep);
+    } catch (err: any) {
+      setError(err.message || 'Rewrite failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -188,51 +275,10 @@ export default function ImportTemplate() {
     });
     if (levels.excellent.length === 0) levels.excellent = ['[Name] scored [Score] — an excellent result, keep it up!', '[Name] achieved [Score] — a fantastic result.'];
     if (levels.good.length === 0) levels.good = ['[Name] scored [Score] — a good result.', '[Name] achieved [Score] — a solid performance.'];
-    if (levels.satisfactory.length === 0) levels.satisfactory = ['[Name] scored [Score] — a satisfactory result with areas to develop.', '[Name] achieved [Score] — there are areas to work on going forward.'];
+    if (levels.satisfactory.length === 0) levels.satisfactory = ['[Name] scored [Score] — a satisfactory result with areas to develop.', '[Name] achieved [Score] — there are areas to work on.'];
     if (levels.needsImprovement.length === 0) levels.needsImprovement = ['[Name] scored [Score] — this does not fully reflect their capabilities.', '[Name] achieved [Score] and is more capable than this result suggests.'];
     if (levels.notCompleted.length === 0) levels.notCompleted = ['[Name] has not yet completed this assessment.', '[Name] was absent for this assessment.'];
     return levels;
-  };
-
-  const handleCopySection = (openerType: OpenerType, repeatStep: WizardStep) => {
-    const lastSection = builtSections[builtSections.length - 1];
-    if (!lastSection) return;
-    const copiedSection: BuiltSection = {
-      ...lastSection,
-      id: `section_${Date.now()}`,
-      openerType,
-      name: lastSection.name + (openerType === 'pronoun' ? ` — ${pronounCapital}-led` : ' — Name-led'),
-    };
-    if (copiedSection.type === 'qualities' && copiedSection.data?.comments) {
-      const rewritten: Record<string, string[]> = {};
-      Object.entries(copiedSection.data.comments).forEach(([heading, comments]) => {
-        rewritten[heading] = (comments as string[]).map(comment => {
-          if (openerType === 'pronoun') return comment.replace(/^\[Name\]/, pronounCapital);
-          else return comment.replace(new RegExp(`^${pronounCapital}`, 'i'), '[Name]');
-        });
-      });
-      copiedSection.data = { comments: rewritten };
-    }
-    setBuiltSections(prev => [...prev, copiedSection]);
-    setStep(repeatStep);
-  };
-
-  const addPersonalisedAssessment = (sectionName: string, examples: string[], nextStep: WizardStep) => {
-    const comments = examples.filter(e => e.trim()).map(e => e.trim().replace(/\b[A-Z][a-z]+\b/g, '[Name]'));
-    const section: BuiltSection = {
-      id: `section_${Date.now()}`,
-      type: 'personalised-comment',
-      name: sectionName,
-      openerType: 'name',
-      positionType: 'personalised-comment',
-      data: {
-        instruction: 'Enter the assessment score for this pupil',
-        categories: { 'Assessment Score': comments.length > 0 ? comments : ['[Name] scored [Score] in the assessment.', '[Name] achieved [Score] in the assessment.'] },
-      },
-    };
-    setBuiltSections(prev => [...prev, section]);
-    resetExamples();
-    setStep(nextStep);
   };
 
   const handleAssemble = async () => {
@@ -241,7 +287,7 @@ export default function ImportTemplate() {
     setStep('generating');
     try {
       const allSections = [
-        ...standardComments.map(sc => ({ id: sc.id, type: 'standard-comment', name: sc.name, positionType: 'standard', openerType: 'name' as OpenerType, data: { content: sc.content } })),
+        ...standardComments.map(sc => ({ id: sc.id, type: 'standard-comment' as const, name: sc.name, positionType: 'standard', openerType: 'name' as OpenerType, data: { content: sc.content } })),
         ...builtSections,
       ];
       const response = await fetch(SUPABASE_URL, {
@@ -295,7 +341,8 @@ export default function ImportTemplate() {
     setStep('paste'); setSubject(''); setYearGroup(''); setRawReportText('');
     setPronounSet('they/their'); setStandardComments([]); setBuiltSections([]);
     setGeneratedTemplate(null); setError(null); resetExamples();
-    setQualitiesGroupIndex(0); setNextStepsSentenceIndex(1); setAssessmentPartIndex(1);
+    setQualitiesGroupIndex(0); setNextStepsSentenceIndex(1);
+    setAssessmentPartIndex(1); setLastQualitiesResult(null);
   };
 
   const getSectionSummary = (section: TemplateSection): string => {
@@ -303,7 +350,7 @@ export default function ImportTemplate() {
       case 'qualities': { const h = Object.keys(section.data?.comments || {}); return `${h.length} options: ${h.slice(0, 3).join(', ')}${h.length > 3 ? '...' : ''}`; }
       case 'standard-comment': return ((section.data?.content || '') as string).substring(0, 80) + '...';
       case 'assessment-comment': return 'Assessment with [Score] — 5 levels';
-      case 'personalised-comment': return 'Teacher enters score per pupil';
+      case 'personalised-comment': return 'Teacher enters score per pupil — uses [Score]';
       case 'next-steps': { const a = Object.keys(section.data?.focusAreas || {}); return `${a.length} focus areas`; }
       case 'new-line': return 'Line break';
       case 'optional-additional-comment': return 'Free text box';
@@ -393,15 +440,13 @@ export default function ImportTemplate() {
           <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>{question}</h2>
           {description && <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280', lineHeight: '1.6' }}>{description}</p>}
           <ErrorBox />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {children}
-          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>{children}</div>
         </div>
       </main>
     </div>
   );
 
-  // ─── LOADING SCREENS ──────────────────────────────────────────────────────
+  // ─── LOADING ──────────────────────────────────────────────────────────────
 
   if (isLoading && step === 'generating') return <LoadingScreen icon="🪄" title="Building Your Template" message={loadingMessage} />;
   if (isLoading) return <LoadingScreen icon="🔍" title="Reading Your Reports" message={loadingMessage} />;
@@ -509,7 +554,7 @@ export default function ImportTemplate() {
   // ─── Q3: DIFFERENT QUALITIES ─────────────────────────────────────────────
 
   if (step === 'q3_different_qualities') return (
-    <QuestionLayout question="Do your reports include a different type of quality statement from another part of the report?" description="For example, a sentence about classroom participation, specific skills, or a different aspect of the pupil's character you haven't already covered." onNo={() => setStep('q4_assessment')} noLabel="No — move on to assessment" onBack={() => setStep('q2a_copy_qualities')}>
+    <QuestionLayout question="Do your reports include a different type of quality statement from another part of the report?" description="For example, a sentence about classroom participation, specific skills, or a different aspect of the pupil's character not already covered." onNo={() => setStep('q4_assessment')} noLabel="No — move on to assessment" onBack={() => setStep('q2a_copy_qualities')}>
       <ExampleBoxes label="Paste an example of this different quality statement..." />
       <button onClick={() => { setQualitiesGroupIndex(prev => prev + 1); handleGroupAndAdd('qualities', 'name', `Personal Qualities ${qualitiesGroupIndex + 1}`, 'q3a_copy_qualities'); }} style={{ ...btnP, width: '100%', marginTop: '16px', padding: '14px' }}>✓ Read my reports and group these sentences</button>
     </QuestionLayout>
@@ -529,7 +574,7 @@ export default function ImportTemplate() {
   // ─── Q4: ASSESSMENT ───────────────────────────────────────────────────────
 
   if (step === 'q4_assessment') return (
-    <ChoiceLayout question="Do your reports include assessment scores or percentages?" description="If your reports mention assessment results, we'll create the right type of section for them." onBack={() => setStep('q3_different_qualities')}>
+    <ChoiceLayout question="Do your reports include assessment scores or percentages?" description="If your reports mention assessment results we'll create the right type of section for them." onBack={() => setStep('q3_different_qualities')}>
       <button onClick={() => setStep('q4_assessment_type')} style={{ ...btnP, padding: '14px' }}>Yes — my reports include assessment information</button>
       <button onClick={() => setStep('q5_nextsteps')} style={{ ...btnS, padding: '14px' }}>No — move on to next steps</button>
     </ChoiceLayout>
@@ -538,7 +583,7 @@ export default function ImportTemplate() {
   // ─── Q4: ASSESSMENT TYPE ─────────────────────────────────────────────────
 
   if (step === 'q4_assessment_type') return (
-    <ChoiceLayout question="How do you report on the assessment score?" description="Think about how you write about the assessment result for different pupils." onBack={() => setStep('q4_assessment')}>
+    <ChoiceLayout question="How do you report on the assessment score?" onBack={() => setStep('q4_assessment')}>
       <button onClick={() => { setAssessmentType('same-statement'); setStep('q4_assessment_count'); }} style={{ ...btnP, padding: '16px', textAlign: 'left' }}>
         <div style={{ fontWeight: '700', marginBottom: '4px' }}>A) Same or similar statement for every pupil</div>
         <div style={{ fontSize: '13px', opacity: 0.9 }}>Only the name and score change — e.g. "[Name] scored X% in the end of unit assessment"</div>
@@ -554,16 +599,12 @@ export default function ImportTemplate() {
 
   if (step === 'q4_assessment_count') return (
     <ChoiceLayout question="How many assessments do you report on?" onBack={() => setStep('q4_assessment_type')}>
-      <button onClick={() => { setAssessmentCount('one'); setStep('q4_assessment_examples'); }} style={{ ...btnP, padding: '14px' }}>
-        A) One assessment only
-      </button>
-      <button onClick={() => { setAssessmentCount('multiple'); setStep('q4_assessment_sentence_type'); }} style={{ ...btnV, padding: '14px' }}>
-        B) More than one assessment
-      </button>
+      <button onClick={() => { setAssessmentCount('one'); setAssessmentPartIndex(1); setStep('q4_assessment_examples'); }} style={{ ...btnP, padding: '14px' }}>A) One assessment only</button>
+      <button onClick={() => { setAssessmentCount('multiple'); setStep('q4_assessment_sentence_type'); }} style={{ ...btnV, padding: '14px' }}>B) More than one assessment</button>
     </ChoiceLayout>
   );
 
-  // ─── Q4: ASSESSMENT SENTENCE TYPE (multiple assessments only) ────────────
+  // ─── Q4: ASSESSMENT SENTENCE TYPE ────────────────────────────────────────
 
   if (step === 'q4_assessment_sentence_type') return (
     <ChoiceLayout question="How do you write about multiple assessments?" onBack={() => setStep('q4_assessment_count')}>
@@ -583,21 +624,16 @@ export default function ImportTemplate() {
   if (step === 'q4_assessment_examples') {
     const isOneSentenceMultiple = assessmentCount === 'multiple' && assessmentSentenceType === 'one-sentence';
     const isSeparateMultiple = assessmentCount === 'multiple' && assessmentSentenceType === 'separate';
-    const partLabel = isOneSentenceMultiple ? ` — Part ${assessmentPartIndex} (${assessmentPartIndex === 1 ? 'first score' : assessmentPartIndex === totalAssessmentParts ? 'final score' : 'middle score'})` : isSeparateMultiple ? ` ${assessmentPartIndex}` : '';
-    const sectionLabel = assessmentType === 'same-statement' ? `Assessment${partLabel}` : `Assessment${partLabel}`;
+    const partDesc = isOneSentenceMultiple
+      ? assessmentPartIndex === 1 ? 'This is the start of the sentence including the first score. e.g. "[Name] scored X% in the Mary Queen of Scots assessment". We will link this to the next part.' : `This is part ${assessmentPartIndex}. e.g. "and Y% in the Black Death assessment." Start with the connecting word.`
+      : assessmentType === 'same-statement'
+      ? 'Paste 1–2 examples of the sentence you use. We will replace the actual score with [Score] so the teacher can type the score for each pupil.'
+      : 'Paste 3–5 examples showing different performance levels so we can create options for excellent, good, satisfactory and needs improvement.';
 
     return (
       <QuestionLayout
         question={isOneSentenceMultiple ? `Paste examples of part ${assessmentPartIndex} of your assessment sentence` : isSeparateMultiple ? `Paste examples for assessment ${assessmentPartIndex}` : 'Paste examples of your assessment statement'}
-        description={
-          isOneSentenceMultiple
-            ? assessmentPartIndex === 1
-              ? `This is the start of the sentence including the first score. e.g. "[Name] scored X% in the Mary Queen of Scots assessment". We will link this to the next part to form one natural sentence.`
-              : `This is part ${assessmentPartIndex} of the sentence. e.g. "and Y% in the Black Death assessment." Start with the connecting word (e.g. "and").`
-            : assessmentType === 'same-statement'
-            ? 'Paste the sentence you use — the same structure for every pupil. Include the actual score from the report, we will replace it with [Score].'
-            : 'Paste 3–5 examples showing different performance levels so we can create options for excellent, good, satisfactory and needs improvement.'
-        }
+        description={partDesc}
         onNo={() => setStep('q5_nextsteps')}
         noLabel="Skip assessment section"
         onBack={() => setStep(assessmentCount === 'multiple' ? 'q4_assessment_sentence_type' : 'q4_assessment_count')}
@@ -606,24 +642,36 @@ export default function ImportTemplate() {
 
         {isOneSentenceMultiple && (
           <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '12px', marginBottom: '12px', marginTop: '8px' }}>
-            <p style={{ margin: 0, fontSize: '13px', color: '#1e40af' }}>
-              💡 How many scores are in your assessment sentence?
-            </p>
-            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+            <p style={{ margin: '0 0 8px 0', fontSize: '13px', color: '#1e40af' }}>How many scores are in your sentence?</p>
+            <div style={{ display: 'flex', gap: '8px' }}>
               {[2, 3].map(n => <button key={n} onClick={() => setTotalAssessmentParts(n)} style={{ padding: '6px 14px', borderRadius: '6px', border: totalAssessmentParts === n ? '2px solid #3b82f6' : '1px solid #d1d5db', backgroundColor: totalAssessmentParts === n ? '#eff6ff' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>{n} scores</button>)}
             </div>
           </div>
         )}
 
         <button onClick={() => {
-          const posType = assessmentType === 'same-statement' ? 'personalised-comment' : 'assessment-comment';
-          const nextStep: WizardStep = isOneSentenceMultiple && assessmentPartIndex < totalAssessmentParts
-            ? 'q4_assessment_part2'
-            : isSeparateMultiple && assessmentPartIndex < 3
-            ? 'q4_assessment_part2'
-            : 'q4_assessment_judgement';
-          handleGroupAndAdd(posType, 'name', sectionLabel, nextStep);
-          if (isOneSentenceMultiple || isSeparateMultiple) setAssessmentPartIndex(prev => prev + 1);
+          const examples = getValidExamples();
+          if (examples.length === 0) { setError('Please paste at least one example.'); return; }
+          setError(null);
+
+          // BUG FIX: For same-statement, build directly without grouping call
+          if (assessmentType === 'same-statement') {
+            const sectionLabel = isOneSentenceMultiple ? `Assessment — Part ${assessmentPartIndex}` : isSeparateMultiple ? `Assessment ${assessmentPartIndex}` : 'Assessment';
+            const newSection = buildSameStatementSection(sectionLabel, examples);
+            setBuiltSections(prev => [...prev, newSection]);
+            resetExamples();
+            const hasMoreParts = (isOneSentenceMultiple && assessmentPartIndex < totalAssessmentParts) || (isSeparateMultiple && assessmentPartIndex < 3);
+            if (hasMoreParts) { setAssessmentPartIndex(prev => prev + 1); setStep('q4_assessment_part2'); }
+            else setStep('q4_assessment_judgement');
+          } else {
+            // Different statements — use grouping call
+            const posType = 'assessment-comment';
+            const sectionLabel = isOneSentenceMultiple ? `Assessment — Part ${assessmentPartIndex}` : isSeparateMultiple ? `Assessment ${assessmentPartIndex}` : 'Assessment';
+            const hasMoreParts = (isOneSentenceMultiple && assessmentPartIndex < totalAssessmentParts) || (isSeparateMultiple && assessmentPartIndex < 3);
+            const nextStep: WizardStep = hasMoreParts ? 'q4_assessment_part2' : 'q4_assessment_judgement';
+            handleGroupAndAdd(posType, 'name', sectionLabel, nextStep);
+            if (hasMoreParts) setAssessmentPartIndex(prev => prev + 1);
+          }
         }} style={{ ...btnP, width: '100%', marginTop: '16px', padding: '14px' }}>
           ✓ {assessmentType === 'same-statement' ? 'Create this assessment section' : 'Read my reports and group these statements'}
         </button>
@@ -638,21 +686,29 @@ export default function ImportTemplate() {
     return (
       <QuestionLayout
         question={`Would you like to add ${isOneSentence ? `part ${assessmentPartIndex} of the assessment sentence` : `another assessment`}?`}
-        description={isOneSentence ? `Add the next part of your assessment sentence. It will join with the previous part to read as one natural sentence.` : `Add another assessment section for a different test or assessment.`}
+        description={isOneSentence ? `Add the next part of your assessment sentence. It will join the previous part to read as one natural sentence.` : `Add another assessment section for a different test.`}
         onNo={() => setStep('q4_assessment_judgement')}
         noLabel="No — no more assessment parts"
         onBack={() => setStep('q4_assessment_examples')}
       >
         <ExampleBoxes count={assessmentType === 'same-statement' ? 2 : 5} label="Paste an example..." />
         <button onClick={() => {
-          const posType = assessmentType === 'same-statement' ? 'personalised-comment' : 'assessment-comment';
+          const examples = getValidExamples();
+          if (examples.length === 0) { setError('Please paste at least one example.'); return; }
+          setError(null);
           const sectionLabel = isOneSentence ? `Assessment — Part ${assessmentPartIndex}` : `Assessment ${assessmentPartIndex}`;
           const nextStep: WizardStep = step === 'q4_assessment_part2' ? 'q4_assessment_part3' : 'q4_assessment_judgement';
-          handleGroupAndAdd(posType, 'name', sectionLabel, nextStep);
-          setAssessmentPartIndex(prev => prev + 1);
-        }} style={{ ...btnP, width: '100%', marginTop: '16px', padding: '14px' }}>
-          ✓ Add this assessment section
-        </button>
+          if (assessmentType === 'same-statement') {
+            const newSection = buildSameStatementSection(sectionLabel, examples);
+            setBuiltSections(prev => [...prev, newSection]);
+            resetExamples();
+            setAssessmentPartIndex(prev => prev + 1);
+            setStep(nextStep);
+          } else {
+            handleGroupAndAdd('assessment-comment', 'name', sectionLabel, nextStep);
+            setAssessmentPartIndex(prev => prev + 1);
+          }
+        }} style={{ ...btnP, width: '100%', marginTop: '16px', padding: '14px' }}>✓ Add this assessment section</button>
       </QuestionLayout>
     );
   }
@@ -660,7 +716,7 @@ export default function ImportTemplate() {
   // ─── Q4: ASSESSMENT JUDGEMENT ────────────────────────────────────────────
 
   if (step === 'q4_assessment_judgement') return (
-    <ChoiceLayout question="Would you like to add a judgement statement after the assessment score?" description="For example, a comment about how well the pupil did overall — 'He performed well across both assessments' — as a separate qualities section the teacher can choose from." onBack={() => setStep('q4_assessment_examples')}>
+    <ChoiceLayout question="Would you like to add a judgement statement after the assessment score?" description="For example, a comment about how well the pupil did overall — as a separate qualities section the teacher can choose from." onBack={() => setStep('q4_assessment_examples')}>
       <button onClick={() => { resetExamples(); setStep('q4_assessment_qualities'); }} style={{ ...btnP, padding: '14px' }}>Yes — add a judgement comment section</button>
       <button onClick={() => setStep('q5_nextsteps')} style={{ ...btnS, padding: '14px' }}>No — move on to next steps</button>
     </ChoiceLayout>
@@ -669,7 +725,7 @@ export default function ImportTemplate() {
   // ─── Q4: ASSESSMENT QUALITIES ────────────────────────────────────────────
 
   if (step === 'q4_assessment_qualities') return (
-    <QuestionLayout question="Paste examples of your assessment judgement statements" description="These are sentences that comment on how well the pupil did — different statements for different levels of performance. Paste 3–5 examples." onNo={() => setStep('q5_nextsteps')} noLabel="Skip this" onBack={() => setStep('q4_assessment_judgement')}>
+    <QuestionLayout question="Paste examples of your assessment judgement statements" description="These are sentences commenting on how well the pupil did — different statements for different performance levels. Paste 3–5 examples." onNo={() => setStep('q5_nextsteps')} noLabel="Skip this" onBack={() => setStep('q4_assessment_judgement')}>
       <ExampleBoxes label="Paste a judgement statement from one report..." />
       <button onClick={() => handleGroupAndAdd('qualities', 'pronoun', 'Assessment Reflection', 'q5_nextsteps')} style={{ ...btnP, width: '100%', marginTop: '16px', padding: '14px' }}>✓ Read my reports and group these statements</button>
     </QuestionLayout>
