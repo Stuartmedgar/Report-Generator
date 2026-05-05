@@ -15,6 +15,7 @@ type WizardStep =
   | 'q3_different_qualities'
   | 'q3a_copy_qualities'
   | 'q4_assessment'
+  | 'q4_assessment_qualities'
   | 'q5_nextsteps'
   | 'q5a_more_nextsteps'
   | 'generating'
