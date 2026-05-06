@@ -108,10 +108,8 @@ function mechanicalAssemble(params: { subject: string; yearGroup: string; builtS
   let idCounter = 0;
   const makeId = () => `s${++idCounter}_${Date.now()}`;
 
-  builtSections.forEach((section, index) => {
-    if (index > 0 && section.type !== 'new-line') {
-      sections.push({ id: makeId(), type: 'new-line', name: '', data: {} });
-    }
+  // Preserve EXACT order teacher built sections — no reordering, no automatic new-lines
+  builtSections.forEach((section) => {
     if (section.type === 'standard-comment') {
       sections.push({ id: makeId(), type: 'standard-comment', name: section.name || 'Standard Comment', data: { content: section.data?.content || '' } });
     } else if (section.type === 'qualities') {
@@ -131,14 +129,24 @@ function mechanicalAssemble(params: { subject: string; yearGroup: string; builtS
 
   const lastMeaningful = [...sections].reverse().find(s => s.type !== 'new-line');
   if (!lastMeaningful || lastMeaningful.type !== 'optional-additional-comment') {
-    sections.push({ id: makeId(), type: 'new-line', name: '', data: {} });
     sections.push({ id: makeId(), type: 'optional-additional-comment', name: 'Additional Comments', data: {} });
   }
   return { templateName, sections };
 }
 
 function stripPercent(text: string): string {
-  return text.replace(/\[Score\]%/g, '[Score]').replace(/(\d+)%/g, '[Score]').replace(/(\d+\/\d+)/g, '[Score]');
+  // Only strip standalone percentages and scores — not course level numbers like 3/4 or 4/5
+  return text
+    .replace(/\[Score\]%/g, '[Score]')
+    .replace(/(\d{1,3})%/g, '[Score]')
+    .replace(/(\d{1,2}\/\d{1,2})(?!\s*course)/g, (match, p1) => {
+      // Keep course level fractions like 3/4, 4/5, 5/6 — only replace assessment scores
+      const parts = p1.split('/');
+      const a = parseInt(parts[0]), b = parseInt(parts[1]);
+      // If it looks like a course level (small consecutive numbers), keep it
+      if (b - a <= 2 && a >= 1 && b <= 6) return match;
+      return '[Score]';
+    });
 }
 
 serve(async (req) => {

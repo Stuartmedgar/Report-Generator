@@ -171,6 +171,31 @@ export default function ImportTemplate() {
     finally { setIsLoading(false); }
   };
 
+  const handleCopyDevSection = async (openerType: OpenerType) => {
+    const lastSection = builtSections[builtSections.length - 1];
+    if (!lastSection || lastSection.type !== 'next-steps') return;
+    setIsLoading(true);
+    setLoadingMessage('Rewriting with ' + (openerType === 'pronoun' ? pronounCapital : '[Name]') + '...');
+    try {
+      // Build source in headings format for rewrite
+      const sourceSection = {
+        sectionName: lastSection.name,
+        headings: Object.entries(lastSection.data?.focusAreas || {}).map(([name, comments]) => ({ name, comments })),
+      };
+      const rewritten = await callApi({ mode: 'rewrite', pronounSet, openerType, sourceSection });
+      const newSection: BuiltSection = {
+        id: `s_${Date.now()}`,
+        type: 'next-steps',
+        name: lastSection.name + (openerType === 'pronoun' ? ` — ${pronounCapital}-led` : ' — [Name]-led'),
+        openerType,
+        data: { focusAreas: Object.fromEntries(rewritten.headings.map((h: any) => [h.name, h.comments])) },
+      };
+      setBuiltSections(prev => [...prev, newSection]);
+      // Stay on more screen
+    } catch { setError('Rewrite failed. Please try again.'); }
+    finally { setIsLoading(false); }
+  };
+
   const handleBuildDevelopment = async () => {
     if (!devSelected.trim()) { setError('Please paste your selected sentences.'); return; }
     setIsLoading(true);
@@ -253,8 +278,8 @@ export default function ImportTemplate() {
 
   const OpenerChoice = ({ value, onChange }: { value: OpenerType; onChange: (v: OpenerType) => void }) => (
     <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-      <button onClick={() => onChange('name')} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: value === 'name' ? '2px solid #3b82f6' : '1px solid #d1d5db', backgroundColor: value === 'name' ? '#eff6ff' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: value === 'name' ? '600' : '400', color: value === 'name' ? '#1d4ed8' : '#374151' }}>Starts with [Name]</button>
-      <button onClick={() => onChange('pronoun')} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: value === 'pronoun' ? '2px solid #8b5cf6' : '1px solid #d1d5db', backgroundColor: value === 'pronoun' ? '#f5f3ff' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: value === 'pronoun' ? '600' : '400', color: value === 'pronoun' ? '#5b21b6' : '#374151' }}>Starts with {pronounCapital}</button>
+      <button onClick={() => onChange('name')} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: value === 'name' ? '2px solid #3b82f6' : '1px solid #d1d5db', backgroundColor: value === 'name' ? '#eff6ff' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: value === 'name' ? '600' : '400', color: value === 'name' ? '#1d4ed8' : '#374151' }}>Contains [Name]</button>
+      <button onClick={() => onChange('pronoun')} style={{ flex: 1, padding: '10px', borderRadius: '8px', border: value === 'pronoun' ? '2px solid #8b5cf6' : '1px solid #d1d5db', backgroundColor: value === 'pronoun' ? '#f5f3ff' : 'white', cursor: 'pointer', fontSize: '13px', fontWeight: value === 'pronoun' ? '600' : '400', color: value === 'pronoun' ? '#5b21b6' : '#374151' }}>Contains {pronounCapital}</button>
     </div>
   );
 
@@ -794,18 +819,25 @@ export default function ImportTemplate() {
           <main style={{ maxWidth: '700px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
             <BuiltList />
             <div style={card}>
-              <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>Would you like to add another {isNS ? 'next steps' : 'development'} sentence?</h2>
-              <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>If your reports have a second or third sentence at this point, you can add it now. Choose whether it uses the pupil's name or pronoun.</p>
-              <div style={{ marginBottom: '12px' }}>
-                <label style={lbl}>Opener for the next sentence</label>
-                <OpenerChoice value={devOpener} onChange={setDevOpener} />
-              </div>
-              <label style={lbl}>Paste examples of the next sentence</label>
-              <textarea value={devSelected} onChange={e => setDevSelected(e.target.value)} placeholder="Paste examples of the next sentence from several reports..." style={{ ...txa, minHeight: '150px', marginBottom: '16px' }} />
+              <h2 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>What would you like to do next?</h2>
+              <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#6b7280' }}>You can add a copy of the last section with a different opener, add a brand new sentence, or move on.</p>
               <ErrorBox />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <button onClick={() => { setDevType(currentType); handleBuildDevelopment(); }} style={{ ...btnP, padding: '14px' }}>Yes — add another sentence</button>
-                <button onClick={() => setSectionStep('menu')} style={{ ...btnG, padding: '14px' }}>No — move on</button>
+                <button onClick={() => handleCopyDevSection('name')} style={{ ...btnP, padding: '14px' }}>Copy last section — containing [Name]</button>
+                <button onClick={() => handleCopyDevSection('pronoun')} style={{ ...btnV, padding: '14px' }}>Copy last section — containing {pronounCapital}</button>
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '14px', backgroundColor: '#f9fafb' }}>
+                  <p style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Or add a brand new sentence:</p>
+                  <div style={{ marginBottom: '10px' }}>
+                    <label style={{ ...lbl, fontSize: '12px' }}>Section name</label>
+                    <input type="text" value={devName} onChange={e => setDevName(e.target.value)} placeholder={isNS ? 'e.g. Next Steps — Sentence 2' : 'e.g. Areas for Development — Sentence 2'} style={inp} />
+                  </div>
+                  <div style={{ marginBottom: '10px' }}>
+                    <OpenerChoice value={devOpener} onChange={setDevOpener} />
+                  </div>
+                  <textarea value={devSelected} onChange={e => setDevSelected(e.target.value)} placeholder="Paste examples from several reports..." style={{ ...txa, minHeight: '120px', marginBottom: '10px' }} />
+                  <button onClick={() => { setDevType(currentType); handleBuildDevelopment(); }} style={{ ...btnP, width: '100%', padding: '12px' }}>Build this new sentence section</button>
+                </div>
+                <button onClick={() => setSectionStep('menu')} style={{ ...btnG, padding: '14px' }}>No more — move on</button>
               </div>
             </div>
           </main>
