@@ -226,7 +226,19 @@ export default function ImportTemplate() {
   };
 
   const handleBuildAssessmentSame = (examples: string[], name: string) => {
-    const cleaned = examples.filter(e => e.trim()).map(e => stripPercent(e.trim().replace(/\b[A-Z][a-z]{2,}\b/g, (m) => ['Monday','Tuesday','Wednesday','Thursday','Friday','National','Maths','Mathematics','English','History','Science','French','Spanish','Biology','Chemistry','Physics','Computing','Geography','Drama','Music','Art','Business','Black','Death','Mary','Queen','Scots','Romans'].includes(m) ? m : '[Name]')));
+    const safeWords = new Set(['Monday','Tuesday','Wednesday','Thursday','Friday','National','Maths','Mathematics','English','History','Science','French','Spanish','Biology','Chemistry','Physics','Computing','Geography','Drama','Music','Art','Business','Black','Death','Mary','Queen','Scots','Romans']);
+    const cleaned = examples.filter(e => e.trim()).map(e => {
+      let text = e.trim();
+      // Protect existing [Name] and [Score] placeholders before replacement runs
+      text = text.replace(/\[Name\]/g, '\u0000NAME\u0000').replace(/\[Score\]/g, '\u0000SCORE\u0000');
+      // Replace actual pupil names
+      text = text.replace(/\b([A-Z][a-z]{2,})\b/g, (m: string) => safeWords.has(m) ? m : '[Name]');
+      // Strip actual percentages and scores
+      text = stripPercent(text);
+      // Restore placeholders
+      text = text.replace(/\u0000NAME\u0000/g, '[Name]').replace(/\u0000SCORE\u0000/g, '[Score]');
+      return text;
+    });
     addSection({ id: `s_${Date.now()}`, type: 'personalised-comment', name, openerType: 'name', data: { instruction: 'Enter the assessment score for this pupil', categories: { 'Assessment Score': Array.from(new Set(cleaned)).filter(Boolean) || ['[Name] scored [Score] in the assessment.'] } } });
   };
 
@@ -251,8 +263,8 @@ export default function ImportTemplate() {
     finally { setIsRefining(false); }
   };
 
-  const handleSave = () => { if (!generatedTemplate) return; addTemplate({ name: generatedTemplate.name, sections: generatedTemplate.sections }); setMainStep('saved'); };
-  const handleEditFirst = () => { if (!generatedTemplate) return; addTemplate({ name: generatedTemplate.name, sections: generatedTemplate.sections }); navigate('/create-template', { state: { editTemplate: { name: generatedTemplate.name, sections: generatedTemplate.sections } } }); };
+  const handleSave = () => { if (!generatedTemplate) return; navigate('/template-review', { state: { template: { name: generatedTemplate.name, sections: generatedTemplate.sections } } }); };
+  const handleEditFirst = () => { if (!generatedTemplate) return; navigate('/template-review', { state: { template: { name: generatedTemplate.name, sections: generatedTemplate.sections } } }); };
   const handleReset = () => { setMainStep('paste'); setSectionStep('menu'); setSubject(''); setYearGroup(''); setRawReportText(''); setPronounSet('they/their'); setBuiltSections([]); setGeneratedTemplate(null); setError(null); setRatingName(''); setRatingScale(null); setRatingExamples(['','','','','']); setQualitiesSelected(''); setDevSelected(''); setDevSentenceIndex(1); setLastQualitiesResult(null); };
 
   // ─── SHARED ────────────────────────────────────────────────────────────────

@@ -35,6 +35,10 @@ export default function ManageTemplates() {
     navigate('/create-template', { state: { editTemplate: template } });
   };
 
+  const handleReview = (template: Template) => {
+    navigate('/template-review', { state: { template: { name: template.name, sections: template.sections }, isEditing: true, templateId: template.id } });
+  };
+
   const handleDuplicate = (template: Template) => {
     const duplicatedTemplate = {
       ...template,
@@ -460,6 +464,22 @@ export default function ManageTemplates() {
                         }}
                       >
                         ✏️ Edit
+                      </button>
+
+                      <button
+                        onClick={() => handleReview(template)}
+                        style={{
+                          backgroundColor: '#8b5cf6',
+                          color: 'white',
+                          padding: '8px 16px',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        👁 Review & Edit
                       </button>
                       
                       <button

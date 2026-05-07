@@ -20,6 +20,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import AdminDashboard from './pages/AdminDashboard';
 import ImportTemplate from './pages/ImportTemplate';
+import TemplateReview from './pages/TemplateReview';
 
 // Import subscription components
 import { PricingPage, SubscriptionSuccess } from './components/subscription';
@@ -538,6 +539,11 @@ function App() {
                 <Route path="/import-template" element={
                   <ProtectedRoute>
                     <ImportTemplate />
+                  </ProtectedRoute>
+                } />
+                <Route path="/template-review" element={
+                  <ProtectedRoute>
+                    <TemplateReview />
                   </ProtectedRoute>
                 } />
                 <Route path="/class-management" element={
