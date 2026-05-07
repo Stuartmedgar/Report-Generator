@@ -703,7 +703,7 @@ export default function ImportTemplate() {
                     </button>
                     <button onClick={() => setSubMenu('assessment|different')} style={{ ...btnV, textAlign: 'left', padding: '12px' }}>
                       <div style={{ fontWeight: '700' }}>B) Different sentences by performance</div>
-                      <div style={{ fontSize: '12px', opacity: 0.9' }}>Different language for high/mid/low scorers</div>
+                      <div style={{ fontSize: '12px', opacity: 0.9 }}>Different language for high/mid/low scorers</div>
                     </button>
                   </div>
                 </div>
