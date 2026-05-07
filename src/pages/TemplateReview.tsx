@@ -422,15 +422,18 @@ export default function TemplateReview() {
   const EditModal = () => {
     if (!editMode) return null;
 
-    const getTitle = () => ({
+    const titles: Record<string, string> = {
       'rename-template': 'Rename Template',
       'rename-section': 'Rename Section',
       'add-option': `Add Option to "${editingHeading}"`,
       'add-heading': 'Add New Heading',
+      'add-newline': 'Add Line Break',
+      'add-optional': 'Add Optional Comment Box',
       'add-standard': 'Add Standard Comment',
       'add-qualities': 'Add Choice Comment Section',
       'add-nextsteps': 'Add Next Steps Section',
-    }[editMode] || '');
+    };
+    const getTitle = () => (editMode ? titles[editMode] || '' : '');
 
     const handleConfirm = () => {
       if (!editValue.trim()) { setError('Please enter some text.'); return; }
