@@ -26,6 +26,7 @@ Rules:
 7. Replace ALL student names with [Name] and all scores/percentages with [Score]
 8. Every option in a section must use the same opener — all [Name] OR all pronoun, never mix
 9. Do NOT generate variety options — only include sentences that actually appear in the reports
+10. PRONOUN CONSISTENCY: Every single option must use pronouns consistently throughout the ENTIRE sentence — not just the opener. If using [Name] opener, check that no "he/his/him/himself" or "she/her/hers/herself" pronouns appear mid-sentence unless they are in a quote. If using pronoun opener, ensure ALL mid-sentence pronouns match the chosen pronoun set throughout.
 
 Return ONLY valid JSON, no markdown, no backticks:
 {
@@ -44,19 +45,23 @@ Your task is to generate ADDITIONAL variety options for existing template headin
 
 Rules:
 1. Read the existing options carefully — they are the teacher's actual sentences
-2. For each heading, generate 1-2 additional options that the teacher would recognise as their own
+2. For each heading, generate 1-2 ADDITIONAL options that the teacher would recognise as their own
 3. Match the teacher's exact register, vocabulary, sentence length, and level of formality
 4. If the teacher writes short plain sentences, write short plain sentences
 5. If the teacher writes longer flowing sentences, match that style
 6. Never write anything that sounds formal, corporate, or AI-generated
 7. Keep [Name] and [Score] placeholders — never substitute real names
 8. Keep the same opener style (all [Name] or all pronoun) as the existing options
+9. CRITICAL: Do NOT remove, restructure, reorder or replace ANY existing options
+10. CRITICAL: Only ADD new options in the newOptions array — never touch existing ones
+11. CRITICAL: Heading names must remain EXACTLY unchanged
+12. If a heading already has many options, you may return an empty newOptions array for that heading
 
 Return ONLY valid JSON, no markdown, no backticks:
 {
   "headings": [
     {
-      "name": "heading name unchanged",
+      "name": "heading name EXACTLY as provided",
       "newOptions": ["New option 1 in teacher's voice", "New option 2 in teacher's voice"]
     }
   ]
@@ -101,7 +106,7 @@ function mechanicalAssemble(params: { subject: string; yearGroup: string; builtS
     } else if (section.type === 'assessment-comment') {
       sections.push({ id: makeId(), type: 'assessment-comment', name: section.name || 'Assessment', data: { scoreType: section.data?.scoreType || 'percentage', comments: section.data?.comments || {} } });
     } else if (section.type === 'personalised-comment') {
-      sections.push({ id: makeId(), type: 'personalised-comment', name: section.name || 'Assessment', data: { instruction: section.data?.instruction || 'Enter the score for this pupil', categories: section.data?.categories || {} } });
+      sections.push({ id: makeId(), type: 'personalised-comment', name: section.name || 'Assessment', data: { instruction: section.data?.instruction || 'Enter the personalised information for this pupil', categories: section.data?.categories || {} } });
     } else if (section.type === 'optional-additional-comment') {
       sections.push({ id: makeId(), type: 'optional-additional-comment', name: section.name || 'Additional Comments', data: {} });
     } else if (section.type === 'new-line') {

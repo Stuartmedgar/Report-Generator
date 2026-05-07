@@ -267,7 +267,7 @@ export default function ImportTemplate() {
     cleaned = cleaned.replace(/\u0000NAME\u0000/g, '[Name]').replace(/\u0000SCORE\u0000/g, '[Score]');
     addSection({
       id: makeId(), type: 'personalised-comment', name, openerType: 'name', positionType: 'personalised-comment',
-      data: { instruction: 'Enter the assessment score for this pupil', categories: { 'Assessment Score': [cleaned] } },
+      data: { instruction: 'Enter the score or information for this pupil', categories: { 'Assessment Score': [cleaned] } },
     });
   };
 
@@ -732,50 +732,32 @@ export default function ImportTemplate() {
               {subMenu === 'assessment' && (
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
-                  <div style={{ marginBottom: '10px' }}>
-                    <label style={lbl}>Section name</label>
-                    <input type="text" value={assessSectionName} onChange={e => setAssessSectionName(e.target.value)} placeholder="e.g. MQS Assessment, Calculator Test" style={inp} />
+                  <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the assessment sentence(s) from your reports, name the section, then choose which type fits. Add as many assessment sections as you need for different tests.</p>
+                  </div>
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={lbl}>Section name <span style={{ color: '#9ca3af', fontWeight: '400' }}>(e.g. MQS Assessment, Calculator Test)</span></label>
+                    <input type="text" value={assessSectionName} onChange={e => setAssessSectionName(e.target.value)} placeholder="Assessment" style={inp} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <button onClick={() => setSubMenu('assessment|same')} style={{ ...btnP, textAlign: 'left', padding: '12px' }}>
-                      <div style={{ fontWeight: '700' }}>A) Same sentence, only score changes</div>
-                      <div style={{ fontSize: '12px', opacity: 0.9 }}>e.g. "[Name] scored [Score] in the assessment"</div>
+                    <button disabled={!accumulatedText} onClick={() => {
+                      handleBuildSameAssessment(assessSectionName.trim() || 'Assessment');
+                      setAssessSectionName('');
+                    }} style={{ ...btnP, textAlign: 'left', padding: '12px', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed' }}>
+                      <div style={{ fontWeight: '700' }}>A) Same sentence — only score changes per pupil</div>
+                      <div style={{ fontSize: '12px', opacity: 0.9 }}>e.g. "[Name] scored [Score] in the assessment" — teacher types score per pupil when writing</div>
                     </button>
-                    <button onClick={() => setSubMenu('assessment|different')} style={{ ...btnV, textAlign: 'left', padding: '12px' }}>
-                      <div style={{ fontWeight: '700' }}>B) Different sentences by performance</div>
-                      <div style={{ fontSize: '12px', opacity: 0.9 }}>Different language for high/mid/low scorers</div>
+                    <button disabled={!accumulatedText} onClick={() => {
+                      handleExtractAndAdd('assessment-comment', 'name', assessSectionName.trim() || 'Assessment');
+                      setAssessSectionName('');
+                    }} style={{ ...btnV, textAlign: 'left', padding: '12px', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed' }}>
+                      <div style={{ fontWeight: '700' }}>B) Different sentences by performance level</div>
+                      <div style={{ fontSize: '12px', opacity: 0.9 }}>Different language for strong/good/satisfactory/struggling pupils — Claude groups them</div>
                     </button>
                   </div>
-                </div>
-              )}
-
-              {subMenu === 'assessment|same' && (
-                <div>
-                  <button onClick={() => setSubMenu('assessment')} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
-                  <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight one of your assessment sentences from the reports. Replace the actual score with [Score] in your highlight, or we'll do it automatically.</p>
-                  </div>
-                  <button disabled={!accumulatedText} onClick={() => {
-                    handleBuildSameAssessment(assessSectionName || 'Assessment');
-                    setAssessSectionName('');
-                  }} style={{ ...btnP, width: '100%', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed', padding: '12px' }}>
-                    {selectionActive ? '✓ Create assessment section from selection' : '← Highlight the assessment sentence first'}
-                  </button>
-                </div>
-              )}
-
-              {subMenu === 'assessment|different' && (
-                <div>
-                  <button onClick={() => setSubMenu('assessment')} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
-                  <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight assessment sentences showing different performance levels — some excellent, some average, some poor. Claude will group them by level.</p>
-                  </div>
-                  <button disabled={!accumulatedText} onClick={() => {
-                    handleExtractAndAdd('assessment-comment', 'name', assessSectionName || 'Assessment');
-                    setAssessSectionName('');
-                  }} style={{ ...btnP, width: '100%', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed', padding: '12px' }}>
-                    {selectionActive ? '✓ Extract and group assessment sentences' : '← Highlight & add assessment sentences first'}
-                  </button>
+                  {!accumulatedText && (
+                    <p style={{ margin: '10px 0 0 0', fontSize: '12px', color: '#9ca3af', textAlign: 'center' }}>← Highlight assessment text from your reports first</p>
+                  )}
                 </div>
               )}
 
@@ -863,6 +845,12 @@ export default function ImportTemplate() {
             <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#111827' }}>✨ Add Variety Options?</h1>
             <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Your template contains your exact sentences. Claude can add extra options in your voice.</p>
           </div>
+          <button onClick={() => {
+            if (generatedTemplate) {
+              addTemplate({ name: generatedTemplate.name, sections: generatedTemplate.sections });
+              alert(`"${generatedTemplate.name}" saved. You can continue to add variety or close.`);
+            }
+          }} style={{ ...btnG, padding: '10px 16px', fontSize: '14px' }}>💾 Save Now</button>
         </header>
         <main style={{ maxWidth: '700px', margin: '0 auto', padding: '32px 24px' }}>
           <div style={{ ...card, border: '2px solid #8b5cf6', marginBottom: '24px' }}>
@@ -896,6 +884,9 @@ export default function ImportTemplate() {
             <div style={card}><p style={{ margin: 0, fontSize: '14px', color: '#6b7280', textAlign: 'center' }}>No sections eligible for variety generation.</p></div>
           )}
 
+          <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px 14px', marginBottom: '10px', fontSize: '13px', color: '#166534' }}>
+            💡 Tip: Use <strong>Save Now</strong> in the top bar to save the exact-sentences version before adding variety.
+          </div>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={() => navigate('/template-review', { state: { template: { name: generatedTemplate?.name, sections: generatedTemplate?.sections } } })}
               style={{ ...btnS, flex: 1, padding: '14px', fontSize: '15px' }}>Skip — Go to Review</button>

@@ -346,6 +346,7 @@ export default function TemplateReview() {
             </div>
             {isStandard && <p style={{ margin: 0, fontSize: '12px', color: '#6b7280', lineHeight: '1.5' }}>{(section.data?.content || '').substring(0, 120)}{(section.data?.content || '').length > 120 ? '...' : ''}</p>}
             {isOptional && <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Free text box for teacher</p>}
+            {section.type === 'personalised-comment' && <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>📝 Teacher types: {section.data?.instruction || 'score or information'} — shown as [personalised information] when writing</p>}
             {!isStandard && !isOptional && headings.length > 0 && (
               <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{headings.length} heading{headings.length !== 1 ? 's' : ''}: {headings.slice(0, 3).join(', ')}{headings.length > 3 ? '...' : ''}</p>
             )}
@@ -580,7 +581,7 @@ export default function TemplateReview() {
             <div style={{ backgroundColor: 'white', border: '2px solid #3b82f6', borderRadius: '10px', padding: '20px' }}>
               <h3 style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '700', color: '#111827' }}>👁 Report Preview</h3>
               <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: '#6b7280' }}>Select options on the left to see how the report reads. Unselected sections show their first option.</p>
-              <div style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px', fontSize: '13px', color: '#374151', lineHeight: '1.8', whiteSpace: 'pre-wrap', minHeight: '200px' }}>
+              <div style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px', fontSize: '13px', color: '#374151', lineHeight: '1.8', whiteSpace: 'pre-wrap', minHeight: '200px', textAlign: 'left' }}>
                 {buildPreviewText() || 'Select options from the sections on the left to build a preview report.'}
               </div>
               <button onClick={() => setPreviewSelections({})} style={{ ...btn('#374151', '#f3f4f6', '1px solid #d1d5db'), marginTop: '12px', width: '100%' }}>

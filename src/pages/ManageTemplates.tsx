@@ -112,9 +112,13 @@ export default function ManageTemplates() {
     };
 
     const pronounLabel = targetPronoun === 'he/his' ? 'He/His' : targetPronoun === 'she/her' ? 'She/Her' : 'They/Their';
+    const heLed = targetPronoun === 'he/his' ? 'He-led' : targetPronoun === 'she/her' ? 'She-led' : 'They-led';
     const newName = template.name.replace(/He\/His|She\/Her|They\/Their|He|She|They/i, '').trim() + ` — ${pronounLabel}`;
+    const renameSection = (name: string): string =>
+      name.replace(/— He-led/g, `— ${heLed}`).replace(/— She-led/g, `— ${heLed}`).replace(/— They-led/g, `— ${heLed}`);
+    const renamedSections = rewriteSections(template.sections).map((s: any) => ({ ...s, name: renameSection(s.name || '') }));
     const { id, createdAt, ...templateData } = template;
-    addTemplate({ ...templateData, name: newName, sections: rewriteSections(template.sections) });
+    addTemplate({ ...templateData, name: newName, sections: renamedSections });
     setIsDuplicatingPronoun(false);
     setPronounModal(null);
     alert(`Template duplicated as "${newName}" with ${pronounLabel} pronouns.`);
