@@ -9,6 +9,9 @@ export default function ManageTemplates() {
   const { state, deleteTemplate, addTemplate } = useData();
   const [isImporting, setIsImporting] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [pronounModal, setPronounModal] = useState<{ template: Template } | null>(null);
+  const [pronounTarget, setPronounTarget] = useState<'he/his' | 'she/her' | 'they/their'>('she/her');
+  const [isDuplicatingPronoun, setIsDuplicatingPronoun] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Google Drive folder URL - Replace this with your actual folder URL
@@ -51,6 +54,70 @@ export default function ManageTemplates() {
     const { id, createdAt, ...templateData } = duplicatedTemplate;
     addTemplate(templateData);
     alert(`Template "${template.name}" has been duplicated as "${duplicatedTemplate.name}"`);
+  };
+
+  const handlePronounDuplicate = async (template: Template, targetPronoun: 'he/his' | 'she/her' | 'they/their') => {
+    setIsDuplicatingPronoun(true);
+    const pronounMap: Record<string, Record<string, string>> = {
+      'he/his':    { he: 'he', him: 'him', his: 'his', himself: 'himself', He: 'He', Him: 'Him', His: 'His', Himself: 'Himself' },
+      'she/her':   { he: 'she', him: 'her', his: 'her', himself: 'herself', He: 'She', Him: 'Her', His: 'Her', Himself: 'Herself' },
+      'they/their':{ he: 'they', him: 'them', his: 'their', himself: 'themselves', He: 'They', Him: 'Them', His: 'Their', Himself: 'Themselves' },
+    };
+    const map = pronounMap[targetPronoun];
+
+    const replacePronouns = (text: string): string => {
+      let t = text;
+      // Order matters — longer words first to avoid partial replacement
+      Object.entries(map).forEach(([from, to]) => {
+        t = t.replace(new RegExp(`\\b${from}\\b`, 'g'), to);
+      });
+      return t;
+    };
+
+    const rewriteSections = (sections: any[]): any[] => {
+      return sections.map(section => {
+        if (section.type === 'qualities' || section.type === 'rated-comment') {
+          const comments: Record<string, string[]> = {};
+          Object.entries(section.data?.comments || {}).forEach(([heading, options]) => {
+            comments[replacePronouns(heading)] = (options as string[]).map(replacePronouns);
+          });
+          return { ...section, data: { ...section.data, comments } };
+        }
+        if (section.type === 'next-steps') {
+          const focusAreas: Record<string, string[]> = {};
+          Object.entries(section.data?.focusAreas || {}).forEach(([heading, options]) => {
+            focusAreas[replacePronouns(heading)] = (options as string[]).map(replacePronouns);
+          });
+          return { ...section, data: { ...section.data, focusAreas } };
+        }
+        if (section.type === 'assessment-comment') {
+          const comments: Record<string, string[]> = {};
+          Object.entries(section.data?.comments || {}).forEach(([level, options]) => {
+            comments[level] = (options as string[]).map(replacePronouns);
+          });
+          return { ...section, data: { ...section.data, comments } };
+        }
+        if (section.type === 'personalised-comment') {
+          const categories: Record<string, string[]> = {};
+          Object.entries(section.data?.categories || {}).forEach(([cat, options]) => {
+            categories[cat] = (options as string[]).map(replacePronouns);
+          });
+          return { ...section, data: { ...section.data, categories } };
+        }
+        if (section.type === 'standard-comment') {
+          return { ...section, data: { ...section.data, content: replacePronouns(section.data?.content || '') } };
+        }
+        return section;
+      });
+    };
+
+    const pronounLabel = targetPronoun === 'he/his' ? 'He/His' : targetPronoun === 'she/her' ? 'She/Her' : 'They/Their';
+    const newName = template.name.replace(/He\/His|She\/Her|They\/Their|He|She|They/i, '').trim() + ` — ${pronounLabel}`;
+    const { id, createdAt, ...templateData } = template;
+    addTemplate({ ...templateData, name: newName, sections: rewriteSections(template.sections) });
+    setIsDuplicatingPronoun(false);
+    setPronounModal(null);
+    alert(`Template duplicated as "${newName}" with ${pronounLabel} pronouns.`);
   };
 
   const handleDelete = (template: Template) => {
@@ -302,7 +369,44 @@ export default function ManageTemplates() {
         padding: '32px 24px'
       }}>
 
-        {/* Hidden file input for imports */}
+        {/* Pronoun Duplicate Modal */}
+      {pronounModal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '28px', maxWidth: '460px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>🔄 Duplicate with Different Pronouns</h3>
+            <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>
+              Creates a copy of <strong>"{pronounModal.template.name}"</strong> with all pronouns changed. Every he/his/him/himself will be replaced throughout.
+            </p>
+            <div style={{ marginBottom: '20px' }}>
+              <p style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Target pronoun set:</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {(['he/his', 'she/her', 'they/their'] as const).map(p => (
+                  <button key={p} onClick={() => setPronounTarget(p)}
+                    style={{ padding: '12px 16px', border: pronounTarget === p ? '2px solid #ec4899' : '2px solid #e5e7eb', borderRadius: '8px', backgroundColor: pronounTarget === p ? '#fdf2f8' : 'white', cursor: 'pointer', textAlign: 'left' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '700', color: pronounTarget === p ? '#be185d' : '#111827' }}>
+                      {p === 'he/his' ? 'He / His / Him' : p === 'she/her' ? 'She / Her' : 'They / Their / Them'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', fontStyle: 'italic' }}>
+                      {p === 'he/his' ? 'He works hard. His effort is excellent.' : p === 'she/her' ? 'She works hard. Her effort is excellent.' : 'They work hard. Their effort is excellent.'}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setPronounModal(null)} style={{ flex: 1, padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', backgroundColor: '#f3f4f6', color: '#374151', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={() => handlePronounDuplicate(pronounModal.template, pronounTarget)} disabled={isDuplicatingPronoun}
+                style={{ flex: 1, padding: '12px', border: 'none', borderRadius: '8px', backgroundColor: isDuplicatingPronoun ? '#9ca3af' : '#ec4899', color: 'white', fontSize: '14px', fontWeight: '600', cursor: isDuplicatingPronoun ? 'not-allowed' : 'pointer' }}>
+                {isDuplicatingPronoun ? 'Duplicating...' : '🔄 Create Copy'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden file input for imports */}
         <input
           ref={fileInputRef}
           type="file"
@@ -512,6 +616,22 @@ export default function ManageTemplates() {
                         }}
                       >
                         📋 Duplicate
+                      </button>
+
+                      <button
+                        onClick={() => { setPronounModal({ template }); setPronounTarget('she/her'); }}
+                        style={{
+                          backgroundColor: '#ec4899',
+                          color: 'white',
+                          padding: '8px 16px',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🔄 Change Pronouns
                       </button>
                       
                       <button

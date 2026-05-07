@@ -53,9 +53,11 @@ export default function ImportTemplate() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
 
-  // Selection state
+  // Selection state - accumulated
   const [selectedText, setSelectedText] = useState('');
   const [selectionActive, setSelectionActive] = useState(false);
+  const [accumulatedText, setAccumulatedText] = useState('');
+  const [pendingSelection, setPendingSelection] = useState('');
   const reportPanelRef = useRef<HTMLDivElement>(null);
 
   // Current section being built
@@ -107,19 +109,14 @@ export default function ImportTemplate() {
   const handleTextSelection = useCallback(() => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
-      setSelectionActive(false);
       return;
     }
     const text = selection.toString().trim();
-    if (text.length < 20) {
-      setSelectionActive(false);
-      return;
-    }
+    if (text.length < 20) return;
     // Only capture if selection is within report panel
     const range = selection.getRangeAt(0);
     if (reportPanelRef.current && reportPanelRef.current.contains(range.commonAncestorContainer)) {
-      setSelectedText(text);
-      setSelectionActive(true);
+      setPendingSelection(text);
     }
   }, []);
 
@@ -130,7 +127,23 @@ export default function ImportTemplate() {
 
   const clearSelection = () => {
     setSelectedText('');
+    setAccumulatedText('');
+    setPendingSelection('');
     setSelectionActive(false);
+    window.getSelection()?.removeAllRanges();
+  };
+
+  const addToSelection = () => {
+    if (!pendingSelection) return;
+    const newAccumulated = accumulatedText
+      ? accumulatedText + '
+
+' + pendingSelection
+      : pendingSelection;
+    setAccumulatedText(newAccumulated);
+    setSelectedText(newAccumulated);
+    setSelectionActive(true);
+    setPendingSelection('');
     window.getSelection()?.removeAllRanges();
   };
 
@@ -440,21 +453,28 @@ export default function ImportTemplate() {
                 <span style={{ fontSize: '13px', fontWeight: '600', color: '#374151' }}>📄 Your Reports</span>
                 <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '8px' }}>{rawReportText.length.toLocaleString()} characters</span>
               </div>
-              {selectionActive && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                {pendingSelection && (
+                  <button onClick={addToSelection} style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 10px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
+                    + Add to selection ({pendingSelection.length} chars)
+                  </button>
+                )}
+                {accumulatedText && (
                   <span style={{ fontSize: '12px', color: '#166534', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '4px', padding: '3px 8px' }}>
-                    ✓ {selectedText.length} chars selected
+                    ✓ {accumulatedText.split('\n\n').length} extract{accumulatedText.split('\n\n').length !== 1 ? 's' : ''} — {accumulatedText.length} chars
                   </span>
-                  <button onClick={clearSelection} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '14px' }}>×</button>
-                </div>
-              )}
-              {!selectionActive && (
-                <span style={{ fontSize: '12px', color: '#9ca3af', fontStyle: 'italic' }}>← Select text with your mouse</span>
-              )}
+                )}
+                {accumulatedText && (
+                  <button onClick={clearSelection} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '14px', padding: '0' }}>Clear all</button>
+                )}
+                {!accumulatedText && !pendingSelection && (
+                  <span style={{ fontSize: '12px', color: '#9ca3af', fontStyle: 'italic' }}>Highlight text with your mouse, then click + Add</span>
+                )}
+              </div>
             </div>
             <div
               ref={reportPanelRef}
-              style={{ flex: 1, overflow: 'auto', padding: '16px', fontSize: '13px', lineHeight: '1.8', color: '#374151', whiteSpace: 'pre-wrap', userSelect: 'text', cursor: 'text', backgroundColor: 'white' }}
+              style={{ flex: 1, overflow: 'auto', padding: '16px', fontSize: '13px', lineHeight: '1.8', color: '#374151', whiteSpace: 'pre-wrap', userSelect: 'text', cursor: 'text', backgroundColor: 'white', textAlign: 'left' }}
             >
               {rawReportText}
             </div>
@@ -464,10 +484,26 @@ export default function ImportTemplate() {
           <div style={{ flex: '0 0 400px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
             {/* Selection indicator */}
-            {selectionActive && (
+            {(accumulatedText || pendingSelection) && (
               <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', margin: '12px 12px 0', borderRadius: '8px', padding: '10px 12px', flexShrink: 0 }}>
-                <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#166534' }}>✓ Text selected — ready to extract</p>
-                <p style={{ margin: 0, fontSize: '11px', color: '#15803d', lineHeight: '1.4' }}>"{selectedText.substring(0, 100)}{selectedText.length > 100 ? '...' : ''}"</p>
+                {pendingSelection && !accumulatedText && (
+                  <p style={{ margin: '0 0 6px 0', fontSize: '12px', color: '#1e40af' }}>
+                    💡 Click <strong>+ Add to selection</strong> in the top bar to add this highlight
+                  </p>
+                )}
+                {accumulatedText && (
+                  <>
+                    <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#166534' }}>
+                      ✓ {accumulatedText.split('\n\n').length} extract{accumulatedText.split('\n\n').length !== 1 ? 's' : ''} ready — {accumulatedText.length} chars total
+                    </p>
+                    <p style={{ margin: 0, fontSize: '11px', color: '#15803d', lineHeight: '1.4' }}>
+                      "{accumulatedText.substring(0, 120)}{accumulatedText.length > 120 ? '...' : ''}"
+                    </p>
+                    {pendingSelection && (
+                      <p style={{ margin: '6px 0 0 0', fontSize: '11px', color: '#1e40af' }}>+ New highlight ready to add</p>
+                    )}
+                  </>
+                )}
               </div>
             )}
 
@@ -493,13 +529,14 @@ export default function ImportTemplate() {
             {/* Main action area */}
             <div style={{ flex: 1, overflow: 'auto', padding: '12px' }}>
 
-              {/* Copy last section */}
-              {canCopyLast && !subMenu && (
+              {/* Copy last section - always visible when relevant, not hidden by subMenu */}
+              {canCopyLast && (
                 <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
-                  <p style={{ margin: '0 0 8px 0', fontSize: '12px', fontWeight: '600', color: '#1e40af' }}>Copy "{lastBuiltSection!.name}" with different opener?</p>
+                  <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#1e40af' }}>📋 Add a copy of "{lastBuiltSection!.name}"?</p>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#3b82f6' }}>Same headings and options — different opener for building flowing paragraphs</p>
                   <div style={{ display: 'flex', gap: '6px' }}>
-                    <button onClick={() => handleCopySection(lastBuiltSection!, 'name')} style={{ ...btnP, padding: '6px 12px', fontSize: '12px' }}>With [Name]</button>
-                    <button onClick={() => handleCopySection(lastBuiltSection!, 'pronoun')} style={{ ...btnV, padding: '6px 12px', fontSize: '12px' }}>With {pronounCapital}</button>
+                    <button onClick={() => handleCopySection(lastBuiltSection!, 'name')} style={{ ...btnP, padding: '6px 12px', fontSize: '12px' }}>+ Copy with [Name]</button>
+                    <button onClick={() => handleCopySection(lastBuiltSection!, 'pronoun')} style={{ ...btnV, padding: '6px 12px', fontSize: '12px' }}>+ Copy with {pronounCapital}</button>
                   </div>
                 </div>
               )}
@@ -580,17 +617,17 @@ export default function ImportTemplate() {
                       defaultValue="Progress" />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <button disabled={!selectionActive} onClick={() => {
+                    <button disabled={!accumulatedText} onClick={() => {
                       const nameEl = document.getElementById('rating-name-input') as HTMLInputElement;
                       handleExtractAndAdd('rating', 'name', nameEl?.value || 'Progress', 'four-level');
-                    }} style={{ ...btnP, opacity: selectionActive ? 1 : 0.4, cursor: selectionActive ? 'pointer' : 'not-allowed', textAlign: 'left', padding: '12px' }}>
+                    }} style={{ ...btnP, opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed', textAlign: 'left', padding: '12px' }}>
                       <div style={{ fontWeight: '700' }}>A) Standard 4-level scale</div>
                       <div style={{ fontSize: '12px', opacity: 0.9 }}>Excellent · Good · Satisfactory · Needs Improvement</div>
                     </button>
-                    <button disabled={!selectionActive} onClick={() => {
+                    <button disabled={!accumulatedText} onClick={() => {
                       const nameEl = document.getElementById('rating-name-input') as HTMLInputElement;
                       handleExtractAndAdd('rating', 'name', nameEl?.value || 'Progress', 'own');
-                    }} style={{ ...btnV, opacity: selectionActive ? 1 : 0.4, cursor: selectionActive ? 'pointer' : 'not-allowed', textAlign: 'left', padding: '12px' }}>
+                    }} style={{ ...btnV, opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed', textAlign: 'left', padding: '12px' }}>
                       <div style={{ fontWeight: '700' }}>B) My own scale from my reports</div>
                       <div style={{ fontSize: '12px', opacity: 0.9 }}>Claude identifies your own groupings</div>
                     </button>
@@ -616,13 +653,13 @@ export default function ImportTemplate() {
                       <button id="q-pron-btn" onClick={() => { document.getElementById('q-pron-btn')!.style.border='2px solid #8b5cf6'; document.getElementById('q-name-btn')!.style.border='1px solid #d1d5db'; }} style={{ flex: 1, padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: 'white', cursor: 'pointer', fontSize: '12px' }}>{pronounCapital}</button>
                     </div>
                   </div>
-                  <button disabled={!selectionActive} onClick={() => {
+                  <button disabled={!accumulatedText} onClick={() => {
                     const nameEl = document.getElementById('qualities-name-input') as HTMLInputElement;
                     const prnBtn = document.getElementById('q-pron-btn') as HTMLButtonElement;
                     const opener: OpenerType = prnBtn?.style.border.includes('8b5cf6') ? 'pronoun' : 'name';
                     handleExtractAndAdd('qualities', opener, nameEl?.value || 'Personal Qualities');
-                  }} style={{ ...btnP, width: '100%', opacity: selectionActive ? 1 : 0.4, cursor: selectionActive ? 'pointer' : 'not-allowed', padding: '12px' }}>
-                    {selectionActive ? '✓ Extract all quality sentences from reports' : '← Highlight text from reports first'}
+                  }} style={{ ...btnP, width: '100%', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed', padding: '12px' }}>
+                    {selectionActive ? '✓ Extract all quality sentences from reports' : '← Highlight & add text from reports first'}
                   </button>
                 </div>
               )}
@@ -715,10 +752,10 @@ export default function ImportTemplate() {
                   <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
                     <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight one of your assessment sentences from the reports. Replace the actual score with [Score] in your highlight, or we'll do it automatically.</p>
                   </div>
-                  <button disabled={!selectionActive} onClick={() => {
+                  <button disabled={!accumulatedText} onClick={() => {
                     handleBuildSameAssessment(assessSectionName || 'Assessment');
                     setAssessSectionName('');
-                  }} style={{ ...btnP, width: '100%', opacity: selectionActive ? 1 : 0.4, cursor: selectionActive ? 'pointer' : 'not-allowed', padding: '12px' }}>
+                  }} style={{ ...btnP, width: '100%', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed', padding: '12px' }}>
                     {selectionActive ? '✓ Create assessment section from selection' : '← Highlight the assessment sentence first'}
                   </button>
                 </div>
@@ -730,11 +767,11 @@ export default function ImportTemplate() {
                   <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
                     <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight assessment sentences showing different performance levels — some excellent, some average, some poor. Claude will group them by level.</p>
                   </div>
-                  <button disabled={!selectionActive} onClick={() => {
+                  <button disabled={!accumulatedText} onClick={() => {
                     handleExtractAndAdd('assessment-comment', 'name', assessSectionName || 'Assessment');
                     setAssessSectionName('');
-                  }} style={{ ...btnP, width: '100%', opacity: selectionActive ? 1 : 0.4, cursor: selectionActive ? 'pointer' : 'not-allowed', padding: '12px' }}>
-                    {selectionActive ? '✓ Extract and group assessment sentences' : '← Highlight assessment sentences first'}
+                  }} style={{ ...btnP, width: '100%', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed', padding: '12px' }}>
+                    {selectionActive ? '✓ Extract and group assessment sentences' : '← Highlight & add assessment sentences first'}
                   </button>
                 </div>
               )}
@@ -754,13 +791,13 @@ export default function ImportTemplate() {
                       <button id="dev-pron-btn" onClick={() => { document.getElementById('dev-pron-btn')!.style.border='2px solid #8b5cf6'; document.getElementById('dev-name-btn')!.style.border='1px solid #d1d5db'; }} style={{ flex: 1, padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: 'white', cursor: 'pointer', fontSize: '12px' }}>{pronounCapital}</button>
                     </div>
                   </div>
-                  <button disabled={!selectionActive} onClick={() => {
+                  <button disabled={!accumulatedText} onClick={() => {
                     const nameEl = document.getElementById('dev-name-input') as HTMLInputElement;
                     const prnBtn = document.getElementById('dev-pron-btn') as HTMLButtonElement;
                     const opener: OpenerType = prnBtn?.style.border.includes('8b5cf6') ? 'pronoun' : 'name';
                     handleExtractAndAdd('development', opener, nameEl?.value || 'Areas for Development');
-                  }} style={{ ...btnP, width: '100%', opacity: selectionActive ? 1 : 0.4, cursor: selectionActive ? 'pointer' : 'not-allowed', padding: '12px' }}>
-                    {selectionActive ? '✓ Extract all development sentences from reports' : '← Highlight text from reports first'}
+                  }} style={{ ...btnP, width: '100%', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed', padding: '12px' }}>
+                    {selectionActive ? '✓ Extract all development sentences from reports' : '← Highlight & add text from reports first'}
                   </button>
                 </div>
               )}
@@ -780,13 +817,13 @@ export default function ImportTemplate() {
                       <button id="ns-pron-btn" onClick={() => { document.getElementById('ns-pron-btn')!.style.border='2px solid #8b5cf6'; document.getElementById('ns-name-btn')!.style.border='1px solid #d1d5db'; }} style={{ flex: 1, padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: 'white', cursor: 'pointer', fontSize: '12px' }}>{pronounCapital}</button>
                     </div>
                   </div>
-                  <button disabled={!selectionActive} onClick={() => {
+                  <button disabled={!accumulatedText} onClick={() => {
                     const nameEl = document.getElementById('ns-name-input') as HTMLInputElement;
                     const prnBtn = document.getElementById('ns-pron-btn') as HTMLButtonElement;
                     const opener: OpenerType = prnBtn?.style.border.includes('8b5cf6') ? 'pronoun' : 'name';
                     handleExtractAndAdd('next-steps', opener, nameEl?.value || 'Next Steps');
-                  }} style={{ ...btnP, width: '100%', opacity: selectionActive ? 1 : 0.4, cursor: selectionActive ? 'pointer' : 'not-allowed', padding: '12px' }}>
-                    {selectionActive ? '✓ Extract all next steps sentences from reports' : '← Highlight text from reports first'}
+                  }} style={{ ...btnP, width: '100%', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed', padding: '12px' }}>
+                    {selectionActive ? '✓ Extract all next steps sentences from reports' : '← Highlight & add text from reports first'}
                   </button>
                 </div>
               )}
