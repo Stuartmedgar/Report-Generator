@@ -141,9 +141,7 @@ export default function ImportTemplate() {
   const addToSelection = () => {
     if (!pendingSelection) return;
     const newAccumulated = accumulatedText
-      ? accumulatedText + '
-
-' + pendingSelection
+      ? accumulatedText + '\n\n' + pendingSelection
       : pendingSelection;
     setAccumulatedText(newAccumulated);
     setSelectedText(newAccumulated);
@@ -435,9 +433,9 @@ export default function ImportTemplate() {
     const canCopyLast = lastBuiltSection && (lastBuiltSection.type === 'qualities' || lastBuiltSection.type === 'next-steps');
 
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ height: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
-        <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, zIndex: 10 }}>
+        <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, zIndex: 10, position: 'sticky', top: 0 }}>
           <button onClick={() => setMainStep('paste')} style={btnS}>← Back</button>
           <div style={{ flex: 1 }}>
             <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#111827' }}>🪄 {subject} {yearGroup} — Build Template</h1>
@@ -486,7 +484,7 @@ export default function ImportTemplate() {
           </div>
 
           {/* RIGHT: Builder panel */}
-          <div style={{ flex: '0 0 400px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ flex: '0 0 400px', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
 
             {/* Selection indicator */}
             {(accumulatedText || pendingSelection) && (
