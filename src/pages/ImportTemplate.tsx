@@ -106,7 +106,11 @@ export default function ImportTemplate() {
 
   // ─── TEXT SELECTION ────────────────────────────────────────────────────────
 
-  const handleTextSelection = useCallback(() => {
+  const handleTextSelection = useCallback((e: MouseEvent) => {
+    // Don't process if clicking the Add button or Clear button
+    const target = e.target as HTMLElement;
+    if (target.closest && target.closest('[data-selection-control]')) return;
+
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
       return;
@@ -121,8 +125,9 @@ export default function ImportTemplate() {
   }, []);
 
   useEffect(() => {
-    document.addEventListener('mouseup', handleTextSelection);
-    return () => document.removeEventListener('mouseup', handleTextSelection);
+    const handler = (e: MouseEvent) => handleTextSelection(e);
+    document.addEventListener('mouseup', handler);
+    return () => document.removeEventListener('mouseup', handler);
   }, [handleTextSelection]);
 
   const clearSelection = () => {
@@ -455,7 +460,7 @@ export default function ImportTemplate() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                 {pendingSelection && (
-                  <button onClick={addToSelection} style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 10px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
+                  <button data-selection-control="true" onClick={addToSelection} style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 10px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
                     + Add to selection ({pendingSelection.length} chars)
                   </button>
                 )}
@@ -465,7 +470,7 @@ export default function ImportTemplate() {
                   </span>
                 )}
                 {accumulatedText && (
-                  <button onClick={clearSelection} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '14px', padding: '0' }}>Clear all</button>
+                  <button data-selection-control="true" onClick={clearSelection} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '14px', padding: '0' }}>Clear all</button>
                 )}
                 {!accumulatedText && !pendingSelection && (
                   <span style={{ fontSize: '12px', color: '#9ca3af', fontStyle: 'italic' }}>Highlight text with your mouse, then click + Add</span>
