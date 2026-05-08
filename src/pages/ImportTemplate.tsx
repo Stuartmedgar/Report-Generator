@@ -35,6 +35,93 @@ function stripPercent(text: string) {
 
 function makeId() { return `s_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`; }
 
+function normalisePronouns(text: string, pronounSet: PronounSet): string {
+  // Normalise all mid-sentence pronouns to match the chosen pronoun set
+  // This runs after extraction to clean up mixed pronouns from reports of different genders
+  if (pronounSet === 'he/his') {
+    return text
+      .replace(/\bshe\b/g, 'he').replace(/\bShe\b/g, 'He')
+      .replace(/\bher\b/g, 'him').replace(/\bHer\b/g, 'Him')
+      .replace(/\bhers\b/g, 'his').replace(/\bHers\b/g, 'His')
+      .replace(/\bherself\b/g, 'himself').replace(/\bHerself\b/g, 'Himself')
+      .replace(/\bthey\b/g, 'he').replace(/\bThey\b/g, 'He')
+      .replace(/\bthem\b/g, 'him').replace(/\bThem\b/g, 'Him')
+      .replace(/\btheir\b/g, 'his').replace(/\bTheir\b/g, 'His')
+      .replace(/\bthemselves\b/g, 'himself').replace(/\bThemselves\b/g, 'Himself');
+  } else if (pronounSet === 'she/her') {
+    return text
+      .replace(/\bhe\b/g, 'she').replace(/\bHe\b/g, 'She')
+      .replace(/\bhim\b/g, 'her').replace(/\bHim\b/g, 'Her')
+      .replace(/\bhis\b/g, 'her').replace(/\bHis\b/g, 'Her')
+      .replace(/\bhimself\b/g, 'herself').replace(/\bHimself\b/g, 'Herself')
+      .replace(/\bthey\b/g, 'she').replace(/\bThey\b/g, 'She')
+      .replace(/\bthem\b/g, 'her').replace(/\bThem\b/g, 'Her')
+      .replace(/\btheir\b/g, 'her').replace(/\bTheir\b/g, 'Her')
+      .replace(/\bthemselves\b/g, 'herself').replace(/\bThemselves\b/g, 'Herself');
+  } else {
+    return text
+      .replace(/\bhe\b/g, 'they').replace(/\bHe\b/g, 'They')
+      .replace(/\bshe\b/g, 'they').replace(/\bShe\b/g, 'They')
+      .replace(/\bhim\b/g, 'them').replace(/\bHim\b/g, 'Them')
+      .replace(/\bher\b/g, 'them').replace(/\bHer\b/g, 'Them')
+      .replace(/\bhis\b/g, 'their').replace(/\bHis\b/g, 'Their')
+      .replace(/\bhers\b/g, 'their').replace(/\bHers\b/g, 'Their')
+      .replace(/\bhimself\b/g, 'themselves').replace(/\bHimself\b/g, 'Themselves')
+      .replace(/\bherself\b/g, 'themselves').replace(/\bHerself\b/g, 'Themselves');
+  }
+}
+
+function normaliseTemplateSections(sections: any[], pronounSet: PronounSet): any[] {
+  return sections.map(section => {
+    if (section.type === 'qualities' || section.type === 'rated-comment') {
+      const comments: Record<string, string[]> = {};
+      Object.entries(section.data?.comments || {}).forEach(([heading, options]) => {
+        // Only normalise [Name]-led sections — pronoun-led copies keep their pronouns
+        if (!heading.includes('-led') || heading.toLowerCase().includes('[name]')) {
+          comments[heading] = (options as string[]).map(o => {
+            // Don't touch the opener [Name] — only fix mid-sentence pronouns
+            // A [Name]-led option starts with [Name], pronoun-led starts with He/She/They
+            const startsWithName = o.startsWith('[Name]');
+            const startsWithPronoun = /^(He|She|They)/.test(o);
+            if (startsWithName) {
+              // Fix mid-sentence pronouns after [Name] opener
+              const afterName = o.slice('[Name]'.length);
+              return '[Name]' + normalisePronouns(afterName, pronounSet);
+            } else if (startsWithPronoun) {
+              // This is a pronoun-led sentence — normalise all pronouns to chosen set
+              return normalisePronouns(o, pronounSet);
+            }
+            return normalisePronouns(o, pronounSet);
+          });
+        } else {
+          comments[heading] = options as string[];
+        }
+      });
+      return { ...section, data: { ...section.data, comments } };
+    }
+    if (section.type === 'next-steps') {
+      const focusAreas: Record<string, string[]> = {};
+      Object.entries(section.data?.focusAreas || {}).forEach(([area, options]) => {
+        const isNameLed = !area.includes('He-led') && !area.includes('She-led') && !area.includes('They-led');
+        if (isNameLed) {
+          focusAreas[area] = (options as string[]).map(o => {
+            const startsWithName = o.startsWith('[Name]');
+            if (startsWithName) {
+              const afterName = o.slice('[Name]'.length);
+              return '[Name]' + normalisePronouns(afterName, pronounSet);
+            }
+            return normalisePronouns(o, pronounSet);
+          });
+        } else {
+          focusAreas[area] = options as string[];
+        }
+      });
+      return { ...section, data: { ...section.data, focusAreas } };
+    }
+    return section;
+  });
+}
+
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 
 export default function ImportTemplate() {
@@ -335,7 +422,8 @@ export default function ImportTemplate() {
     callApi({ mode: 'assemble', subject, yearGroup, pronounSet, builtSections })
       .then(data => {
         if (!data.templateName || !data.sections) throw new Error('Invalid template');
-        setGeneratedTemplate({ name: data.templateName, sections: data.sections });
+        const normalisedSections = normaliseTemplateSections(data.sections, pronounSet);
+        setGeneratedTemplate({ name: data.templateName, sections: normalisedSections });
         // Set up variety selection with qualities and next-steps sections
         const varietyEligible = builtSections.filter(s => s.type === 'qualities' || s.type === 'next-steps');
         setSectionsForVariety(varietyEligible.map(s => ({ section: s, selected: true })));
