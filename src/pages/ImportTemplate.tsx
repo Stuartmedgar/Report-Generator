@@ -387,19 +387,27 @@ export default function ImportTemplate() {
           existingHeadings,
         });
 
-        // Merge new options into the template section
+        // Merge new options into the template section - match by name since assembly creates new IDs
         updatedSections = updatedSections.map(s => {
-          if (s.id !== section.id) return s;
+          if (s.name !== section.name) return s;
           if (isNextSteps) {
             const focusAreas = { ...s.data.focusAreas };
             result.headings?.forEach((h: { name: string; newOptions: string[] }) => {
-              if (focusAreas[h.name]) focusAreas[h.name] = [...focusAreas[h.name], ...(h.newOptions || [])];
+              const opts = h.newOptions || [];
+              if (opts.length === 0) return;
+              if (focusAreas[h.name]) {
+                focusAreas[h.name] = [...focusAreas[h.name], ...opts];
+              }
             });
             return { ...s, data: { ...s.data, focusAreas } };
           } else {
             const comments = { ...s.data.comments };
             result.headings?.forEach((h: { name: string; newOptions: string[] }) => {
-              if (comments[h.name]) comments[h.name] = [...comments[h.name], ...(h.newOptions || [])];
+              const opts = h.newOptions || [];
+              if (opts.length === 0) return;
+              if (comments[h.name]) {
+                comments[h.name] = [...comments[h.name], ...opts];
+              }
             });
             return { ...s, data: { ...s.data, comments } };
           }

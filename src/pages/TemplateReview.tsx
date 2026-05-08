@@ -97,6 +97,13 @@ export default function TemplateReview() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const mainScrollRef = React.useRef<HTMLDivElement>(null);
+  const preserveScroll = (fn: () => void) => {
+    const el = mainScrollRef.current;
+    const top = el?.scrollTop || 0;
+    fn();
+    requestAnimationFrame(() => { if (el) el.scrollTop = top; });
+  };
 
   // ─── STYLES ────────────────────────────────────────────────────────────────
 
@@ -343,6 +350,14 @@ export default function TemplateReview() {
                 <button onClick={() => { setEditMode('rename-section'); setEditingSectionId(section.id); setEditValue(section.name || ''); }}
                   style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '12px', padding: '0' }}>✏️</button>
               )}
+              {!isNewLine && !isOptional && !isStandard && (
+                <button
+                  onClick={() => updateSections(sections => sections.map(s => s.id === section.id ? { ...s, data: { ...s.data, showHeader: !(s.data?.showHeader !== false) } } : s))}
+                  title={section.data?.showHeader !== false ? 'Header visible when writing — click to hide' : 'Header hidden when writing — click to show'}
+                  style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '4px', color: section.data?.showHeader !== false ? '#10b981' : '#9ca3af', cursor: 'pointer', fontSize: '11px', padding: '2px 6px', fontWeight: '600' }}>
+                  {section.data?.showHeader !== false ? '🏷 Header ON' : '🏷 Header OFF'}
+                </button>
+              )}
             </div>
             {isStandard && <p style={{ margin: 0, fontSize: '12px', color: '#6b7280', lineHeight: '1.5' }}>{(section.data?.content || '').substring(0, 120)}{(section.data?.content || '').length > 120 ? '...' : ''}</p>}
             {isOptional && <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>Free text box for teacher</p>}
@@ -491,9 +506,9 @@ export default function TemplateReview() {
                editMode === 'add-nextsteps' ? 'Section name' : 'Text'}
             </label>
             {editMode === 'add-option' || editMode === 'rename-section' || editMode === 'rename-template' ? (
-              <textarea value={editValue} onChange={e => setEditValue(e.target.value)} style={{ ...txa, minHeight: editMode === 'add-option' ? '80px' : '40px' }} autoFocus />
+              <textarea value={editValue} onChange={e => setEditValue(e.target.value)} style={{ ...txa, minHeight: editMode === 'add-option' ? '80px' : '40px' }} ref={el => { if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }} />
             ) : (
-              <input type="text" value={editValue} onChange={e => setEditValue(e.target.value)} style={inp} autoFocus />
+              <input type="text" value={editValue} onChange={e => setEditValue(e.target.value)} style={inp} ref={el => { if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }} />
             )}
           </div>
 
@@ -549,6 +564,7 @@ export default function TemplateReview() {
         </div>
       </header>
 
+      <div ref={mainScrollRef} style={{ flex: 1, overflow: 'auto' }}>
       <main style={{ maxWidth: '900px', margin: '0 auto', padding: isMobile ? '16px' : '24px', display: showPreview ? 'grid' : 'block', gridTemplateColumns: showPreview ? '1fr 1fr' : undefined, gap: '24px' }}>
 
         {/* Edit panel */}
@@ -591,6 +607,7 @@ export default function TemplateReview() {
           </div>
         )}
       </main>
+      </div>
 
       <EditModal />
     </div>
