@@ -4,7 +4,7 @@ import './App.css';
 
 // Context Providers
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { DataProvider } from './contexts/DataContext';
+import { DataProvider, useData } from './contexts/DataContext';
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
 
 // Import pages (not components!)
@@ -51,16 +51,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Home Component with Original Styling
+// Home Component
 function Home() {
   const { user, signOut } = useAuth();
+  const { state } = useData();
   const [showMenu, setShowMenu] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -72,6 +71,64 @@ function Home() {
       } catch (error) {
         console.error('Error signing out:', error);
       }
+    }
+  };
+
+  const hasTemplates = state.templates.length > 0;
+  const hasClasses = state.classes.length > 0;
+  const isNewUser = !hasTemplates && !hasClasses;
+
+  // Shared large button style
+  const largeBtnStyle = (bg: string): React.CSSProperties => ({
+    backgroundColor: bg,
+    color: 'white',
+    padding: isMobile ? '48px 24px' : '40px 24px',
+    borderRadius: isMobile ? '8px' : '12px',
+    textDecoration: 'none',
+    textAlign: 'center' as const,
+    fontSize: isMobile ? '16px' : '20px',
+    fontWeight: '600',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+    width: '100%',
+    boxSizing: 'border-box' as const,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px'
+  });
+
+  const smallerBtnStyle = (bg: string): React.CSSProperties => ({
+    backgroundColor: bg,
+    color: 'white',
+    padding: isMobile ? '20px 24px' : '22px 24px',
+    borderRadius: isMobile ? '8px' : '12px',
+    textDecoration: 'none',
+    textAlign: 'center' as const,
+    fontSize: isMobile ? '15px' : '18px',
+    fontWeight: '600',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+    width: '100%',
+    boxSizing: 'border-box' as const,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px'
+  });
+
+  const hoverOn = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!isMobile) {
+      e.currentTarget.style.transform = 'translateY(-2px)';
+      e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
+    }
+  };
+
+  const hoverOff = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!isMobile) {
+      e.currentTarget.style.transform = 'translateY(0)';
+      e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
     }
   };
 
@@ -111,8 +168,7 @@ function Home() {
         >
           ☰
         </button>
-        
-        {/* Dropdown menu */}
+
         {showMenu && (
           <div style={{
             position: 'absolute',
@@ -126,74 +182,26 @@ function Home() {
             overflow: 'hidden'
           }}>
             <button
-              onClick={() => {
-                alert('Account details coming soon!');
-                setShowMenu(false);
-              }}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: 'none',
-                backgroundColor: 'transparent',
-                textAlign: 'left',
-                cursor: 'pointer',
-                fontSize: '14px',
-                borderBottom: '1px solid #f3f4f6'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#f9fafb';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
+              onClick={() => { alert('Account details coming soon!'); setShowMenu(false); }}
+              style={{ width: '100%', padding: '12px 16px', border: 'none', backgroundColor: 'transparent', textAlign: 'left', cursor: 'pointer', fontSize: '14px', borderBottom: '1px solid #f3f4f6' }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f9fafb'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
             >
               👤 Account
             </button>
             <button
-              onClick={() => {
-                alert('Settings coming soon!');
-                setShowMenu(false);
-              }}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: 'none',
-                backgroundColor: 'transparent',
-                textAlign: 'left',
-                cursor: 'pointer',
-                fontSize: '14px',
-                borderBottom: '1px solid #f3f4f6'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#f9fafb';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
+              onClick={() => { alert('Settings coming soon!'); setShowMenu(false); }}
+              style={{ width: '100%', padding: '12px 16px', border: 'none', backgroundColor: 'transparent', textAlign: 'left', cursor: 'pointer', fontSize: '14px', borderBottom: '1px solid #f3f4f6' }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f9fafb'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
             >
               ⚙️ Settings
             </button>
             <button
-              onClick={() => {
-                handleLogout();
-                setShowMenu(false);
-              }}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: 'none',
-                backgroundColor: 'transparent',
-                textAlign: 'left',
-                cursor: 'pointer',
-                fontSize: '14px',
-                color: '#ef4444'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#fef2f2';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
+              onClick={() => { handleLogout(); setShowMenu(false); }}
+              style={{ width: '100%', padding: '12px 16px', border: 'none', backgroundColor: 'transparent', textAlign: 'left', cursor: 'pointer', fontSize: '14px', color: '#ef4444' }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
             >
               🚪 Logout
             </button>
@@ -201,290 +209,116 @@ function Home() {
         )}
       </div>
 
-      <div style={{ 
-        minHeight: '100vh', 
-        backgroundColor: '#f8fafc', 
-        display: 'flex', 
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#f8fafc',
+        display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'flex-start',
         padding: isMobile ? '20px 16px 40px 16px' : '60px 20px 40px 20px'
       }}>
-        
-        {/* Title - Inline with hamburger on mobile */}
-        <div style={{ 
+
+        {/* Title */}
+        <div style={{
           textAlign: 'center',
-          marginBottom: isMobile ? '40px' : '60px', 
+          marginBottom: isMobile ? '32px' : '48px',
           maxWidth: isMobile ? '100%' : '800px',
           marginTop: isMobile ? '0' : '20px',
-          width: isMobile ? '100%' : 'auto',
-          paddingRight: '0'
+          width: isMobile ? '100%' : 'auto'
         }}>
-          <h1 style={{ 
-            fontSize: isMobile ? '24px' : '48px', 
-            fontWeight: '800', 
+          <h1 style={{
+            fontSize: isMobile ? '24px' : '48px',
+            fontWeight: '800',
             color: '#1e293b',
-            marginBottom: isMobile ? '0' : '20px',
             lineHeight: '1.2',
             margin: isMobile ? '0' : '0 0 20px 0'
           }}>
             Report Generator
           </h1>
-          
-          {/* Only show subtitle and description on desktop */}
-          {!isMobile && (
-            <>
-              <p style={{
-                fontSize: '20px',
-                color: '#64748b',
-                lineHeight: '1.6',
-                marginBottom: '20px'
-              }}>
-                
-              </p>
-              <p style={{
-                fontSize: '16px',
-                color: '#94a3b8'
-              }}>
-                
-              </p>
-            </>
+
+          {/* New user welcome message */}
+          {isNewUser && !isMobile && (
+            <p style={{ fontSize: '18px', color: '#64748b', marginTop: '12px' }}>
+              Welcome! Get started by writing your first reports below.
+            </p>
           )}
         </div>
 
-        {/* First Row - 3 buttons on desktop, stacked on mobile */}
+        {/* Button layout */}
         <div style={{
-          display: isMobile ? 'flex' : 'grid',
-          flexDirection: isMobile ? 'column' : undefined,
-          gridTemplateColumns: isMobile ? undefined : 'repeat(3, 1fr)',
-          gap: isMobile ? '16px' : '20px',
           width: isMobile ? 'calc(100% - 32px)' : '100%',
           maxWidth: isMobile ? 'none' : '800px',
-          marginBottom: isMobile ? '0' : '20px'
+          display: 'flex',
+          flexDirection: 'column',
+          gap: isMobile ? '16px' : '20px'
         }}>
 
-          <Link 
-            to="/write-reports"
-            style={{
-              backgroundColor: '#10b981',
-              color: 'white',
-              padding: isMobile ? '64px 24px' : '32px 24px',
-              borderRadius: isMobile ? '8px' : '12px',
-              textDecoration: 'none',
-              textAlign: 'center',
-              fontSize: '18px',
-              fontWeight: '600',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              width: isMobile ? '100%' : 'auto',
-              boxSizing: 'border-box',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            onMouseEnter={(e) => {
-              if (!isMobile) {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isMobile) {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-              }
-            }}
-          >
-            Write Reports
-          </Link>
+          {/* Top two large buttons side by side */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+            gap: isMobile ? '16px' : '20px'
+          }}>
 
-          <Link 
-            to="/create-template"
-            style={{
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              padding: isMobile ? '64px 24px' : '32px 24px',
-              borderRadius: isMobile ? '8px' : '12px',
-              textDecoration: 'none',
-              textAlign: 'center',
-              fontSize: '18px',
-              fontWeight: '600',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              width: isMobile ? '100%' : 'auto',
-              boxSizing: 'border-box',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            onMouseEnter={(e) => {
-              if (!isMobile) {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isMobile) {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-              }
-            }}
-          >
-            Create Template
-          </Link>
+            {/* Write Reports */}
+            <Link
+              to="/write-reports"
+              style={largeBtnStyle('#10b981')}
+              onMouseEnter={hoverOn}
+              onMouseLeave={hoverOff}
+            >
+              <span>Write Reports</span>
+              {isNewUser && (
+                <span style={{ fontSize: isMobile ? '12px' : '13px', fontWeight: '400', opacity: 0.9 }}>
+                  Get Started →
+                </span>
+              )}
+            </Link>
 
-          <Link 
-            to="/manage-templates"
-            style={{
-              backgroundColor: '#f59e0b',
-              color: 'white',
-              padding: isMobile ? '64px 24px' : '32px 24px',
-              borderRadius: isMobile ? '8px' : '12px',
-              textDecoration: 'none',
-              textAlign: 'center',
-              fontSize: '18px',
-              fontWeight: '600',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              width: isMobile ? '100%' : 'auto',
-              boxSizing: 'border-box',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            onMouseEnter={(e) => {
-              if (!isMobile) {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isMobile) {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-              }
-            }}
-          >
-            Manage Templates
-          </Link>
-        </div>
+            {/* Report Templates */}
+            <Link
+              to="/manage-templates"
+              style={largeBtnStyle('#3b82f6')}
+              onMouseEnter={hoverOn}
+              onMouseLeave={hoverOff}
+            >
+              <span>Report Templates</span>
+              <span style={{ fontSize: isMobile ? '12px' : '13px', fontWeight: '400', opacity: 0.9 }}>
+                Create, Manage &amp; Import
+              </span>
+            </Link>
+          </div>
 
-        {/* Second Row - 2 buttons on desktop, continues stacking on mobile */}
-        <div style={{
-          display: isMobile ? 'flex' : 'grid',
-          flexDirection: isMobile ? 'column' : undefined,
-          gridTemplateColumns: isMobile ? undefined : 'repeat(2, 1fr)',
-          gap: isMobile ? '16px' : '20px',
-          width: isMobile ? 'calc(100% - 32px)' : '100%',
-          maxWidth: isMobile ? 'none' : '800px'
-        }}>
-
-          <Link 
+          {/* Your Classes — full width, shorter */}
+          <Link
             to="/class-management"
-            style={{
-              backgroundColor: '#8b5cf6',
-              color: 'white',
-              padding: isMobile ? '64px 24px' : '32px 24px',
-              borderRadius: isMobile ? '8px' : '12px',
-              textDecoration: 'none',
-              textAlign: 'center',
-              fontSize: '18px',
-              fontWeight: '600',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              width: isMobile ? '100%' : 'auto',
-              boxSizing: 'border-box',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            onMouseEnter={(e) => {
-              if (!isMobile) {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isMobile) {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-              }
-            }}
+            style={smallerBtnStyle('#8b5cf6')}
+            onMouseEnter={hoverOn}
+            onMouseLeave={hoverOff}
           >
-            Class Management
+            Your Classes
+            {hasClasses && (
+              <span style={{ fontSize: isMobile ? '12px' : '13px', fontWeight: '400', opacity: 0.9 }}>
+                — {state.classes.length} {state.classes.length === 1 ? 'class' : 'classes'}
+              </span>
+            )}
           </Link>
 
-          <Link 
-            to="/view-reports"
-            style={{
-              backgroundColor: '#ef4444',
-              color: 'white',
-              padding: isMobile ? '64px 24px' : '32px 24px',
-              borderRadius: isMobile ? '8px' : '12px',
-              textDecoration: 'none',
-              textAlign: 'center',
-              fontSize: '18px',
-              fontWeight: '600',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              width: isMobile ? '100%' : 'auto',
-              boxSizing: 'border-box',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            onMouseEnter={(e) => {
-              if (!isMobile) {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isMobile) {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-              }
-            }}
-          >
-            View Reports
-          </Link>
-
-          {/* Uncomment this if you want to add a Pricing page button
-          <Link 
-            to="/pricing"
-            style={{
-              backgroundColor: '#06b6d4',
-              color: 'white',
-              padding: isMobile ? '64px 24px' : '32px 24px',
-              borderRadius: isMobile ? '8px' : '12px',
-              textDecoration: 'none',
-              textAlign: 'center',
-              fontSize: '18px',
-              fontWeight: '600',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              width: isMobile ? '100%' : 'auto',
-              boxSizing: 'border-box',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            onMouseEnter={(e) => {
-              if (!isMobile) {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 15px rgba(0, 0, 0, 0.15)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isMobile) {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-              }
-            }}
-          >
-            Pricing
-          </Link>
-          */}
+          {/* View Reports — only show once user has reports */}
+          {state.reports.length > 0 && (
+            <Link
+              to="/view-reports"
+              style={smallerBtnStyle('#ef4444')}
+              onMouseEnter={hoverOn}
+              onMouseLeave={hoverOff}
+            >
+              View Reports
+              <span style={{ fontSize: isMobile ? '12px' : '13px', fontWeight: '400', opacity: 0.9 }}>
+                — {state.reports.length} completed
+              </span>
+            </Link>
+          )}
 
         </div>
       </div>
@@ -503,18 +337,18 @@ function App() {
                 {/* Auth Routes */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
-                
+
                 {/* Admin Route */}
                 <Route path="/admin" element={
                   <ProtectedRoute>
                     <AdminDashboard />
                   </ProtectedRoute>
                 } />
-                
+
                 {/* Public Routes */}
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/subscription/success" element={<SubscriptionSuccess />} />
-                
+
                 {/* Protected Routes */}
                 <Route path="/" element={
                   <ProtectedRoute>
