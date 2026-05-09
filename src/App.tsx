@@ -74,6 +74,8 @@ function Home() {
     }
   };
 
+  const isNewUser = state.templates.length === 0 && state.classes.length === 0;
+
   const hoverOn = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (!isMobile) {
       e.currentTarget.style.transform = 'translateY(-2px)';
@@ -202,6 +204,39 @@ function Home() {
           flexDirection: 'column',
           gap: isMobile ? '16px' : '20px'
         }}>
+
+          {/* New user prompt — sits above the top row, aligned to left half on desktop */}
+          {isNewUser && (
+            <div style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'row' : 'row',
+              alignItems: 'center',
+              gap: '8px',
+              // On desktop align it over the left button (Write Reports)
+              width: isMobile ? '100%' : 'calc(50% - 10px)',
+              backgroundColor: '#fefce8',
+              border: '1.5px dashed #f59e0b',
+              borderRadius: '8px',
+              padding: '10px 14px'
+            }}>
+              <span style={{
+                fontSize: isMobile ? '13px' : '14px',
+                fontWeight: '600',
+                color: '#92400e'
+              }}>
+                👋 New here? Start with this button
+              </span>
+              <span style={{
+                fontSize: isMobile ? '18px' : '20px',
+                lineHeight: 1,
+                // On mobile point down, on desktop point down too since button is below
+                display: 'inline-block',
+                marginLeft: 'auto'
+              }}>
+                ↓
+              </span>
+            </div>
+          )}
 
           {/* Row 1 — Write Reports + Report Templates side by side */}
           <div style={{
