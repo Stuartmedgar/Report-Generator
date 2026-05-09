@@ -205,78 +205,78 @@ function Home() {
           gap: isMobile ? '16px' : '20px'
         }}>
 
-          {/* New user prompt — sits above the top row, aligned to left half on desktop */}
-          {isNewUser && (
-            <div style={{
-              display: 'flex',
-              flexDirection: isMobile ? 'row' : 'row',
-              alignItems: 'center',
-              gap: '8px',
-              // On desktop align it over the left button (Write Reports)
-              width: isMobile ? '100%' : 'calc(50% - 10px)',
-              backgroundColor: '#fefce8',
-              border: '1.5px dashed #f59e0b',
-              borderRadius: '8px',
-              padding: '10px 14px'
-            }}>
-              <span style={{
-                fontSize: isMobile ? '13px' : '14px',
-                fontWeight: '600',
-                color: '#92400e'
-              }}>
-                👋 New here? Start with this button
-              </span>
-              <span style={{
-                fontSize: isMobile ? '18px' : '20px',
-                lineHeight: 1,
-                // On mobile point down, on desktop point down too since button is below
-                display: 'inline-block',
-                marginLeft: 'auto'
-              }}>
-                ↓
-              </span>
-            </div>
-          )}
-
           {/* Row 1 — Write Reports + Report Templates side by side */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-            gap: isMobile ? '16px' : '20px'
+            gap: isMobile ? '16px' : '20px',
+            alignItems: 'end'
           }}>
 
-            {/* Write Reports — Get Started! */}
-            <Link
-              to="/write-reports"
-              style={{
-                backgroundColor: '#10b981',
-                color: 'white',
-                padding: isMobile ? '56px 24px' : '52px 24px',
-                borderRadius: isMobile ? '8px' : '12px',
-                textDecoration: 'none',
-                textAlign: 'center',
-                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                width: '100%',
-                boxSizing: 'border-box',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px'
-              }}
-              onMouseEnter={hoverOn}
-              onMouseLeave={hoverOff}
-            >
-              <span style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: '700' }}>
-                Write Reports
-              </span>
-              <span style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '500', opacity: 0.9 }}>
-                Get Started!
-              </span>
-            </Link>
+            {/* Write Reports column — includes new user hint above button */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
-            {/* Report Templates */}
+              {/* New user hint — only shown to new users */}
+              {isNewUser && (
+                <div style={{
+                  backgroundColor: '#fefce8',
+                  border: '1.5px dashed #f59e0b',
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  textAlign: 'center'
+                }}>
+                  <p style={{
+                    fontSize: isMobile ? '13px' : '14px',
+                    fontWeight: '600',
+                    color: '#92400e',
+                    margin: '0 0 4px 0'
+                  }}>
+                    👋 New User? Start here!
+                  </p>
+                  <p style={{
+                    fontSize: isMobile ? '20px' : '22px',
+                    margin: 0,
+                    lineHeight: 1,
+                    color: '#92400e'
+                  }}>
+                    ↓
+                  </p>
+                </div>
+              )}
+
+              {/* Write Reports button */}
+              <Link
+                to="/write-reports"
+                style={{
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  padding: isMobile ? '56px 24px' : '52px 24px',
+                  borderRadius: isMobile ? '8px' : '12px',
+                  textDecoration: 'none',
+                  textAlign: 'center',
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+                onMouseEnter={hoverOn}
+                onMouseLeave={hoverOff}
+              >
+                <span style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: '700' }}>
+                  Write Reports
+                </span>
+                <span style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '500', opacity: 0.9 }}>
+                  Get Started!
+                </span>
+              </Link>
+            </div>
+
+            {/* Report Templates button */}
             <Link
               to="/manage-templates"
               style={{
