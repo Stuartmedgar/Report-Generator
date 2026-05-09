@@ -153,7 +153,6 @@ export default function ImportTemplate() {
   // Personal information state
   const [piName, setPiName] = useState('');
   const [piInstruction, setPiInstruction] = useState('');
-  const [piSentence, setPiSentence] = useState('');
 
   const [assessSectionName, setAssessSectionName] = useState('');
   const [assessPartIndex, setAssessPartIndex] = useState(1);
@@ -255,14 +254,19 @@ export default function ImportTemplate() {
         pronounSet, openerType, sectionName, positionType,
         scaleType: scaleType || 'own',
         selectedText,
+        piInstruction,
       });
 
       const isNextSteps = positionType === 'next-steps' || positionType === 'development';
       const isAssessment = positionType === 'assessment-comment';
+      const isPersonalisedComment = positionType === 'personalised-comment';
 
       const newSection: BuiltSection = {
         id: makeId(),
-        type: isNextSteps ? 'next-steps' : isAssessment ? 'assessment-comment' : 'qualities',
+        type: isNextSteps ? 'next-steps'
+          : isAssessment ? 'assessment-comment'
+          : isPersonalisedComment ? 'personalised-comment'
+          : 'qualities',
         name: result.sectionName || sectionName,
         openerType,
         positionType,
@@ -270,6 +274,8 @@ export default function ImportTemplate() {
           ? { focusAreas: Object.fromEntries((result.headings || []).map((h: Heading) => [h.name, h.comments])) }
           : isAssessment
           ? { scoreType: 'percentage', comments: buildAssessmentComments(result.headings || []) }
+          : isPersonalisedComment
+          ? { instruction: result.instruction || piInstruction, categories: Object.fromEntries((result.headings || []).map((h: Heading) => [h.name, h.comments])) }
           : { comments: Object.fromEntries((result.headings || []).map((h: Heading) => [h.name, h.comments])) },
       };
 
@@ -339,31 +345,6 @@ export default function ImportTemplate() {
       id: makeId(), type: 'personalised-comment', name, openerType: 'name', positionType: 'personalised-comment',
       data: { instruction: 'Enter the score or information for this pupil', categories: { 'Assessment Score': [cleaned] } },
     });
-  };
-
-  // ─── PERSONAL INFORMATION SECTION ─────────────────────────────────────────
-
-  const handleAddPersonalInfo = () => {
-    if (!piName.trim()) { setError('Please enter a section name.'); return; }
-    if (!piInstruction.trim()) { setError('Please enter an instruction for the teacher.'); return; }
-    if (!piSentence.trim()) { setError('Please enter the template sentence.'); return; }
-    if (!piSentence.includes('[Personal Information]')) {
-      setError('The sentence must include [Personal Information] as a placeholder — this is where the teacher\'s typed detail will appear.'); return;
-    }
-    addSection({
-      id: makeId(),
-      type: 'personalised-comment',
-      name: piName.trim(),
-      openerType: 'name',
-      positionType: 'personalised-comment',
-      data: {
-        instruction: piInstruction.trim(),
-        categories: { [piName.trim()]: [piSentence.trim()] }
-      },
-    });
-    setPiName('');
-    setPiInstruction('');
-    setPiSentence('');
   };
 
   // ─── VARIETY GENERATION ───────────────────────────────────────────────────
@@ -447,7 +428,7 @@ export default function ImportTemplate() {
     setPronounSet('they/their'); setBuiltSections([]); setGeneratedTemplate(null);
     setError(null); clearSelection(); setCurrentSection(null); setSubMenu(null);
     setMenuOpen(false); setAssessPartIndex(1); setAssessSectionName('');
-    setPiName(''); setPiInstruction(''); setPiSentence('');
+    setPiName(''); setPiInstruction('');
   };
 
   const getSectionTypeColor = (type: string) => ({
@@ -664,7 +645,7 @@ export default function ImportTemplate() {
                     <button onClick={() => setSubMenu('personalinfo')} style={{ padding: '12px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}
                       onMouseEnter={e => e.currentTarget.style.borderColor = '#f59e0b'} onMouseLeave={e => e.currentTarget.style.borderColor = '#e5e7eb'}>
                       <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>👤 Personal Information</div>
-                      <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Something unique per pupil — a score, target grade, personal detail or goal</div>
+                      <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Sentences where a unique detail per pupil is typed in — sport, grade, personal goal</div>
                     </button>
 
                     <button onClick={() => setSubMenu('assessment')} style={{ padding: '12px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}
@@ -751,64 +732,36 @@ export default function ImportTemplate() {
               {/* ── PERSONAL INFORMATION sub-menu ── */}
               {subMenu === 'personalinfo' && (
                 <div>
-                  <button onClick={() => { setSubMenu(null); setPiName(''); setPiInstruction(''); setPiSentence(''); setError(null); }} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
+                  <button onClick={() => { setSubMenu(null); setPiName(''); setPiInstruction(''); setError(null); }} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
                   <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Use this when each pupil has something unique typed in — like a score, target grade, or personal goal. Write the sentence with <strong>[Personal Information]</strong> where the unique detail goes.</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight example sentences that contain a personal detail unique to each pupil — like a sport, target grade, or personal goal. Claude will find all similar sentences and replace the unique detail with [personalised information].</p>
                   </div>
-
                   <div style={{ marginBottom: '10px' }}>
                     <label style={lbl}>Section name</label>
                     <input
                       type="text"
                       value={piName}
                       onChange={e => setPiName(e.target.value)}
-                      placeholder="e.g. Target Grade, Assessment Score, Personal Goal"
+                      placeholder="e.g. Focus Sport, Target Grade, Personal Goal"
                       style={inp}
                     />
                   </div>
-
-                  <div style={{ marginBottom: '10px' }}>
+                  <div style={{ marginBottom: '12px' }}>
                     <label style={lbl}>Instruction for teacher</label>
                     <input
                       type="text"
                       value={piInstruction}
                       onChange={e => setPiInstruction(e.target.value)}
-                      placeholder="e.g. Enter this pupil's target grade"
+                      placeholder="e.g. Enter this pupil's chosen sport"
                       style={inp}
                     />
                   </div>
-
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={lbl}>Template sentence — use [Personal Information] as the placeholder</label>
-                    <textarea
-                      value={piSentence}
-                      onChange={e => setPiSentence(e.target.value)}
-                      placeholder={'e.g. [Name] is currently working towards [Personal Information] in this subject.'}
-                      style={{ ...txa, minHeight: '80px' }}
-                    />
-                    {piSentence && !piSentence.includes('[Personal Information]') && (
-                      <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#b91c1c' }}>
-                        ⚠️ Remember to include [Personal Information] in the sentence
-                      </p>
-                    )}
-                    {piSentence && piSentence.includes('[Personal Information]') && (
-                      <p style={{ margin: '4px 0 0 0', fontSize: '11px', color: '#166534' }}>
-                        ✓ Placeholder found
-                      </p>
-                    )}
-                  </div>
-
                   <button
-                    onClick={handleAddPersonalInfo}
-                    disabled={!piName.trim() || !piInstruction.trim() || !piSentence.trim() || !piSentence.includes('[Personal Information]')}
-                    style={{
-                      ...btnG,
-                      width: '100%',
-                      opacity: (piName.trim() && piInstruction.trim() && piSentence.trim() && piSentence.includes('[Personal Information]')) ? 1 : 0.4,
-                      cursor: (piName.trim() && piInstruction.trim() && piSentence.trim() && piSentence.includes('[Personal Information]')) ? 'pointer' : 'not-allowed'
-                    }}
+                    disabled={!accumulatedText || !piName.trim()}
+                    onClick={() => handleExtractAndAdd('personalised-comment', 'name', piName.trim() || 'Personal Information')}
+                    style={{ ...btnP, width: '100%', opacity: (accumulatedText && piName.trim()) ? 1 : 0.4, cursor: (accumulatedText && piName.trim()) ? 'pointer' : 'not-allowed', padding: '12px' }}
                   >
-                    Add Personal Information Section
+                    {accumulatedText ? '✓ Extract all sentences of this type from reports' : '← Highlight & add text from reports first'}
                   </button>
                 </div>
               )}

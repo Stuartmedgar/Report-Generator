@@ -39,6 +39,30 @@ Return ONLY valid JSON, no markdown, no backticks:
   ]
 }`;
 
+const PERSONALISED_EXTRACT_SYSTEM = `${KNOWLEDGE_BASE}
+
+Your task is to extract sentences that contain a personal detail unique to each pupil — like a sport, target grade, activity, or personal goal. This detail varies per pupil and is typed in by the teacher when writing each report.
+
+Rules:
+1. The teacher has highlighted a selection showing you what these sentences look like
+2. Read ALL the full reports and find EVERY sentence of this type
+3. Replace the variable personal detail with [personalised information] — e.g. "football" becomes [personalised information]
+4. Replace ALL student names with [Name]
+5. Group sentences by tone or context using short clear headings
+6. Copy sentences EXACTLY as written otherwise — do not paraphrase or rewrite
+7. Do NOT generate variety options — only include sentences that actually appear in the reports
+
+Return ONLY valid JSON, no markdown, no backticks:
+{
+  "sectionName": "string",
+  "headings": [
+    {
+      "name": "Short clear heading",
+      "comments": ["Exact sentence with [Name] and [personalised information]", "Another exact sentence"]
+    }
+  ]
+}`;
+
 const VARIETY_SYSTEM = `${KNOWLEDGE_BASE}
 
 Your task is to generate ADDITIONAL variety options for existing template headings, written in the teacher's exact voice.
@@ -106,7 +130,7 @@ function mechanicalAssemble(params: { subject: string; yearGroup: string; builtS
     } else if (section.type === 'assessment-comment') {
       sections.push({ id: makeId(), type: 'assessment-comment', name: section.name || 'Assessment', data: { scoreType: section.data?.scoreType || 'percentage', comments: section.data?.comments || {} } });
     } else if (section.type === 'personalised-comment') {
-      sections.push({ id: makeId(), type: 'personalised-comment', name: section.name || 'Assessment', data: { instruction: section.data?.instruction || 'Enter the personalised information for this pupil', categories: section.data?.categories || {} } });
+      sections.push({ id: makeId(), type: 'personalised-comment', name: section.name || 'Personal Information', data: { instruction: section.data?.instruction || 'Enter the personalised information for this pupil', categories: section.data?.categories || {} } });
     } else if (section.type === 'optional-additional-comment') {
       sections.push({ id: makeId(), type: 'optional-additional-comment', name: section.name || 'Additional Comments', data: {} });
     } else if (section.type === 'new-line') {
@@ -142,7 +166,8 @@ serve(async (req) => {
 
   let mode, subject, yearGroup, reportText, pronounSet, openerType,
       sectionName, builtSections, existingTemplate, refineText,
-      sourceSection, scaleType, positionType, selectedText, existingHeadings;
+      sourceSection, scaleType, positionType, selectedText, existingHeadings,
+      piInstruction;
 
   try {
     const body = await req.json();
@@ -161,6 +186,7 @@ serve(async (req) => {
     positionType = body.positionType || "qualities";
     selectedText = body.selectedText || "";
     existingHeadings = body.existingHeadings || [];
+    piInstruction = body.piInstruction || "";
   } catch {
     return new Response(JSON.stringify({ error: "Invalid request body" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
@@ -199,10 +225,58 @@ serve(async (req) => {
   }
 
   // ─── MODE: EXTRACT-ONLY ───────────────────────────────────────────────────
-  // Extracts teacher's exact sentences only — no generated variety
   if (mode === "extract-only") {
     if (!selectedText && !reportText) return new Response(JSON.stringify({ error: "selectedText and reportText are required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+    // ── PERSONALISED COMMENT extraction — uses its own system prompt ──
+    if (positionType === "personalised-comment") {
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 6000,
+            system: PERSONALISED_EXTRACT_SYSTEM,
+            messages: [{
+              role: "user",
+              content: `Subject: ${subject}
+Year Group: ${yearGroup || "Not specified"}
+Section name: ${sectionName}
+
+TEACHER'S HIGHLIGHTED SELECTION (shows what these sentences look like):
+${selectedText}
+
+Read ALL the reports below and extract every sentence of this type. Replace the specific personal detail (sport, grade, activity, goal etc.) with [personalised information]. Replace all student names with [Name]. Group by tone or context.
+
+FULL REPORTS:
+${reportText.substring(0, GENERATION_CHAR_LIMIT)}
+
+IMPORTANT: Extract ONLY sentences that actually appear in the reports. Do NOT generate new sentences.`,
+            }],
+          }),
+        });
+
+        if (!response.ok) return new Response(JSON.stringify({ error: "API call failed" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+        const data = await response.json();
+        const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
+        const parsed = JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
+
+        // Return in personalised-comment format with categories
+        return new Response(JSON.stringify({
+          sectionName: parsed.sectionName || sectionName,
+          headings: parsed.headings || [],
+          isPersonalisedComment: true,
+          instruction: piInstruction,
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+      } catch {
+        return new Response(JSON.stringify({ error: "Personalised comment extraction failed." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
+    // ── Standard extract-only for all other section types ──
     const openerInstruction = openerType === "pronoun"
       ? `All options must start with ${pronounCapital}. Replace [Name] openers with ${pronounCapital}. Use ${pronounFull} for possessives mid-sentence. Never use [Name] as a sentence opener in this section.`
       : `All options must start with [Name]. Replace ALL student names with [Name]. Use ${pronounFull} for possessives mid-sentence. Never use a pronoun as a sentence opener in this section.`;
@@ -241,57 +315,40 @@ ${instruction}
 
 IMPORTANT: Extract ONLY sentences that actually appear in the reports. Do NOT generate any new sentences or variety options.
 
-ALL REPORTS (find every sentence matching the pattern above across ALL of these):
+FULL REPORTS:
 ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
           }],
         }),
       });
 
-      if (!response.ok) return new Response(JSON.stringify({ error: "Failed to contact AI service" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (!response.ok) return new Response(JSON.stringify({ error: "API call failed" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
       const data = await response.json();
       const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
-      const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      return new Response(JSON.stringify(JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim())), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-      try {
-        const parsed = JSON.parse(cleaned);
-        // Strip percent from any assessment sections
-        if (positionType === 'assessment-comment' || positionType === 'assessment') {
-          parsed.headings = parsed.headings?.map((h: any) => ({ ...h, comments: h.comments.map(stripPercent) }));
-        }
-        return new Response(JSON.stringify(parsed), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      } catch {
-        return new Response(JSON.stringify({ error: "Extraction failed. Please try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
     } catch {
-      return new Response(JSON.stringify({ error: "Extraction failed. Please try again." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Extraction failed." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
   }
 
   // ─── MODE: GENERATE-VARIETY ───────────────────────────────────────────────
-  // Takes existing headings and generates additional options in teacher's voice
   if (mode === "generate-variety") {
     if (!existingHeadings || existingHeadings.length === 0) return new Response(JSON.stringify({ error: "existingHeadings required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
-    const openerInstruction = openerType === "pronoun"
-      ? `All new options must start with ${pronounCapital}. Never use [Name] as opener.`
-      : `All new options must start with [Name]. Never use a pronoun as opener.`;
-
     try {
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 4000,
+          model: "claude-sonnet-4-20250514", max_tokens: 4000,
           system: VARIETY_SYSTEM,
           messages: [{
             role: "user",
             content: `Subject: ${subject}
 Year Group: ${yearGroup || "Not specified"}
 Section: ${sectionName}
-${openerInstruction}
+Opener type: ${openerType === "pronoun" ? pronounCapital : "[Name]"}
 
-Read these existing options carefully — they are the teacher's actual sentences. 
 Generate 1-2 additional options per heading that the teacher would recognise as their own.
 Write in exactly the same voice, vocabulary, sentence length, and level of formality.
 
@@ -329,7 +386,7 @@ Generate additional options only. Do not change or repeat the existing options.`
           system: `${KNOWLEDGE_BASE}\n\nImprove an existing report template using additional reports. Return ONLY valid JSON. Replace ALL student names with [Name]. Replace ALL scores with [Score]. Keep same template name.`,
           messages: [{
             role: "user",
-            content: `Subject: ${subject}\nYear Group: ${yearGroup || "Not specified"}\nPronoun set: ${pronounFull}\n\nEXISTING TEMPLATE:\n${JSON.stringify(existingTemplate, null, 2)}\n\nADDITIONAL REPORTS:\n${refineText.substring(0, GENERATION_CHAR_LIMIT)}\n\nAdd new options where new sentences appear. Add new sections if new positions are found. Keep same template name.`,
+            content: `Subject: ${subject}\nYear Group: ${yearGroup || "Not specified"}\n\nEXISTING TEMPLATE:\n${JSON.stringify(existingTemplate, null, 2)}\n\nADDITIONAL REPORTS:\n${refineText.substring(0, GENERATION_CHAR_LIMIT)}\n\nAdd new options where new sentences appear. Add new sections if new positions are found. Keep same template name.`,
           }],
         }),
       });
