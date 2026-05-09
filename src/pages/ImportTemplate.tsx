@@ -36,8 +36,6 @@ function stripPercent(text: string) {
 function makeId() { return `s_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`; }
 
 function normalisePronouns(text: string, pronounSet: PronounSet): string {
-  // Normalise all mid-sentence pronouns to match the chosen pronoun set
-  // This runs after extraction to clean up mixed pronouns from reports of different genders
   if (pronounSet === 'he/his') {
     return text
       .replace(/\bshe\b/g, 'he').replace(/\bShe\b/g, 'He')
@@ -76,19 +74,14 @@ function normaliseTemplateSections(sections: any[], pronounSet: PronounSet): any
     if (section.type === 'qualities' || section.type === 'rated-comment') {
       const comments: Record<string, string[]> = {};
       Object.entries(section.data?.comments || {}).forEach(([heading, options]) => {
-        // Only normalise [Name]-led sections — pronoun-led copies keep their pronouns
         if (!heading.includes('-led') || heading.toLowerCase().includes('[name]')) {
           comments[heading] = (options as string[]).map(o => {
-            // Don't touch the opener [Name] — only fix mid-sentence pronouns
-            // A [Name]-led option starts with [Name], pronoun-led starts with He/She/They
             const startsWithName = o.startsWith('[Name]');
-            const startsWithPronoun = /^(He|She|They)/.test(o);
+            const startsWithPronoun = /^(He|She|They)/.test(o);
             if (startsWithName) {
-              // Fix mid-sentence pronouns after [Name] opener
               const afterName = o.slice('[Name]'.length);
               return '[Name]' + normalisePronouns(afterName, pronounSet);
             } else if (startsWithPronoun) {
-              // This is a pronoun-led sentence — normalise all pronouns to chosen set
               return normalisePronouns(o, pronounSet);
             }
             return normalisePronouns(o, pronounSet);
@@ -128,7 +121,6 @@ export default function ImportTemplate() {
   const navigate = useNavigate();
   const { addTemplate } = useData();
 
-  // Core state
   const [mainStep, setMainStep] = useState<MainStep>('paste');
   const [subject, setSubject] = useState('');
   const [yearGroup, setYearGroup] = useState('');
@@ -140,14 +132,12 @@ export default function ImportTemplate() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
 
-  // Selection state - accumulated
   const [selectedText, setSelectedText] = useState('');
   const [selectionActive, setSelectionActive] = useState(false);
   const [accumulatedText, setAccumulatedText] = useState('');
   const [pendingSelection, setPendingSelection] = useState('');
   const reportPanelRef = useRef<HTMLDivElement>(null);
 
-  // Current section being built
   const [currentSection, setCurrentSection] = useState<{
     type: string;
     name: string;
@@ -155,13 +145,11 @@ export default function ImportTemplate() {
     scaleType?: 'four-level' | 'own';
   } | null>(null);
 
-  // Standard comment state (no AI)
   const [stdName, setStdName] = useState('');
   const [stdContent, setStdContent] = useState('');
   const [stdOptions, setStdOptions] = useState<{label: string; content: string}[]>([{label: '', content: ''}]);
   const [stdType, setStdType] = useState<'single' | 'multi'>('single');
 
-  // Assessment state
   const [assessType, setAssessType] = useState<'same' | 'different'>('same');
   const [assessCount, setAssessCount] = useState<'one' | 'multiple'>('one');
   const [assessSentType, setAssessSentType] = useState<'one-sentence' | 'separate'>('separate');
@@ -169,12 +157,10 @@ export default function ImportTemplate() {
   const [assessTotalParts, setAssessTotalParts] = useState(2);
   const [assessSectionName, setAssessSectionName] = useState('');
 
-  // Variety generation state
   const [sectionsForVariety, setSectionsForVariety] = useState<{section: BuiltSection; selected: boolean}[]>([]);
   const [isGeneratingVariety, setIsGeneratingVariety] = useState(false);
   const [varietyProgress, setVarietyProgress] = useState(0);
 
-  // Menu state
   const [menuOpen, setMenuOpen] = useState(false);
   const [subMenu, setSubMenu] = useState<string | null>(null);
 
@@ -194,17 +180,12 @@ export default function ImportTemplate() {
   // ─── TEXT SELECTION ────────────────────────────────────────────────────────
 
   const handleTextSelection = useCallback((e: MouseEvent) => {
-    // Don't process if clicking the Add button or Clear button
     const target = e.target as HTMLElement;
     if (target.closest && target.closest('[data-selection-control]')) return;
-
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
-      return;
-    }
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
     const text = selection.toString().trim();
     if (text.length < 20) return;
-    // Only capture if selection is within report panel
     const range = selection.getRangeAt(0);
     if (reportPanelRef.current && reportPanelRef.current.contains(range.commonAncestorContainer)) {
       setPendingSelection(text);
@@ -387,7 +368,6 @@ export default function ImportTemplate() {
           existingHeadings,
         });
 
-        // Merge new options into the template section - match by name since assembly creates new IDs
         updatedSections = updatedSections.map(s => {
           if (s.name !== section.name) return s;
           if (isNextSteps) {
@@ -413,7 +393,6 @@ export default function ImportTemplate() {
           }
         });
       } catch {
-        // Continue even if one section fails
         console.error(`Variety generation failed for ${section.name}`);
       }
     }
@@ -432,7 +411,6 @@ export default function ImportTemplate() {
         if (!data.templateName || !data.sections) throw new Error('Invalid template');
         const normalisedSections = normaliseTemplateSections(data.sections, pronounSet);
         setGeneratedTemplate({ name: data.templateName, sections: normalisedSections });
-        // Set up variety selection with qualities and next-steps sections
         const varietyEligible = builtSections.filter(s => s.type === 'qualities' || s.type === 'next-steps');
         setSectionsForVariety(varietyEligible.map(s => ({ section: s, selected: true })));
         setMainStep('variety');
@@ -495,9 +473,15 @@ export default function ImportTemplate() {
             <div><label style={lbl}>Year Group</label><select value={yearGroup} onChange={e => setYearGroup(e.target.value)} style={inp}><option value="">Select...</option>{['S1','S2','S3','S4','S5','S6','Mixed'].map(y => <option key={y}>{y}</option>)}</select></div>
           </div>
         </div>
+
+        {/* PRONOUN SET CARD — with helper text */}
         <div style={card}>
-          <h2 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Pronoun Set</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginTop: '12px' }}>
+          <h2 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Pronoun Set</h2>
+          <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>
+            Choose the pronoun set used in the reports you are pasting. This will be applied consistently throughout your template.
+            Once built, you can easily create additional versions of the template for other pronoun sets.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
             {(['he/his', 'she/her', 'they/their'] as PronounSet[]).map(p => (
               <button key={p} onClick={() => setPronounSet(p)} style={{ padding: '12px', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', border: pronounSet === p ? '2px solid #3b82f6' : '2px solid #e5e7eb', backgroundColor: pronounSet === p ? '#eff6ff' : 'white' }}>
                 <div style={{ fontSize: '14px', fontWeight: '700', color: pronounSet === p ? '#1d4ed8' : '#111827' }}>{p === 'he/his' ? 'He / His' : p === 'she/her' ? 'She / Her' : 'They / Their'}</div>
@@ -505,6 +489,7 @@ export default function ImportTemplate() {
             ))}
           </div>
         </div>
+
         <div style={card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
             <div><h2 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Paste Your Reports *</h2><p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Paste all reports — the more the better. Up to ~60,000 characters.</p></div>
@@ -530,7 +515,6 @@ export default function ImportTemplate() {
 
     return (
       <div style={{ height: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* Header */}
         <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, zIndex: 10, position: 'sticky', top: 0 }}>
           <button onClick={() => setMainStep('paste')} style={btnS}>← Back</button>
           <div style={{ flex: 1 }}>
@@ -542,10 +526,8 @@ export default function ImportTemplate() {
           )}
         </header>
 
-        {/* Split panel body */}
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', height: 'calc(100vh - 65px)' }}>
 
-          {/* LEFT: Reports panel */}
           <div style={{ flex: '1 1 55%', display: 'flex', flexDirection: 'column', borderRight: '2px solid #e5e7eb', overflow: 'hidden' }}>
             <div style={{ backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <div>
@@ -579,10 +561,8 @@ export default function ImportTemplate() {
             </div>
           </div>
 
-          {/* RIGHT: Builder panel */}
           <div style={{ flex: '0 0 400px', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
 
-            {/* Selection indicator */}
             {(accumulatedText || pendingSelection) && (
               <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', margin: '12px 12px 0', borderRadius: '8px', padding: '10px 12px', flexShrink: 0 }}>
                 {pendingSelection && !accumulatedText && (
@@ -606,7 +586,6 @@ export default function ImportTemplate() {
               </div>
             )}
 
-            {/* Built sections list */}
             {builtSections.length > 0 && (
               <div style={{ margin: '12px 12px 0', backgroundColor: '#f9fafb', borderRadius: '8px', padding: '10px 12px', flexShrink: 0, maxHeight: '140px', overflow: 'auto' }}>
                 <p style={{ margin: '0 0 6px 0', fontSize: '11px', fontWeight: '600', color: '#374151' }}>SECTIONS BUILT ({builtSections.length}):</p>
@@ -620,15 +599,12 @@ export default function ImportTemplate() {
               </div>
             )}
 
-            {/* Error */}
             {error && (
               <div style={{ margin: '8px 12px 0', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '8px 12px', fontSize: '13px', color: '#b91c1c', flexShrink: 0 }}>⚠️ {error}</div>
             )}
 
-            {/* Main action area */}
             <div style={{ flex: 1, overflow: 'auto', padding: '12px' }}>
 
-              {/* Copy last section - always visible when relevant, not hidden by subMenu */}
               {canCopyLast && (
                 <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
                   <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#1e40af' }}>📋 Add a copy of "{lastBuiltSection!.name}"?</p>
@@ -640,7 +616,6 @@ export default function ImportTemplate() {
                 </div>
               )}
 
-              {/* Add section menu */}
               {!subMenu && (
                 <div>
                   <p style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '600', color: '#374151' }}>
@@ -702,7 +677,6 @@ export default function ImportTemplate() {
                 </div>
               )}
 
-              {/* ── RATING sub-menu ── */}
               {subMenu === 'rating' && (
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
@@ -711,9 +685,7 @@ export default function ImportTemplate() {
                   </div>
                   <div style={{ marginBottom: '10px' }}>
                     <label style={lbl}>Section name</label>
-                    <input type="text" placeholder="e.g. Overall Progress, Effort" style={inp}
-                      id="rating-name-input"
-                      defaultValue="Progress" />
+                    <input type="text" placeholder="e.g. Overall Progress, Effort" style={inp} id="rating-name-input" defaultValue="Progress" />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <button disabled={!accumulatedText} onClick={() => {
@@ -734,7 +706,6 @@ export default function ImportTemplate() {
                 </div>
               )}
 
-              {/* ── QUALITIES sub-menu ── */}
               {subMenu === 'qualities' && (
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
@@ -763,7 +734,6 @@ export default function ImportTemplate() {
                 </div>
               )}
 
-              {/* ── STANDARD sub-menu ── */}
               {subMenu === 'standard' && (
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
@@ -824,7 +794,6 @@ export default function ImportTemplate() {
                 </div>
               )}
 
-              {/* ── ASSESSMENT sub-menu ── */}
               {subMenu === 'assessment' && (
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
@@ -857,7 +826,6 @@ export default function ImportTemplate() {
                 </div>
               )}
 
-              {/* ── DEVELOPMENT sub-menu ── */}
               {subMenu === 'development' && (
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
@@ -883,7 +851,6 @@ export default function ImportTemplate() {
                 </div>
               )}
 
-              {/* ── NEXT STEPS sub-menu ── */}
               {subMenu === 'nextsteps' && (
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
