@@ -27,8 +27,6 @@ function TemplateSelection({
   const hasClasses = state.classes.length > 0;
   const isNewUser = !hasTemplates && !hasClasses;
 
-  const TEMPLATE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1Kc0O9QSqpHCBUuDfcMcjk2gAfNtbPPnf?usp=drive_link';
-
   const sectionHeadingStyle: React.CSSProperties = {
     fontSize: '13px',
     fontWeight: '600',
@@ -72,10 +70,19 @@ function TemplateSelection({
     whiteSpace: 'nowrap' as const
   });
 
+  // Shared card style for the new user option cards
+  const optionCardStyle: React.CSSProperties = {
+    backgroundColor: '#f9fafb',
+    border: '1px solid #e5e7eb',
+    borderRadius: '10px',
+    padding: '20px'
+  };
+
   // ── NEW USER EMPTY STATE ──────────────────────────────────────────────────
   const NewUserState = () => (
     <div style={{ maxWidth: '900px', margin: '0 auto' }}>
 
+      {/* Welcome banner */}
       <div style={{
         backgroundColor: '#fefce8',
         border: '1.5px dashed #f59e0b',
@@ -104,7 +111,6 @@ function TemplateSelection({
         <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 16px 0', lineHeight: '1.6' }}>
           Enter your students' names so you're ready to write reports for them.
         </p>
-        {/* ?create=true skips straight to the CreateClass form */}
         <Link to="/class-management?create=true" style={{ textDecoration: 'none' }}>
           <button style={panelBtnPrimary('#8b5cf6')}>
             + Add Your Class
@@ -122,45 +128,33 @@ function TemplateSelection({
       }}>
         <p style={sectionHeadingStyle}>Step 2 — Get a template</p>
         <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 20px 0', lineHeight: '1.6' }}>
-          A template defines the structure of your reports. Choose how you'd like to get one.
+          A template defines the structure of your reports. Choose the option that suits you.
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '16px' }}>
 
-          {/* Create */}
-          <div style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '18px' }}>
-            <p style={{ ...sectionHeadingStyle, marginBottom: '8px' }}>Create a template</p>
-            <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 14px 0', lineHeight: '1.5' }}>
-              Build from your existing reports using the guided wizard, or construct one manually.
+          {/* Option 1 — Wizard */}
+          <div style={optionCardStyle}>
+            <p style={{ ...sectionHeadingStyle, marginBottom: '8px' }}>🪄 Build your own template</p>
+            <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 16px 0', lineHeight: '1.6' }}>
+              Use the guided wizard to build a template from your existing reports. Takes about 20 minutes and gives great results.
             </p>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <Link to="/import-template" style={{ textDecoration: 'none' }}>
-                <button style={panelBtnPrimary('#8b5cf6')}>🪄 Use the Wizard</button>
-              </Link>
-              <Link to="/create-template" style={{ textDecoration: 'none' }}>
-                <button style={panelBtnSecondary}>✏️ Build Manually</button>
-              </Link>
-            </div>
+            <Link to="/import-template" style={{ textDecoration: 'none' }}>
+              <button style={panelBtnPrimary('#8b5cf6')}>Start the Wizard</button>
+            </Link>
           </div>
 
-          {/* Import */}
-          <div style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '18px' }}>
-            <p style={{ ...sectionHeadingStyle, marginBottom: '8px' }}>Import a template</p>
-            <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 14px 0', lineHeight: '1.5' }}>
-              Already have one? Import a file from a colleague or browse the library.
+          {/* Option 2 — Import */}
+          <div style={optionCardStyle}>
+            <p style={{ ...sectionHeadingStyle, marginBottom: '8px' }}>📂 Import a template</p>
+            <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 16px 0', lineHeight: '1.6' }}>
+              Got a .json file from a colleague? Import it directly here and you'll be ready to write reports straight away.
             </p>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
-                <button style={panelBtnPrimary('#3b82f6')}>📂 Import from File</button>
-              </Link>
-              <button
-                onClick={() => window.open(TEMPLATE_LIBRARY_URL, '_blank', 'noopener,noreferrer')}
-                style={panelBtnSecondary}
-              >
-                📚 Browse Library
-              </button>
-            </div>
+            <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
+              <button style={panelBtnPrimary('#3b82f6')}>Import a File</button>
+            </Link>
           </div>
+
         </div>
       </div>
     </div>
@@ -186,10 +180,10 @@ function TemplateSelection({
       </p>
       <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
         <Link to="/import-template" style={{ textDecoration: 'none' }}>
-          <button style={panelBtnPrimary('#8b5cf6')}>🪄 Use the Wizard</button>
+          <button style={panelBtnPrimary('#8b5cf6')}>🪄 Start the Wizard</button>
         </Link>
         <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
-          <button style={panelBtnSecondary}>Browse &amp; Import</button>
+          <button style={panelBtnSecondary}>📂 Import a File</button>
         </Link>
       </div>
     </div>
@@ -213,7 +207,6 @@ function TemplateSelection({
       <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '24px' }}>
         You have {state.templates.length} {state.templates.length === 1 ? 'template' : 'templates'} ready — add your class and you can start writing.
       </p>
-      {/* ?create=true skips straight to the CreateClass form */}
       <Link to="/class-management?create=true" style={{ textDecoration: 'none' }}>
         <button style={panelBtnPrimary('#8b5cf6')}>+ Add Your Class</button>
       </Link>
@@ -223,7 +216,6 @@ function TemplateSelection({
   // ── RETURNING USER — FULL SELECTION ──────────────────────────────────────
   const ReturningUserDesktop = () => (
     <>
-      {/* Continue button when both selected */}
       {(selectedTemplate || selectedClass) && (
         <div style={{
           backgroundColor: '#f0f9ff',
@@ -276,7 +268,6 @@ function TemplateSelection({
                 ({state.templates.length})
               </span>
             </h2>
-            {/* Takes them to manage-templates which has wizard + import options */}
             <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
               <button style={smallBtn('#8b5cf6')}>+ New Template</button>
             </Link>
@@ -350,7 +341,6 @@ function TemplateSelection({
                 ({state.classes.length})
               </span>
             </h2>
-            {/* ?create=true skips straight to the CreateClass form */}
             <Link to="/class-management?create=true" style={{ textDecoration: 'none' }}>
               <button style={smallBtn('#10b981')}>+ New Class</button>
             </Link>
@@ -447,7 +437,7 @@ function TemplateSelection({
             <p style={{ color: '#6b7280', marginBottom: '16px', fontSize: '14px' }}>No templates yet</p>
             <Link to="/import-template" style={{ textDecoration: 'none' }}>
               <button style={{ backgroundColor: '#8b5cf6', color: 'white', padding: '12px 20px', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
-                🪄 Use the Wizard
+                🪄 Start the Wizard
               </button>
             </Link>
           </div>
@@ -489,7 +479,7 @@ function TemplateSelection({
           </Link>
           <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
             <button style={{ backgroundColor: '#3b82f6', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>
-              Browse &amp; Import
+              📂 Import a File
             </button>
           </Link>
         </div>
@@ -501,7 +491,6 @@ function TemplateSelection({
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
 
-      {/* Header */}
       <header style={{
         backgroundColor: 'white',
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
@@ -555,7 +544,6 @@ function TemplateSelection({
       </header>
 
       <main style={{ maxWidth: isMobile ? '100%' : '1200px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
-
         {isMobile ? (
           isNewUser || !hasTemplates ? <NewUserState /> : <MobileTemplateList />
         ) : (
@@ -569,7 +557,6 @@ function TemplateSelection({
             <ReturningUserDesktop />
           )
         )}
-
       </main>
     </div>
   );
