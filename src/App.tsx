@@ -74,50 +74,6 @@ function Home() {
     }
   };
 
-  const hasTemplates = state.templates.length > 0;
-  const hasClasses = state.classes.length > 0;
-  const isNewUser = !hasTemplates && !hasClasses;
-
-  // Shared large button style
-  const largeBtnStyle = (bg: string): React.CSSProperties => ({
-    backgroundColor: bg,
-    color: 'white',
-    padding: isMobile ? '48px 24px' : '40px 24px',
-    borderRadius: isMobile ? '8px' : '12px',
-    textDecoration: 'none',
-    textAlign: 'center' as const,
-    fontSize: isMobile ? '16px' : '20px',
-    fontWeight: '600',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-    width: '100%',
-    boxSizing: 'border-box' as const,
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '6px'
-  });
-
-  const smallerBtnStyle = (bg: string): React.CSSProperties => ({
-    backgroundColor: bg,
-    color: 'white',
-    padding: isMobile ? '20px 24px' : '22px 24px',
-    borderRadius: isMobile ? '8px' : '12px',
-    textDecoration: 'none',
-    textAlign: 'center' as const,
-    fontSize: isMobile ? '15px' : '18px',
-    fontWeight: '600',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-    width: '100%',
-    boxSizing: 'border-box' as const,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '8px'
-  });
-
   const hoverOn = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (!isMobile) {
       e.currentTarget.style.transform = 'translateY(-2px)';
@@ -236,16 +192,9 @@ function Home() {
           }}>
             Report Generator
           </h1>
-
-          {/* New user welcome message */}
-          {isNewUser && !isMobile && (
-            <p style={{ fontSize: '18px', color: '#64748b', marginTop: '12px' }}>
-              Welcome! Get started by writing your first reports below.
-            </p>
-          )}
         </div>
 
-        {/* Button layout */}
+        {/* Buttons */}
         <div style={{
           width: isMobile ? 'calc(100% - 32px)' : '100%',
           maxWidth: isMobile ? 'none' : '800px',
@@ -254,71 +203,107 @@ function Home() {
           gap: isMobile ? '16px' : '20px'
         }}>
 
-          {/* Top two large buttons side by side */}
+          {/* Row 1 — Write Reports + Report Templates side by side */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
             gap: isMobile ? '16px' : '20px'
           }}>
 
-            {/* Write Reports */}
+            {/* Write Reports — Get Started! */}
             <Link
               to="/write-reports"
-              style={largeBtnStyle('#10b981')}
+              style={{
+                backgroundColor: '#10b981',
+                color: 'white',
+                padding: isMobile ? '56px 24px' : '52px 24px',
+                borderRadius: isMobile ? '8px' : '12px',
+                textDecoration: 'none',
+                textAlign: 'center',
+                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                width: '100%',
+                boxSizing: 'border-box',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
               onMouseEnter={hoverOn}
               onMouseLeave={hoverOff}
             >
-              <span>Write Reports</span>
-              {isNewUser && (
-                <span style={{ fontSize: isMobile ? '12px' : '13px', fontWeight: '400', opacity: 0.9 }}>
-                  Get Started →
-                </span>
-              )}
+              <span style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: '700' }}>
+                Write Reports
+              </span>
+              <span style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '500', opacity: 0.9 }}>
+                Get Started!
+              </span>
             </Link>
 
             {/* Report Templates */}
             <Link
               to="/manage-templates"
-              style={largeBtnStyle('#3b82f6')}
+              style={{
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                padding: isMobile ? '56px 24px' : '52px 24px',
+                borderRadius: isMobile ? '8px' : '12px',
+                textDecoration: 'none',
+                textAlign: 'center',
+                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                width: '100%',
+                boxSizing: 'border-box',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
               onMouseEnter={hoverOn}
               onMouseLeave={hoverOff}
             >
-              <span>Report Templates</span>
-              <span style={{ fontSize: isMobile ? '12px' : '13px', fontWeight: '400', opacity: 0.9 }}>
+              <span style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: '700' }}>
+                Report Templates
+              </span>
+              <span style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '500', opacity: 0.9 }}>
                 Create, Manage &amp; Import
               </span>
             </Link>
           </div>
 
-          {/* Your Classes — full width, shorter */}
+          {/* Row 2 — Your Classes full width, shorter */}
           <Link
             to="/class-management"
-            style={smallerBtnStyle('#8b5cf6')}
+            style={{
+              backgroundColor: '#8b5cf6',
+              color: 'white',
+              padding: isMobile ? '24px' : '26px 24px',
+              borderRadius: isMobile ? '8px' : '12px',
+              textDecoration: 'none',
+              textAlign: 'center',
+              fontSize: isMobile ? '16px' : '18px',
+              fontWeight: '600',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              width: '100%',
+              boxSizing: 'border-box',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
             onMouseEnter={hoverOn}
             onMouseLeave={hoverOff}
           >
             Your Classes
-            {hasClasses && (
-              <span style={{ fontSize: isMobile ? '12px' : '13px', fontWeight: '400', opacity: 0.9 }}>
+            {state.classes.length > 0 && (
+              <span style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '400', opacity: 0.85 }}>
                 — {state.classes.length} {state.classes.length === 1 ? 'class' : 'classes'}
               </span>
             )}
           </Link>
-
-          {/* View Reports — only show once user has reports */}
-          {state.reports.length > 0 && (
-            <Link
-              to="/view-reports"
-              style={smallerBtnStyle('#ef4444')}
-              onMouseEnter={hoverOn}
-              onMouseLeave={hoverOff}
-            >
-              View Reports
-              <span style={{ fontSize: isMobile ? '12px' : '13px', fontWeight: '400', opacity: 0.9 }}>
-                — {state.reports.length} completed
-              </span>
-            </Link>
-          )}
 
         </div>
       </div>
