@@ -60,6 +60,18 @@ function TemplateSelection({
     cursor: 'pointer'
   };
 
+  const smallBtn = (bg: string): React.CSSProperties => ({
+    backgroundColor: bg,
+    color: 'white',
+    padding: '6px 12px',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap' as const
+  });
+
   // ── NEW USER EMPTY STATE ──────────────────────────────────────────────────
   const NewUserState = () => (
     <div style={{ maxWidth: '900px', margin: '0 auto' }}>
@@ -92,7 +104,8 @@ function TemplateSelection({
         <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 16px 0', lineHeight: '1.6' }}>
           Enter your students' names so you're ready to write reports for them.
         </p>
-        <Link to="/class-management" style={{ textDecoration: 'none' }}>
+        {/* ?create=true skips straight to the CreateClass form */}
+        <Link to="/class-management?create=true" style={{ textDecoration: 'none' }}>
           <button style={panelBtnPrimary('#8b5cf6')}>
             + Add Your Class
           </button>
@@ -176,7 +189,7 @@ function TemplateSelection({
           <button style={panelBtnPrimary('#8b5cf6')}>🪄 Use the Wizard</button>
         </Link>
         <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
-          <button style={panelBtnSecondary}>Browse & Import</button>
+          <button style={panelBtnSecondary}>Browse &amp; Import</button>
         </Link>
       </div>
     </div>
@@ -200,7 +213,8 @@ function TemplateSelection({
       <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '24px' }}>
         You have {state.templates.length} {state.templates.length === 1 ? 'template' : 'templates'} ready — add your class and you can start writing.
       </p>
-      <Link to="/class-management" style={{ textDecoration: 'none' }}>
+      {/* ?create=true skips straight to the CreateClass form */}
+      <Link to="/class-management?create=true" style={{ textDecoration: 'none' }}>
         <button style={panelBtnPrimary('#8b5cf6')}>+ Add Your Class</button>
       </Link>
     </div>
@@ -254,7 +268,6 @@ function TemplateSelection({
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
           border: selectedTemplate ? '2px solid #3b82f6' : '2px solid #e5e7eb'
         }}>
-          {/* Panel header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
               📝 Select Template
@@ -263,20 +276,9 @@ function TemplateSelection({
                 ({state.templates.length})
               </span>
             </h2>
+            {/* Takes them to manage-templates which has wizard + import options */}
             <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
-              <button style={{
-                backgroundColor: '#f3f4f6',
-                color: '#374151',
-                padding: '6px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontWeight: '500',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}>
-                + Manage Templates
-              </button>
+              <button style={smallBtn('#8b5cf6')}>+ New Template</button>
             </Link>
           </div>
 
@@ -348,20 +350,9 @@ function TemplateSelection({
                 ({state.classes.length})
               </span>
             </h2>
-            <Link to="/class-management" style={{ textDecoration: 'none' }}>
-              <button style={{
-                backgroundColor: '#f3f4f6',
-                color: '#374151',
-                padding: '6px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontWeight: '500',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}>
-                + Manage Classes
-              </button>
+            {/* ?create=true skips straight to the CreateClass form */}
+            <Link to="/class-management?create=true" style={{ textDecoration: 'none' }}>
+              <button style={smallBtn('#10b981')}>+ New Class</button>
             </Link>
           </div>
 
@@ -447,18 +438,7 @@ function TemplateSelection({
             Select a Template
           </h3>
           <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
-            <button style={{
-              backgroundColor: '#8b5cf6',
-              color: 'white',
-              padding: '6px 10px',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontWeight: '500',
-              cursor: 'pointer'
-            }}>
-              + Manage
-            </button>
+            <button style={smallBtn('#8b5cf6')}>+ New Template</button>
           </Link>
         </div>
 
@@ -497,7 +477,6 @@ function TemplateSelection({
         )}
       </div>
 
-      {/* Mobile help */}
       <div style={{ backgroundColor: '#f0f9ff', border: '2px solid #3b82f6', borderRadius: '8px', padding: '16px', textAlign: 'center', marginTop: '20px' }}>
         <p style={{ color: '#1e40af', fontSize: '14px', fontWeight: '600', margin: '0 0 12px 0' }}>
           💡 Need a template?
@@ -510,7 +489,7 @@ function TemplateSelection({
           </Link>
           <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
             <button style={{ backgroundColor: '#3b82f6', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>
-              Browse & Import
+              Browse &amp; Import
             </button>
           </Link>
         </div>
@@ -558,7 +537,16 @@ function TemplateSelection({
 
           {!isMobile && (
             <Link to="/" style={{ textDecoration: 'none' }}>
-              <button style={{ backgroundColor: '#6b7280', color: 'white', padding: '12px 20px', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
+              <button style={{
+                backgroundColor: '#6b7280',
+                color: 'white',
+                padding: '12px 20px',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}>
                 ← Back to Home
               </button>
             </Link>
@@ -568,11 +556,9 @@ function TemplateSelection({
 
       <main style={{ maxWidth: isMobile ? '100%' : '1200px', margin: '0 auto', padding: isMobile ? '16px' : '32px 24px' }}>
 
-        {/* Mobile layout */}
         {isMobile ? (
           isNewUser || !hasTemplates ? <NewUserState /> : <MobileTemplateList />
         ) : (
-          /* Desktop layout — state aware */
           isNewUser ? (
             <NewUserState />
           ) : !hasTemplates ? (

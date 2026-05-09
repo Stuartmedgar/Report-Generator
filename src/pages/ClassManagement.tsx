@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import CreateClass from '../components/CreateClass';
 import ClassDetail from '../components/ClassDetail';
@@ -7,19 +7,24 @@ import MobileClassManagement from '../components/MobileClassManagement';
 
 export default function ClassManagement() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { state, deleteClass } = useData();
   const [showCreateClass, setShowCreateClass] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // If ?create=true is in the URL, open the create form immediately
+  useEffect(() => {
+    if (searchParams.get('create') === 'true') {
+      setShowCreateClass(true);
+    }
+  }, [searchParams]);
 
   const handleCreateClassComplete = () => {
     setShowCreateClass(false);
@@ -44,17 +49,14 @@ export default function ClassManagement() {
     setSelectedClassId(null);
   };
 
-  // Get last student worked on for continue editing feature
   const getLastStudentWorkedOn = (classData: any) => {
     const classReports = state.reports.filter(report => report.classId === classData.id);
     if (classReports.length === 0) return null;
 
-    // Find the most recent report
     const mostRecentReport = classReports.reduce((latest, current) => {
       return new Date(current.updatedAt) > new Date(latest.updatedAt) ? current : latest;
     });
 
-    // Find the student index
     const studentIndex = classData.students.findIndex(
       (student: any) => student.id === mostRecentReport.studentId
     );
@@ -66,26 +68,23 @@ export default function ClassManagement() {
     };
   };
 
-  // Continue editing reports for a class
   const handleContinueEditing = (classData: any) => {
     const lastWorked = getLastStudentWorkedOn(classData);
     if (!lastWorked) return;
 
-    // Store the continue editing info in sessionStorage for the WriteReports page to pick up
     sessionStorage.setItem('continueEditing', JSON.stringify({
       classId: classData.id,
       templateId: lastWorked.templateId,
       studentIndex: lastWorked.studentIndex
     }));
 
-    // Navigate to write reports page
     navigate('/write-reports');
   };
 
   // Show Create Class page
   if (showCreateClass) {
     return (
-      <CreateClass 
+      <CreateClass
         onComplete={handleCreateClassComplete}
         onCancel={() => setShowCreateClass(false)}
       />
@@ -97,7 +96,7 @@ export default function ClassManagement() {
     const selectedClass = state.classes.find(c => c.id === selectedClassId);
     if (selectedClass) {
       return (
-        <ClassDetail 
+        <ClassDetail
           classData={selectedClass}
           onBack={handleBackFromClassDetail}
         />
@@ -108,19 +107,32 @@ export default function ClassManagement() {
   // Mobile view
   if (isMobile) {
     return (
-      <MobileClassManagement 
+      <MobileClassManagement
         onViewClass={handleViewClass}
         onCreateClass={() => setShowCreateClass(true)}
       />
     );
   }
 
-  // Desktop view - PRESERVED EXACTLY AS ORIGINAL
+  // Shared button styles consistent with rest of app
+  const btnStyle = (bg: string): React.CSSProperties => ({
+    backgroundColor: bg,
+    color: 'white',
+    padding: '8px 16px',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '14px',
+    fontWeight: '500',
+    cursor: 'pointer'
+  });
+
+  // Desktop view
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
-      {/* Header with consistent layout */}
-      <header style={{ 
-        backgroundColor: 'white', 
+
+      {/* Header */}
+      <header style={{
+        backgroundColor: 'white',
         boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
         padding: '32px 24px'
       }}>
@@ -134,28 +146,15 @@ export default function ClassManagement() {
           gap: '16px'
         }}>
           <div>
-            <h1 style={{ 
-              fontSize: '28px', 
-              fontWeight: '600', 
-              color: '#111827',
-              margin: 0
-            }}>
-              Class Management
+            <h1 style={{ fontSize: '28px', fontWeight: '600', color: '#111827', margin: 0 }}>
+              Your Classes
             </h1>
-            <p style={{ 
-              color: '#6b7280', 
-              margin: '8px 0 0 0',
-              fontSize: '16px'
-            }}>
+            <p style={{ color: '#6b7280', margin: '8px 0 0 0', fontSize: '16px' }}>
               Create and manage your student classes
             </p>
           </div>
-          
-          <div style={{
-            display: 'flex',
-            gap: '12px',
-            flexWrap: 'wrap'
-          }}>
+
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <Link to="/" style={{ textDecoration: 'none' }}>
               <button style={{
                 backgroundColor: '#6b7280',
@@ -170,7 +169,7 @@ export default function ClassManagement() {
                 ← Back to Home
               </button>
             </Link>
-            
+
             <button
               onClick={() => setShowCreateClass(true)}
               style={{
@@ -205,11 +204,7 @@ export default function ClassManagement() {
         </div>
       </header>
 
-      <main style={{ 
-        maxWidth: '1200px', 
-        margin: '0 auto', 
-        padding: '32px 24px' 
-      }}>
+      <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
 
         {/* Classes List */}
         <div style={{
@@ -219,12 +214,7 @@ export default function ClassManagement() {
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
           marginBottom: '32px'
         }}>
-          <h2 style={{ 
-            fontSize: '20px', 
-            fontWeight: '600', 
-            color: '#111827',
-            marginBottom: '16px'
-          }}>
+          <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
             Your Classes ({state.classes.length})
           </h2>
 
@@ -255,43 +245,30 @@ export default function ClassManagement() {
               </button>
             </div>
           ) : (
-            <div style={{ 
-              display: 'grid', 
+            <div style={{
+              display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
               gap: '16px'
             }}>
               {state.classes.map((classItem) => {
                 const reportCount = state.reports.filter(r => r.classId === classItem.id).length;
-                const lastWorked = getLastStudentWorkedOn(classItem);
-                
+
                 return (
                   <div key={classItem.id} style={{
-                    border: '2px solid #e5e7eb',
+                    border: '1px solid #e5e7eb',
                     borderRadius: '12px',
                     padding: '20px',
-                    backgroundColor: 'white',
-                    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)'
+                    backgroundColor: '#f9fafb'
                   }}>
                     {/* Class Header */}
                     <div style={{ marginBottom: '16px' }}>
-                      <h3 style={{ 
-                        fontSize: '18px', 
-                        fontWeight: '600', 
-                        color: '#111827',
-                        margin: '0 0 8px 0'
-                      }}>
+                      <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: '0 0 8px 0' }}>
                         {classItem.name}
                       </h3>
-                      
-                      <div style={{
-                        display: 'flex',
-                        gap: '16px',
-                        fontSize: '14px',
-                        color: '#6b7280',
-                        marginBottom: '8px'
-                      }}>
+
+                      <div style={{ display: 'flex', gap: '16px', fontSize: '14px', color: '#6b7280', marginBottom: '8px' }}>
                         <span>👥 {classItem.students.length} students</span>
-                        <span>📅 Created: {new Date(classItem.createdAt).toLocaleDateString()}</span>
+                        <span>📅 {new Date(classItem.createdAt).toLocaleDateString()}</span>
                       </div>
 
                       {reportCount > 0 && (
@@ -307,14 +284,9 @@ export default function ClassManagement() {
                           📝 {reportCount} reports written
                         </div>
                       )}
-                      
-                      {/* Show first few student names */}
+
                       {classItem.students.length > 0 && (
-                        <div style={{
-                          fontSize: '12px',
-                          color: '#6b7280',
-                          marginTop: '8px'
-                        }}>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
                           Students: {classItem.students
                             .sort((a, b) => a.lastName.localeCompare(b.lastName))
                             .slice(0, 3)
@@ -326,81 +298,26 @@ export default function ClassManagement() {
                     </div>
 
                     {/* Action Buttons */}
-                    <div style={{ 
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, 1fr)',
-                      gap: '8px',
-                      marginBottom: '8px'
-                    }}>
-                      <button
-                        onClick={() => handleViewClass(classItem.id)}
-                        style={{
-                          backgroundColor: '#3b82f6',
-                          color: 'white',
-                          padding: '8px 16px',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                          cursor: 'pointer'
-                        }}
-                      >
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '8px' }}>
+                      <button onClick={() => handleViewClass(classItem.id)} style={btnStyle('#3b82f6')}>
                         👀 View Details
                       </button>
-                      
-                      <button
-                        onClick={() => navigate(`/view-reports/${classItem.id}`)}
-                        style={{
-                          backgroundColor: '#8b5cf6',
-                          color: 'white',
-                          padding: '8px 16px',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                          cursor: 'pointer'
-                        }}
-                      >
+                      <button onClick={() => navigate(`/view-reports/${classItem.id}`)} style={btnStyle('#8b5cf6')}>
                         📊 View Reports
                       </button>
                     </div>
 
-                    <div style={{ 
+                    <div style={{
                       display: 'grid',
                       gridTemplateColumns: reportCount > 0 ? 'repeat(2, 1fr)' : '1fr',
                       gap: '8px'
                     }}>
                       {reportCount > 0 && (
-                        <button
-                          onClick={() => handleContinueEditing(classItem)}
-                          style={{
-                            backgroundColor: '#f59e0b',
-                            color: 'white',
-                            padding: '8px 16px',
-                            border: 'none',
-                            borderRadius: '6px',
-                            fontSize: '14px',
-                            fontWeight: '500',
-                            cursor: 'pointer'
-                          }}
-                        >
+                        <button onClick={() => handleContinueEditing(classItem)} style={btnStyle('#f59e0b')}>
                           ✏️ Continue Editing
                         </button>
                       )}
-                      
-                      <button
-                        onClick={() => handleDeleteClass(classItem.id, classItem.name)}
-                        style={{
-                          backgroundColor: '#ef4444',
-                          color: 'white',
-                          padding: '8px 16px',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                          cursor: 'pointer'
-                        }}
-                      >
+                      <button onClick={() => handleDeleteClass(classItem.id, classItem.name)} style={btnStyle('#ef4444')}>
                         🗑️ Delete Class
                       </button>
                     </div>
@@ -419,20 +336,11 @@ export default function ClassManagement() {
           padding: '20px',
           textAlign: 'center'
         }}>
-          <h3 style={{ 
-            fontSize: '18px', 
-            fontWeight: '600', 
-            color: '#1e40af',
-            margin: '0 0 8px 0'
-          }}>
+          <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1e40af', margin: '0 0 8px 0' }}>
             💡 Class Management Tips
           </h3>
-          <p style={{ 
-            color: '#1e40af', 
-            fontSize: '14px',
-            margin: '0 0 16px 0'
-          }}>
-            Create classes by adding students individually or importing from a CSV file. 
+          <p style={{ color: '#1e40af', fontSize: '14px', margin: '0 0 16px 0' }}>
+            Create classes by adding students individually or importing from a CSV file.
             You can edit student details, continue writing reports, or view completed reports for each class.
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
