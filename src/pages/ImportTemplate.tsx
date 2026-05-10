@@ -121,6 +121,7 @@ export default function ImportTemplate() {
   const navigate = useNavigate();
   const { addTemplate } = useData();
 
+  // Core state
   const [mainStep, setMainStep] = useState<MainStep>('paste');
   const [subject, setSubject] = useState('');
   const [yearGroup, setYearGroup] = useState('');
@@ -132,12 +133,14 @@ export default function ImportTemplate() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
 
+  // Selection state - accumulated
   const [selectedText, setSelectedText] = useState('');
   const [selectionActive, setSelectionActive] = useState(false);
   const [accumulatedText, setAccumulatedText] = useState('');
   const [pendingSelection, setPendingSelection] = useState('');
   const reportPanelRef = useRef<HTMLDivElement>(null);
 
+  // Current section being built
   const [currentSection, setCurrentSection] = useState<{
     type: string;
     name: string;
@@ -145,23 +148,30 @@ export default function ImportTemplate() {
     scaleType?: 'four-level' | 'own';
   } | null>(null);
 
+  // Standard comment state (no AI)
   const [stdName, setStdName] = useState('');
   const [stdContent, setStdContent] = useState('');
   const [stdOptions, setStdOptions] = useState<{label: string; content: string}[]>([{label: '', content: ''}]);
   const [stdType, setStdType] = useState<'single' | 'multi'>('single');
 
+  // Assessment state
+  const [assessType, setAssessType] = useState<'same' | 'different'>('same');
+  const [assessCount, setAssessCount] = useState<'one' | 'multiple'>('one');
+  const [assessSentType, setAssessSentType] = useState<'one-sentence' | 'separate'>('separate');
+  const [assessPartIndex, setAssessPartIndex] = useState(1);
+  const [assessTotalParts, setAssessTotalParts] = useState(2);
+  const [assessSectionName, setAssessSectionName] = useState('');
+
   // Personal information state
   const [piName, setPiName] = useState('');
   const [piInstruction, setPiInstruction] = useState('');
 
-  const [assessSectionName, setAssessSectionName] = useState('');
-  const [assessPartIndex, setAssessPartIndex] = useState(1);
-  const [assessTotalParts, setAssessTotalParts] = useState(2);
-
+  // Variety generation state
   const [sectionsForVariety, setSectionsForVariety] = useState<{section: BuiltSection; selected: boolean}[]>([]);
   const [isGeneratingVariety, setIsGeneratingVariety] = useState(false);
   const [varietyProgress, setVarietyProgress] = useState(0);
 
+  // Menu state
   const [menuOpen, setMenuOpen] = useState(false);
   const [subMenu, setSubMenu] = useState<string | null>(null);
 
@@ -181,12 +191,17 @@ export default function ImportTemplate() {
   // ─── TEXT SELECTION ────────────────────────────────────────────────────────
 
   const handleTextSelection = useCallback((e: MouseEvent) => {
+    // Don't process if clicking the Add button or Clear button
     const target = e.target as HTMLElement;
     if (target.closest && target.closest('[data-selection-control]')) return;
+
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+      return;
+    }
     const text = selection.toString().trim();
     if (text.length < 20) return;
+    // Only capture if selection is within report panel
     const range = selection.getRangeAt(0);
     if (reportPanelRef.current && reportPanelRef.current.contains(range.commonAncestorContainer)) {
       setPendingSelection(text);
@@ -376,6 +391,7 @@ export default function ImportTemplate() {
           existingHeadings,
         });
 
+        // Merge new options into the template section - match by name since assembly creates new IDs
         updatedSections = updatedSections.map(s => {
           if (s.name !== section.name) return s;
           if (isNextSteps) {
@@ -383,7 +399,9 @@ export default function ImportTemplate() {
             result.headings?.forEach((h: { name: string; newOptions: string[] }) => {
               const opts = h.newOptions || [];
               if (opts.length === 0) return;
-              if (focusAreas[h.name]) focusAreas[h.name] = [...focusAreas[h.name], ...opts];
+              if (focusAreas[h.name]) {
+                focusAreas[h.name] = [...focusAreas[h.name], ...opts];
+              }
             });
             return { ...s, data: { ...s.data, focusAreas } };
           } else {
@@ -391,12 +409,15 @@ export default function ImportTemplate() {
             result.headings?.forEach((h: { name: string; newOptions: string[] }) => {
               const opts = h.newOptions || [];
               if (opts.length === 0) return;
-              if (comments[h.name]) comments[h.name] = [...comments[h.name], ...opts];
+              if (comments[h.name]) {
+                comments[h.name] = [...comments[h.name], ...opts];
+              }
             });
             return { ...s, data: { ...s.data, comments } };
           }
         });
       } catch {
+        // Continue even if one section fails
         console.error(`Variety generation failed for ${section.name}`);
       }
     }
@@ -415,6 +436,7 @@ export default function ImportTemplate() {
         if (!data.templateName || !data.sections) throw new Error('Invalid template');
         const normalisedSections = normaliseTemplateSections(data.sections, pronounSet);
         setGeneratedTemplate({ name: data.templateName, sections: normalisedSections });
+        // Set up variety selection with qualities and next-steps sections
         const varietyEligible = builtSections.filter(s => s.type === 'qualities' || s.type === 'next-steps');
         setSectionsForVariety(varietyEligible.map(s => ({ section: s, selected: true })));
         setMainStep('variety');
@@ -438,7 +460,7 @@ export default function ImportTemplate() {
   }[type] || '#6b7280');
 
   const getSectionTypeLabel = (type: string) => ({
-    'standard-comment': 'Standard', 'assessment-comment': 'Assessment', 'personalised-comment': 'Personal Info',
+    'standard-comment': 'Standard', 'assessment-comment': 'Assessment', 'personalised-comment': 'Score Entry',
     'next-steps': 'Next Steps', 'qualities': 'Choice', 'rated-comment': 'Rated',
     'new-line': 'Line Break', 'optional-additional-comment': 'Optional',
   }[type] || type);
@@ -478,7 +500,6 @@ export default function ImportTemplate() {
             <div><label style={lbl}>Year Group</label><select value={yearGroup} onChange={e => setYearGroup(e.target.value)} style={inp}><option value="">Select...</option>{['S1','S2','S3','S4','S5','S6','Mixed'].map(y => <option key={y}>{y}</option>)}</select></div>
           </div>
         </div>
-
         <div style={card}>
           <h2 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Pronoun Set</h2>
           <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>
@@ -493,7 +514,6 @@ export default function ImportTemplate() {
             ))}
           </div>
         </div>
-
         <div style={card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
             <div><h2 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Paste Your Reports *</h2><p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Paste all reports — the more the better. Up to ~60,000 characters.</p></div>
@@ -519,6 +539,7 @@ export default function ImportTemplate() {
 
     return (
       <div style={{ height: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Header */}
         <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, zIndex: 10, position: 'sticky', top: 0 }}>
           <button onClick={() => setMainStep('paste')} style={btnS}>← Back</button>
           <div style={{ flex: 1 }}>
@@ -530,6 +551,7 @@ export default function ImportTemplate() {
           )}
         </header>
 
+        {/* Split panel body */}
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', height: 'calc(100vh - 65px)' }}>
 
           {/* LEFT: Reports panel */}
@@ -569,6 +591,7 @@ export default function ImportTemplate() {
           {/* RIGHT: Builder panel */}
           <div style={{ flex: '0 0 400px', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
 
+            {/* Selection indicator */}
             {(accumulatedText || pendingSelection) && (
               <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', margin: '12px 12px 0', borderRadius: '8px', padding: '10px 12px', flexShrink: 0 }}>
                 {pendingSelection && !accumulatedText && (
@@ -592,6 +615,7 @@ export default function ImportTemplate() {
               </div>
             )}
 
+            {/* Built sections list */}
             {builtSections.length > 0 && (
               <div style={{ margin: '12px 12px 0', backgroundColor: '#f9fafb', borderRadius: '8px', padding: '10px 12px', flexShrink: 0, maxHeight: '140px', overflow: 'auto' }}>
                 <p style={{ margin: '0 0 6px 0', fontSize: '11px', fontWeight: '600', color: '#374151' }}>SECTIONS BUILT ({builtSections.length}):</p>
@@ -605,12 +629,15 @@ export default function ImportTemplate() {
               </div>
             )}
 
+            {/* Error */}
             {error && (
               <div style={{ margin: '8px 12px 0', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '8px 12px', fontSize: '13px', color: '#b91c1c', flexShrink: 0 }}>⚠️ {error}</div>
             )}
 
+            {/* Main action area */}
             <div style={{ flex: 1, overflow: 'auto', padding: '12px' }}>
 
+              {/* Copy last section */}
               {canCopyLast && (
                 <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
                   <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#1e40af' }}>📋 Add a copy of "{lastBuiltSection!.name}"?</p>
@@ -622,7 +649,7 @@ export default function ImportTemplate() {
                 </div>
               )}
 
-              {/* ── MAIN MENU ── */}
+              {/* Add section menu */}
               {!subMenu && (
                 <div>
                   <p style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '600', color: '#374151' }}>
@@ -638,8 +665,8 @@ export default function ImportTemplate() {
 
                     <button onClick={() => setSubMenu('qualities')} style={{ padding: '12px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}
                       onMouseEnter={e => e.currentTarget.style.borderColor = '#f59e0b'} onMouseLeave={e => e.currentTarget.style.borderColor = '#e5e7eb'}>
-                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>🎯 Qualities, Development & Next Steps</div>
-                      <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Personal qualities, areas for development, next steps — sentences chosen from options</div>
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>🎯 Pupil Qualities</div>
+                      <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Character, effort, behaviour, attitude, working style</div>
                     </button>
 
                     <button onClick={() => setSubMenu('personalinfo')} style={{ padding: '12px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}
@@ -648,16 +675,28 @@ export default function ImportTemplate() {
                       <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Sentences where a unique detail per pupil is typed in — sport, grade, personal goal</div>
                     </button>
 
+                    <button onClick={() => setSubMenu('standard')} style={{ padding: '12px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}
+                      onMouseEnter={e => e.currentTarget.style.borderColor = '#10b981'} onMouseLeave={e => e.currentTarget.style.borderColor = '#e5e7eb'}>
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>📌 Standard Comment or Comments</div>
+                      <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Fixed text or selectable options — no AI</div>
+                    </button>
+
                     <button onClick={() => setSubMenu('assessment')} style={{ padding: '12px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}
                       onMouseEnter={e => e.currentTarget.style.borderColor = '#8b5cf6'} onMouseLeave={e => e.currentTarget.style.borderColor = '#e5e7eb'}>
                       <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>📊 Assessment Score</div>
-                      <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Test results — same or different sentences depending on performance</div>
+                      <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Test results, with or without a numeric score</div>
                     </button>
 
-                    <button onClick={() => setSubMenu('standard')} style={{ padding: '12px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}
-                      onMouseEnter={e => e.currentTarget.style.borderColor = '#10b981'} onMouseLeave={e => e.currentTarget.style.borderColor = '#e5e7eb'}>
-                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>📌 Standard Comment</div>
-                      <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Fixed text or selectable options — identical for all or chosen from a list</div>
+                    <button onClick={() => setSubMenu('development')} style={{ padding: '12px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}
+                      onMouseEnter={e => e.currentTarget.style.borderColor = '#06b6d4'} onMouseLeave={e => e.currentTarget.style.borderColor = '#e5e7eb'}>
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>📈 Areas for Development</div>
+                      <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>What the pupil needs to improve</div>
+                    </button>
+
+                    <button onClick={() => setSubMenu('nextsteps')} style={{ padding: '12px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}
+                      onMouseEnter={e => e.currentTarget.style.borderColor = '#06b6d4'} onMouseLeave={e => e.currentTarget.style.borderColor = '#e5e7eb'}>
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>🚀 Next Steps</div>
+                      <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Forward-looking improvement suggestions</div>
                     </button>
 
                   </div>
@@ -700,16 +739,16 @@ export default function ImportTemplate() {
                 </div>
               )}
 
-              {/* ── QUALITIES / DEVELOPMENT / NEXT STEPS sub-menu ── */}
+              {/* ── QUALITIES sub-menu ── */}
               {subMenu === 'qualities' && (
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
                   <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight examples of this type of sentence from several reports. Include a range of different pupils. Claude will find ALL similar sentences across all reports and group them by topic.</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the qualities/strengths sentences from several reports on the left. Include a range of different types of pupil. Claude will find ALL similar sentences across all reports.</p>
                   </div>
                   <div style={{ marginBottom: '10px' }}>
                     <label style={lbl}>Section name</label>
-                    <input type="text" placeholder="e.g. Personal Qualities, Next Steps, Areas for Development" style={inp} id="qualities-name-input" defaultValue="Personal Qualities" />
+                    <input type="text" placeholder="e.g. Personal Qualities, Strengths" style={inp} id="qualities-name-input" defaultValue="Personal Qualities" />
                   </div>
                   <div style={{ marginBottom: '10px' }}>
                     <label style={lbl}>Opener</label>
@@ -724,7 +763,7 @@ export default function ImportTemplate() {
                     const opener: OpenerType = prnBtn?.style.border.includes('8b5cf6') ? 'pronoun' : 'name';
                     handleExtractAndAdd('qualities', opener, nameEl?.value || 'Personal Qualities');
                   }} style={{ ...btnP, width: '100%', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed', padding: '12px' }}>
-                    {selectionActive ? '✓ Extract all sentences of this type from reports' : '← Highlight & add text from reports first'}
+                    {selectionActive ? '✓ Extract all quality sentences from reports' : '← Highlight & add text from reports first'}
                   </button>
                 </div>
               )}
@@ -738,23 +777,11 @@ export default function ImportTemplate() {
                   </div>
                   <div style={{ marginBottom: '10px' }}>
                     <label style={lbl}>Section name</label>
-                    <input
-                      type="text"
-                      value={piName}
-                      onChange={e => setPiName(e.target.value)}
-                      placeholder="e.g. Focus Sport, Target Grade, Personal Goal"
-                      style={inp}
-                    />
+                    <input type="text" value={piName} onChange={e => setPiName(e.target.value)} placeholder="e.g. Focus Sport, Target Grade, Personal Goal" style={inp} />
                   </div>
                   <div style={{ marginBottom: '12px' }}>
                     <label style={lbl}>Instruction for teacher</label>
-                    <input
-                      type="text"
-                      value={piInstruction}
-                      onChange={e => setPiInstruction(e.target.value)}
-                      placeholder="e.g. Enter this pupil's chosen sport"
-                      style={inp}
-                    />
+                    <input type="text" value={piInstruction} onChange={e => setPiInstruction(e.target.value)} placeholder="e.g. Enter this pupil's chosen sport" style={inp} />
                   </div>
                   <button
                     disabled={!accumulatedText || !piName.trim()}
@@ -766,39 +793,6 @@ export default function ImportTemplate() {
                 </div>
               )}
 
-              {/* ── ASSESSMENT sub-menu ── */}
-              {subMenu === 'assessment' && (
-                <div>
-                  <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
-                  <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the assessment sentence(s) from your reports, name the section, then choose which type fits.</p>
-                  </div>
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={lbl}>Section name <span style={{ color: '#9ca3af', fontWeight: '400' }}>(e.g. MQS Assessment, Calculator Test)</span></label>
-                    <input type="text" value={assessSectionName} onChange={e => setAssessSectionName(e.target.value)} placeholder="Assessment" style={inp} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <button disabled={!accumulatedText} onClick={() => {
-                      handleBuildSameAssessment(assessSectionName.trim() || 'Assessment');
-                      setAssessSectionName('');
-                    }} style={{ ...btnP, textAlign: 'left', padding: '12px', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed' }}>
-                      <div style={{ fontWeight: '700' }}>A) Same sentence — only score changes per pupil</div>
-                      <div style={{ fontSize: '12px', opacity: 0.9 }}>e.g. "[Name] scored [Score] in the assessment"</div>
-                    </button>
-                    <button disabled={!accumulatedText} onClick={() => {
-                      handleExtractAndAdd('assessment-comment', 'name', assessSectionName.trim() || 'Assessment');
-                      setAssessSectionName('');
-                    }} style={{ ...btnV, textAlign: 'left', padding: '12px', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed' }}>
-                      <div style={{ fontWeight: '700' }}>B) Different sentences by performance level</div>
-                      <div style={{ fontSize: '12px', opacity: 0.9 }}>Different language for strong/good/satisfactory/struggling pupils</div>
-                    </button>
-                  </div>
-                  {!accumulatedText && (
-                    <p style={{ margin: '10px 0 0 0', fontSize: '12px', color: '#9ca3af', textAlign: 'center' }}>← Highlight assessment text from your reports first</p>
-                  )}
-                </div>
-              )}
-
               {/* ── STANDARD sub-menu ── */}
               {subMenu === 'standard' && (
                 <div>
@@ -806,16 +800,18 @@ export default function ImportTemplate() {
                   <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
                     <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 No AI involvement. Paste the text directly. Replace any pupil names with [Name] before pasting.</p>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <button onClick={() => { setStdType('single'); setSubMenu('standard|single'); }} style={{ ...btnP, textAlign: 'left', padding: '12px' }}>
-                      <div style={{ fontWeight: '700' }}>A) One fixed text for all reports</div>
-                      <div style={{ fontSize: '12px', opacity: 0.9 }}>Course description, assessment analysis, etc.</div>
-                    </button>
-                    <button onClick={() => { setStdType('multi'); setSubMenu('standard|multi'); }} style={{ ...btnV, textAlign: 'left', padding: '12px' }}>
-                      <div style={{ fontWeight: '700' }}>B) Different options per pupil</div>
-                      <div style={{ fontSize: '12px', opacity: 0.9 }}>Pathway options, course levels, etc.</div>
-                    </button>
-                  </div>
+                  {!subMenu?.includes('|') && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <button onClick={() => { setStdType('single'); setSubMenu('standard|single'); }} style={{ ...btnP, textAlign: 'left', padding: '12px' }}>
+                        <div style={{ fontWeight: '700' }}>A) One fixed text for all reports</div>
+                        <div style={{ fontSize: '12px', opacity: 0.9 }}>Course description, assessment analysis, etc.</div>
+                      </button>
+                      <button onClick={() => { setStdType('multi'); setSubMenu('standard|multi'); }} style={{ ...btnV, textAlign: 'left', padding: '12px' }}>
+                        <div style={{ fontWeight: '700' }}>B) Different options per pupil</div>
+                        <div style={{ fontSize: '12px', opacity: 0.9 }}>Pathway options, course levels, etc.</div>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -855,6 +851,91 @@ export default function ImportTemplate() {
                     addSection({ id: makeId(), type: 'qualities', name: stdName.trim(), openerType: 'name', positionType: 'standard-multi', data: { comments } });
                     setStdName(''); setStdOptions([{label:'', content:''}]);
                   }} style={{ ...btnG, width: '100%' }}>Add Section</button>
+                </div>
+              )}
+
+              {/* ── ASSESSMENT sub-menu ── */}
+              {subMenu === 'assessment' && (
+                <div>
+                  <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
+                  <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the assessment sentence(s) from your reports, name the section, then choose which type fits. Add as many assessment sections as you need for different tests.</p>
+                  </div>
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={lbl}>Section name <span style={{ color: '#9ca3af', fontWeight: '400' }}>(e.g. MQS Assessment, Calculator Test)</span></label>
+                    <input type="text" value={assessSectionName} onChange={e => setAssessSectionName(e.target.value)} placeholder="Assessment" style={inp} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <button disabled={!accumulatedText} onClick={() => {
+                      handleBuildSameAssessment(assessSectionName.trim() || 'Assessment');
+                      setAssessSectionName('');
+                    }} style={{ ...btnP, textAlign: 'left', padding: '12px', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed' }}>
+                      <div style={{ fontWeight: '700' }}>A) Same sentence — only score changes per pupil</div>
+                      <div style={{ fontSize: '12px', opacity: 0.9 }}>e.g. "[Name] scored [Score] in the assessment" — teacher types score per pupil when writing</div>
+                    </button>
+                    <button disabled={!accumulatedText} onClick={() => {
+                      handleExtractAndAdd('assessment-comment', 'name', assessSectionName.trim() || 'Assessment');
+                      setAssessSectionName('');
+                    }} style={{ ...btnV, textAlign: 'left', padding: '12px', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed' }}>
+                      <div style={{ fontWeight: '700' }}>B) Different sentences by performance level</div>
+                      <div style={{ fontSize: '12px', opacity: 0.9 }}>Different language for strong/good/satisfactory/struggling pupils — Claude groups them</div>
+                    </button>
+                  </div>
+                  {!accumulatedText && (
+                    <p style={{ margin: '10px 0 0 0', fontSize: '12px', color: '#9ca3af', textAlign: 'center' }}>← Highlight assessment text from your reports first</p>
+                  )}
+                </div>
+              )}
+
+              {/* ── DEVELOPMENT sub-menu ── */}
+              {subMenu === 'development' && (
+                <div>
+                  <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
+                  <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the Areas for Development sentences from several reports. Include a variety of different types. Claude will find ALL development sentences across all reports and group by topic.</p>
+                  </div>
+                  <div style={{ marginBottom: '10px' }}><label style={lbl}>Section name</label><input type="text" placeholder="e.g. Areas for Development" style={inp} id="dev-name-input" defaultValue="Areas for Development" /></div>
+                  <div style={{ marginBottom: '10px' }}>
+                    <label style={lbl}>Opener</label>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button id="dev-name-btn" onClick={() => { document.getElementById('dev-name-btn')!.style.border='2px solid #3b82f6'; document.getElementById('dev-pron-btn')!.style.border='1px solid #d1d5db'; }} style={{ flex: 1, padding: '8px', border: '2px solid #3b82f6', borderRadius: '6px', backgroundColor: '#eff6ff', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>[Name]</button>
+                      <button id="dev-pron-btn" onClick={() => { document.getElementById('dev-pron-btn')!.style.border='2px solid #8b5cf6'; document.getElementById('dev-name-btn')!.style.border='1px solid #d1d5db'; }} style={{ flex: 1, padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: 'white', cursor: 'pointer', fontSize: '12px' }}>{pronounCapital}</button>
+                    </div>
+                  </div>
+                  <button disabled={!accumulatedText} onClick={() => {
+                    const nameEl = document.getElementById('dev-name-input') as HTMLInputElement;
+                    const prnBtn = document.getElementById('dev-pron-btn') as HTMLButtonElement;
+                    const opener: OpenerType = prnBtn?.style.border.includes('8b5cf6') ? 'pronoun' : 'name';
+                    handleExtractAndAdd('development', opener, nameEl?.value || 'Areas for Development');
+                  }} style={{ ...btnP, width: '100%', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed', padding: '12px' }}>
+                    {selectionActive ? '✓ Extract all development sentences from reports' : '← Highlight & add text from reports first'}
+                  </button>
+                </div>
+              )}
+
+              {/* ── NEXT STEPS sub-menu ── */}
+              {subMenu === 'nextsteps' && (
+                <div>
+                  <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
+                  <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the next steps sentences from several reports. If they always start with "Moving forward," include that. Claude will group by topic.</p>
+                  </div>
+                  <div style={{ marginBottom: '10px' }}><label style={lbl}>Section name</label><input type="text" placeholder="e.g. Next Steps, Moving Forward" style={inp} id="ns-name-input" defaultValue="Next Steps" /></div>
+                  <div style={{ marginBottom: '10px' }}>
+                    <label style={lbl}>Opener</label>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button id="ns-name-btn" onClick={() => { document.getElementById('ns-name-btn')!.style.border='2px solid #3b82f6'; document.getElementById('ns-pron-btn')!.style.border='1px solid #d1d5db'; }} style={{ flex: 1, padding: '8px', border: '2px solid #3b82f6', borderRadius: '6px', backgroundColor: '#eff6ff', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>[Name]</button>
+                      <button id="ns-pron-btn" onClick={() => { document.getElementById('ns-pron-btn')!.style.border='2px solid #8b5cf6'; document.getElementById('ns-name-btn')!.style.border='1px solid #d1d5db'; }} style={{ flex: 1, padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: 'white', cursor: 'pointer', fontSize: '12px' }}>{pronounCapital}</button>
+                    </div>
+                  </div>
+                  <button disabled={!accumulatedText} onClick={() => {
+                    const nameEl = document.getElementById('ns-name-input') as HTMLInputElement;
+                    const prnBtn = document.getElementById('ns-pron-btn') as HTMLButtonElement;
+                    const opener: OpenerType = prnBtn?.style.border.includes('8b5cf6') ? 'pronoun' : 'name';
+                    handleExtractAndAdd('next-steps', opener, nameEl?.value || 'Next Steps');
+                  }} style={{ ...btnP, width: '100%', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed', padding: '12px' }}>
+                    {selectionActive ? '✓ Extract all next steps sentences from reports' : '← Highlight & add text from reports first'}
+                  </button>
                 </div>
               )}
 
