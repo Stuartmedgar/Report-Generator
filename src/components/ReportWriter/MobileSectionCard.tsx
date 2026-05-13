@@ -17,6 +17,26 @@ interface MobileSectionCardProps {
   studentsLength?: number;
 }
 
+// Helper to find numbered [Info N] placeholders in a comment string
+function getInfoPlaceholders(comment: string): string[] {
+  const found: string[] = [];
+  const regex = /\[Info (\d+)\]/gi;
+  let match;
+  const seen = new Set<string>();
+  while ((match = regex.exec(comment)) !== null) {
+    const key = `Info ${match[1]}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      found.push(key);
+    }
+  }
+  // Legacy fallback — old single placeholder format
+  if (found.length === 0 && /\[(personalised information|personal information|information)\]/i.test(comment)) {
+    found.push('Info 1');
+  }
+  return found;
+}
+
 const MobileSectionCard: React.FC<MobileSectionCardProps> = ({ 
   section, 
   sectionData, 
@@ -587,10 +607,12 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
   const renderPersonalisedComment = () => {
     const categories = section.data?.headings || Object.keys(section.data?.categories || section.data?.comments || {});
     const instruction = section.data?.instruction || '';
-    
+    const selectedComment = data.customEditedComment || data.selectedComment || '';
+    const placeholders = getInfoPlaceholders(selectedComment);
+
     return (
       <div>
-        {/* Display instruction */}
+        {/* Instruction */}
         {instruction && (
           <div style={{
             backgroundColor: '#fef3c7',
@@ -618,48 +640,90 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
           </div>
         )}
 
-        {/* Personalised Information Input - Now FIRST */}
-        <div style={{
-          backgroundColor: '#fffbeb',
-          padding: '6px',
-          borderRadius: '4px',
-          border: '1px solid #f59e0b',
-          marginBottom: '6px'
-        }}>
-          <label style={{
-            display: 'block',
-            fontSize: '10px',
-            fontWeight: '600',
-            color: '#d97706',
-            marginBottom: '4px'
-          }}>
-            Personalised Information:
-          </label>
-          <input
-            type="text"
-            value={data.personalisedInfo || ''}
-            onChange={(e) => updateSectionData(section.id, { personalisedInfo: e.target.value })}
-            placeholder="Enter specific information..."
-            style={{
-              width: '100%',
-              padding: '4px 6px',
-              border: '1px solid #d1d5db',
-              borderRadius: '3px',
-              fontSize: '11px',
-              boxSizing: 'border-box'
-            }}
-          />
+        {/* Dynamic Info Input Fields — shown once a comment is selected */}
+        {data.selectedComment && placeholders.length > 0 ? (
           <div style={{
-            fontSize: '9px',
-            color: '#78350f',
-            fontStyle: 'italic',
-            marginTop: '2px'
+            backgroundColor: '#fffbeb',
+            padding: '6px',
+            borderRadius: '4px',
+            border: '1px solid #f59e0b',
+            marginBottom: '6px'
           }}>
-            This will replace [Personal Information] in the comment
+            {placeholders.map((key) => (
+              <div key={key} style={{ marginBottom: '6px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '10px',
+                  fontWeight: '600',
+                  color: '#d97706',
+                  marginBottom: '2px'
+                }}>
+                  {key}:
+                </label>
+                <input
+                  type="text"
+                  value={(data.infoValues || {})[key] || ''}
+                  onChange={(e) => {
+                    const infoValues = { ...(data.infoValues || {}) };
+                    infoValues[key] = e.target.value;
+                    updateSectionData(section.id, { infoValues });
+                  }}
+                  placeholder={`Enter ${key.toLowerCase()}...`}
+                  style={{
+                    width: '100%',
+                    padding: '4px 6px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '3px',
+                    fontSize: '11px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            ))}
+            <div style={{ fontSize: '9px', color: '#78350f', fontStyle: 'italic', marginTop: '2px' }}>
+              This will replace the [Info] placeholders in the comment
+            </div>
           </div>
-        </div>
+        ) : !data.selectedComment && (
+          <div style={{
+            backgroundColor: '#fffbeb',
+            padding: '6px',
+            borderRadius: '4px',
+            border: '1px solid #f59e0b',
+            marginBottom: '6px'
+          }}>
+            <label style={{
+              display: 'block',
+              fontSize: '10px',
+              fontWeight: '600',
+              color: '#d97706',
+              marginBottom: '2px'
+            }}>
+              Personalised Information:
+            </label>
+            <input
+              type="text"
+              disabled
+              placeholder="Select a category below first..."
+              style={{
+                width: '100%',
+                padding: '4px 6px',
+                border: '1px solid #d1d5db',
+                borderRadius: '3px',
+                fontSize: '11px',
+                boxSizing: 'border-box',
+                cursor: 'not-allowed',
+                color: '#9ca3af',
+                backgroundColor: '#fef9ec'
+              }}
+            />
+            <div style={{ fontSize: '9px', color: '#78350f', fontStyle: 'italic', marginTop: '2px' }}>
+              This will replace the [Info] placeholders in the comment
+            </div>
+          </div>
+        )}
 
-        {/* Category Buttons - Now SECOND */}
+        {/* Category Buttons */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
           {categories.map((category: string) => (
             <button

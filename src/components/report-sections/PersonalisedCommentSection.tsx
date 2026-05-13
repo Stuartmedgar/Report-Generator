@@ -6,6 +6,26 @@ interface PersonalisedCommentSectionProps {
   updateSectionData: (sectionId: string, data: any) => void;
 }
 
+// Helper to find numbered [Info N] placeholders in a comment string
+function getInfoPlaceholders(comment: string): string[] {
+  const found: string[] = [];
+  const regex = /\[Info (\d+)\]/gi;
+  let match;
+  const seen = new Set<string>();
+  while ((match = regex.exec(comment)) !== null) {
+    const key = `Info ${match[1]}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      found.push(key);
+    }
+  }
+  // Legacy fallback — old single placeholder format
+  if (found.length === 0 && /\[(personalised information|personal information|information)\]/i.test(comment)) {
+    found.push('Info 1');
+  }
+  return found;
+}
+
 const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
   section,
   data,
@@ -27,43 +47,37 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
       const shouldContinue = window.confirm(
         'Changing the category will replace your custom edits with a new generated comment. Continue?'
       );
-      if (!shouldContinue) {
-        return;
-      }
+      if (!shouldContinue) return;
     }
-
-    // Just pass the category - let useReportLogic handle comment selection
-    updateSectionData(section.id, { 
+    updateSectionData(section.id, {
       category,
-      customEditedComment: undefined // Clear custom edits when category changes
+      customEditedComment: undefined
     });
-    
-    // Close edit box if open
     setShowEditComment(false);
   };
 
   const handleSaveEditedComment = () => {
-    updateSectionData(section.id, { 
-      customEditedComment: editableComment 
-    });
+    updateSectionData(section.id, { customEditedComment: editableComment });
     setShowEditComment(false);
   };
 
   const handleCancelEditComment = () => {
-    // Reset to original selected comment
     setEditableComment(data.selectedComment || '');
     setShowEditComment(false);
   };
 
-  // Handle personalised info input change
-  const handlePersonalisedInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    updateSectionData(section.id, { 
-      personalisedInfo: e.target.value 
-    });
+  const handleInfoChange = (key: string, value: string) => {
+    const infoValues = { ...(data.infoValues || {}) };
+    infoValues[key] = value;
+    updateSectionData(section.id, { infoValues });
   };
 
   const categories = section.data?.headings || Object.keys(section.data?.categories || section.data?.comments || {});
   const hasSelectedComment = data.selectedComment && data.category;
+
+  // Work out which placeholders the currently selected comment needs
+  const selectedComment = data.customEditedComment || data.selectedComment || '';
+  const placeholders = getInfoPlaceholders(selectedComment);
 
   return (
     <div style={{
@@ -88,59 +102,26 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
         }}>
           {section.name}
         </h3>
-        
-        {/* Header Options */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px'
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
+
+        {/* Header / Exclude Options */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <input
               type="checkbox"
               checked={data.showHeader !== false}
               onChange={(e) => updateSectionData(section.id, { showHeader: e.target.checked })}
-              style={{
-                width: '14px',
-                height: '14px',
-                cursor: 'pointer'
-              }}
+              style={{ width: '14px', height: '14px', cursor: 'pointer' }}
             />
-            <span style={{
-              fontSize: '12px',
-              color: '#6b7280',
-              fontWeight: '500'
-            }}>
-              Header
-            </span>
+            <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Header</span>
           </div>
-          
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <input
               type="checkbox"
               checked={data.exclude || false}
               onChange={(e) => updateSectionData(section.id, { exclude: e.target.checked })}
-              style={{
-                width: '14px',
-                height: '14px',
-                cursor: 'pointer'
-              }}
+              style={{ width: '14px', height: '14px', cursor: 'pointer' }}
             />
-            <span style={{
-              fontSize: '12px',
-              color: '#6b7280',
-              fontWeight: '500'
-            }}>
-              Exclude
-            </span>
+            <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Exclude</span>
           </div>
         </div>
       </div>
@@ -160,52 +141,80 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
         </div>
       )}
 
-      {/* ADDED: Personalised Information Input Field */}
-      <div style={{
-        marginBottom: '12px'
-      }}>
-        <label style={{
-          fontSize: '14px',
-          fontWeight: '500',
-          color: '#d97706',
-          marginBottom: '6px',
-          display: 'block'
-        }}>
-          {section.data?.instruction || 'Enter personalised information:'}
-        </label>
-        <input
-          type="text"
-          value={data.personalisedInfo || ''}
-          onChange={handlePersonalisedInfoChange}
-          placeholder="Enter the personalised information for this student..."
-          style={{
-            width: '100%',
-            padding: '8px 12px',
-            border: '2px solid #fbbf24',
-            borderRadius: '6px',
-            fontSize: '14px',
-            outline: 'none',
-            backgroundColor: 'white',
-            boxSizing: 'border-box'
-          }}
-        />
-        <div style={{
-          fontSize: '12px',
-          color: '#92400e',
-          marginTop: '4px',
-          fontStyle: 'italic'
-        }}>
-          This will replace "[personalised information]" in the preview
+      {/* Dynamic Info Input Fields */}
+      {hasSelectedComment && placeholders.length > 0 ? (
+        <div style={{ marginBottom: '12px' }}>
+          {placeholders.map((key) => (
+            <div key={key} style={{ marginBottom: '10px' }}>
+              <label style={{
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#d97706',
+                marginBottom: '6px',
+                display: 'block'
+              }}>
+                {key}:
+              </label>
+              <input
+                type="text"
+                value={(data.infoValues || {})[key] || ''}
+                onChange={e => handleInfoChange(key, e.target.value)}
+                placeholder={`Enter ${key.toLowerCase()}...`}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '2px solid #fbbf24',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  backgroundColor: 'white',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+          ))}
+          <div style={{ fontSize: '12px', color: '#92400e', fontStyle: 'italic' }}>
+            This will replace the [Info] placeholders in the preview
+          </div>
         </div>
-      </div>
+      ) : !hasSelectedComment && (
+        // Before a comment is selected, show the instruction label and a disabled input
+        // so the teacher knows a field will appear once they pick a category
+        <div style={{ marginBottom: '12px' }}>
+          <label style={{
+            fontSize: '14px',
+            fontWeight: '500',
+            color: '#d97706',
+            marginBottom: '6px',
+            display: 'block'
+          }}>
+            {section.data?.instruction || 'Enter personalised information:'}
+          </label>
+          <input
+            type="text"
+            disabled
+            placeholder="Select a category below first..."
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              border: '2px solid #fbbf24',
+              borderRadius: '6px',
+              fontSize: '14px',
+              outline: 'none',
+              backgroundColor: '#fef9ec',
+              boxSizing: 'border-box',
+              cursor: 'not-allowed',
+              color: '#9ca3af'
+            }}
+          />
+          <div style={{ fontSize: '12px', color: '#92400e', marginTop: '4px', fontStyle: 'italic' }}>
+            This will replace the [Info] placeholders in the preview
+          </div>
+        </div>
+      )}
 
       {/* Category Selection */}
-      <div style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '6px',
-        marginBottom: '12px'
-      }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
         {categories.map((category: string) => (
           <button
             key={category}
@@ -229,7 +238,7 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
         ))}
       </div>
 
-      {/* Edit Comment Toggle - Only show if there's a selected comment */}
+      {/* Edit Comment Toggle - only show if there's a selected comment */}
       {hasSelectedComment && (
         <div style={{
           display: 'flex',
@@ -288,13 +297,7 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
           }}>
             Edit the generated comment or add additional notes
           </div>
-          
-          {/* Action buttons on the left */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'flex-start',
-            gap: '6px'
-          }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '6px' }}>
             <button
               onClick={handleCancelEditComment}
               style={{
@@ -328,9 +331,6 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
           </div>
         </div>
       )}
-
-      {/* REMOVED: Additional Information section - no longer needed */}
-      {/* The old "Additional Information" textarea has been completely removed */}
     </div>
   );
 };

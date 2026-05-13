@@ -245,11 +245,17 @@ export const useReportLogic = ({
             const comment = data.customEditedComment || data.selectedComment || '[No comment selected]';
             let processedComment = comment.replace(/\[Name\]/g, currentStudent.firstName);
             
-            // FIXED: Replace personalised information placeholder
-            if (data.personalisedInfo && data.personalisedInfo.trim()) {
-              processedComment = processedComment.replace(/\[Personal Information\]/gi, data.personalisedInfo);
-              processedComment = processedComment.replace(/\[Personalised Information\]/gi, data.personalisedInfo);
-              processedComment = processedComment.replace(/\[Information\]/gi, data.personalisedInfo);
+            // Replace numbered [Info N] placeholders with teacher-entered values
+            const infoValues: Record<string, string> = data.infoValues || {};
+            processedComment = processedComment.replace(/\[Info (\d+)\]/gi, (_match: string, num: string) => {
+              return infoValues[`Info ${num}`] || `[Info ${num}]`;
+            });
+
+            // Legacy fallback — handle old [personalised information] / [personal information] format
+            if (infoValues['Info 1']) {
+              processedComment = processedComment.replace(/\[Personal Information\]/gi, infoValues['Info 1']);
+              processedComment = processedComment.replace(/\[Personalised Information\]/gi, infoValues['Info 1']);
+              processedComment = processedComment.replace(/\[Information\]/gi, infoValues['Info 1']);
             }
             
             content += processedComment + ' ';
