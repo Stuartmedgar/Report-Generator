@@ -226,6 +226,8 @@ export default function ImportTemplate() {
 
   // Builder guide state — which proposed section is currently active
   const [activeGuideIndex, setActiveGuideIndex] = useState<number | null>(null);
+  // Pre-filled name for the current guided section
+  const [guidedSectionName, setGuidedSectionName] = useState('');
 
   const pronounCapital = getPronounCapital(pronounSet);
 
@@ -887,7 +889,26 @@ export default function ImportTemplate() {
                   return (
                     <div
                       key={i}
-                      onClick={() => setActiveGuideIndex(i)}
+                      onClick={() => {
+                        setActiveGuideIndex(i);
+                        setSubMenu(null);
+                        clearSelection();
+                        setGuidedSectionName(s.name);
+                        setPiName(s.name);
+                        setPiInstruction(s.personalisedTopic ? `Enter this pupil's ${s.personalisedTopic}` : '');
+                        // Auto-open the correct submenu for this section type
+                        const typeMap: Record<string, string> = {
+                          'rated-comment': 'rating',
+                          'qualities': 'qualities',
+                          'next-steps': 'nextsteps',
+                          'next_steps': 'nextsteps',
+                          'personalised-comment': 'personalinfo',
+                          'standard-comment': 'standard',
+                          'assessment-comment': 'assessment',
+                        };
+                        const mapped = typeMap[s.type];
+                        if (mapped) setSubMenu(mapped);
+                      }}
                       style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', cursor: 'pointer', padding: '3px 6px', borderRadius: '4px', backgroundColor: isActive ? '#eff6ff' : 'transparent' }}
                     >
                       <span style={{ fontSize: '12px', width: '16px', textAlign: 'center' }}>
@@ -1024,7 +1045,11 @@ export default function ImportTemplate() {
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
                   <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the progress/rating sentences from several reports on the left, then choose your scale below.</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>
+                      {activeGuideSection?.type === 'rated-comment'
+                        ? `💡 Highlight sentences from your reports that describe ${activeGuideSection.name.toLowerCase()} — include examples from pupils at different levels (excellent, good, satisfactory, struggling). The more examples you highlight the better. Then choose your scale below.`
+                        : '💡 Highlight the progress/rating sentences from several reports on the left, then choose your scale below.'}
+                    </p>
                   </div>
                   <div style={{ marginBottom: '10px' }}>
                     <label style={lbl}>Section name</label>
@@ -1055,7 +1080,11 @@ export default function ImportTemplate() {
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
                   <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the qualities/strengths sentences from several reports on the left. Include a range of different types of pupil. Claude will find ALL similar sentences across all reports.</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>
+                      {activeGuideSection?.type === 'qualities'
+                        ? `💡 Highlight examples of ${activeGuideSection.name.toLowerCase()} sentences from several reports — include a range of different pupils. Claude will find ALL similar sentences across all reports and group them by topic.`
+                        : '💡 Highlight the qualities/strengths sentences from several reports on the left. Include a range of different types of pupil. Claude will find ALL similar sentences across all reports.'}
+                    </p>
                   </div>
                   <div style={{ marginBottom: '10px' }}>
                     <label style={lbl}>Section name</label>
@@ -1085,7 +1114,11 @@ export default function ImportTemplate() {
                 <div>
                   <button onClick={() => { setSubMenu(null); setPiName(''); setPiInstruction(''); setError(null); }} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
                   <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight example sentences that contain a personal detail unique to each pupil — like a sport, target grade, or personal goal. Claude will find all similar sentences and replace the unique detail with [Info 1], [Info 2] etc.</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>
+                      {activeGuideSection?.personalisedTopic
+                        ? `💡 Highlight example sentences about ${activeGuideSection.personalisedTopic} from several reports. If you need two separate sections (e.g. first sport and second sport), highlight only one type at a time and build each separately. Claude will replace the specific detail with [Info 1] or [Info 2].`
+                        : '💡 Highlight example sentences that contain a personal detail unique to each pupil — like a sport, target grade, or personal goal. Claude will find all similar sentences and replace the unique detail with [Info 1], [Info 2] etc.'}
+                    </p>
                   </div>
                   <div style={{ marginBottom: '10px' }}>
                     <label style={lbl}>Section name</label>
@@ -1133,7 +1166,7 @@ export default function ImportTemplate() {
               {subMenu === 'standard|single' && (
                 <div>
                   <button onClick={() => setSubMenu('standard')} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
-                  <div style={{ marginBottom: '10px' }}><label style={lbl}>Section name</label><input type="text" value={stdName} onChange={e => setStdName(e.target.value)} placeholder="e.g. Course Content, Assessment Analysis" style={inp} /></div>
+                  <div style={{ marginBottom: '10px' }}><label style={lbl}>Section name</label><input type="text" value={stdName || (activeGuideSection?.type === 'standard-comment' ? activeGuideSection.name : '')} onChange={e => setStdName(e.target.value)} placeholder="e.g. Course Content, Assessment Analysis" style={inp} /></div>
                   <div style={{ marginBottom: '12px' }}><label style={lbl}>Text (replace pupil names with [Name])</label><textarea value={stdContent} onChange={e => setStdContent(e.target.value)} placeholder="Paste the text here..." style={{ ...txa, minHeight: '100px' }} /></div>
                   <button onClick={() => {
                     if (!stdName.trim() || !stdContent.trim()) { setError('Please enter a name and content.'); return; }
@@ -1174,11 +1207,15 @@ export default function ImportTemplate() {
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
                   <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the assessment sentence(s) from your reports, name the section, then choose which type fits. Add as many assessment sections as you need for different tests.</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>
+                      {activeGuideSection?.type === 'assessment-comment'
+                        ? `💡 Highlight ${activeGuideSection.name.toLowerCase()} sentences from several reports — include examples from pupils who did well and pupils who struggled. Then choose which type fits best.`
+                        : '💡 Highlight the assessment sentence(s) from your reports, name the section, then choose which type fits. Add as many assessment sections as you need for different tests.'}
+                    </p>
                   </div>
                   <div style={{ marginBottom: '12px' }}>
                     <label style={lbl}>Section name <span style={{ color: '#9ca3af', fontWeight: '400' }}>(e.g. MQS Assessment, Calculator Test)</span></label>
-                    <input type="text" value={assessSectionName} onChange={e => setAssessSectionName(e.target.value)} placeholder="Assessment" style={inp} />
+                    <input type="text" value={assessSectionName || (activeGuideSection?.type === 'assessment-comment' ? activeGuideSection.name : '')} onChange={e => setAssessSectionName(e.target.value)} placeholder="Assessment" style={inp} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <button disabled={!accumulatedText} onClick={() => {
@@ -1207,9 +1244,13 @@ export default function ImportTemplate() {
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
                   <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the Areas for Development sentences from several reports. Include a variety of different types. Claude will find ALL development sentences across all reports and group by topic.</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>
+                      {activeGuideSection
+                        ? `💡 Highlight ${activeGuideSection.name.toLowerCase()} sentences from several reports. Include a variety of different types. Claude will find ALL similar sentences across all reports and group by topic.`
+                        : '💡 Highlight the Areas for Development sentences from several reports. Include a variety of different types. Claude will find ALL development sentences across all reports and group by topic.'}
+                    </p>
                   </div>
-                  <div style={{ marginBottom: '10px' }}><label style={lbl}>Section name</label><input type="text" placeholder="e.g. Areas for Development" style={inp} id="dev-name-input" defaultValue="Areas for Development" /></div>
+                  <div style={{ marginBottom: '10px' }}><label style={lbl}>Section name</label><input type="text" placeholder="e.g. Areas for Development" style={inp} id="dev-name-input" defaultValue={activeGuideSection?.name || 'Areas for Development'} /></div>
                   <div style={{ marginBottom: '10px' }}>
                     <label style={lbl}>Opener</label>
                     <div style={{ display: 'flex', gap: '6px' }}>
@@ -1233,9 +1274,13 @@ export default function ImportTemplate() {
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
                   <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the next steps sentences from several reports. If they always start with "Moving forward," include that. Claude will group by topic.</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>
+                      {activeGuideSection
+                        ? `💡 Highlight ${activeGuideSection.name.toLowerCase()} sentences from several reports. Include a variety of different pupils. If sentences always start with a fixed phrase like "Moving forward," include that in your highlight. Claude will group by topic.`
+                        : '💡 Highlight the next steps sentences from several reports. If they always start with "Moving forward," include that. Claude will group by topic.'}
+                    </p>
                   </div>
-                  <div style={{ marginBottom: '10px' }}><label style={lbl}>Section name</label><input type="text" placeholder="e.g. Next Steps, Moving Forward" style={inp} id="ns-name-input" defaultValue="Next Steps" /></div>
+                  <div style={{ marginBottom: '10px' }}><label style={lbl}>Section name</label><input type="text" placeholder="e.g. Next Steps, Moving Forward" style={inp} id="ns-name-input" defaultValue={activeGuideSection?.name || 'Next Steps'} /></div>
                   <div style={{ marginBottom: '10px' }}>
                     <label style={lbl}>Opener</label>
                     <div style={{ display: 'flex', gap: '6px' }}>
