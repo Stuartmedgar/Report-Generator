@@ -1074,7 +1074,7 @@ export default function ImportTemplate() {
                 <div>
                   <button onClick={() => setSubMenu('standard')} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
                   <div style={{ marginBottom: '10px' }}><label style={lbl}>Section name</label><input type="text" value={stdName} onChange={e => setStdName(e.target.value)} placeholder="e.g. Pathway Information" style={inp} /></div>
-                  {stdOptions.map((opt, i) =>
+                  {stdOptions.map((opt, i) => (
                     <div key={i} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '10px', marginBottom: '8px', backgroundColor: '#f9fafb' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                         <span style={{ fontSize: '12px', fontWeight: '600', color: '#374151' }}>Option {i+1}</span>
