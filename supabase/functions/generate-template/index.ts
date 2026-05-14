@@ -41,16 +41,33 @@ Return ONLY valid JSON, no markdown, no backticks:
 
 const PERSONALISED_EXTRACT_SYSTEM = `${KNOWLEDGE_BASE}
 
-Your task is to extract sentences that contain a personal detail unique to each pupil — like a sport, target grade, activity, or personal goal. This detail varies per pupil and is typed in by the teacher when writing each report.
+Your task is to extract sentences that contain a personal detail unique to each pupil. The teacher will type this detail in when writing each report.
 
-Rules:
-1. The teacher has highlighted a selection showing you what these sentences look like
-2. Read ALL the full reports and find EVERY sentence of this type
-3. Replace the variable personal detail with [personalised information] — e.g. "football" becomes [personalised information]
+CRITICAL RULES:
+
+1. The teacher has highlighted example sentences showing exactly what to extract. Study the highlighted examples carefully — they define the pattern precisely.
+
+2. PATTERN MATCHING: Only extract sentences that match the same pattern and structure as the highlighted examples.
+   - If the highlighted examples contain ONE personal detail, only extract sentences with ONE personal detail
+   - If the highlighted examples contain TWO distinct personal details, only extract sentences with TWO distinct personal details
+   - Do NOT extract sentences that are about a clearly different aspect of the topic, even if they are nearby in the reports
+   - The highlighted examples are your strict guide — stay within that pattern
+
+3. PLACEHOLDERS: Replace variable personal details with numbered placeholders
+   - Use [Info 1] for the first personal detail in a sentence
+   - Use [Info 2] for a second genuinely distinct personal detail in the same sentence
+   - If the same detail appears more than once in a sentence, use the same placeholder number both times — never use two different placeholder numbers for what is actually the same piece of information
+   - If only one personal detail appears in a sentence, always use [Info 1] only
+
 4. Replace ALL student names with [Name]
-5. Group sentences by tone or context using short clear headings
-6. Copy sentences EXACTLY as written otherwise — do not paraphrase or rewrite
-7. Do NOT generate variety options — only include sentences that actually appear in the reports
+
+5. Copy sentences EXACTLY as written — do not paraphrase, rewrite or combine them
+
+6. Group sentences by tone or context using short clear heading names
+
+7. ONLY extract sentences that actually appear in the reports — do NOT generate new ones
+
+8. Deduplicate — if the same sentence (or near-identical sentence) appears more than once, include it only once
 
 Return ONLY valid JSON, no markdown, no backticks:
 {
@@ -58,7 +75,44 @@ Return ONLY valid JSON, no markdown, no backticks:
   "headings": [
     {
       "name": "Short clear heading",
-      "comments": ["Exact sentence with [Name] and [personalised information]", "Another exact sentence"]
+      "comments": [
+        "Exact sentence with [Name] and [Info 1] placeholder",
+        "Another exact sentence with [Name] and [Info 1] and [Info 2] if two distinct details"
+      ]
+    }
+  ]
+}`;
+
+const IDENTIFY_SECTIONS_SYSTEM = `You are an expert at analysing teacher-written school reports and identifying their structure.
+
+Your task is to read a set of reports and identify what sections a template built from these reports should contain. You are NOT extracting content — only identifying what sections exist and what type each one is.
+
+SECTION TYPES:
+- "rated-comment" — sentences where the teacher makes a judgement about how well the pupil is doing. Different pupils get different sentences based on their performance level (excellent, good, satisfactory, needs improvement). Examples: overall progress, effort, attainment, classroom application, quality of written work.
+- "qualities" — sentences describing the pupil's personal qualities, character, behaviour, attitude, or working style. Different pupils get different sentences based on their qualities. Also used for next steps and areas for development.
+- "next-steps" — forward-looking sentences about what the pupil should focus on to improve. Grouped by topic area.
+- "personalised-comment" — sentences where the SAME topic appears across the majority of reports, but ONE specific detail varies per pupil. The detail could be a sport, a musical instrument, a book, a target grade, a topic area, or any other pupil-specific information. ONLY flag as personalised-comment if this pattern appears in the majority of reports — not just one or two.
+- "standard-comment" — text that is identical or near-identical across all reports. Every pupil gets exactly the same text.
+- "assessment-comment" — sentences specifically about a formal assessment or test result, where different language is used depending on performance level.
+
+RULES:
+1. Read ALL the reports carefully before identifying sections
+2. Identify sections in the order they naturally appear in the reports
+3. Give each section a short, plain English name the teacher would recognise (e.g. "Overall Progress", "Personal Qualities", "Assessment Activities", "Next Steps")
+4. For personalised-comment sections, identify the topic that varies (e.g. "sport chosen for assessment", "target grade", "musical instrument")
+5. Only include sections that appear consistently across the majority of reports
+6. If a personalised-comment topic appears in different positions across different reports, still flag it as one section
+7. Do not create separate sections for what is clearly the same topic
+8. Suggest a sensible order — usually: opening judgement → qualities → personalised info → development/next steps
+
+Return ONLY valid JSON, no markdown, no backticks:
+{
+  "sections": [
+    {
+      "name": "Section name",
+      "type": "rated-comment | qualities | next-steps | personalised-comment | standard-comment | assessment-comment",
+      "description": "One sentence describing what this section contains in plain English",
+      "personalisedTopic": "Only for personalised-comment — what the variable detail is e.g. sport chosen for assessment"
     }
   ]
 }`;
@@ -194,6 +248,41 @@ serve(async (req) => {
   const pronounCapital = pronounSet.split('/')[0].charAt(0).toUpperCase() + pronounSet.split('/')[0].slice(1);
   const pronounFull = ({ "he/his": "HE/HIM/HIS/HIMSELF", "she/her": "SHE/HER/HERS/HERSELF", "they/their": "THEY/THEM/THEIR/THEMSELVES" } as Record<string, string>)[pronounSet] || "THEY/THEM/THEIR/THEMSELVES";
 
+  // ─── MODE: IDENTIFY-SECTIONS ──────────────────────────────────────────────
+  if (mode === "identify-sections") {
+    if (!reportText) return new Response(JSON.stringify({ error: "reportText is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 2000,
+          system: IDENTIFY_SECTIONS_SYSTEM,
+          messages: [{
+            role: "user",
+            content: `Subject: ${subject}
+Year Group: ${yearGroup || "Not specified"}
+
+Read ALL of these reports carefully and identify what sections a template built from them should contain. Return them in the order they naturally appear.
+
+REPORTS:
+${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
+          }],
+        }),
+      });
+
+      if (!response.ok) return new Response(JSON.stringify({ error: "API call failed" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+      const data = await response.json();
+      const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
+      const parsed = JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
+      return new Response(JSON.stringify(parsed), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    } catch {
+      return new Response(JSON.stringify({ error: "Section identification failed." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+  }
+
   // ─── MODE: ASSEMBLE ───────────────────────────────────────────────────────
   if (mode === "assemble") {
     const result = mechanicalAssemble({ subject, yearGroup, builtSections });
@@ -228,7 +317,7 @@ serve(async (req) => {
   if (mode === "extract-only") {
     if (!selectedText && !reportText) return new Response(JSON.stringify({ error: "selectedText and reportText are required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    // ── PERSONALISED COMMENT extraction — uses its own system prompt ──
+    // ── PERSONALISED COMMENT extraction ──
     if (positionType === "personalised-comment") {
       try {
         const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -244,15 +333,15 @@ serve(async (req) => {
 Year Group: ${yearGroup || "Not specified"}
 Section name: ${sectionName}
 
-TEACHER'S HIGHLIGHTED SELECTION (shows what these sentences look like):
+TEACHER'S HIGHLIGHTED SELECTION — these are the exact examples to match. Study them carefully. Only extract sentences from the full reports that follow the same pattern as these examples. If these examples contain one personal detail, only extract sentences with one personal detail. If these examples contain two distinct personal details, only extract sentences with two distinct personal details. Do not extract sentences about clearly different aspects of the topic.
 ${selectedText}
 
-Read ALL the reports below and extract every sentence of this type. Replace the specific personal detail (sport, grade, activity, goal etc.) with [personalised information]. Replace all student names with [Name]. Group by tone or context.
+Replace personal details with [Info 1], [Info 2] etc. Replace all student names with [Name]. Group by tone or context. Deduplicate near-identical sentences.
 
 FULL REPORTS:
 ${reportText.substring(0, GENERATION_CHAR_LIMIT)}
 
-IMPORTANT: Extract ONLY sentences that actually appear in the reports. Do NOT generate new sentences.`,
+IMPORTANT: Extract ONLY sentences that match the pattern of the highlighted examples above. Do NOT generate new sentences.`,
             }],
           }),
         });
@@ -263,7 +352,6 @@ IMPORTANT: Extract ONLY sentences that actually appear in the reports. Do NOT ge
         const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
         const parsed = JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
 
-        // Return in personalised-comment format with categories
         return new Response(JSON.stringify({
           sectionName: parsed.sectionName || sectionName,
           headings: parsed.headings || [],
