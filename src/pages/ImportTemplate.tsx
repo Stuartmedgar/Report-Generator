@@ -8,7 +8,7 @@ import { TemplateSection } from '../types';
 
 type PronounSet = 'he/his' | 'she/her' | 'they/their';
 type OpenerType = 'name' | 'pronoun';
-type MainStep = 'paste' | 'proposals' | 'builder' | 'variety' | 'generating' | 'preview' | 'saved';
+type MainStep = 'paste' | 'proposals' | 'builder' | 'quick-building' | 'variety' | 'generating' | 'preview' | 'saved';
 type SectionType = 'qualities' | 'next-steps' | 'assessment-comment' | 'standard-comment' | 'personalised-comment' | 'rated-comment' | 'optional-additional-comment';
 
 interface BuiltSection {
@@ -180,6 +180,7 @@ export default function ImportTemplate() {
 
   // Proposed sections state
   const [proposedSections, setProposedSections] = useState<ProposedSection[]>([]);
+  const [isQuickBuilding, setIsQuickBuilding] = useState(false);
 
   // Selection state - accumulated
   const [selectedText, setSelectedText] = useState('');
@@ -321,6 +322,62 @@ export default function ImportTemplate() {
       setError('Could not identify sections. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+
+  // ─── QUICK BUILD ──────────────────────────────────────────────────────────
+
+  const handleQuickBuild = async () => {
+    const includedSections = proposedSections.filter(s => s.included);
+    if (includedSections.length === 0) { setError('Please include at least one section.'); return; }
+    setError(null);
+    setIsLoading(true);
+    setIsQuickBuilding(true);
+    setLoadingMessage('Building your template automatically...');
+    try {
+      const result = await callApi({
+        mode: 'auto-build',
+        subject,
+        yearGroup,
+        pronounSet,
+        reportText: rawReportText,
+        builtSections: includedSections,
+      });
+
+      if (!result.sections || result.sections.length === 0) throw new Error('No sections returned');
+
+      // Add IDs and normalise section data
+      const sections = result.sections.map((s: any) => ({
+        ...s,
+        id: makeId(),
+        data: s.data || {},
+      }));
+
+      const normalisedSections = normaliseTemplateSections(sections, pronounSet);
+      setGeneratedTemplate({ name: result.templateName || `${subject} ${yearGroup} Report Template`, sections: normalisedSections });
+
+      // Set up variety for eligible sections
+      const builtForVariety = normalisedSections
+        .filter((s: any) => s.type === 'qualities' || s.type === 'next-steps')
+        .map((s: any) => ({
+          section: {
+            id: s.id,
+            type: s.type,
+            name: s.name,
+            openerType: 'name' as OpenerType,
+            positionType: s.type,
+            data: s.data,
+          },
+          selected: true,
+        }));
+      setSectionsForVariety(builtForVariety);
+      setMainStep('variety');
+    } catch (err: any) {
+      setError('Quick build failed. Please try the guided wizard instead.');
+    } finally {
+      setIsLoading(false);
+      setIsQuickBuilding(false);
     }
   };
 
@@ -552,7 +609,7 @@ export default function ImportTemplate() {
       <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '48px 40px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: '400px' }}>
         <div style={{ fontSize: '48px', marginBottom: '20px' }}>{mainStep === 'generating' ? '🪄' : '🔍'}</div>
         <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#111827' }}>
-          {mainStep === 'generating' ? 'Building Your Template' : mainStep === 'paste' ? 'Identifying Sections' : 'Reading Your Reports'}
+          {mainStep === 'generating' ? 'Building Your Template' : mainStep === 'paste' ? 'Identifying Sections' : isQuickBuilding ? 'Building Your Template' : 'Reading Your Reports'}
         </h2>
         <p style={{ margin: '0 0 24px 0', color: '#6b7280', fontSize: '14px' }}>{loadingMessage}</p>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
@@ -725,18 +782,34 @@ export default function ImportTemplate() {
 
           {error && <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px', marginBottom: '12px', color: '#b91c1c', fontSize: '14px' }}>⚠️ {error}</div>}
 
-          <button
-            onClick={() => {
-              if (includedCount === 0) { setError('Please include at least one section.'); return; }
-              setError(null);
-              setActiveGuideIndex(0);
-              setBuiltSections([]);
-              setMainStep('builder');
-            }}
-            style={{ ...btnG, width: '100%', padding: '16px', fontSize: '16px' }}
-          >
-            Start Building — {includedCount} section{includedCount !== 1 ? 's' : ''} →
-          </button>
+          {/* Two-path choice */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <button
+              onClick={handleQuickBuild}
+              style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '10px', padding: '20px 16px', cursor: 'pointer', textAlign: 'left' }}
+            >
+              <div style={{ fontSize: '24px', marginBottom: '8px' }}>⚡</div>
+              <div style={{ fontSize: '16px', fontWeight: '700', marginBottom: '4px' }}>Quick Build</div>
+              <div style={{ fontSize: '12px', opacity: 0.9, marginBottom: '8px' }}>~2 minutes</div>
+              <div style={{ fontSize: '12px', opacity: 0.85, lineHeight: '1.4' }}>Claude builds the full template automatically. Review and refine afterwards if needed.</div>
+            </button>
+
+            <button
+              onClick={() => {
+                if (includedCount === 0) { setError('Please include at least one section.'); return; }
+                setError(null);
+                setActiveGuideIndex(0);
+                setBuiltSections([]);
+                setMainStep('builder');
+              }}
+              style={{ backgroundColor: '#8b5cf6', color: 'white', border: 'none', borderRadius: '10px', padding: '20px 16px', cursor: 'pointer', textAlign: 'left' }}
+            >
+              <div style={{ fontSize: '24px', marginBottom: '8px' }}>🪄</div>
+              <div style={{ fontSize: '16px', fontWeight: '700', marginBottom: '4px' }}>Guided Wizard</div>
+              <div style={{ fontSize: '12px', opacity: 0.9, marginBottom: '8px' }}>~20 minutes</div>
+              <div style={{ fontSize: '12px', opacity: 0.85, lineHeight: '1.4' }}>Highlight examples section by section for the most accurate result.</div>
+            </button>
+          </div>
         </main>
       </div>
     );

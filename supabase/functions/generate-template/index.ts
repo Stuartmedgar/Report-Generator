@@ -117,6 +117,117 @@ Return ONLY valid JSON, no markdown, no backticks:
   ]
 }`;
 
+
+const AUTO_BUILD_SYSTEM = `${KNOWLEDGE_BASE}
+
+Your task is to automatically build a complete report template from a set of teacher-written reports. You have been given a list of sections that exist in these reports. For each section, extract the actual sentences from the reports and build the template content.
+
+RULES FOR EACH SECTION TYPE:
+
+For "rated-comment" sections:
+- Find every sentence of this type across all reports
+- Group by performance level into: excellent, good, satisfactory, needsImprovement
+- Each level must have at least 2-3 options
+- Copy sentences EXACTLY — do not paraphrase
+- Replace ALL student names with [Name]
+
+For "qualities" sections:
+- Find every sentence of this type across all reports  
+- Group by the quality or topic described using short clear heading names
+- Each heading should have 2-4 sentence options
+- Copy sentences EXACTLY — do not paraphrase
+- Replace ALL student names with [Name]
+
+For "next-steps" sections:
+- Find every next steps or improvement suggestion sentence
+- Group by topic area
+- Copy sentences EXACTLY — do not paraphrase
+- Replace ALL student names with [Name]
+
+For "standard-comment" sections:
+- Find the text that is identical or near-identical across all reports
+- Return it as a single content string
+- Replace ALL student names with [Name]
+
+For "assessment-comment" sections:
+- Find assessment-related sentences
+- Group by performance level: excellent, good, satisfactory, needsImprovement, notCompleted
+- Replace ALL student names with [Name] and scores/percentages with [Score]
+
+For "personalised-comment" sections:
+- Find sentences where one specific detail varies per pupil
+- Replace the variable detail with [Info 1] (and [Info 2] if two distinct details in same sentence)
+- Group by scenario or tone
+- Mark these sections with a flag indicating they may need refinement
+- Copy sentences EXACTLY — do not paraphrase
+
+CRITICAL RULES:
+- Extract ONLY sentences that actually appear in the reports — do NOT generate new ones
+- Replace ALL student names with [Name]
+- Keep pronoun consistency within each section
+- Do not mix [Name]-led and pronoun-led sentences in the same section
+
+Return ONLY valid JSON, no markdown, no backticks:
+{
+  "templateName": "string",
+  "sections": [
+    {
+      "type": "rated-comment",
+      "name": "Section name",
+      "needsRefinement": false,
+      "data": {
+        "comments": {
+          "excellent": ["Sentence 1", "Sentence 2"],
+          "good": ["Sentence 1", "Sentence 2"],
+          "satisfactory": ["Sentence 1", "Sentence 2"],
+          "needsImprovement": ["Sentence 1", "Sentence 2"]
+        }
+      }
+    },
+    {
+      "type": "qualities",
+      "name": "Section name",
+      "needsRefinement": false,
+      "data": {
+        "comments": {
+          "Heading name": ["Sentence 1", "Sentence 2"],
+          "Another heading": ["Sentence 1", "Sentence 2"]
+        }
+      }
+    },
+    {
+      "type": "next-steps",
+      "name": "Section name",
+      "needsRefinement": false,
+      "data": {
+        "focusAreas": {
+          "Topic name": ["Sentence 1", "Sentence 2"],
+          "Another topic": ["Sentence 1", "Sentence 2"]
+        }
+      }
+    },
+    {
+      "type": "standard-comment",
+      "name": "Section name",
+      "needsRefinement": false,
+      "data": {
+        "content": "The standard text with [Name] if needed"
+      }
+    },
+    {
+      "type": "personalised-comment",
+      "name": "Section name",
+      "needsRefinement": true,
+      "data": {
+        "instruction": "Enter the relevant detail for this pupil",
+        "categories": {
+          "Scenario heading": ["Sentence with [Info 1]", "Another sentence with [Info 1]"]
+        }
+      }
+    }
+  ]
+}`;
+
 const VARIETY_SYSTEM = `${KNOWLEDGE_BASE}
 
 Your task is to generate ADDITIONAL variety options for existing template headings, written in the teacher's exact voice.
@@ -280,6 +391,55 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
       return new Response(JSON.stringify(parsed), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } catch {
       return new Response(JSON.stringify({ error: "Section identification failed." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+  }
+
+
+  // ─── MODE: AUTO-BUILD ─────────────────────────────────────────────────────
+  if (mode === "auto-build") {
+    if (!reportText) return new Response(JSON.stringify({ error: "reportText is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!builtSections || builtSections.length === 0) return new Response(JSON.stringify({ error: "sections list is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    try {
+      const sectionsList = builtSections.map((s: any, i: number) =>
+        `${i + 1}. "${s.name}" — type: ${s.type}${s.personalisedTopic ? ` (variable detail: ${s.personalisedTopic})` : ''}${s.description ? `\n   Description: ${s.description}` : ''}`
+      ).join('\n');
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 8000,
+          system: AUTO_BUILD_SYSTEM,
+          messages: [{
+            role: "user",
+            content: `Subject: ${subject}
+Year Group: ${yearGroup || "Not specified"}
+Pronoun set: ${pronounSet}
+
+Build a complete template from these reports. The template should contain these sections in this order:
+${sectionsList}
+
+For each section, extract the actual sentences from the reports. Do NOT generate new sentences.
+For personalised-comment sections, set needsRefinement: true.
+Template name should be: ${subject}${yearGroup ? ' ' + yearGroup : ''} Report Template
+
+FULL REPORTS:
+${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
+          }],
+        }),
+      });
+
+      if (!response.ok) return new Response(JSON.stringify({ error: "API call failed" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+      const data = await response.json();
+      const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
+      const parsed = JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
+      return new Response(JSON.stringify(parsed), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    } catch {
+      return new Response(JSON.stringify({ error: "Auto-build failed." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
   }
 
