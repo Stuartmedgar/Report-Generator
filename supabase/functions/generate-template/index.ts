@@ -95,7 +95,6 @@ SECTION TYPES:
 - "standard-comment" — text that is identical or near-identical across all reports. Every pupil gets exactly the same text.
 - "assessment-comment" — sentences specifically about a formal assessment or test result, where the teacher writes DIFFERENT sentences depending on performance level (excellent, good, satisfactory, struggling). Use this ONLY when the language itself changes based on how well the pupil did.
 - IMPORTANT: If the assessment section uses the SAME sentence structure for every pupil but with a variable score or grade typed in (e.g. "[Name] scored X% in the test"), classify it as "personalised-comment" NOT "assessment-comment". The variable score is the personal detail.
-- "new-line" — a paragraph break between sections. Include these wherever the reports naturally start a new paragraph.
 
 RULES:
 1. Read ALL the reports carefully before identifying sections
@@ -106,15 +105,6 @@ RULES:
 6. If a personalised-comment topic appears in different positions across different reports, still flag it as one section
 7. Do not create separate sections for what is clearly the same topic
 8. Suggest a sensible order — usually: opening judgement → qualities → personalised info → development/next steps
-
-PARAGRAPH BREAKS — CRITICAL:
-Look carefully at where new paragraphs naturally begin in the reports. Insert a "new-line" entry in the sections list at each natural paragraph boundary. For example if the reports have:
-- Paragraph 1: Opening progress sentence and qualities
-- Paragraph 2: Course content and activities
-- Paragraph 3: Assessment scores
-- Paragraph 4: Next steps and encouragement
-
-Then insert a new-line between each of those paragraphs. The new-line entries should reflect the actual paragraph structure of the reports — not after every section, only at genuine paragraph breaks.
 
 COUNTING TYPICAL SENTENCES — CRITICAL:
 For each section of type "qualities", "next-steps", or "assessment-comment", count how many SEPARATE sentences a typical pupil gets in that part of the report. This is the typicalCount.
@@ -128,14 +118,13 @@ Count carefully — look at several reports and find the most common number of s
 
 For "rated-comment" and "standard-comment" sections, typicalCount is always 1.
 For "personalised-comment" sections, typicalCount is always 1.
-For "new-line" sections, typicalCount is always 0.
 
 Return ONLY valid JSON, no markdown, no backticks:
 {
   "sections": [
     {
       "name": "Section name",
-      "type": "rated-comment | qualities | next-steps | personalised-comment | standard-comment | assessment-comment | new-line",
+      "type": "rated-comment | qualities | next-steps | personalised-comment | standard-comment | assessment-comment",
       "description": "One sentence describing what this section contains in plain English",
       "personalisedTopic": "Only for personalised-comment — what the variable detail is e.g. sport chosen for assessment",
       "typicalCount": 1

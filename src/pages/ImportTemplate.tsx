@@ -337,11 +337,6 @@ export default function ImportTemplate() {
     const result: any[] = [];
 
     sections.forEach(section => {
-      // Pass new-line sections straight through unchanged
-      if (section.type === 'new-line') {
-        result.push(section);
-        return;
-      }
       // Find the matching proposed section to get typicalCount
       const proposed = proposedSections.find(p =>
         p.name.toLowerCase() === section.name.toLowerCase() ||
@@ -436,38 +431,10 @@ export default function ImportTemplate() {
 
       const normalisedSections = normaliseTemplateSections(sections, pronounSet);
       const splitResult = splitSections(normalisedSections, proposedSections.filter(s => s.included));
-
-      // Insert new-line sections at the correct positions based on proposals
-      const includedProposals = proposedSections.filter(s => s.included);
-      const finalSections: any[] = [];
-      let splitIndex = 0;
-      includedProposals.forEach(proposal => {
-        if (proposal.type === 'new-line') {
-          finalSections.push({ id: makeId(), type: 'new-line', name: '', data: {} });
-        } else if (splitIndex < splitResult.length) {
-          // Find the next non-new-line section from splitResult
-          const next = splitResult[splitIndex];
-          if (next) {
-            finalSections.push(next);
-            splitIndex++;
-            // If typicalCount > 1, consume additional split sections
-            const typicalCount = proposal.typicalCount || 1;
-            for (let tc = 1; tc < typicalCount && splitIndex < splitResult.length; tc++) {
-              finalSections.push(splitResult[splitIndex]);
-              splitIndex++;
-            }
-          }
-        }
-      });
-      // Add any remaining sections that weren't matched
-      while (splitIndex < splitResult.length) {
-        finalSections.push(splitResult[splitIndex]);
-        splitIndex++;
-      }
-      setGeneratedTemplate({ name: result.templateName || `${subject} ${yearGroup} Report Template`, sections: finalSections });
+      setGeneratedTemplate({ name: result.templateName || `${subject} ${yearGroup} Report Template`, sections: splitResult });
 
       // Set up variety for eligible sections
-      const builtForVariety = finalSections
+      const builtForVariety = splitResult
         .filter((s: any) => s.type === 'qualities' || s.type === 'next-steps')
         .map((s: any) => ({
           section: {
@@ -795,23 +762,7 @@ export default function ImportTemplate() {
             💡 These are the sections Claude found in your reports. You can rename any section, remove ones you don't need, or add any that are missing. When you're happy, click <strong>Start Building</strong> and you'll be guided through each section one at a time.
           </div>
 
-          {proposedSections.map((section, i) => {
-            // Render new-line sections as simple dividers
-            if (section.type === 'new-line') {
-              return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '4px 0 10px 0' }}>
-                  <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }} />
-                  <span style={{ fontSize: '11px', color: '#9ca3af', whiteSpace: 'nowrap' }}>↵ Paragraph break</span>
-                  <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }} />
-                  <button
-                    onClick={() => setProposedSections(prev => prev.filter((_, idx) => idx !== i))}
-                    style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: '14px', padding: '0' }}
-                    title="Remove this line break"
-                  >×</button>
-                </div>
-              );
-            }
-            return (
+          {proposedSections.map((section, i) => (
             <div key={i} style={{
               backgroundColor: 'white',
               border: `2px solid ${section.included ? '#e5e7eb' : '#f3f4f6'}`,
@@ -888,8 +839,7 @@ export default function ImportTemplate() {
                 >×</button>
               </div>
             </div>
-            );
-          })}
+          ))}
 
           {/* Add a missing section */}
           <button
