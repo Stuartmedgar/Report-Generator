@@ -85,11 +85,11 @@ Return ONLY valid JSON, no markdown, no backticks:
 
 const IDENTIFY_SECTIONS_SYSTEM = `You are an expert at analysing teacher-written school reports and identifying their structure.
 
-Your task is to read a set of reports and identify what sections a template built from these reports should contain. You are NOT extracting content — only identifying what sections exist and what type each one is.
+Your task is to read a set of reports and identify what sections a template built from these reports should contain. You are NOT extracting content — only identifying what sections exist, what type each one is, and how many separate sentences a typical pupil gets in each section.
 
 SECTION TYPES:
 - "rated-comment" — sentences where the teacher makes a judgement about how well the pupil is doing. Different pupils get different sentences based on their performance level (excellent, good, satisfactory, needs improvement). Examples: overall progress, effort, attainment, classroom application, quality of written work.
-- "qualities" — sentences describing the pupil's personal qualities, character, behaviour, attitude, or working style. Different pupils get different sentences based on their qualities. Also used for next steps and areas for development.
+- "qualities" — sentences describing the pupil's personal qualities, character, behaviour, attitude, or working style. Different pupils get different sentences based on their qualities.
 - "next-steps" — forward-looking sentences about what the pupil should focus on to improve. Grouped by topic area.
 - "personalised-comment" — sentences where the SAME topic appears across the majority of reports, but ONE specific detail varies per pupil. The detail could be a sport, a musical instrument, a book, a target grade, a topic area, or any other pupil-specific information. ONLY flag as personalised-comment if this pattern appears in the majority of reports — not just one or two.
 - "standard-comment" — text that is identical or near-identical across all reports. Every pupil gets exactly the same text.
@@ -105,6 +105,19 @@ RULES:
 7. Do not create separate sections for what is clearly the same topic
 8. Suggest a sensible order — usually: opening judgement → qualities → personalised info → development/next steps
 
+COUNTING TYPICAL SENTENCES — CRITICAL:
+For each section of type "qualities", "next-steps", or "assessment-comment", count how many SEPARATE sentences a typical pupil gets in that part of the report. This is the typicalCount.
+
+For example:
+- If most pupils get 3 separate qualities sentences, typicalCount is 3
+- If most pupils get 4 separate next steps sentences, typicalCount is 4
+- If most pupils get 1 sentence, typicalCount is 1
+
+Count carefully — look at several reports and find the most common number of sentences in that section. Do not count the same sentence twice. A sentence ends with a full stop.
+
+For "rated-comment" and "standard-comment" sections, typicalCount is always 1.
+For "personalised-comment" sections, typicalCount is always 1.
+
 Return ONLY valid JSON, no markdown, no backticks:
 {
   "sections": [
@@ -112,7 +125,8 @@ Return ONLY valid JSON, no markdown, no backticks:
       "name": "Section name",
       "type": "rated-comment | qualities | next-steps | personalised-comment | standard-comment | assessment-comment",
       "description": "One sentence describing what this section contains in plain English",
-      "personalisedTopic": "Only for personalised-comment — what the variable detail is e.g. sport chosen for assessment"
+      "personalisedTopic": "Only for personalised-comment — what the variable detail is e.g. sport chosen for assessment",
+      "typicalCount": 1
     }
   ]
 }`;
@@ -120,11 +134,26 @@ Return ONLY valid JSON, no markdown, no backticks:
 
 const AUTO_BUILD_SYSTEM = `${KNOWLEDGE_BASE}
 
-Your task is to automatically build a complete report template from a set of teacher-written reports. You have been given a list of sections that exist in these reports. For each section, extract the actual sentences from the reports and build the template content.
+Your task is to automatically build a complete report template from a set of teacher-written reports. You have been given a list of sections that exist in these reports, each with a typicalCount indicating how many separate sentences a typical pupil gets in that section.
+
+CRITICAL — REPLICATING REPORTS EXACTLY:
+The finished template must allow a teacher to recreate their original reports exactly. This means:
+- If a section has typicalCount of 3, the template must contain 3 SEPARATE sections of that type so the teacher can select 3 different sentences when writing a report
+- If a section has typicalCount of 1, create 1 section
+- Each separate section covers a DIFFERENT aspect or topic — never duplicate the same topic across multiple sections
+- Name each separate section clearly so the teacher knows what it covers
+
+For example, if "Next Steps" has typicalCount 4, create 4 separate next-steps sections:
+- "Next Steps — Writing" (sentences about improving written work)
+- "Next Steps — Focus" (sentences about focus and effort)  
+- "Next Steps — Participation" (sentences about contributing to discussions)
+- "Next Steps — Continued Progress" (sentences about maintaining standards)
+
+The same principle applies to qualities sections — split by distinct topic.
 
 RULES FOR EACH SECTION TYPE:
 
-For "rated-comment" sections:
+For "rated-comment" sections (typicalCount always 1):
 - Find every sentence of this type across all reports
 - Group by performance level into: excellent, good, satisfactory, needsImprovement
 - Each level must have at least 2-3 options
@@ -132,40 +161,49 @@ For "rated-comment" sections:
 - Replace ALL student names with [Name]
 
 For "qualities" sections:
-- Find every sentence of this type across all reports  
-- Group by the quality or topic described using short clear heading names
-- Each heading should have 2-4 sentence options
+- If typicalCount is 1, create one section with all quality sentences grouped by topic
+- If typicalCount is 2 or more, create that many SEPARATE sections each covering a distinct topic
+- Each section should have 3-6 sentence options grouped under clear headings
 - Copy sentences EXACTLY — do not paraphrase
 - Replace ALL student names with [Name]
+- Preserve any fixed opening phrases exactly as written
 
 For "next-steps" sections:
-- Find every next steps or improvement suggestion sentence
-- Group by topic area
+- If typicalCount is 1, create one section with all next steps sentences
+- If typicalCount is 2 or more, create that many SEPARATE sections each covering a distinct improvement topic
+- Look at the reports to identify the distinct topics — e.g. writing quality, focus, participation, maintaining standards
+- Each section should have 3-6 sentence options
 - Copy sentences EXACTLY — do not paraphrase
 - Replace ALL student names with [Name]
+- CRITICAL: Preserve any fixed opening phrase exactly. If sentences start with "Moving forward," keep that exact phrase at the start of every option in that section
 
-For "standard-comment" sections:
+For "standard-comment" sections (typicalCount always 1):
 - Find the text that is identical or near-identical across all reports
 - Return it as a single content string
 - Replace ALL student names with [Name]
 
 For "assessment-comment" sections:
-- Find assessment-related sentences
+- If typicalCount is 1, create one section
+- If typicalCount is 2 or more, create that many SEPARATE sections
 - Group by performance level: excellent, good, satisfactory, needsImprovement, notCompleted
 - Replace ALL student names with [Name] and scores/percentages with [Score]
 
-For "personalised-comment" sections:
+For "personalised-comment" sections (typicalCount always 1):
 - Find sentences where one specific detail varies per pupil
 - Replace the variable detail with [Info 1] (and [Info 2] if two distinct details in same sentence)
 - Group by scenario or tone
-- Mark these sections with a flag indicating they may need refinement
+- Mark these sections with needsRefinement: true
 - Copy sentences EXACTLY — do not paraphrase
+
+ALSO — CLOSING ENCOURAGEMENT:
+Look for short closing encouragement sentences that appear at the end of reports (e.g. "Keep up the good work!", "Keep working hard!"). If these appear consistently, add them as a separate qualities section named "Closing Encouragement" with typicalCount 1.
 
 CRITICAL RULES:
 - Extract ONLY sentences that actually appear in the reports — do NOT generate new ones
 - Replace ALL student names with [Name]
 - Keep pronoun consistency within each section
 - Do not mix [Name]-led and pronoun-led sentences in the same section
+- The total number of sections in the template should reflect the total number of sentences a teacher writes per pupil
 
 Return ONLY valid JSON, no markdown, no backticks:
 {
@@ -368,7 +406,7 @@ serve(async (req) => {
         headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
-          max_tokens: 2000,
+          max_tokens: 3000,
           system: IDENTIFY_SECTIONS_SYSTEM,
           messages: [{
             role: "user",
@@ -402,7 +440,7 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
 
     try {
       const sectionsList = builtSections.map((s: any, i: number) =>
-        `${i + 1}. "${s.name}" — type: ${s.type}${s.personalisedTopic ? ` (variable detail: ${s.personalisedTopic})` : ''}${s.description ? `\n   Description: ${s.description}` : ''}`
+        `${i + 1}. "${s.name}" — type: ${s.type}, typicalCount: ${s.typicalCount || 1}${s.personalisedTopic ? ` (variable detail: ${s.personalisedTopic})` : ''}${s.description ? `\n   Description: ${s.description}` : ''}`
       ).join('\n');
 
       const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -410,7 +448,7 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
         headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
-          max_tokens: 8000,
+          max_tokens: 12000,
           system: AUTO_BUILD_SYSTEM,
           messages: [{
             role: "user",
@@ -418,7 +456,9 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
 Year Group: ${yearGroup || "Not specified"}
 Pronoun set: ${pronounSet}
 
-Build a complete template from these reports. The template should contain these sections in this order:
+Build a complete template from these reports. The sections and their typicalCount are listed below.
+IMPORTANT: For any section with typicalCount greater than 1, you MUST create that many SEPARATE sections in the output — one per typical sentence — each covering a distinct topic. Do not put them all in one section.
+
 ${sectionsList}
 
 For each section, extract the actual sentences from the reports. Do NOT generate new sentences.
