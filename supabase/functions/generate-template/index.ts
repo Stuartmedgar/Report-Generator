@@ -95,6 +95,7 @@ SECTION TYPES:
 - "standard-comment" — text that is identical or near-identical across all reports. Every pupil gets exactly the same text.
 - "assessment-comment" — sentences specifically about a formal assessment or test result, where the teacher writes DIFFERENT sentences depending on performance level (excellent, good, satisfactory, struggling). Use this ONLY when the language itself changes based on how well the pupil did.
 - IMPORTANT: If the assessment section uses the SAME sentence structure for every pupil but with a variable score or grade typed in (e.g. "[Name] scored X% in the test"), classify it as "personalised-comment" NOT "assessment-comment". The variable score is the personal detail.
+- "new-line" — a paragraph break between sections. Include these wherever the reports naturally start a new paragraph.
 
 RULES:
 1. Read ALL the reports carefully before identifying sections
@@ -105,6 +106,15 @@ RULES:
 6. If a personalised-comment topic appears in different positions across different reports, still flag it as one section
 7. Do not create separate sections for what is clearly the same topic
 8. Suggest a sensible order — usually: opening judgement → qualities → personalised info → development/next steps
+
+PARAGRAPH BREAKS — CRITICAL:
+Look carefully at where new paragraphs naturally begin in the reports. Insert a "new-line" entry in the sections list at each natural paragraph boundary. For example if the reports have:
+- Paragraph 1: Opening progress sentence and qualities
+- Paragraph 2: Course content and activities
+- Paragraph 3: Assessment scores
+- Paragraph 4: Next steps and encouragement
+
+Then insert a new-line between each of those paragraphs. The new-line entries should reflect the actual paragraph structure of the reports — not after every section, only at genuine paragraph breaks.
 
 COUNTING TYPICAL SENTENCES — CRITICAL:
 For each section of type "qualities", "next-steps", or "assessment-comment", count how many SEPARATE sentences a typical pupil gets in that part of the report. This is the typicalCount.
@@ -118,13 +128,14 @@ Count carefully — look at several reports and find the most common number of s
 
 For "rated-comment" and "standard-comment" sections, typicalCount is always 1.
 For "personalised-comment" sections, typicalCount is always 1.
+For "new-line" sections, typicalCount is always 0.
 
 Return ONLY valid JSON, no markdown, no backticks:
 {
   "sections": [
     {
       "name": "Section name",
-      "type": "rated-comment | qualities | next-steps | personalised-comment | standard-comment | assessment-comment",
+      "type": "rated-comment | qualities | next-steps | personalised-comment | standard-comment | assessment-comment | new-line",
       "description": "One sentence describing what this section contains in plain English",
       "personalisedTopic": "Only for personalised-comment — what the variable detail is e.g. sport chosen for assessment",
       "typicalCount": 1
@@ -149,14 +160,16 @@ For "rated-comment" sections:
 For "qualities" sections:
 - Find every sentence of this type across all reports
 - Group by the quality or topic described using short clear heading names
-- Each heading should have 2-4 sentence options
+- CRITICAL: Create a SEPARATE heading for each genuinely distinct quality or topic — do not merge sentences about different things into the same heading. For example, sentences about teamwork, sentences about individual work style, sentences about classroom discussion, sentences about focus challenges, and sentences about effort and behaviour are all DIFFERENT topics and must each have their own heading
+- Each heading should have 2-6 sentence options
 - Copy sentences EXACTLY — do not paraphrase
 - Replace ALL student names with [Name]
 
 For "next-steps" sections:
 - Find every next steps or improvement suggestion sentence
 - Group by topic area using short clear heading names
-- Each heading should have 2-4 sentence options
+- CRITICAL: Create a SEPARATE heading for each genuinely distinct topic — do not merge sentences about different things into the same heading just to reduce the number of headings. For example, sentences about writing quality, sentences about distraction/focus, sentences about participation in discussions, sentences about seeking support, and sentences about rushing work are all DIFFERENT topics and must each have their own heading
+- Each heading should have 2-6 sentence options
 - Copy sentences EXACTLY — do not paraphrase
 - Replace ALL student names with [Name]
 - CRITICAL: Preserve any fixed opening phrase exactly as it appears (e.g. if sentences start with "Moving forward," keep that phrase at the start of every option in that heading)
