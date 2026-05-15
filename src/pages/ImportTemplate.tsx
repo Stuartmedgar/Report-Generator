@@ -8,7 +8,7 @@ import { TemplateSection } from '../types';
 
 type PronounSet = 'he/his' | 'she/her' | 'they/their';
 type OpenerType = 'name' | 'pronoun';
-type MainStep = 'paste' | 'proposals' | 'builder' | 'quick-building' | 'variety' | 'generating' | 'preview' | 'saved';
+type MainStep = 'paste' | 'builder' | 'variety' | 'generating' | 'preview' | 'saved';
 type SectionType = 'qualities' | 'next-steps' | 'assessment-comment' | 'standard-comment' | 'personalised-comment' | 'rated-comment' | 'optional-additional-comment';
 
 interface BuiltSection {
@@ -18,16 +18,6 @@ interface BuiltSection {
   openerType: OpenerType;
   positionType: string;
   data: any;
-}
-
-interface ProposedSection {
-  name: string;
-  type: string;
-  description: string;
-  personalisedTopic?: string;
-  typicalCount?: number;
-  included: boolean;
-  editing: boolean;
 }
 
 interface Heading { name: string; comments: string[]; }
@@ -45,41 +35,8 @@ function stripPercent(text: string) {
 
 function makeId() { return `s_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`; }
 
-function getSectionTypeIcon(type: string): string {
-  const icons: Record<string, string> = {
-    'rated-comment': '⭐',
-    'qualities': '🎯',
-    'next-steps': '🚀',
-    'personalised-comment': '👤',
-    'standard-comment': '📌',
-    'assessment-comment': '📊',
-  };
-  return icons[type] || '📝';
-}
 
-function getSectionTypeLabel(type: string): string {
-  const labels: Record<string, string> = {
-    'rated-comment': 'Rating',
-    'qualities': 'Qualities / Development / Next Steps',
-    'next-steps': 'Next Steps',
-    'personalised-comment': 'Personal Information',
-    'standard-comment': 'Standard Comment',
-    'assessment-comment': 'Assessment',
-  };
-  return labels[type] || type;
-}
 
-function getSectionTypeBadgeColor(type: string): string {
-  const colors: Record<string, string> = {
-    'rated-comment': '#3b82f6',
-    'qualities': '#f59e0b',
-    'next-steps': '#06b6d4',
-    'personalised-comment': '#f59e0b',
-    'standard-comment': '#10b981',
-    'assessment-comment': '#8b5cf6',
-  };
-  return colors[type] || '#6b7280';
-}
 
 function normalisePronouns(text: string, pronounSet: PronounSet): string {
   if (pronounSet === 'he/his') {
@@ -179,9 +136,7 @@ export default function ImportTemplate() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
 
-  // Proposed sections state
-  const [proposedSections, setProposedSections] = useState<ProposedSection[]>([]);
-  const [isQuickBuilding, setIsQuickBuilding] = useState(false);
+
 
   // Selection state - accumulated
   const [selectedText, setSelectedText] = useState('');
@@ -225,10 +180,7 @@ export default function ImportTemplate() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [subMenu, setSubMenu] = useState<string | null>(null);
 
-  // Builder guide state — which proposed section is currently active
-  const [activeGuideIndex, setActiveGuideIndex] = useState<number | null>(null);
-  // Pre-filled name for the current guided section
-  const [guidedSectionName, setGuidedSectionName] = useState('');
+
 
   const pronounCapital = getPronounCapital(pronounSet);
 
@@ -296,120 +248,20 @@ export default function ImportTemplate() {
     return response.json();
   };
 
-  // ─── IDENTIFY SECTIONS ────────────────────────────────────────────────────
 
-  const handleIdentifySections = async () => {
+  // ─── QUICK BUILD ──────────────────────────────────────────────────────────
+
+  const handleQuickBuild = async () => {
     if (!subject.trim()) { setError('Please enter the subject.'); return; }
     if (!rawReportText.trim()) { setError('Please paste your reports.'); return; }
     setError(null);
     setIsLoading(true);
     setLoadingMessage('Reading your reports and identifying sections...');
     try {
-      const result = await callApi({
-        mode: 'identify-sections',
-        subject,
-        yearGroup,
-        reportText: rawReportText,
-      });
-      const sections: ProposedSection[] = (result.sections || []).map((s: any) => ({
-        name: s.name,
-        type: s.type,
-        description: s.description,
-        personalisedTopic: s.personalisedTopic || '',
-        typicalCount: s.typicalCount || 1,
-        included: true,
-        editing: false,
-      }));
-      setProposedSections(sections);
-      setMainStep('proposals');
-    } catch (err: any) {
-      setError('Could not identify sections. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-
-
-  // ─── POST-PROCESS: SPLIT SECTIONS BY typicalCount ─────────────────────────
-
-  const splitSections = (sections: any[], proposedSections: ProposedSection[]): any[] => {
-    const result: any[] = [];
-
-    sections.forEach(section => {
-      // Find the matching proposed section to get typicalCount
-      const proposed = proposedSections.find(p =>
-        p.name.toLowerCase() === section.name.toLowerCase() ||
-        section.name.toLowerCase().includes(p.name.toLowerCase()) ||
-        p.name.toLowerCase().includes(section.name.toLowerCase())
-      );
-      const typicalCount = proposed?.typicalCount || 1;
-
-      // Only split qualities and next-steps sections where typicalCount > 1
-      if (typicalCount > 1 && (section.type === 'qualities' || section.type === 'next-steps')) {
-        const isNextSteps = section.type === 'next-steps';
-        const headings = isNextSteps
-          ? Object.entries(section.data?.focusAreas || {})
-          : Object.entries(section.data?.comments || {});
-
-        if (headings.length <= 1) {
-          // Can't split — just keep as is
-          result.push(section);
-          return;
-        }
-
-        // Split headings into typicalCount separate sections
-        // Distribute headings as evenly as possible
-        const countToUse = Math.min(typicalCount, headings.length);
-        const chunkSize = Math.ceil(headings.length / countToUse);
-
-        for (let i = 0; i < countToUse; i++) {
-          const chunk = headings.slice(i * chunkSize, (i + 1) * chunkSize);
-          if (chunk.length === 0) continue;
-
-          // Name the section after its first heading topic
-          const sectionName = chunk.length === 1
-            ? `${section.name} — ${chunk[0][0]}`
-            : section.name + (i > 0 ? ` (${i + 1})` : '');
-
-          if (isNextSteps) {
-            const focusAreas: Record<string, string[]> = {};
-            chunk.forEach(([key, val]) => { focusAreas[key] = val as string[]; });
-            result.push({
-              ...section,
-              id: makeId(),
-              name: sectionName,
-              data: { ...section.data, focusAreas },
-            });
-          } else {
-            const comments: Record<string, string[]> = {};
-            chunk.forEach(([key, val]) => { comments[key] = val as string[]; });
-            result.push({
-              ...section,
-              id: makeId(),
-              name: sectionName,
-              data: { ...section.data, comments },
-            });
-          }
-        }
-      } else {
-        // No split needed
-        result.push(section);
-      }
-    });
-
-    return result;
-  };
-
-  // ─── QUICK BUILD ──────────────────────────────────────────────────────────
-
-  const handleQuickBuild = async () => {
-    const includedSections = proposedSections.filter(s => s.included);
-    if (includedSections.length === 0) { setError('Please include at least one section.'); return; }
-    setError(null);
-    setIsLoading(true);
-    setIsQuickBuilding(true);
-    setLoadingMessage('Building your template automatically...');
+      const identified = await callApi({ mode: 'identify-sections', subject, yearGroup, reportText: rawReportText });
+      const identifiedSections = (identified.sections || []).filter((s: any) => s.type !== 'new-line');
+      if (identifiedSections.length === 0) throw new Error('Could not identify sections');
+      setLoadingMessage('Building your template automatically...');
     try {
       const result = await callApi({
         mode: 'auto-build',
@@ -417,8 +269,11 @@ export default function ImportTemplate() {
         yearGroup,
         pronounSet,
         reportText: rawReportText,
-        builtSections: includedSections,
+        builtSections: identifiedSections,
       });
+      // Build typicalCount map
+      const typicalCountMap: Record<string, number> = {};
+      identifiedSections.forEach((s: any) => { typicalCountMap[s.name] = s.typicalCount || 1; });
 
       if (!result.sections || result.sections.length === 0) throw new Error('No sections returned');
 
@@ -430,7 +285,7 @@ export default function ImportTemplate() {
       }));
 
       const normalisedSections = normaliseTemplateSections(sections, pronounSet);
-      const splitResult = splitSections(normalisedSections, proposedSections.filter(s => s.included));
+      const splitResult = splitSections(normalisedSections, typicalCountMap);
       setGeneratedTemplate({ name: result.templateName || `${subject} ${yearGroup} Report Template`, sections: splitResult });
 
       // Set up variety for eligible sections
@@ -461,15 +316,6 @@ export default function ImportTemplate() {
 
   const addSection = (section: BuiltSection) => {
     setBuiltSections(prev => [...prev, section]);
-    // Advance guide to next incomplete section
-    if (activeGuideIndex !== null) {
-      const includedSections = proposedSections.filter(s => s.included);
-      if (activeGuideIndex < includedSections.length - 1) {
-        setActiveGuideIndex(activeGuideIndex + 1);
-      } else {
-        setActiveGuideIndex(null);
-      }
-    }
     setCurrentSection(null);
     setSubMenu(null);
     setMenuOpen(false);
@@ -663,7 +509,7 @@ export default function ImportTemplate() {
     setPronounSet('they/their'); setBuiltSections([]); setGeneratedTemplate(null);
     setError(null); clearSelection(); setCurrentSection(null); setSubMenu(null);
     setMenuOpen(false); setAssessPartIndex(1); setAssessSectionName('');
-    setPiName(''); setPiInstruction(''); setProposedSections([]); setActiveGuideIndex(null);
+    setPiName(''); setPiInstruction('');
   };
 
   const getSectionTypeColor = (type: string) => ({
@@ -685,7 +531,7 @@ export default function ImportTemplate() {
       <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '48px 40px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: '400px' }}>
         <div style={{ fontSize: '48px', marginBottom: '20px' }}>{mainStep === 'generating' ? '🪄' : '🔍'}</div>
         <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#111827' }}>
-          {mainStep === 'generating' ? 'Building Your Template' : mainStep === 'paste' ? 'Identifying Sections' : isQuickBuilding ? 'Building Your Template' : 'Reading Your Reports'}
+          {mainStep === 'generating' ? 'Building Your Template' : 'Reading Your Reports'}
         </h2>
         <p style={{ margin: '0 0 24px 0', color: '#6b7280', fontSize: '14px' }}>{loadingMessage}</p>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
@@ -735,175 +581,33 @@ export default function ImportTemplate() {
           <textarea value={rawReportText} onChange={e => setRawReportText(e.target.value)} placeholder="Paste all your reports here..." style={{ ...txa, minHeight: '300px' }} />
         </div>
         {error && <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px', marginBottom: '12px', color: '#b91c1c', fontSize: '14px' }}>⚠️ {error}</div>}
-        <button onClick={handleIdentifySections} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px' }}>
-          Analyse My Reports →
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <button onClick={handleQuickBuild} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px' }}>
+            ⚡ Quick Build with AI — 2 minutes
+          </button>
+          <button onClick={() => {
+            if (!subject.trim()) { setError('Please enter the subject.'); return; }
+            if (!rawReportText.trim()) { setError('Please paste your reports.'); return; }
+            setError(null); setMainStep('builder');
+          }} style={{ ...btnS, width: '100%', padding: '16px', fontSize: '16px', textAlign: 'center' }}>
+            🪄 Guided Wizard — highlight section by section
+          </button>
+        </div>
       </main>
     </div>
   );
 
-  // ─── STEP: PROPOSALS ──────────────────────────────────────────────────────
-
-  if (mainStep === 'proposals') {
-    const includedCount = proposedSections.filter(s => s.included).length;
-
-    return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-        <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button onClick={() => setMainStep('paste')} style={btnS}>← Back</button>
-          <div style={{ flex: 1 }}>
-            <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: '#111827' }}>🔍 Sections Identified</h1>
-            <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Claude has read your reports and identified {proposedSections.length} sections. Review and adjust, then start building.</p>
-          </div>
-        </header>
-        <main style={{ maxWidth: '800px', margin: '0 auto', padding: '32px 24px' }}>
-
-          <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '14px 16px', marginBottom: '24px', fontSize: '13px', color: '#1e40af', lineHeight: '1.5' }}>
-            💡 These are the sections Claude found in your reports. You can rename any section, remove ones you don't need, or add any that are missing. When you're happy, click <strong>Start Building</strong> and you'll be guided through each section one at a time.
-          </div>
-
-          {proposedSections.map((section, i) => (
-            <div key={i} style={{
-              backgroundColor: 'white',
-              border: `2px solid ${section.included ? '#e5e7eb' : '#f3f4f6'}`,
-              borderRadius: '10px',
-              padding: '14px 16px',
-              marginBottom: '10px',
-              opacity: section.included ? 1 : 0.5,
-              transition: 'all 0.2s ease',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                {/* Include/exclude toggle */}
-                <input
-                  type="checkbox"
-                  checked={section.included}
-                  onChange={() => setProposedSections(prev => prev.map((s, idx) => idx === i ? { ...s, included: !s.included } : s))}
-                  style={{ width: '16px', height: '16px', cursor: 'pointer', marginTop: '2px', flexShrink: 0 }}
-                />
-
-                <div style={{ flex: 1 }}>
-                  {/* Section name — editable */}
-                  {section.editing ? (
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
-                      <input
-                        type="text"
-                        value={section.name}
-                        onChange={e => setProposedSections(prev => prev.map((s, idx) => idx === i ? { ...s, name: e.target.value } : s))}
-                        style={{ ...inp, fontSize: '15px', fontWeight: '600', flex: 1 }}
-                        autoFocus
-                      />
-                      <button
-                        onClick={() => setProposedSections(prev => prev.map((s, idx) => idx === i ? { ...s, editing: false } : s))}
-                        style={{ ...btnG, padding: '6px 12px', fontSize: '12px' }}
-                      >Done</button>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '16px' }}>{getSectionTypeIcon(section.type)}</span>
-                      <span style={{ fontSize: '15px', fontWeight: '600', color: '#111827' }}>{section.name}</span>
-                      <button
-                        onClick={() => setProposedSections(prev => prev.map((s, idx) => idx === i ? { ...s, editing: true } : s))}
-                        style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '12px', padding: '0 4px' }}
-                      >✏️</button>
-                    </div>
-                  )}
-
-                  {/* Type badge */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                    <span style={{
-                      backgroundColor: getSectionTypeBadgeColor(section.type),
-                      color: 'white',
-                      fontSize: '10px',
-                      fontWeight: '600',
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                    }}>{getSectionTypeLabel(section.type)}</span>
-                  </div>
-
-                  {/* Description */}
-                  <p style={{ margin: 0, fontSize: '13px', color: '#6b7280', lineHeight: '1.4' }}>{section.description}</p>
-
-                  {/* Personalised topic if applicable */}
-                  {section.type === 'personalised-comment' && section.personalisedTopic && (
-                    <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#d97706', fontStyle: 'italic' }}>
-                      Variable detail: {section.personalisedTopic}
-                    </p>
-                  )}
-                </div>
-
-                {/* Remove button */}
-                <button
-                  onClick={() => setProposedSections(prev => prev.filter((_, idx) => idx !== i))}
-                  style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: '18px', padding: '0', flexShrink: 0 }}
-                  title="Remove this section"
-                >×</button>
-              </div>
-            </div>
-          ))}
-
-          {/* Add a missing section */}
-          <button
-            onClick={() => setProposedSections(prev => [...prev, {
-              name: 'New Section',
-              type: 'qualities',
-              description: 'Add a section that Claude missed',
-              personalisedTopic: '',
-              included: true,
-              editing: true,
-            }])}
-            style={{ ...btnS, width: '100%', marginBottom: '24px', fontSize: '13px' }}
-          >
-            + Add a section Claude missed
-          </button>
-
-          {error && <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px', marginBottom: '12px', color: '#b91c1c', fontSize: '14px' }}>⚠️ {error}</div>}
-
-          {/* Two-path choice */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <button
-              onClick={handleQuickBuild}
-              style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '10px', padding: '20px 16px', cursor: 'pointer', textAlign: 'left' }}
-            >
-              <div style={{ fontSize: '24px', marginBottom: '8px' }}>⚡</div>
-              <div style={{ fontSize: '16px', fontWeight: '700', marginBottom: '4px' }}>Quick Build</div>
-              <div style={{ fontSize: '12px', opacity: 0.9, marginBottom: '8px' }}>~2 minutes</div>
-              <div style={{ fontSize: '12px', opacity: 0.85, lineHeight: '1.4' }}>Claude builds the full template automatically. Review and refine afterwards if needed.</div>
-            </button>
-
-            <button
-              onClick={() => {
-                if (includedCount === 0) { setError('Please include at least one section.'); return; }
-                setError(null);
-                setActiveGuideIndex(0);
-                setBuiltSections([]);
-                setMainStep('builder');
-              }}
-              style={{ backgroundColor: '#8b5cf6', color: 'white', border: 'none', borderRadius: '10px', padding: '20px 16px', cursor: 'pointer', textAlign: 'left' }}
-            >
-              <div style={{ fontSize: '24px', marginBottom: '8px' }}>🪄</div>
-              <div style={{ fontSize: '16px', fontWeight: '700', marginBottom: '4px' }}>Guided Wizard</div>
-              <div style={{ fontSize: '12px', opacity: 0.9, marginBottom: '8px' }}>~20 minutes</div>
-              <div style={{ fontSize: '12px', opacity: 0.85, lineHeight: '1.4' }}>Highlight examples section by section for the most accurate result.</div>
-            </button>
-          </div>
-        </main>
-      </div>
-    );
-  }
 
   // ─── STEP: BUILDER (split panel) ──────────────────────────────────────────
 
   if (mainStep === 'builder') {
     const lastBuiltSection = builtSections.length > 0 ? builtSections[builtSections.length - 1] : null;
     const canCopyLast = lastBuiltSection && (lastBuiltSection.type === 'qualities' || lastBuiltSection.type === 'next-steps');
-    const includedSections = proposedSections.filter(s => s.included);
-    const activeGuideSection = activeGuideIndex !== null ? includedSections[activeGuideIndex] : null;
-
     return (
       <div style={{ height: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
         <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, zIndex: 10, position: 'sticky', top: 0 }}>
-          <button onClick={() => setMainStep('proposals')} style={btnS}>← Back</button>
+          <button onClick={() => setMainStep('paste')} style={btnS}>← Back</button>
           <div style={{ flex: 1 }}>
             <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#111827' }}>🪄 {subject} {yearGroup} — Build Template</h1>
             <p style={{ margin: 0, fontSize: '12px', color: '#6b7280' }}>{builtSections.length} section{builtSections.length !== 1 ? 's' : ''} built — highlight text from reports, then choose section type</p>
@@ -952,63 +656,6 @@ export default function ImportTemplate() {
 
           {/* RIGHT: Builder panel */}
           <div style={{ flex: '0 0 400px', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-
-            {/* Guide panel — proposed sections checklist */}
-            {includedSections.length > 0 && (
-              <div style={{ margin: '12px 12px 0', backgroundColor: '#f9fafb', borderRadius: '8px', padding: '10px 12px', flexShrink: 0, maxHeight: '160px', overflow: 'auto' }}>
-                <p style={{ margin: '0 0 6px 0', fontSize: '11px', fontWeight: '600', color: '#374151' }}>YOUR TEMPLATE SECTIONS:</p>
-                {includedSections.map((s, i) => {
-                  const isBuilt = builtSections.some(b => b.name === s.name);
-                  const isActive = i === activeGuideIndex;
-                  return (
-                    <div
-                      key={i}
-                      onClick={() => {
-                        setActiveGuideIndex(i);
-                        setSubMenu(null);
-                        clearSelection();
-                        setGuidedSectionName(s.name);
-                        setPiName(s.name);
-                        setPiInstruction(s.personalisedTopic ? `Enter this pupil's ${s.personalisedTopic}` : '');
-                        // Auto-open the correct submenu for this section type
-                        const typeMap: Record<string, string> = {
-                          'rated-comment': 'rating',
-                          'qualities': 'qualities',
-                          'next-steps': 'nextsteps',
-                          'next_steps': 'nextsteps',
-                          'personalised-comment': 'personalinfo',
-                          'standard-comment': 'standard',
-                          'assessment-comment': 'assessment',
-                        };
-                        const mapped = typeMap[s.type];
-                        if (mapped) setSubMenu(mapped);
-                      }}
-                      style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', cursor: 'pointer', padding: '3px 6px', borderRadius: '4px', backgroundColor: isActive ? '#eff6ff' : 'transparent' }}
-                    >
-                      <span style={{ fontSize: '12px', width: '16px', textAlign: 'center' }}>
-                        {isBuilt ? '✅' : isActive ? '▶' : '○'}
-                      </span>
-                      <span style={{ fontSize: '12px', color: isActive ? '#1d4ed8' : isBuilt ? '#6b7280' : '#374151', fontWeight: isActive ? '600' : '400', textDecoration: isBuilt ? 'line-through' : 'none' }}>
-                        {getSectionTypeIcon(s.type)} {s.name}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Active guide prompt */}
-            {activeGuideSection && (
-              <div style={{ margin: '8px 12px 0', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 12px', flexShrink: 0 }}>
-                <p style={{ margin: '0 0 2px 0', fontSize: '12px', fontWeight: '700', color: '#1e40af' }}>
-                  Now building: {getSectionTypeIcon(activeGuideSection.type)} {activeGuideSection.name}
-                </p>
-                <p style={{ margin: 0, fontSize: '11px', color: '#3b82f6', lineHeight: '1.4' }}>
-                  {activeGuideSection.description}
-                  {activeGuideSection.personalisedTopic && ` (${activeGuideSection.personalisedTopic})`}
-                </p>
-              </div>
-            )}
 
             {/* Selection indicator */}
             {(accumulatedText || pendingSelection) && (
@@ -1119,16 +766,12 @@ export default function ImportTemplate() {
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
                   <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>
-                      {activeGuideSection?.type === 'rated-comment'
-                        ? `💡 Highlight sentences from your reports that describe ${activeGuideSection.name.toLowerCase()} — include examples from pupils at different levels (excellent, good, satisfactory, struggling). The more examples you highlight the better. Then choose your scale below.`
-                        : '💡 Highlight the progress/rating sentences from several reports on the left, then choose your scale below.'}
-                    </p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the progress/rating sentences from several reports on the left, then choose your scale below.</p>
                   </div>
                   <div style={{ marginBottom: '10px' }}>
                     <label style={lbl}>Section name</label>
                     <input type="text" placeholder="e.g. Overall Progress, Effort" style={inp} id="rating-name-input"
-                      defaultValue={activeGuideSection?.type === 'rated-comment' ? activeGuideSection.name : 'Progress'} />
+                      defaultValue="Progress" />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <button disabled={!accumulatedText} onClick={() => {
@@ -1154,16 +797,12 @@ export default function ImportTemplate() {
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
                   <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>
-                      {activeGuideSection?.type === 'qualities'
-                        ? `💡 Highlight examples of ${activeGuideSection.name.toLowerCase()} sentences from several reports — include a range of different pupils. Claude will find ALL similar sentences across all reports and group them by topic.`
-                        : '💡 Highlight the qualities/strengths sentences from several reports on the left. Include a range of different types of pupil. Claude will find ALL similar sentences across all reports.'}
-                    </p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the qualities/strengths sentences from several reports on the left. Include a range of different types of pupil. Claude will find ALL similar sentences across all reports.</p>
                   </div>
                   <div style={{ marginBottom: '10px' }}>
                     <label style={lbl}>Section name</label>
                     <input type="text" placeholder="e.g. Personal Qualities, Strengths" style={inp} id="qualities-name-input"
-                      defaultValue={activeGuideSection?.type === 'qualities' ? activeGuideSection.name : 'Personal Qualities'} />
+                      defaultValue="Personal Qualities" />
                   </div>
                   <div style={{ marginBottom: '10px' }}>
                     <label style={lbl}>Opener</label>
@@ -1188,21 +827,16 @@ export default function ImportTemplate() {
                 <div>
                   <button onClick={() => { setSubMenu(null); setPiName(''); setPiInstruction(''); setError(null); }} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
                   <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>
-                      {activeGuideSection?.personalisedTopic
-                        ? `💡 Highlight example sentences about ${activeGuideSection.personalisedTopic} from several reports. If you need two separate sections (e.g. first sport and second sport), highlight only one type at a time and build each separately. Claude will replace the specific detail with [Info 1] or [Info 2].`
-                        : '💡 Highlight example sentences that contain a personal detail unique to each pupil — like a sport, target grade, or personal goal. Claude will find all similar sentences and replace the unique detail with [Info 1], [Info 2] etc.'}
-                    </p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight example sentences that contain a personal detail unique to each pupil — like a sport, target grade, or personal goal. Claude will find all similar sentences and replace the unique detail with [Info 1], [Info 2] etc.</p>
                   </div>
                   <div style={{ marginBottom: '10px' }}>
                     <label style={lbl}>Section name</label>
-                    <input type="text" value={piName || (activeGuideSection?.type === 'personalised-comment' ? activeGuideSection.name : '')}
-                      onChange={e => setPiName(e.target.value)} placeholder="e.g. Focus Sport, Target Grade, Personal Goal" style={inp} />
+                    <input type="text" value={piName} onChange={e => setPiName(e.target.value)} placeholder="e.g. Focus Sport, Target Grade, Personal Goal" style={inp} />
                   </div>
                   <div style={{ marginBottom: '12px' }}>
                     <label style={lbl}>Instruction for teacher</label>
                     <input type="text" value={piInstruction} onChange={e => setPiInstruction(e.target.value)}
-                      placeholder={activeGuideSection?.personalisedTopic ? `e.g. Enter the pupil's ${activeGuideSection.personalisedTopic}` : 'e.g. Enter this pupil\'s chosen sport'}
+                      placeholder="e.g. Enter this pupil's chosen sport"
                       style={inp} />
                   </div>
                   <button
@@ -1240,7 +874,7 @@ export default function ImportTemplate() {
               {subMenu === 'standard|single' && (
                 <div>
                   <button onClick={() => setSubMenu('standard')} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
-                  <div style={{ marginBottom: '10px' }}><label style={lbl}>Section name</label><input type="text" value={stdName || (activeGuideSection?.type === 'standard-comment' ? activeGuideSection.name : '')} onChange={e => setStdName(e.target.value)} placeholder="e.g. Course Content, Assessment Analysis" style={inp} /></div>
+                  <div style={{ marginBottom: '10px' }}><label style={lbl}>Section name</label><input type="text" value={stdName} onChange={e => setStdName(e.target.value)} placeholder="e.g. Course Content, Assessment Analysis" style={inp} /></div>
                   <div style={{ marginBottom: '12px' }}><label style={lbl}>Text (replace pupil names with [Name])</label><textarea value={stdContent} onChange={e => setStdContent(e.target.value)} placeholder="Paste the text here..." style={{ ...txa, minHeight: '100px' }} /></div>
                   <button onClick={() => {
                     if (!stdName.trim() || !stdContent.trim()) { setError('Please enter a name and content.'); return; }
@@ -1281,15 +915,11 @@ export default function ImportTemplate() {
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
                   <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>
-                      {activeGuideSection?.type === 'assessment-comment'
-                        ? `💡 Highlight ${activeGuideSection.name.toLowerCase()} sentences from several reports — include examples from pupils who did well and pupils who struggled. Then choose which type fits best.`
-                        : '💡 Highlight the assessment sentence(s) from your reports, name the section, then choose which type fits. Add as many assessment sections as you need for different tests.'}
-                    </p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the assessment sentence(s) from your reports, name the section, then choose which type fits. Add as many assessment sections as you need for different tests.</p>
                   </div>
                   <div style={{ marginBottom: '12px' }}>
                     <label style={lbl}>Section name <span style={{ color: '#9ca3af', fontWeight: '400' }}>(e.g. MQS Assessment, Calculator Test)</span></label>
-                    <input type="text" value={assessSectionName || (activeGuideSection?.type === 'assessment-comment' ? activeGuideSection.name : '')} onChange={e => setAssessSectionName(e.target.value)} placeholder="Assessment" style={inp} />
+                    <input type="text" value={assessSectionName} onChange={e => setAssessSectionName(e.target.value)} placeholder="Assessment" style={inp} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <button disabled={!accumulatedText} onClick={() => {
@@ -1318,13 +948,9 @@ export default function ImportTemplate() {
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
                   <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>
-                      {activeGuideSection
-                        ? `💡 Highlight ${activeGuideSection.name.toLowerCase()} sentences from several reports. Include a variety of different types. Claude will find ALL similar sentences across all reports and group by topic.`
-                        : '💡 Highlight the Areas for Development sentences from several reports. Include a variety of different types. Claude will find ALL development sentences across all reports and group by topic.'}
-                    </p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the Areas for Development sentences from several reports. Include a variety of different types. Claude will find ALL development sentences across all reports and group by topic.</p>
                   </div>
-                  <div style={{ marginBottom: '10px' }}><label style={lbl}>Section name</label><input type="text" placeholder="e.g. Areas for Development" style={inp} id="dev-name-input" defaultValue={activeGuideSection?.name || 'Areas for Development'} /></div>
+                  <div style={{ marginBottom: '10px' }}><label style={lbl}>Section name</label><input type="text" placeholder="e.g. Areas for Development" style={inp} id="dev-name-input" defaultValue="Areas for Development" /></div>
                   <div style={{ marginBottom: '10px' }}>
                     <label style={lbl}>Opener</label>
                     <div style={{ display: 'flex', gap: '6px' }}>
@@ -1348,13 +974,9 @@ export default function ImportTemplate() {
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
                   <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>
-                      {activeGuideSection
-                        ? `💡 Highlight ${activeGuideSection.name.toLowerCase()} sentences from several reports. Include a variety of different pupils. If sentences always start with a fixed phrase like "Moving forward," include that in your highlight. Claude will group by topic.`
-                        : '💡 Highlight the next steps sentences from several reports. If they always start with "Moving forward," include that. Claude will group by topic.'}
-                    </p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the next steps sentences from several reports. If they always start with "Moving forward," include that. Claude will group by topic.</p>
                   </div>
-                  <div style={{ marginBottom: '10px' }}><label style={lbl}>Section name</label><input type="text" placeholder="e.g. Next Steps, Moving Forward" style={inp} id="ns-name-input" defaultValue={activeGuideSection?.name || 'Next Steps'} /></div>
+                  <div style={{ marginBottom: '10px' }}><label style={lbl}>Section name</label><input type="text" placeholder="e.g. Next Steps, Moving Forward" style={inp} id="ns-name-input" defaultValue="Next Steps" /></div>
                   <div style={{ marginBottom: '10px' }}>
                     <label style={lbl}>Opener</label>
                     <div style={{ display: 'flex', gap: '6px' }}>
