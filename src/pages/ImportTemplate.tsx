@@ -343,7 +343,6 @@ export default function ImportTemplate() {
       setError('Quick build failed. Please try the guided wizard instead.');
     } finally {
       setIsLoading(false);
-      setIsQuickBuilding(false);
     }
   };
 
