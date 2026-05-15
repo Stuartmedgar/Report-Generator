@@ -25,6 +25,7 @@ interface ProposedSection {
   type: string;
   description: string;
   personalisedTopic?: string;
+  typicalCount?: number;
   included: boolean;
   editing: boolean;
 }
@@ -315,6 +316,7 @@ export default function ImportTemplate() {
         type: s.type,
         description: s.description,
         personalisedTopic: s.personalisedTopic || '',
+        typicalCount: s.typicalCount || 1,
         included: true,
         editing: false,
       }));
@@ -327,6 +329,77 @@ export default function ImportTemplate() {
     }
   };
 
+
+
+  // ─── POST-PROCESS: SPLIT SECTIONS BY typicalCount ─────────────────────────
+
+  const splitSections = (sections: any[], proposedSections: ProposedSection[]): any[] => {
+    const result: any[] = [];
+
+    sections.forEach(section => {
+      // Find the matching proposed section to get typicalCount
+      const proposed = proposedSections.find(p =>
+        p.name.toLowerCase() === section.name.toLowerCase() ||
+        section.name.toLowerCase().includes(p.name.toLowerCase()) ||
+        p.name.toLowerCase().includes(section.name.toLowerCase())
+      );
+      const typicalCount = proposed?.typicalCount || 1;
+
+      // Only split qualities and next-steps sections where typicalCount > 1
+      if (typicalCount > 1 && (section.type === 'qualities' || section.type === 'next-steps')) {
+        const isNextSteps = section.type === 'next-steps';
+        const headings = isNextSteps
+          ? Object.entries(section.data?.focusAreas || {})
+          : Object.entries(section.data?.comments || {});
+
+        if (headings.length <= 1) {
+          // Can't split — just keep as is
+          result.push(section);
+          return;
+        }
+
+        // Split headings into typicalCount separate sections
+        // Distribute headings as evenly as possible
+        const countToUse = Math.min(typicalCount, headings.length);
+        const chunkSize = Math.ceil(headings.length / countToUse);
+
+        for (let i = 0; i < countToUse; i++) {
+          const chunk = headings.slice(i * chunkSize, (i + 1) * chunkSize);
+          if (chunk.length === 0) continue;
+
+          // Name the section after its first heading topic
+          const sectionName = chunk.length === 1
+            ? `${section.name} — ${chunk[0][0]}`
+            : section.name + (i > 0 ? ` (${i + 1})` : '');
+
+          if (isNextSteps) {
+            const focusAreas: Record<string, string[]> = {};
+            chunk.forEach(([key, val]) => { focusAreas[key] = val as string[]; });
+            result.push({
+              ...section,
+              id: makeId(),
+              name: sectionName,
+              data: { ...section.data, focusAreas },
+            });
+          } else {
+            const comments: Record<string, string[]> = {};
+            chunk.forEach(([key, val]) => { comments[key] = val as string[]; });
+            result.push({
+              ...section,
+              id: makeId(),
+              name: sectionName,
+              data: { ...section.data, comments },
+            });
+          }
+        }
+      } else {
+        // No split needed
+        result.push(section);
+      }
+    });
+
+    return result;
+  };
 
   // ─── QUICK BUILD ──────────────────────────────────────────────────────────
 
@@ -357,10 +430,11 @@ export default function ImportTemplate() {
       }));
 
       const normalisedSections = normaliseTemplateSections(sections, pronounSet);
-      setGeneratedTemplate({ name: result.templateName || `${subject} ${yearGroup} Report Template`, sections: normalisedSections });
+      const splitResult = splitSections(normalisedSections, proposedSections.filter(s => s.included));
+      setGeneratedTemplate({ name: result.templateName || `${subject} ${yearGroup} Report Template`, sections: splitResult });
 
       // Set up variety for eligible sections
-      const builtForVariety = normalisedSections
+      const builtForVariety = splitResult
         .filter((s: any) => s.type === 'qualities' || s.type === 'next-steps')
         .map((s: any) => ({
           section: {
