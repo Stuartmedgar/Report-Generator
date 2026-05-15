@@ -147,18 +147,24 @@ For "rated-comment" sections:
 - Replace ALL student names with [Name]
 
 For "qualities" sections:
-- Find every sentence of this type across all reports
-- Group by the quality or topic described using short clear heading names
+- Read each pupil's complete qualities sentences carefully before extracting anything
+- Identify where one qualities POINT ends and another begins using the same logic as next-steps — a new point starts when a sentence names the pupil or clearly introduces a new topic
+- Keep sentences belonging to the same point together as ONE complete option
+- Every option MUST start with [Name] — if sentences start with "He/She/They" rewrite the opener to start with [Name] while keeping the rest exactly as written
+- Each complete option should make sense independently as a statement about a pupil
 - CRITICAL: Create a SEPARATE heading for each genuinely distinct quality or topic — do not merge sentences about different things into the same heading. For example, sentences about teamwork, sentences about individual work style, sentences about classroom discussion, sentences about focus challenges, and sentences about effort and behaviour are all DIFFERENT topics and must each have their own heading
-- Each heading should have 2-6 sentence options
+- Each heading should have 2-6 complete options
 - Copy sentences EXACTLY — do not paraphrase
 - Replace ALL student names with [Name]
 
 For "next-steps" sections:
-- Find every next steps or improvement suggestion sentence
-- Group by topic area using short clear heading names
-- CRITICAL: Create a SEPARATE heading for each genuinely distinct topic — do not merge sentences about different things into the same heading just to reduce the number of headings. For example, sentences about writing quality, sentences about distraction/focus, sentences about participation in discussions, sentences about seeking support, and sentences about rushing work are all DIFFERENT topics and must each have their own heading
-- Each heading should have 2-6 sentence options
+- Read each pupil's complete next steps paragraph carefully before extracting anything
+- Identify where one next steps POINT ends and another begins. A new point starts when a sentence names the pupil ([Name]) or clearly introduces a new topic after sentences that didn't mention the pupil
+- Keep all sentences belonging to the same point together as ONE complete option — never split a point mid-thought
+- Every option MUST start with [Name] — if a group of sentences starts with "He/She/They" or has no subject, attach it to the preceding sentence that names the pupil, or rewrite the opener to start with [Name]
+- Each complete option should be something a teacher could use independently in a report for any pupil with that characteristic — it must make sense on its own without needing context from surrounding sentences
+- CRITICAL: Create a SEPARATE heading for each genuinely distinct topic — do not merge sentences about different things into the same heading. For example, sentences about effort, sentences about attendance, sentences about help-seeking and revision, sentences about participation are all DIFFERENT topics and must each have their own heading
+- Each heading should have 2-6 complete multi-sentence options
 - Copy sentences EXACTLY — do not paraphrase
 - Replace ALL student names with [Name]
 - CRITICAL: Preserve any fixed opening phrase exactly as it appears (e.g. if sentences start with "Moving forward," keep that phrase at the start of every option in that heading)
