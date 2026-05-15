@@ -262,7 +262,6 @@ export default function ImportTemplate() {
       const identifiedSections = (identified.sections || []).filter((s: any) => s.type !== 'new-line');
       if (identifiedSections.length === 0) throw new Error('Could not identify sections');
       setLoadingMessage('Building your template automatically...');
-    try {
       const result = await callApi({
         mode: 'auto-build',
         subject,
