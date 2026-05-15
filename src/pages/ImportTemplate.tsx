@@ -249,6 +249,42 @@ export default function ImportTemplate() {
   };
 
 
+  // ─── POST-PROCESS: SPLIT SECTIONS BY typicalCount ─────────────────────────
+
+  const splitSections = (sections: any[], typicalCounts: Record<string, number>): any[] => {
+    const result: any[] = [];
+    sections.forEach(section => {
+      if (section.type === 'new-line') { result.push(section); return; }
+      const typicalCount = typicalCounts[section.name] || 1;
+      if (typicalCount > 1 && (section.type === 'qualities' || section.type === 'next-steps')) {
+        const isNextSteps = section.type === 'next-steps';
+        const headings = isNextSteps
+          ? Object.entries(section.data?.focusAreas || {})
+          : Object.entries(section.data?.comments || {});
+        if (headings.length <= 1) { result.push(section); return; }
+        const countToUse = Math.min(typicalCount, headings.length);
+        const chunkSize = Math.ceil(headings.length / countToUse);
+        for (let i = 0; i < countToUse; i++) {
+          const chunk = headings.slice(i * chunkSize, (i + 1) * chunkSize);
+          if (chunk.length === 0) continue;
+          const sectionName = i === 0 ? section.name : `${section.name} (${i + 1})`;
+          if (isNextSteps) {
+            const focusAreas: Record<string, string[]> = {};
+            chunk.forEach(([key, val]) => { focusAreas[key] = val as string[]; });
+            result.push({ ...section, id: makeId(), name: sectionName, data: { ...section.data, focusAreas } });
+          } else {
+            const comments: Record<string, string[]> = {};
+            chunk.forEach(([key, val]) => { comments[key] = val as string[]; });
+            result.push({ ...section, id: makeId(), name: sectionName, data: { ...section.data, comments } });
+          }
+        }
+      } else {
+        result.push(section);
+      }
+    });
+    return result;
+  };
+
   // ─── QUICK BUILD ──────────────────────────────────────────────────────────
 
   const handleQuickBuild = async () => {
