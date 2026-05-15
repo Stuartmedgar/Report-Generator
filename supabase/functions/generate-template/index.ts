@@ -93,7 +93,8 @@ SECTION TYPES:
 - "next-steps" — forward-looking sentences about what the pupil should focus on to improve. Grouped by topic area.
 - "personalised-comment" — sentences where the SAME topic appears across the majority of reports, but ONE specific detail varies per pupil. The detail could be a sport, a musical instrument, a book, a target grade, a topic area, or any other pupil-specific information. ONLY flag as personalised-comment if this pattern appears in the majority of reports — not just one or two.
 - "standard-comment" — text that is identical or near-identical across all reports. Every pupil gets exactly the same text.
-- "assessment-comment" — sentences specifically about a formal assessment or test result, where different language is used depending on performance level.
+- "assessment-comment" — sentences specifically about a formal assessment or test result, where the teacher writes DIFFERENT sentences depending on performance level (excellent, good, satisfactory, struggling). Use this ONLY when the language itself changes based on how well the pupil did.
+- IMPORTANT: If the assessment section uses the SAME sentence structure for every pupil but with a variable score or grade typed in (e.g. "[Name] scored X% in the test"), classify it as "personalised-comment" NOT "assessment-comment". The variable score is the personal detail.
 
 RULES:
 1. Read ALL the reports carefully before identifying sections
