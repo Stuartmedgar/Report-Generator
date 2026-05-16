@@ -21,6 +21,68 @@ interface ReportWriterProps {
   startStudentIndex?: number;
 }
 
+// ─── DATA SHAPERS ─────────────────────────────────────────────────────────────
+// Each builder expects a specific shape for existingComment.
+// Template section.data uses different key names, so we reshape before opening.
+
+function shapeForRatedBuilder(section: any) {
+  return {
+    name: section.name || '',
+    comments: {
+      excellent: section.data?.comments?.excellent || [],
+      good: section.data?.comments?.good || [],
+      satisfactory: section.data?.comments?.satisfactory || [],
+      needsImprovement: section.data?.comments?.needsImprovement || [],
+    },
+  };
+}
+
+function shapeForAssessmentBuilder(section: any) {
+  return {
+    name: section.name || '',
+    scoreType: section.data?.scoreType || 'outOf',
+    maxScore: section.data?.maxScore,
+    comments: {
+      excellent: section.data?.comments?.excellent || [],
+      good: section.data?.comments?.good || [],
+      satisfactory: section.data?.comments?.satisfactory || [],
+      needsImprovement: section.data?.comments?.needsImprovement || [],
+      notCompleted: section.data?.comments?.notCompleted || [],
+    },
+  };
+}
+
+function shapeForQualitiesBuilder(section: any) {
+  const commentsObj = section.data?.comments || {};
+  return {
+    name: section.name || '',
+    headings: Object.keys(commentsObj),
+    comments: commentsObj,
+  };
+}
+
+function shapeForNextStepsBuilder(section: any) {
+  // NextStepsCommentBuilder uses existingComment.comments (not focusAreas)
+  const focusAreas = section.data?.focusAreas || section.data?.comments || {};
+  return {
+    name: section.name || '',
+    headings: Object.keys(focusAreas),
+    comments: focusAreas,
+  };
+}
+
+function shapeForPersonalisedBuilder(section: any) {
+  const categories = section.data?.categories || section.data?.comments || {};
+  return {
+    name: section.name || '',
+    instruction: section.data?.instruction || '',
+    headings: Object.keys(categories),
+    comments: categories,
+  };
+}
+
+// ─── COMPONENT ────────────────────────────────────────────────────────────────
+
 function ReportWriter({ template, classData, students, onBack, startStudentIndex = 0 }: ReportWriterProps) {
   const navigate = useNavigate();
   const { updateTemplate } = useData();
@@ -139,12 +201,14 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
   };
 
   // Handle saving template changes
+  // FIX: Use reportLogic.getAllSections() so dynamic sections are interleaved
+  // at the correct positions, not just appended to the end.
   const handleSaveTemplateChanges = async () => {
     if (hasTemplateChanges) {
       const shouldSave = window.confirm('You have made changes to the template. Would you like to save them?');
       if (shouldSave) {
         try {
-          const allSections = [...template.sections, ...dynamicSections];
+          const allSections = reportLogic.getAllSections();
           await updateTemplate({ ...template, sections: allSections });
           alert('Template saved successfully!');
           setHasTemplateChanges(false);
@@ -169,10 +233,9 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
         type: sectionType,
         name: `New ${sectionType}`,
         data: {},
-        insertAfter: afterIndex  // ← store which section index this follows
+        insertAfter: afterIndex
       };
       setDynamicSections(prev => {
-        // Insert after all existing dynamic sections that belong to the same or earlier index
         const insertAt = prev.filter(s => s.insertAfter <= afterIndex).length;
         const updated = [...prev];
         updated.splice(insertAt, 0, newSection);
@@ -196,16 +259,79 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
     dynamicSections
   };
 
-  // Editing handlers
+  // ─── EDIT SECTION HANDLER ──────────────────────────────────────────────────
+  // FIX: Reshape section.data into what each builder actually expects before
+  // storing as editingSection. Previously all builders received raw section.data
+  // which caused empty builders because key names didn't match builder expectations.
+
+  const handleOpenEditSection = (section: any, index: number) => {
+    if (section.type === 'rated-comment') {
+      setEditingSection({ section: { ...section, data: shapeForRatedBuilder(section) }, index });
+      setShowRatedCommentBuilder(true);
+    } else if (section.type === 'assessment-comment') {
+      setEditingSection({ section: { ...section, data: shapeForAssessmentBuilder(section) }, index });
+      setShowAssessmentCommentBuilder(true);
+    } else if (section.type === 'personalised-comment') {
+      setEditingSection({ section: { ...section, data: shapeForPersonalisedBuilder(section) }, index });
+      setShowPersonalisedCommentBuilder(true);
+    } else if (section.type === 'next-steps') {
+      setEditingSection({ section: { ...section, data: shapeForNextStepsBuilder(section) }, index });
+      setShowNextStepsCommentBuilder(true);
+    } else if (section.type === 'qualities') {
+      setEditingSection({ section: { ...section, data: shapeForQualitiesBuilder(section) }, index });
+      setShowQualitiesCommentBuilder(true);
+    }
+  };
+
+  // ─── SAVE EDITED SECTION ───────────────────────────────────────────────────
+  // FIX: Write the builder's output back to the template in the correct shape
+  // per section type. Previously it merged editedData directly onto data which
+  // produced the wrong structure and corrupted the section.
+
   const handleSaveEditedSection = (editedData: any) => {
     if (editingSection) {
       setHasTemplateChanges(true);
       const updatedSections = [...template.sections];
+      const original = updatedSections[editingSection.index];
+
+      let newData: any;
+
+      if (original.type === 'rated-comment') {
+        newData = {
+          comments: editedData.comments,
+        };
+      } else if (original.type === 'assessment-comment') {
+        newData = {
+          comments: editedData.comments,
+          scoreType: editedData.scoreType,
+          maxScore: editedData.maxScore,
+        };
+      } else if (original.type === 'qualities') {
+        // Builder returns { headings, comments } — store as { comments }
+        newData = {
+          comments: editedData.comments,
+        };
+      } else if (original.type === 'next-steps') {
+        // Builder returns { headings, comments } — store back as { focusAreas }
+        newData = {
+          focusAreas: editedData.comments,
+        };
+      } else if (original.type === 'personalised-comment') {
+        newData = {
+          instruction: editedData.instruction,
+          categories: editedData.comments,
+        };
+      } else {
+        // Fallback — preserve existing data shape
+        newData = { ...original.data, ...editedData };
+      }
+
       updatedSections[editingSection.index] = {
-        ...updatedSections[editingSection.index],
-        ...editedData,
-        data: { ...updatedSections[editingSection.index].data, ...editedData }
+        ...original,
+        name: editedData.name || original.name,
+        data: newData,
       };
+
       updateTemplate({ ...template, sections: updatedSections });
     }
     
@@ -351,20 +477,7 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
                 sectionIndex={index}
                 sectionData={currentSectionData}
                 updateSectionData={reportLogic.updateSectionData}
-                onEditSection={(section: any, index: number) => {
-                  setEditingSection({ section, index });
-                  if (section.type === 'rated-comment') {
-                    setShowRatedCommentBuilder(true);
-                  } else if (section.type === 'assessment-comment') {
-                    setShowAssessmentCommentBuilder(true);
-                  } else if (section.type === 'personalised-comment') {
-                    setShowPersonalisedCommentBuilder(true);
-                  } else if (section.type === 'next-steps') {
-                    setShowNextStepsCommentBuilder(true);
-                  } else if (section.type === 'qualities') {
-                    setShowQualitiesCommentBuilder(true);
-                  }
-                }}
+                onEditSection={handleOpenEditSection}
                 showSectionOptions={showSectionOptions}
                 setShowSectionOptions={setShowSectionOptions}
                 onAddDynamicSection={dynamicSectionHandlers.handleAddDynamicSection}

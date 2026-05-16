@@ -173,9 +173,18 @@ export const useReportLogic = ({
     setHasUnsavedChanges(true);
   }, [template.sections, dynamicSections]);
 
-  // Get all sections (template + dynamic)
+  // Get all sections (template + dynamic), correctly interleaved by insertAfter position.
+  // FIX: Previously returned [...template.sections, ...dynamicSections] which always
+  // appended dynamic sections to the end regardless of where they were added.
+  // Now inserts each dynamic section immediately after its target template section.
   const getAllSections = useCallback(() => {
-    return [...template.sections, ...dynamicSections];
+    const result: any[] = [];
+    template.sections.forEach((section: any, index: number) => {
+      result.push(section);
+      const toInsert = dynamicSections.filter((ds: any) => ds.insertAfter === index);
+      toInsert.forEach((ds: any) => result.push(ds));
+    });
+    return result;
   }, [template.sections, dynamicSections]);
 
   // Generate report content from section data
