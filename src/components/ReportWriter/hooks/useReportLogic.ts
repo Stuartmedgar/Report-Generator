@@ -19,7 +19,6 @@ const PRONOUN_MAPS: Record<string, Record<string, string>> = {
     '\\bhis\\b': 'her',
     '\\bhim\\b': 'her',
     '\\bhimself\\b': 'herself',
-    // Capitalised forms
     '\\bHe\\b': 'She',
     '\\bHis\\b': 'Her',
     '\\bHim\\b': 'Her',
@@ -27,7 +26,7 @@ const PRONOUN_MAPS: Record<string, Record<string, string>> = {
   },
   he: {
     '\\bshe\\b': 'he',
-    '\\bher\\b': 'his',   // possessive — "her effort" → "his effort"
+    '\\bher\\b': 'his',
     '\\bherself\\b': 'himself',
     '\\bShe\\b': 'He',
     '\\bHer\\b': 'His',
@@ -62,11 +61,9 @@ function applyGlobalPronoun(text: string, pronoun: string): string {
 }
 
 // ─── CAPITAL AFTER FULL STOP ──────────────────────────────────────────────────
-// When replacing [Name], check if it follows ". " and capitalise accordingly.
 
 function replaceNameWithCapital(text: string, replacement: string): string {
   return text.replace(/\[Name\]/g, (match, offset, str) => {
-    // Look back for ". " pattern (full stop + space before this position)
     const before = str.slice(0, offset);
     const followsFullStop = /\.\s+$/.test(before) || offset === 0;
     if (followsFullStop) {
@@ -132,7 +129,6 @@ export const useReportLogic = ({
   }, [currentStudent, template.id, workingTemplate.sections, getReport, setDynamicSections]);
 
   // ─── REORDER SECTIONS ─────────────────────────────────────────────────────
-  // Item 1: move a section up or down in workingTemplate
 
   const handleReorderSection = useCallback((sectionId: string, direction: 'up' | 'down') => {
     setWorkingTemplate((prev: any) => {
@@ -271,8 +267,8 @@ export const useReportLogic = ({
   }, []);
 
   // ─── MERGE SECTIONS ───────────────────────────────────────────────────────
-  // Item 6: merge button banks from two sections of the same type into one.
-  // targetId absorbs all buttons from sourceId, then sourceId is removed.
+  // FIX: replaced [...new Set(combined)] with .filter() deduplication
+  // to avoid TypeScript downlevelIteration requirement.
 
   const handleMergeSections = useCallback((sourceId: string, targetId: string) => {
     setWorkingTemplate((prev: any) => {
@@ -287,9 +283,8 @@ export const useReportLogic = ({
         const targetComments = mergedData.comments || {};
         for (const [key, options] of Object.entries(sourceComments)) {
           if (targetComments[key]) {
-            // Merge options, deduplicating
             const combined = [...targetComments[key], ...(options as string[])];
-            targetComments[key] = [...new Set(combined)];
+            targetComments[key] = combined.filter((v: string, i: number, a: string[]) => a.indexOf(v) === i);
           } else {
             targetComments[key] = options;
           }
@@ -301,7 +296,7 @@ export const useReportLogic = ({
         for (const [key, options] of Object.entries(sourceFocusAreas)) {
           if (targetFocusAreas[key]) {
             const combined = [...targetFocusAreas[key], ...(options as string[])];
-            targetFocusAreas[key] = [...new Set(combined)];
+            targetFocusAreas[key] = combined.filter((v: string, i: number, a: string[]) => a.indexOf(v) === i);
           } else {
             targetFocusAreas[key] = options;
           }
@@ -313,7 +308,7 @@ export const useReportLogic = ({
         for (const [key, options] of Object.entries(sourceCategories)) {
           if (targetCategories[key]) {
             const combined = [...targetCategories[key], ...(options as string[])];
-            targetCategories[key] = [...new Set(combined)];
+            targetCategories[key] = combined.filter((v: string, i: number, a: string[]) => a.indexOf(v) === i);
           } else {
             targetCategories[key] = options;
           }
@@ -452,7 +447,6 @@ export const useReportLogic = ({
   }, [workingTemplate.sections, dynamicSections]);
 
   // ─── NAME/PRONOUN HELPER ──────────────────────────────────────────────────
-  // Per-section: replaces [Name] with pronoun or name
 
   const getNameOrPronoun = useCallback((sectionId: string) => {
     const sd = sectionData[sectionId] || {};
@@ -469,8 +463,6 @@ export const useReportLogic = ({
   const generateReportContent = useCallback(() => {
     let content = '';
     const allSections = getAllSections();
-
-    // Global pronoun for this student
     const globalPronoun = sectionData['__student__']?.pronounOverride || '';
 
     allSections.forEach((section: any) => {
@@ -496,12 +488,10 @@ export const useReportLogic = ({
             if (showHeader && section.name) content += `${section.name}: `;
             const comment = data.customEditedComment || data.selectedComment || '[No comment selected]';
             let processed = replaceNameWithCapital(comment, nameToken);
-            // Item 5: support [Score 1], [Score 2] etc as well as legacy [Score]
             const scoreValues: Record<string, string> = data.scoreValues || {};
             processed = processed.replace(/\[Score (\d+)\]/gi, (_m: string, num: string) => {
               return scoreValues[`Score ${num}`] || `[Score ${num}]`;
             });
-            // Legacy single [Score]
             if (data.score !== undefined && data.score !== null) {
               const scoreType = data.scoreType || section.data?.scoreType || 'outOf';
               const maxScore = data.maxScore || section.data?.maxScore || 100;
@@ -571,12 +561,9 @@ export const useReportLogic = ({
     });
 
     let result = content.trim();
-
-    // Apply global pronoun substitution (item 2)
     if (globalPronoun) {
       result = applyGlobalPronoun(result, globalPronoun);
     }
-
     return result;
   }, [sectionData, currentStudent, getAllSections, getNameOrPronoun]);
 
