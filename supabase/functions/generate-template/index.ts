@@ -559,9 +559,40 @@ IMPORTANT: Extract ONLY sentences that match the pattern of the highlighted exam
 
     const positionInstructions: Record<string, string> = {
       progress: `PROGRESS sentence — usually the opening. Find every sentence describing overall progress or how the student is doing. Group by performance level with judgement-clear headings (e.g. "Strong Progress", "Good Progress", "Making Progress", "Struggling Despite Effort", "Needs More Effort"). ${openerInstruction}`,
-      qualities: `QUALITIES sentences — character, behaviour, attitude, effort, working style. Find every sentence describing personal qualities. Group by the quality described — heading names must make any judgement clear. ${openerInstruction}`,
-      development: `AREAS FOR DEVELOPMENT sentences. Find every developmental or improvement sentence. Group by TOPIC — different focus areas cover DIFFERENT topics. Ignore section headings and standard closing advice sentences. ${openerInstruction}`,
-      "next-steps": `NEXT STEPS sentences. Find every improvement suggestion at this position. Group by topic. Preserve any fixed opening phrase (e.g. "Moving forward,"). ${openerInstruction}`,
+      qualities: `QUALITIES sentences — character, behaviour, attitude, effort, working style. Find every sentence describing personal qualities.
+
+CRITICAL — SENTENCE GROUPING:
+Before extracting, read each pupil's qualities sentences as a complete block. Identify where one qualities POINT ends and another begins — a new point starts when a sentence names the pupil ([Name]) or clearly introduces a new topic after sentences that did not mention the pupil. Keep all sentences belonging to the same point together as ONE complete option string. Never split a naturally flowing thought across separate options.
+
+Every option MUST start with [Name] — if a group of sentences starts with a pronoun (He/She/They) or has no subject at all, attach it to the preceding sentence that names the pupil so that the combined option starts with [Name].
+
+A sentence that cannot stand alone as an opening statement about a specific pupil — for example one that starts with "Also,", "This", "Continued", "Regular", "Being" or similar words that imply something came before — must never appear as a standalone option. It must be joined to the sentence before it.
+
+Group complete options by the quality or topic described — heading names must make any judgement clear. ${openerInstruction}`,
+
+      development: `AREAS FOR DEVELOPMENT sentences. Find every developmental or improvement sentence.
+
+CRITICAL — SENTENCE GROUPING:
+Before extracting, read each pupil's development section as a complete block. Identify where one development POINT ends and another begins — a new point starts when a sentence names the pupil ([Name]) or clearly introduces a new topic. Keep all sentences belonging to the same point together as ONE complete option string.
+
+Every option MUST start with [Name] — if a group starts with a pronoun or has no subject, attach it to the preceding [Name] sentence.
+
+A sentence that cannot stand alone as an opening statement — one starting with "Also,", "This", "Continued", "Regular", "Being", "A higher", "Making", "Taking", "Slowing" or similar continuation words — must be joined to the sentence before it, never extracted alone.
+
+Group complete options by TOPIC — different focus areas cover DIFFERENT topics. ${openerInstruction}`,
+
+      "next-steps": `NEXT STEPS sentences. Find every improvement suggestion at this position.
+
+CRITICAL — SENTENCE GROUPING:
+Before extracting, read each pupil's next steps section as a complete block. Identify where one next steps POINT ends and another begins. A new point starts when a sentence names the pupil ([Name]) or clearly introduces a new and distinct improvement topic. Keep all sentences belonging to the same point together as ONE complete option string.
+
+Every option MUST start with [Name] — if a group starts with a pronoun or has no subject, attach it to the preceding [Name] sentence so the combined option starts with [Name].
+
+A sentence that cannot stand alone as an opening statement about a specific pupil — one starting with "Also,", "This will", "Continued", "Regular", "Being", "A higher", "Making better", "Taking", "Slowing", "Increasing" or any other word that implies something came before — must NEVER appear as a standalone option. It must be joined to the sentence before it.
+
+Preserve any fixed opening phrase exactly (e.g. "Moving forward," must stay at the start of every option in its heading).
+Group complete options by topic. ${openerInstruction}`,
+
       assessment: `ASSESSMENT sentences. Find every assessment-related sentence. Group by performance level with judgement-clear headings. Replace actual scores with [Score]. ${openerInstruction}`,
       "assessment-comment": `ASSESSMENT COMMENT sentences — teacher uses different sentences by performance level. Group into: excellent, good, satisfactory, needsImprovement. Replace names with [Name] and scores with [Score]. ${openerInstruction}`,
       rating: `RATING/JUDGEMENT sentences. Find every sentence at this position. ${scaleType === 'four-level' ? 'Map to: excellent, good, satisfactory, needsImprovement.' : 'Derive the teacher\'s own groupings from their language.'} ${openerInstruction}`,
