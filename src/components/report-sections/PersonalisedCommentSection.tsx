@@ -7,6 +7,8 @@ interface PersonalisedCommentSectionProps {
   onTemplateAction?: (action: any) => void;
   onAddButton?: (sectionId: string, buttonName: string, firstOption: string) => void;
   onDuplicateSection?: (sectionId: string) => void;
+  onMergeSections?: (sourceId: string, targetId: string) => void;
+  workingTemplateSections?: any[];
 }
 
 function getInfoPlaceholders(comment: string): string[] {
@@ -31,16 +33,18 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
   onTemplateAction,
   onAddButton,
   onDuplicateSection,
+  onMergeSections,
+  workingTemplateSections,
 }) => {
   const [showEditComment, setShowEditComment] = useState(false);
   const [editableComment, setEditableComment] = useState('');
-
   const [showNewButtonModal, setShowNewButtonModal] = useState(false);
   const [newButtonName, setNewButtonName] = useState('');
   const [newButtonFirstOption, setNewButtonFirstOption] = useState('');
-
   const [showAddToNewModal, setShowAddToNewModal] = useState(false);
   const [addToNewButtonName, setAddToNewButtonName] = useState('');
+  const [showMergeModal, setShowMergeModal] = useState(false);
+  const [mergeTargetId, setMergeTargetId] = useState('');
 
   useEffect(() => {
     if (data.selectedComment) {
@@ -101,10 +105,19 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
   const handleConfirmNewButton = () => {
     if (!onAddButton || !newButtonName.trim() || !newButtonFirstOption.trim()) return;
     onAddButton(section.id, newButtonName.trim(), newButtonFirstOption.trim());
-    setNewButtonName('');
-    setNewButtonFirstOption('');
-    setShowNewButtonModal(false);
+    setNewButtonName(''); setNewButtonFirstOption(''); setShowNewButtonModal(false);
   };
+
+  const handleConfirmMerge = () => {
+    if (!onMergeSections || !mergeTargetId) return;
+    if (!window.confirm('This will merge all buttons from this section into the target section, then remove this section. Continue?')) return;
+    onMergeSections(section.id, mergeTargetId);
+    setShowMergeModal(false);
+  };
+
+  const mergeTargets = (workingTemplateSections || []).filter(
+    (s: any) => s.type === 'personalised-comment' && s.id !== section.id
+  );
 
   const categories = section.data?.headings || Object.keys(section.data?.categories || section.data?.comments || {});
   const hasSelectedComment = data.selectedComment && data.category;
@@ -121,11 +134,17 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#d97706', margin: 0 }}>{section.name}</h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           {onDuplicateSection && (
             <button onClick={() => onDuplicateSection(section.id)} title="Duplicate this section"
               style={{ backgroundColor: '#e5e7eb', color: '#374151', border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: '500' }}>
               ⧉ Duplicate
+            </button>
+          )}
+          {onMergeSections && mergeTargets.length > 0 && (
+            <button onClick={() => setShowMergeModal(true)} title="Merge buttons from this section into another"
+              style={{ backgroundColor: '#fef3c7', color: '#d97706', border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: '500' }}>
+              ⇥ Merge into…
             </button>
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -142,6 +161,30 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Merge modal */}
+      {showMergeModal && (
+        <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fbbf24', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
+          <div style={{ fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+            Merge all buttons from this section into:
+          </div>
+          <select value={mergeTargetId} onChange={e => setMergeTargetId(e.target.value)}
+            style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', marginBottom: '8px', boxSizing: 'border-box' }}>
+            <option value="">— Choose a section —</option>
+            {mergeTargets.map((s: any) => (
+              <option key={s.id} value={s.id}>{s.name || 'Untitled'}</option>
+            ))}
+          </select>
+          <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '8px', fontStyle: 'italic' }}>
+            This section will be removed after merging. Duplicate button names will be combined.
+          </div>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <button onClick={() => setShowMergeModal(false)} style={actionBtnStyle('#6b7280')}>Cancel</button>
+            <button onClick={handleConfirmMerge} disabled={!mergeTargetId}
+              style={{ ...actionBtnStyle('#d97706'), opacity: !mergeTargetId ? 0.4 : 1 }}>Merge</button>
+          </div>
+        </div>
+      )}
 
       {/* Pronoun selector */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
@@ -224,8 +267,7 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
             style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '13px', minHeight: '60px', resize: 'vertical', boxSizing: 'border-box', marginBottom: '8px' }} />
           <div style={{ display: 'flex', gap: '6px' }}>
             <button onClick={() => setShowNewButtonModal(false)} style={actionBtnStyle('#6b7280')}>Cancel</button>
-            <button onClick={handleConfirmNewButton}
-              disabled={!newButtonName.trim() || !newButtonFirstOption.trim()}
+            <button onClick={handleConfirmNewButton} disabled={!newButtonName.trim() || !newButtonFirstOption.trim()}
               style={{ ...actionBtnStyle('#f59e0b'), opacity: (!newButtonName.trim() || !newButtonFirstOption.trim()) ? 0.4 : 1 }}>
               Add Button
             </button>
@@ -263,7 +305,6 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
               </>
             )}
           </div>
-
           {showAddToNewModal && (
             <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#f9fafb', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
               <div style={{ fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>New button name:</div>
