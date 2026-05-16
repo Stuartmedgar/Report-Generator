@@ -9,24 +9,37 @@ import NextStepsSection from './NextStepsSection';
 import NewLineSection from './NewLineSection';
 import QualitiesSection from './QualitiesSection';
 
+interface TemplateActionPayload {
+  type: 'replace' | 'add-to-button' | 'add-to-new-button';
+  sectionId: string;
+  commentText: string;
+  buttonName?: string;
+  newButtonName?: string;
+}
+
 interface SectionRendererProps {
   section: TemplateSection;
   sectionData: Record<string, any>;
   updateSectionData: (sectionId: string, data: any) => void;
+  onTemplateAction?: (action: TemplateActionPayload) => void;
+  onAddButton?: (sectionId: string, buttonName: string, firstOption: string) => void;
+  onDuplicateSection?: (sectionId: string) => void;
 }
 
 const SectionRenderer: React.FC<SectionRendererProps> = ({
   section,
   sectionData,
-  updateSectionData
+  updateSectionData,
+  onTemplateAction,
+  onAddButton,
+  onDuplicateSection,
 }) => {
   const data = sectionData[section.id] || {};
 
   // HEADER FIX: Enhanced updateSectionData that includes header default
   const enhancedUpdateSectionData = (sectionId: string, newData: any) => {
-    // If showHeader is not set in newData, use template default or true
     if (newData.showHeader === undefined) {
-      const headerDefault = section.data?.showHeader !== undefined ? 
+      const headerDefault = section.data?.showHeader !== undefined ?
         section.data.showHeader : false;
       newData.showHeader = headerDefault;
     }
@@ -40,6 +53,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
           section={section}
           data={data}
           updateSectionData={enhancedUpdateSectionData}
+          onTemplateAction={onTemplateAction}
         />
       );
 
@@ -49,6 +63,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
           section={section}
           data={data}
           updateSectionData={enhancedUpdateSectionData}
+          onTemplateAction={onTemplateAction}
         />
       );
 
@@ -67,6 +82,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
           section={section}
           data={data}
           updateSectionData={enhancedUpdateSectionData}
+          onTemplateAction={onTemplateAction}
         />
       );
 
@@ -76,6 +92,9 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
           section={section}
           data={data}
           updateSectionData={enhancedUpdateSectionData}
+          onTemplateAction={onTemplateAction}
+          onAddButton={onAddButton}
+          onDuplicateSection={onDuplicateSection}
         />
       );
 
@@ -85,6 +104,9 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
           section={section}
           data={data}
           updateSectionData={enhancedUpdateSectionData}
+          onTemplateAction={onTemplateAction}
+          onAddButton={onAddButton}
+          onDuplicateSection={onDuplicateSection}
         />
       );
 
@@ -94,6 +116,9 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
           section={section}
           data={data}
           updateSectionData={enhancedUpdateSectionData}
+          onTemplateAction={onTemplateAction}
+          onAddButton={onAddButton}
+          onDuplicateSection={onDuplicateSection}
         />
       );
 

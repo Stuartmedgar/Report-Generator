@@ -16,32 +16,54 @@ export const useReportLogic = ({
   dynamicSections,
   setDynamicSections
 }: UseReportLogicParams) => {
-  const { addReport, updateReport, getReport, addTemplate } = useData();
+  const { addReport, updateReport, getReport, addTemplate, updateTemplate } = useData();
   const [sectionData, setSectionData] = useState<Record<string, any>>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isPreviewEditing, setIsPreviewEditing] = useState(false);
   const [editableReportContent, setEditableReportContent] = useState('');
-  
+
+  // Working template — starts as a copy of the loaded template and accumulates
+  // changes made during the session. Teachers choose whether to save at the end.
+  const [workingTemplate, setWorkingTemplate] = useState<any>(() => ({
+    ...template,
+    sections: template.sections.map((s: any) => ({ ...s, data: { ...s.data } }))
+  }));
+  const [hasTemplateChanges, setHasTemplateChanges] = useState(false);
+
   // Use ref to track the last student ID to prevent unnecessary resets
   const lastStudentIdRef = useRef<string | null>(null);
 
-  // Initialize section data when student changes - FIXED: Only reset when student actually changes
+  // Keep workingTemplate in sync if the underlying template prop changes (e.g. after a save)
+  // but only on initial mount — don't overwrite in-session changes
+  const templateIdRef = useRef(template.id);
+  useEffect(() => {
+    if (template.id !== templateIdRef.current) {
+      templateIdRef.current = template.id;
+      setWorkingTemplate({
+        ...template,
+        sections: template.sections.map((s: any) => ({ ...s, data: { ...s.data } }))
+      });
+      setHasTemplateChanges(false);
+    }
+  }, [template.id]);
+
+  // Initialize section data when student changes
   useEffect(() => {
     if (currentStudent && currentStudent.id !== lastStudentIdRef.current) {
       lastStudentIdRef.current = currentStudent.id;
-      
+
       const existingReport = getReport(currentStudent.id, template.id);
       if (existingReport?.sectionData) {
         setSectionData(existingReport.sectionData);
         setEditableReportContent(existingReport.content);
       } else {
         const initialData: Record<string, any> = {};
-        template.sections.forEach((section: any) => {
+        workingTemplate.sections.forEach((section: any) => {
           const showHeader = section.data.showHeader !== undefined ?
             section.data.showHeader : false;
-          initialData[section.id] = { 
+          initialData[section.id] = {
             showHeader,
-            ...section.data 
+            ...section.data
           };
         });
         setSectionData(initialData);
@@ -51,12 +73,161 @@ export const useReportLogic = ({
       }
       setHasUnsavedChanges(false);
     }
-  }, [currentStudent, template.id, template.sections, getReport, setDynamicSections]);
+  }, [currentStudent, template.id, workingTemplate.sections, getReport, setDynamicSections]);
+
+  // ─── TEMPLATE ACTION HANDLER ──────────────────────────────────────────────
+  // Called from section components when a teacher wants to modify the template
+  // during a report-writing session. Updates workingTemplate in memory.
+  // The original saved template is untouched until the teacher confirms at the end.
+
+  const handleTemplateAction = useCallback((action: {
+    type: 'replace' | 'add-to-button' | 'add-to-new-button';
+    sectionId: string;
+    commentText: string;
+    buttonName?: string;   // for add-to-button: which button to add under
+    newButtonName?: string; // for add-to-new-button: name of the new button
+  }) => {
+    setWorkingTemplate((prev: any) => {
+      const updatedSections = prev.sections.map((section: any) => {
+        if (section.id !== action.sectionId) return section;
+
+        const newData = { ...section.data };
+
+        if (section.type === 'standard-comment' && action.type === 'replace') {
+          newData.content = action.commentText;
+        }
+
+        if (section.type === 'qualities') {
+          const comments = { ...newData.comments };
+          if (action.type === 'replace' && action.buttonName) {
+            // Replace the specific option that was selected — find it by matching selectedQuality
+            const options = [...(comments[action.buttonName] || [])];
+            const idx = options.indexOf(action.buttonName);
+            // Replace first occurrence or append if not found
+            const replaceIdx = options.findIndex(o => o === action.commentText) === -1
+              ? 0 : options.findIndex(o => o === action.commentText);
+            options[replaceIdx] = action.commentText;
+            comments[action.buttonName] = options;
+          } else if (action.type === 'add-to-button' && action.buttonName) {
+            comments[action.buttonName] = [...(comments[action.buttonName] || []), action.commentText];
+          } else if (action.type === 'add-to-new-button' && action.newButtonName) {
+            comments[action.newButtonName] = [action.commentText];
+          }
+          newData.comments = comments;
+        }
+
+        if (section.type === 'next-steps') {
+          const focusAreas = { ...newData.focusAreas };
+          if (action.type === 'replace' && action.buttonName) {
+            const options = [...(focusAreas[action.buttonName] || [])];
+            options[0] = action.commentText;
+            focusAreas[action.buttonName] = options;
+          } else if (action.type === 'add-to-button' && action.buttonName) {
+            focusAreas[action.buttonName] = [...(focusAreas[action.buttonName] || []), action.commentText];
+          } else if (action.type === 'add-to-new-button' && action.newButtonName) {
+            focusAreas[action.newButtonName] = [action.commentText];
+          }
+          newData.focusAreas = focusAreas;
+        }
+
+        if (section.type === 'personalised-comment') {
+          const categories = { ...newData.categories };
+          if (action.type === 'replace' && action.buttonName) {
+            const options = [...(categories[action.buttonName] || [])];
+            options[0] = action.commentText;
+            categories[action.buttonName] = options;
+          } else if (action.type === 'add-to-button' && action.buttonName) {
+            categories[action.buttonName] = [...(categories[action.buttonName] || []), action.commentText];
+          } else if (action.type === 'add-to-new-button' && action.newButtonName) {
+            categories[action.newButtonName] = [action.commentText];
+          }
+          newData.categories = categories;
+        }
+
+        if (section.type === 'rated-comment') {
+          const comments = { ...newData.comments };
+          if (action.type === 'replace' && action.buttonName) {
+            const options = [...(comments[action.buttonName] || [])];
+            options[0] = action.commentText;
+            comments[action.buttonName] = options;
+          } else if (action.type === 'add-to-button' && action.buttonName) {
+            comments[action.buttonName] = [...(comments[action.buttonName] || []), action.commentText];
+          } else if (action.type === 'add-to-new-button' && action.newButtonName) {
+            comments[action.newButtonName] = [action.commentText];
+          }
+          newData.comments = comments;
+        }
+
+        return { ...section, data: newData };
+      });
+
+      return { ...prev, sections: updatedSections };
+    });
+
+    setHasTemplateChanges(true);
+  }, []);
+
+  // ─── ADD NEW BUTTON TO SECTION ────────────────────────────────────────────
+  // Used by the + button beside headings in qualities/next-steps/personalised sections
+
+  const handleAddButton = useCallback((sectionId: string, buttonName: string, firstOption: string) => {
+    setWorkingTemplate((prev: any) => {
+      const updatedSections = prev.sections.map((section: any) => {
+        if (section.id !== sectionId) return section;
+        const newData = { ...section.data };
+
+        if (section.type === 'qualities') {
+          newData.comments = { ...newData.comments, [buttonName]: [firstOption] };
+        } else if (section.type === 'next-steps') {
+          newData.focusAreas = { ...newData.focusAreas, [buttonName]: [firstOption] };
+        } else if (section.type === 'personalised-comment') {
+          newData.categories = { ...newData.categories, [buttonName]: [firstOption] };
+        }
+
+        return { ...section, data: newData };
+      });
+      return { ...prev, sections: updatedSections };
+    });
+    setHasTemplateChanges(true);
+  }, []);
+
+  // ─── DUPLICATE SECTION ────────────────────────────────────────────────────
+
+  const handleDuplicateSection = useCallback((sectionId: string) => {
+    setWorkingTemplate((prev: any) => {
+      const idx = prev.sections.findIndex((s: any) => s.id === sectionId);
+      if (idx === -1) return prev;
+      const original = prev.sections[idx];
+      const duplicate = {
+        ...original,
+        id: `${original.id}_copy_${Date.now()}`,
+        name: `${original.name} (copy)`,
+        data: JSON.parse(JSON.stringify(original.data))
+      };
+      const updatedSections = [...prev.sections];
+      updatedSections.splice(idx + 1, 0, duplicate);
+      return { ...prev, sections: updatedSections };
+    });
+    setHasTemplateChanges(true);
+  }, []);
+
+  // ─── SAVE WORKING TEMPLATE ────────────────────────────────────────────────
+  // Called at end of session if teacher wants to persist changes
+
+  const handleSaveWorkingTemplate = useCallback(async () => {
+    try {
+      await updateTemplate(workingTemplate);
+      setHasTemplateChanges(false);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }, [workingTemplate, updateTemplate]);
 
   // Handle saving the report
   const handleSaveReport = () => {
     const existingReport = getReport(currentStudent.id, template.id);
-    
+
     let reportContent: string;
     let isManuallyEdited = false;
     let manuallyEditedContent: string | undefined;
@@ -100,17 +271,17 @@ export const useReportLogic = ({
   // Update section data and handle comment selection
   const updateSectionData = useCallback((sectionId: string, data: any) => {
     console.log('updateSectionData called:', sectionId, data);
-    
+
     setSectionData((prev: Record<string, any>) => {
       console.log('Previous sectionData:', prev);
-      
+
       const newData = {
         ...prev,
         [sectionId]: { ...prev[sectionId], ...data }
       };
 
-      const section = template.sections.find((s: any) => s.id === sectionId) || 
-                     dynamicSections.find((s: any) => s.id === sectionId);
+      const section = workingTemplate.sections.find((s: any) => s.id === sectionId) ||
+        dynamicSections.find((s: any) => s.id === sectionId);
 
       // Handle rated comments
       if (section?.type === 'rated-comment' && data.rating && data.rating !== 'no-comment') {
@@ -119,7 +290,6 @@ export const useReportLogic = ({
           const randomIndex = Math.floor(Math.random() * comments.length);
           newData[sectionId].selectedComment = comments[randomIndex];
           newData[sectionId].selectedCommentIndex = randomIndex;
-          console.log('Selected comment:', comments[randomIndex]);
         }
       }
 
@@ -130,7 +300,6 @@ export const useReportLogic = ({
           const randomIndex = Math.floor(Math.random() * comments.length);
           newData[sectionId].selectedComment = comments[randomIndex];
           newData[sectionId].selectedCommentIndex = randomIndex;
-          console.log('Selected assessment comment:', comments[randomIndex]);
         }
       }
 
@@ -141,7 +310,6 @@ export const useReportLogic = ({
           const randomIndex = Math.floor(Math.random() * comments.length);
           newData[sectionId].selectedComment = comments[randomIndex];
           newData[sectionId].selectedCommentIndex = randomIndex;
-          console.log('Selected personalised comment:', comments[randomIndex]);
         }
       }
 
@@ -152,18 +320,16 @@ export const useReportLogic = ({
           const randomIndex = Math.floor(Math.random() * suggestions.length);
           newData[sectionId].selectedSuggestion = suggestions[randomIndex];
           newData[sectionId].selectedSuggestionIndex = randomIndex;
-          console.log('Selected next steps suggestion:', suggestions[randomIndex]);
         }
       }
 
-      // Handle qualities - select new quality if quality area is clicked (even if same quality area)
-    if (section?.type === 'qualities' && data.qualityArea) {
-      const qualities = section.data?.comments?.[data.qualityArea];
-      if (qualities && qualities.length > 0) {
-        const randomIndex = Math.floor(Math.random() * qualities.length);
-        newData[sectionId].selectedQuality = qualities[randomIndex];
-        newData[sectionId].selectedQualityIndex = randomIndex;
-        console.log('Selected quality:', qualities[randomIndex]);
+      // Handle qualities
+      if (section?.type === 'qualities' && data.qualityArea) {
+        const qualities = section.data?.comments?.[data.qualityArea];
+        if (qualities && qualities.length > 0) {
+          const randomIndex = Math.floor(Math.random() * qualities.length);
+          newData[sectionId].selectedQuality = qualities[randomIndex];
+          newData[sectionId].selectedQualityIndex = randomIndex;
         }
       }
 
@@ -171,21 +337,31 @@ export const useReportLogic = ({
       return newData;
     });
     setHasUnsavedChanges(true);
-  }, [template.sections, dynamicSections]);
+  }, [workingTemplate.sections, dynamicSections]);
 
-  // Get all sections (template + dynamic), correctly interleaved by insertAfter position.
-  // FIX: Previously returned [...template.sections, ...dynamicSections] which always
-  // appended dynamic sections to the end regardless of where they were added.
-  // Now inserts each dynamic section immediately after its target template section.
+  // Get all sections correctly interleaved by insertAfter position
   const getAllSections = useCallback(() => {
     const result: any[] = [];
-    template.sections.forEach((section: any, index: number) => {
+    workingTemplate.sections.forEach((section: any, index: number) => {
       result.push(section);
       const toInsert = dynamicSections.filter((ds: any) => ds.insertAfter === index);
       toInsert.forEach((ds: any) => result.push(ds));
     });
     return result;
-  }, [template.sections, dynamicSections]);
+  }, [workingTemplate.sections, dynamicSections]);
+
+  // ─── PRONOUN HELPER ───────────────────────────────────────────────────────
+  // Returns the display name or pronoun for the current student in this section
+
+  const getNameOrPronoun = useCallback((sectionId: string) => {
+    const sd = sectionData[sectionId] || {};
+    switch (sd.pronounOverride) {
+      case 'he': return 'he';
+      case 'she': return 'she';
+      case 'they': return 'they';
+      default: return currentStudent?.firstName || '';
+    }
+  }, [sectionData, currentStudent]);
 
   // Generate report content from section data
   const generateReportContent = useCallback(() => {
@@ -195,125 +371,84 @@ export const useReportLogic = ({
     allSections.forEach((section: any) => {
       const data = sectionData[section.id] || {};
 
-    // ⬇️⬇️⬇️ ADD THESE 4 LINES HERE ⬇️⬇️⬇️
-    if (data.exclude) {
-      return; // Skip excluded sections
-    }
-    // ⬆️⬆️⬆️ END OF NEW CODE ⬆️⬆️⬆️
+      if (data.exclude) return;
 
-      const showHeader = data.showHeader !== undefined ? data.showHeader : section.data?.showHeader !== undefined ?
-        section.data.showHeader : false;
+      const showHeader = data.showHeader !== undefined ? data.showHeader :
+        section.data?.showHeader !== undefined ? section.data.showHeader : false;
+
+      // Resolve name/pronoun for this section
+      const nameToken = getNameOrPronoun(section.id);
 
       switch (section.type) {
         case 'rated-comment':
           if (data.rating && data.rating !== 'no-comment') {
-            if (showHeader && section.name) {
-              content += `${section.name}: `;
-            }
-            
+            if (showHeader && section.name) content += `${section.name}: `;
             const comment = data.customEditedComment || data.selectedComment || '[No comment selected]';
-            const processedComment = comment.replace(/\[Name\]/g, currentStudent.firstName);
-            content += processedComment + ' ';
+            content += comment.replace(/\[Name\]/g, nameToken) + ' ';
           }
           break;
 
         case 'assessment-comment':
           if (data.performance && data.performance !== 'no-comment') {
-            if (showHeader && section.name) {
-              content += `${section.name}: `;
-            }
-
+            if (showHeader && section.name) content += `${section.name}: `;
             const comment = data.customEditedComment || data.selectedComment || '[No comment selected]';
-            let processedComment = comment.replace(/\[Name\]/g, currentStudent.firstName);
-            
-            // FIXED: Replace [Score] placeholder with actual score
+            let processed = comment.replace(/\[Name\]/g, nameToken);
             if (data.score !== undefined && data.score !== null) {
               const scoreType = data.scoreType || section.data?.scoreType || 'outOf';
               const maxScore = data.maxScore || section.data?.maxScore || 100;
-              
-              let scoreText = '';
-              if (scoreType === 'percentage') {
-                scoreText = `${data.score}%`;
-              } else {
-                scoreText = `${data.score} out of ${maxScore}`;
-              }
-              
-              processedComment = processedComment.replace(/\[Score\]/g, scoreText);
+              const scoreText = scoreType === 'percentage' ? `${data.score}%` : `${data.score} out of ${maxScore}`;
+              processed = processed.replace(/\[Score\]/g, scoreText);
             }
-            
-            content += processedComment + ' ';
+            content += processed + ' ';
           }
           break;
 
         case 'personalised-comment':
           if (data.category) {
-            if (showHeader && section.name) {
-              content += `${section.name}: `;
-            }
-            
+            if (showHeader && section.name) content += `${section.name}: `;
             const comment = data.customEditedComment || data.selectedComment || '[No comment selected]';
-            let processedComment = comment.replace(/\[Name\]/g, currentStudent.firstName);
-            
-            // Replace numbered [Info N] placeholders with teacher-entered values
+            let processed = comment.replace(/\[Name\]/g, nameToken);
             const infoValues: Record<string, string> = data.infoValues || {};
-            processedComment = processedComment.replace(/\[Info (\d+)\]/gi, (_match: string, num: string) => {
+            processed = processed.replace(/\[Info (\d+)\]/gi, (_match: string, num: string) => {
               return infoValues[`Info ${num}`] || `[Info ${num}]`;
             });
-
-            // Legacy fallback — handle old [personalised information] / [personal information] format
             if (infoValues['Info 1']) {
-              processedComment = processedComment.replace(/\[Personal Information\]/gi, infoValues['Info 1']);
-              processedComment = processedComment.replace(/\[Personalised Information\]/gi, infoValues['Info 1']);
-              processedComment = processedComment.replace(/\[Information\]/gi, infoValues['Info 1']);
+              processed = processed.replace(/\[Personal Information\]/gi, infoValues['Info 1']);
+              processed = processed.replace(/\[Personalised Information\]/gi, infoValues['Info 1']);
+              processed = processed.replace(/\[Information\]/gi, infoValues['Info 1']);
             }
-            
-            content += processedComment + ' ';
+            content += processed + ' ';
           }
           break;
 
         case 'next-steps':
           if (data.focusArea) {
-            if (showHeader && section.name) {
-              content += `${section.name}: `;
-            }
-            
+            if (showHeader && section.name) content += `${section.name}: `;
             const suggestion = data.customEditedSuggestion || data.selectedSuggestion || '[No suggestion selected]';
-            const processedSuggestion = suggestion.replace(/\[Name\]/g, currentStudent.firstName);
-            content += processedSuggestion + ' ';
+            content += suggestion.replace(/\[Name\]/g, nameToken) + ' ';
           }
           break;
 
         case 'qualities':
           if (data.qualityArea) {
-            if (showHeader && section.name) {
-              content += `${section.name}: `;
-            }
-    
+            if (showHeader && section.name) content += `${section.name}: `;
             const quality = data.customEditedQuality || data.selectedQuality || '[No quality selected]';
-            const processedQuality = quality.replace(/\[Name\]/g, currentStudent.firstName);
-            content += processedQuality + ' ';
+            content += quality.replace(/\[Name\]/g, nameToken) + ' ';
           }
-          break; 
+          break;
 
         case 'optional-additional-comment':
           if (data.comment && data.comment.trim()) {
-            if (showHeader && section.name) {
-              content += `${section.name}: `;
-            }
-            const processedComment = data.comment.replace(/\[Name\]/g, currentStudent.firstName);
-            content += processedComment + ' ';
+            if (showHeader && section.name) content += `${section.name}: `;
+            content += data.comment.replace(/\[Name\]/g, nameToken) + ' ';
           }
           break;
 
         case 'standard-comment':
           const standardContent = data.comment || section.data?.content;
-          
           if (standardContent && standardContent.trim()) {
-            if (showHeader && section.name) {
-              content += `${section.name}: `;
-            }
-            const processedComment = standardContent.replace(/\[Name\]/g, currentStudent.firstName);
-            content += processedComment + ' ';
+            if (showHeader && section.name) content += `${section.name}: `;
+            content += standardContent.replace(/\[Name\]/g, nameToken) + ' ';
           }
           break;
 
@@ -327,7 +462,7 @@ export const useReportLogic = ({
     });
 
     return content.trim();
-  }, [sectionData, currentStudent, getAllSections]);
+  }, [sectionData, currentStudent, getAllSections, getNameOrPronoun]);
 
   // Dynamic section handlers
   const handleAddDynamicSection = (sectionType: string, afterIndex: number = 0) => {
@@ -345,13 +480,10 @@ export const useReportLogic = ({
       updated.splice(insertAt, 0, newSection);
       return updated;
     });
-    
+
     setSectionData((prev: Record<string, any>) => ({
       ...prev,
-      [newSection.id]: { 
-        ...newSection.data,
-        showHeader: false
-      }
+      [newSection.id]: { ...newSection.data, showHeader: false }
     }));
 
     setHasUnsavedChanges(true);
@@ -367,7 +499,6 @@ export const useReportLogic = ({
     setHasUnsavedChanges(true);
   };
 
-  // Save current template as new template
   const handleSaveAsNewTemplate = () => {
     const name = prompt('Enter a name for the new template:');
     if (name) {
@@ -378,25 +509,21 @@ export const useReportLogic = ({
         sections: allSections,
         createdAt: new Date().toISOString()
       };
-      
       addTemplate(newTemplate);
       alert('Template saved successfully!');
     }
   };
 
-  // Handle preview editing
   const handlePreviewEdit = () => {
     setIsPreviewEditing(true);
     setEditableReportContent(generateReportContent());
   };
 
-  // Save preview edits
   const handleSavePreviewEdit = () => {
     setIsPreviewEditing(false);
     setHasUnsavedChanges(true);
   };
 
-  // Refresh preview with new content (when regenerate is clicked)
   const handleRefreshPreviewWithNewContent = () => {
     setEditableReportContent(generateReportContent());
     setHasUnsavedChanges(true);
@@ -420,6 +547,13 @@ export const useReportLogic = ({
     handleSaveAsNewTemplate,
     handlePreviewEdit,
     handleSavePreviewEdit,
-    handleRefreshPreviewWithNewContent
+    handleRefreshPreviewWithNewContent,
+    // Template editing
+    workingTemplate,
+    hasTemplateChanges,
+    handleTemplateAction,
+    handleAddButton,
+    handleDuplicateSection,
+    handleSaveWorkingTemplate,
   };
 };

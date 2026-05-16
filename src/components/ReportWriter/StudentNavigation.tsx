@@ -8,7 +8,9 @@ interface StudentNavigationProps {
   onPreviousStudent: () => void;
   onNextStudent: () => void;
   onFinish: () => void;
-  onViewAllReports: () => void; // New prop for viewing all reports
+  onViewAllReports: () => void;
+  pronounOverride?: string;
+  onPronounChange?: (pronoun: string) => void;
 }
 
 export const StudentNavigation: React.FC<StudentNavigationProps> = ({
@@ -19,21 +21,66 @@ export const StudentNavigation: React.FC<StudentNavigationProps> = ({
   onPreviousStudent,
   onNextStudent,
   onFinish,
-  onViewAllReports
+  onViewAllReports,
+  pronounOverride,
+  onPronounChange,
 }) => {
+  const pronounOptions = [
+    { value: '', label: 'Name' },
+    { value: 'he', label: 'He' },
+    { value: 'she', label: 'She' },
+    { value: 'they', label: 'They' },
+  ];
+
   return (
     <div>
+      {/* Pronoun Selector */}
+      {onPronounChange && (
+        <div style={{
+          backgroundColor: 'white',
+          border: '1px solid #e5e7eb',
+          borderRadius: '8px',
+          padding: '10px 14px',
+          marginBottom: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+        }}>
+          <span style={{ fontSize: '12px', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>
+            Use in report:
+          </span>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {pronounOptions.map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => onPronounChange(opt.value)}
+                style={{
+                  padding: '4px 12px',
+                  border: '2px solid #3b82f6',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  backgroundColor: (pronounOverride || '') === opt.value ? '#3b82f6' : 'white',
+                  color: (pronounOverride || '') === opt.value ? 'white' : '#3b82f6',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Action Buttons */}
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
         gap: '8px',
         marginBottom: '16px'
       }}>
-        <div style={{ 
-          display: 'flex', 
-          gap: '8px' 
-        }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={onSaveReport}
             style={{
@@ -69,10 +116,7 @@ export const StudentNavigation: React.FC<StudentNavigationProps> = ({
           </button>
         </div>
 
-        <div style={{ 
-          display: 'flex', 
-          gap: '8px' 
-        }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={onPreviousStudent}
             disabled={currentStudentIndex === 0}
@@ -111,7 +155,7 @@ export const StudentNavigation: React.FC<StudentNavigationProps> = ({
       </div>
 
       {/* Progress Indicator */}
-      <div style={{ 
+      <div style={{
         padding: '12px',
         backgroundColor: '#f3f4f6',
         borderRadius: '6px',

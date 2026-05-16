@@ -12,6 +12,9 @@ interface EditableSectionProps {
   onAddDynamicSection: (sectionType: string, afterIndex: number) => void;
   dynamicSections: any[];
   onRemoveDynamicSection: (sectionId: string) => void;
+  onTemplateAction?: (action: any) => void;
+  onAddButton?: (sectionId: string, buttonName: string, firstOption: string) => void;
+  onDuplicateSection?: (sectionId: string) => void;
 }
 
 export const EditableSection: React.FC<EditableSectionProps> = ({
@@ -23,8 +26,10 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
   showSectionOptions,
   setShowSectionOptions,
   onAddDynamicSection,
+  onTemplateAction,
+  onAddButton,
+  onDuplicateSection,
 }) => {
-  // Check if section type is editable
   const isSectionEditable = (type: string) => {
     return ['rated-comment', 'assessment-comment', 'personalised-comment', 'next-steps', 'qualities'].includes(type);
   };
@@ -37,14 +42,17 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
   return (
     <div style={{ position: 'relative' }}>
       {/* Main Section */}
-      <div style={{ position: 'relative' }}>        
+      <div style={{ position: 'relative' }}>
         <SectionRenderer
           section={section}
           sectionData={sectionData}
           updateSectionData={updateSectionData}
+          onTemplateAction={onTemplateAction}
+          onAddButton={onAddButton}
+          onDuplicateSection={onDuplicateSection}
         />
       </div>
-      
+
       {/* Bottom Right Corner - Plus Button and Edit Button */}
       <div style={{
         position: 'absolute',
@@ -54,7 +62,7 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
         gap: '8px',
         alignItems: 'center'
       }}>
-        {/* Edit Button - beside the plus button */}
+        {/* Edit Button */}
         {isSectionEditable(section.type) && (
           <button
             onClick={() => onEditSection(section, sectionIndex)}
@@ -71,10 +79,10 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
               transition: 'all 0.2s ease'
             }}
-            title="Edit section content"
+            title="Edit section comment bank"
           >
             ✏️
           </button>
@@ -96,7 +104,7 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
             alignItems: 'center',
             justifyContent: 'center',
             fontWeight: '600',
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
             transition: 'all 0.2s ease'
           }}
           title={showSectionOptions === sectionIndex ? 'Close' : 'Add section after this one'}
@@ -113,32 +121,17 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
             backgroundColor: 'white',
             border: '1px solid #d1d5db',
             borderRadius: '6px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
             padding: '8px',
             minWidth: '200px',
             zIndex: 20
           }}>
-            <div style={{ 
-              fontSize: '12px', 
-              color: '#6b7280', 
-              marginBottom: '6px',
-              fontWeight: '600'
-            }}>
+            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '6px', fontWeight: '600' }}>
               Add section after "{section.name}"
             </div>
             <button
               onClick={() => handleAddSection('optional-additional-comment')}
-              style={{
-                width: '100%',
-                textAlign: 'left',
-                padding: '6px 8px',
-                border: 'none',
-                backgroundColor: 'transparent',
-                borderRadius: '4px',
-                fontSize: '12px',
-                cursor: 'pointer',
-                marginBottom: '4px'
-              }}
+              style={{ width: '100%', textAlign: 'left', padding: '6px 8px', border: 'none', backgroundColor: 'transparent', borderRadius: '4px', fontSize: '12px', cursor: 'pointer', marginBottom: '4px' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
@@ -146,17 +139,7 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
             </button>
             <button
               onClick={() => handleAddSection('standard-comment')}
-              style={{
-                width: '100%',
-                textAlign: 'left',
-                padding: '6px 8px',
-                border: 'none',
-                backgroundColor: 'transparent',
-                borderRadius: '4px',
-                fontSize: '12px',
-                cursor: 'pointer',
-                marginBottom: '4px'
-              }}
+              style={{ width: '100%', textAlign: 'left', padding: '6px 8px', border: 'none', backgroundColor: 'transparent', borderRadius: '4px', fontSize: '12px', cursor: 'pointer', marginBottom: '4px' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
@@ -164,16 +147,7 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
             </button>
             <button
               onClick={() => handleAddSection('new-line')}
-              style={{
-                width: '100%',
-                textAlign: 'left',
-                padding: '6px 8px',
-                border: 'none',
-                backgroundColor: 'transparent',
-                borderRadius: '4px',
-                fontSize: '12px',
-                cursor: 'pointer'
-              }}
+              style={{ width: '100%', textAlign: 'left', padding: '6px 8px', border: 'none', backgroundColor: 'transparent', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >

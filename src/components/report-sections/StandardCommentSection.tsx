@@ -5,14 +5,30 @@ interface StandardCommentSectionProps {
   section: TemplateSection;
   data: any;
   updateSectionData: (sectionId: string, data: any) => void;
+  onTemplateAction?: (action: any) => void;
 }
 
 const StandardCommentSection: React.FC<StandardCommentSectionProps> = ({
   section,
   data,
-  updateSectionData
+  updateSectionData,
+  onTemplateAction,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [replaceConfirmed, setReplaceConfirmed] = useState(false);
+
+  const currentComment = data.comment || section.data?.content || '';
+
+  const handleReplaceInTemplate = () => {
+    if (!onTemplateAction || !currentComment.trim()) return;
+    onTemplateAction({
+      type: 'replace',
+      sectionId: section.id,
+      commentText: currentComment,
+    });
+    setReplaceConfirmed(true);
+    setTimeout(() => setReplaceConfirmed(false), 2000);
+  };
 
   return (
     <div style={{
@@ -36,97 +52,52 @@ const StandardCommentSection: React.FC<StandardCommentSectionProps> = ({
             alignItems: 'center',
             marginBottom: '4px'
           }}>
-            <h3 style={{
-              fontSize: '16px',
-              fontWeight: '600',
-              color: '#047857',
-              margin: 0
-            }}>
+            <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#047857', margin: 0 }}>
               {section.name || 'Standard Comment'}
             </h3>
-            
+
             {/* Header Options */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px'
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <input
                   type="checkbox"
                   checked={data.showHeader !== false}
                   onChange={(e) => updateSectionData(section.id, { showHeader: e.target.checked })}
-                  style={{
-                    width: '14px',
-                    height: '14px',
-                    cursor: 'pointer'
-                  }}
+                  style={{ width: '14px', height: '14px', cursor: 'pointer' }}
                 />
-                <span style={{
-                  fontSize: '12px',
-                  color: '#6b7280',
-                  fontWeight: '500'
-                }}>
-                  Header
-                </span>
+                <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Header</span>
               </div>
-              
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <input
                   type="checkbox"
                   checked={data.exclude || false}
                   onChange={(e) => updateSectionData(section.id, { exclude: e.target.checked })}
-                  style={{
-                    width: '14px',
-                    height: '14px',
-                    cursor: 'pointer'
-                  }}
+                  style={{ width: '14px', height: '14px', cursor: 'pointer' }}
                 />
-                <span style={{
-                  fontSize: '12px',
-                  color: '#6b7280',
-                  fontWeight: '500'
-                }}>
-                  Exclude
-                </span>
+                <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Exclude</span>
               </div>
-              
+
               <button
                 onClick={() => setIsExpanded(!isExpanded)}
                 style={{
                   backgroundColor: isExpanded ? '#10b981' : '#e5e7eb',
                   color: isExpanded ? 'white' : '#6b7280',
-                  border: 'none',
-                  borderRadius: '4px',
-                  padding: '4px 8px',
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  fontWeight: '500'
+                  border: 'none', borderRadius: '4px', padding: '4px 8px',
+                  fontSize: '12px', cursor: 'pointer', fontWeight: '500'
                 }}
               >
                 {isExpanded ? 'Collapse' : 'Edit'}
               </button>
             </div>
           </div>
-          
-          {/* Compact Preview - Show template creator's content */}
+
+          {/* Compact Preview */}
           {!isExpanded && (
             <div style={{
-              fontSize: '12px',
-              color: '#6b7280',
-              fontStyle: 'italic',
-              backgroundColor: 'white',
-              padding: '6px 8px',
-              borderRadius: '4px',
-              border: '1px solid #d1d5db'
+              fontSize: '12px', color: '#6b7280', fontStyle: 'italic',
+              backgroundColor: 'white', padding: '6px 8px',
+              borderRadius: '4px', border: '1px solid #d1d5db'
             }}>
               {(section.data?.content || 'Click Edit to add template content...').substring(0, 80)}
               {(section.data?.content || '').length > 80 ? '...' : ''}
@@ -139,28 +110,38 @@ const StandardCommentSection: React.FC<StandardCommentSectionProps> = ({
       {isExpanded && (
         <div>
           <textarea
-            value={data.comment || section.data?.content || ''}
+            value={currentComment}
             onChange={(e) => updateSectionData(section.id, { comment: e.target.value })}
             placeholder="Enter standard comment (use [Name] for student name)..."
             style={{
-              width: '100%',
-              minHeight: '60px',
-              padding: '8px',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              resize: 'vertical',
-              fontSize: '14px',
-              outline: 'none'
+              width: '100%', minHeight: '60px', padding: '8px',
+              border: '1px solid #d1d5db', borderRadius: '6px',
+              resize: 'vertical', fontSize: '14px', outline: 'none',
+              boxSizing: 'border-box',
             }}
           />
-          <div style={{
-            fontSize: '11px',
-            color: '#6b7280',
-            marginTop: '4px',
-            fontStyle: 'italic'
-          }}>
+          <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px', fontStyle: 'italic', marginBottom: '8px' }}>
             Tip: Use [Name] to insert student's name automatically
           </div>
+
+          {/* Replace in template */}
+          {onTemplateAction && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                onClick={handleReplaceInTemplate}
+                style={{
+                  backgroundColor: replaceConfirmed ? '#10b981' : '#8b5cf6',
+                  color: 'white', border: 'none', borderRadius: '4px',
+                  padding: '4px 10px', fontSize: '11px', cursor: 'pointer', fontWeight: '500',
+                }}
+              >
+                {replaceConfirmed ? '✓ Saved to template' : 'Replace in template'}
+              </button>
+              <span style={{ fontSize: '11px', color: '#6b7280', fontStyle: 'italic' }}>
+                Updates this comment for all future students in this session
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>
