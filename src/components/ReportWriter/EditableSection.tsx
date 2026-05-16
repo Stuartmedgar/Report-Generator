@@ -23,18 +23,15 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
   showSectionOptions,
   setShowSectionOptions,
   onAddDynamicSection,
-  dynamicSections,
-  onRemoveDynamicSection
 }) => {
   // Check if section type is editable
   const isSectionEditable = (type: string) => {
     return ['rated-comment', 'assessment-comment', 'personalised-comment', 'next-steps', 'qualities'].includes(type);
   };
 
-  // FIXED: Handle adding section and closing menu
   const handleAddSection = (sectionType: string) => {
     onAddDynamicSection(sectionType, sectionIndex);
-    setShowSectionOptions(null); // Close the menu after selection
+    setShowSectionOptions(null);
   };
 
   return (
@@ -112,7 +109,7 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
           <div style={{
             position: 'absolute',
             bottom: '35px',
-            right: '36px', // Adjusted to account for edit button
+            right: '36px',
             backgroundColor: 'white',
             border: '1px solid #d1d5db',
             borderRadius: '6px',
@@ -185,59 +182,6 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
           </div>
         )}
       </div>
-
-      {/* Dynamic sections added after this template section */}
-      {dynamicSections
-        .filter(ds => ds.insertAfter === sectionIndex)
-        .map((dynamicSection) => (
-          <div key={dynamicSection.id} style={{
-            position: 'relative',
-            marginTop: '16px'
-          }}>
-            <div style={{
-              position: 'absolute',
-              top: '8px',
-              left: '8px',
-              backgroundColor: '#10b981',
-              color: 'white',
-              padding: '2px 8px',
-              borderRadius: '4px',
-              fontSize: '10px',
-              fontWeight: '600'
-            }}>
-              ADDED
-            </div>
-            <button
-              onClick={() => onRemoveDynamicSection(dynamicSection.id)}
-              style={{
-                position: 'absolute',
-                top: '8px',
-                right: '8px',
-                backgroundColor: '#ef4444',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                width: '20px',
-                height: '20px',
-                fontSize: '12px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              ×
-            </button>
-            <div style={{ padding: '16px' }}>
-              <SectionRenderer
-                section={dynamicSection}
-                sectionData={sectionData}
-                updateSectionData={updateSectionData}
-              />
-            </div>
-          </div>
-        ))
-      }
     </div>
   );
 };

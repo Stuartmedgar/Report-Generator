@@ -201,8 +201,6 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
   };
 
   // Handle saving template changes
-  // FIX: Use reportLogic.getAllSections() so dynamic sections are interleaved
-  // at the correct positions, not just appended to the end.
   const handleSaveTemplateChanges = async () => {
     if (hasTemplateChanges) {
       const shouldSave = window.confirm('You have made changes to the template. Would you like to save them?');
@@ -260,9 +258,6 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
   };
 
   // ─── EDIT SECTION HANDLER ──────────────────────────────────────────────────
-  // FIX: Reshape section.data into what each builder actually expects before
-  // storing as editingSection. Previously all builders received raw section.data
-  // which caused empty builders because key names didn't match builder expectations.
 
   const handleOpenEditSection = (section: any, index: number) => {
     if (section.type === 'rated-comment') {
@@ -284,9 +279,6 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
   };
 
   // ─── SAVE EDITED SECTION ───────────────────────────────────────────────────
-  // FIX: Write the builder's output back to the template in the correct shape
-  // per section type. Previously it merged editedData directly onto data which
-  // produced the wrong structure and corrupted the section.
 
   const handleSaveEditedSection = (editedData: any) => {
     if (editingSection) {
@@ -297,9 +289,7 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
       let newData: any;
 
       if (original.type === 'rated-comment') {
-        newData = {
-          comments: editedData.comments,
-        };
+        newData = { comments: editedData.comments };
       } else if (original.type === 'assessment-comment') {
         newData = {
           comments: editedData.comments,
@@ -307,22 +297,15 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
           maxScore: editedData.maxScore,
         };
       } else if (original.type === 'qualities') {
-        // Builder returns { headings, comments } — store as { comments }
-        newData = {
-          comments: editedData.comments,
-        };
+        newData = { comments: editedData.comments };
       } else if (original.type === 'next-steps') {
-        // Builder returns { headings, comments } — store back as { focusAreas }
-        newData = {
-          focusAreas: editedData.comments,
-        };
+        newData = { focusAreas: editedData.comments };
       } else if (original.type === 'personalised-comment') {
         newData = {
           instruction: editedData.instruction,
           categories: editedData.comments,
         };
       } else {
-        // Fallback — preserve existing data shape
         newData = { ...original.data, ...editedData };
       }
 
@@ -470,22 +453,32 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
         
         {/* Left Column - Sections */}
         <div style={{ flex: 1 }}>
-          {reportLogic.getAllSections().map((section: any, index: number) => (
-            <div key={section.id || index} style={{ marginBottom: '20px' }}>
-              <EditableSection
-                section={section}
-                sectionIndex={index}
-                sectionData={currentSectionData}
-                updateSectionData={reportLogic.updateSectionData}
-                onEditSection={handleOpenEditSection}
-                showSectionOptions={showSectionOptions}
-                setShowSectionOptions={setShowSectionOptions}
-                onAddDynamicSection={dynamicSectionHandlers.handleAddDynamicSection}
-                dynamicSections={dynamicSections}
-                onRemoveDynamicSection={dynamicSectionHandlers.handleRemoveDynamicSection}
-              />
-            </div>
-          ))}
+          {(() => {
+            let templateIndex = -1;
+            return reportLogic.getAllSections().map((section: any, index: number) => {
+              // Only increment templateIndex for real template sections, not dynamic ones.
+              // This ensures insertAfter always refers to the correct template section position.
+              const isDynamic = section.id?.startsWith('dynamic-');
+              if (!isDynamic) templateIndex++;
+              const indexForAdd = templateIndex;
+              return (
+                <div key={section.id || index} style={{ marginBottom: '20px' }}>
+                  <EditableSection
+                    section={section}
+                    sectionIndex={indexForAdd}
+                    sectionData={currentSectionData}
+                    updateSectionData={reportLogic.updateSectionData}
+                    onEditSection={handleOpenEditSection}
+                    showSectionOptions={showSectionOptions}
+                    setShowSectionOptions={setShowSectionOptions}
+                    onAddDynamicSection={dynamicSectionHandlers.handleAddDynamicSection}
+                    dynamicSections={dynamicSections}
+                    onRemoveDynamicSection={dynamicSectionHandlers.handleRemoveDynamicSection}
+                  />
+                </div>
+              );
+            });
+          })()}
         </div>
 
         {/* Right Column - Preview and Navigation (moves with scroll) */}
