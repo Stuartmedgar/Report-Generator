@@ -24,6 +24,8 @@ interface SectionRendererProps {
   onTemplateAction?: (action: TemplateActionPayload) => void;
   onAddButton?: (sectionId: string, buttonName: string, firstOption: string) => void;
   onDuplicateSection?: (sectionId: string) => void;
+  onMergeSections?: (sourceId: string, targetId: string) => void;
+  workingTemplateSections?: any[];
 }
 
 const SectionRenderer: React.FC<SectionRendererProps> = ({
@@ -33,14 +35,14 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
   onTemplateAction,
   onAddButton,
   onDuplicateSection,
+  onMergeSections,
+  workingTemplateSections,
 }) => {
   const data = sectionData[section.id] || {};
 
-  // HEADER FIX: Enhanced updateSectionData that includes header default
   const enhancedUpdateSectionData = (sectionId: string, newData: any) => {
     if (newData.showHeader === undefined) {
-      const headerDefault = section.data?.showHeader !== undefined ?
-        section.data.showHeader : false;
+      const headerDefault = section.data?.showHeader !== undefined ? section.data.showHeader : false;
       newData.showHeader = headerDefault;
     }
     updateSectionData(sectionId, newData);
@@ -50,8 +52,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
     case 'rated-comment':
       return (
         <RatedCommentSection
-          section={section}
-          data={data}
+          section={section} data={data}
           updateSectionData={enhancedUpdateSectionData}
           onTemplateAction={onTemplateAction}
         />
@@ -60,8 +61,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
     case 'standard-comment':
       return (
         <StandardCommentSection
-          section={section}
-          data={data}
+          section={section} data={data}
           updateSectionData={enhancedUpdateSectionData}
           onTemplateAction={onTemplateAction}
         />
@@ -70,8 +70,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
     case 'optional-additional-comment':
       return (
         <OptionalAdditionalCommentSection
-          section={section}
-          data={data}
+          section={section} data={data}
           updateSectionData={enhancedUpdateSectionData}
         />
       );
@@ -79,8 +78,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
     case 'assessment-comment':
       return (
         <AssessmentCommentSection
-          section={section}
-          data={data}
+          section={section} data={data}
           updateSectionData={enhancedUpdateSectionData}
           onTemplateAction={onTemplateAction}
         />
@@ -89,60 +87,51 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
     case 'personalised-comment':
       return (
         <PersonalisedCommentSection
-          section={section}
-          data={data}
+          section={section} data={data}
           updateSectionData={enhancedUpdateSectionData}
           onTemplateAction={onTemplateAction}
           onAddButton={onAddButton}
           onDuplicateSection={onDuplicateSection}
+          onMergeSections={onMergeSections}
+          workingTemplateSections={workingTemplateSections}
         />
       );
 
     case 'next-steps':
       return (
         <NextStepsSection
-          section={section}
-          data={data}
+          section={section} data={data}
           updateSectionData={enhancedUpdateSectionData}
           onTemplateAction={onTemplateAction}
           onAddButton={onAddButton}
           onDuplicateSection={onDuplicateSection}
+          onMergeSections={onMergeSections}
+          workingTemplateSections={workingTemplateSections}
         />
       );
 
     case 'qualities':
       return (
         <QualitiesSection
-          section={section}
-          data={data}
+          section={section} data={data}
           updateSectionData={enhancedUpdateSectionData}
           onTemplateAction={onTemplateAction}
           onAddButton={onAddButton}
           onDuplicateSection={onDuplicateSection}
+          onMergeSections={onMergeSections}
+          workingTemplateSections={workingTemplateSections}
         />
       );
 
     case 'new-line':
       return (
-        <NewLineSection
-          section={section}
-          data={data}
-          updateSectionData={updateSectionData}
-        />
+        <NewLineSection section={section} data={data} updateSectionData={updateSectionData} />
       );
 
     default:
       return (
-        <div style={{
-          border: '2px solid #fbbf24',
-          borderRadius: '8px',
-          padding: '20px',
-          marginBottom: '16px',
-          backgroundColor: '#fef3c7'
-        }}>
-          <p style={{ margin: 0, color: '#92400e' }}>
-            Unknown section type: {section.type}
-          </p>
+        <div style={{ border: '2px solid #fbbf24', borderRadius: '8px', padding: '20px', marginBottom: '16px', backgroundColor: '#fef3c7' }}>
+          <p style={{ margin: 0, color: '#92400e' }}>Unknown section type: {section.type}</p>
         </div>
       );
   }

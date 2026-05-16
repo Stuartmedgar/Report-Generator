@@ -9,6 +9,73 @@ interface UseReportLogicParams {
   setDynamicSections: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
+// ─── PRONOUN SUBSTITUTION ─────────────────────────────────────────────────────
+// Maps male → female → neutral for whole-word replacement.
+// Uses word boundaries so "his" doesn't match "this", "he" doesn't match "the" etc.
+
+const PRONOUN_MAPS: Record<string, Record<string, string>> = {
+  she: {
+    '\\bhe\\b': 'she',
+    '\\bhis\\b': 'her',
+    '\\bhim\\b': 'her',
+    '\\bhimself\\b': 'herself',
+    // Capitalised forms
+    '\\bHe\\b': 'She',
+    '\\bHis\\b': 'Her',
+    '\\bHim\\b': 'Her',
+    '\\bHimself\\b': 'Herself',
+  },
+  he: {
+    '\\bshe\\b': 'he',
+    '\\bher\\b': 'his',   // possessive — "her effort" → "his effort"
+    '\\bherself\\b': 'himself',
+    '\\bShe\\b': 'He',
+    '\\bHer\\b': 'His',
+    '\\bHerself\\b': 'Himself',
+  },
+  they: {
+    '\\bhe\\b': 'they',
+    '\\bshe\\b': 'they',
+    '\\bhis\\b': 'their',
+    '\\bher\\b': 'their',
+    '\\bhim\\b': 'them',
+    '\\bhimself\\b': 'themselves',
+    '\\bherself\\b': 'themselves',
+    '\\bHe\\b': 'They',
+    '\\bShe\\b': 'They',
+    '\\bHis\\b': 'Their',
+    '\\bHer\\b': 'Their',
+    '\\bHim\\b': 'Them',
+    '\\bHimself\\b': 'Themselves',
+    '\\bHerself\\b': 'Themselves',
+  },
+};
+
+function applyGlobalPronoun(text: string, pronoun: string): string {
+  if (!pronoun || !PRONOUN_MAPS[pronoun]) return text;
+  let result = text;
+  const map = PRONOUN_MAPS[pronoun];
+  for (const [pattern, replacement] of Object.entries(map)) {
+    result = result.replace(new RegExp(pattern, 'g'), replacement);
+  }
+  return result;
+}
+
+// ─── CAPITAL AFTER FULL STOP ──────────────────────────────────────────────────
+// When replacing [Name], check if it follows ". " and capitalise accordingly.
+
+function replaceNameWithCapital(text: string, replacement: string): string {
+  return text.replace(/\[Name\]/g, (match, offset, str) => {
+    // Look back for ". " pattern (full stop + space before this position)
+    const before = str.slice(0, offset);
+    const followsFullStop = /\.\s+$/.test(before) || offset === 0;
+    if (followsFullStop) {
+      return replacement.charAt(0).toUpperCase() + replacement.slice(1);
+    }
+    return replacement;
+  });
+}
+
 export const useReportLogic = ({
   template,
   classData,
@@ -22,20 +89,15 @@ export const useReportLogic = ({
   const [isPreviewEditing, setIsPreviewEditing] = useState(false);
   const [editableReportContent, setEditableReportContent] = useState('');
 
-  // Working template — starts as a copy of the loaded template and accumulates
-  // changes made during the session. Teachers choose whether to save at the end.
   const [workingTemplate, setWorkingTemplate] = useState<any>(() => ({
     ...template,
     sections: template.sections.map((s: any) => ({ ...s, data: { ...s.data } }))
   }));
   const [hasTemplateChanges, setHasTemplateChanges] = useState(false);
 
-  // Use ref to track the last student ID to prevent unnecessary resets
   const lastStudentIdRef = useRef<string | null>(null);
-
-  // Keep workingTemplate in sync if the underlying template prop changes (e.g. after a save)
-  // but only on initial mount — don't overwrite in-session changes
   const templateIdRef = useRef(template.id);
+
   useEffect(() => {
     if (template.id !== templateIdRef.current) {
       templateIdRef.current = template.id;
@@ -47,11 +109,9 @@ export const useReportLogic = ({
     }
   }, [template.id]);
 
-  // Initialize section data when student changes
   useEffect(() => {
     if (currentStudent && currentStudent.id !== lastStudentIdRef.current) {
       lastStudentIdRef.current = currentStudent.id;
-
       const existingReport = getReport(currentStudent.id, template.id);
       if (existingReport?.sectionData) {
         setSectionData(existingReport.sectionData);
@@ -59,12 +119,8 @@ export const useReportLogic = ({
       } else {
         const initialData: Record<string, any> = {};
         workingTemplate.sections.forEach((section: any) => {
-          const showHeader = section.data.showHeader !== undefined ?
-            section.data.showHeader : false;
-          initialData[section.id] = {
-            showHeader,
-            ...section.data
-          };
+          const showHeader = section.data.showHeader !== undefined ? section.data.showHeader : false;
+          initialData[section.id] = { showHeader, ...section.data };
         });
         setSectionData(initialData);
         setEditableReportContent('');
@@ -75,22 +131,34 @@ export const useReportLogic = ({
     }
   }, [currentStudent, template.id, workingTemplate.sections, getReport, setDynamicSections]);
 
+  // ─── REORDER SECTIONS ─────────────────────────────────────────────────────
+  // Item 1: move a section up or down in workingTemplate
+
+  const handleReorderSection = useCallback((sectionId: string, direction: 'up' | 'down') => {
+    setWorkingTemplate((prev: any) => {
+      const sections = [...prev.sections];
+      const idx = sections.findIndex((s: any) => s.id === sectionId);
+      if (idx === -1) return prev;
+      const target = direction === 'up' ? idx - 1 : idx + 1;
+      if (target < 0 || target >= sections.length) return prev;
+      [sections[idx], sections[target]] = [sections[target], sections[idx]];
+      return { ...prev, sections };
+    });
+    setHasTemplateChanges(true);
+  }, []);
+
   // ─── TEMPLATE ACTION HANDLER ──────────────────────────────────────────────
-  // Called from section components when a teacher wants to modify the template
-  // during a report-writing session. Updates workingTemplate in memory.
-  // The original saved template is untouched until the teacher confirms at the end.
 
   const handleTemplateAction = useCallback((action: {
     type: 'replace' | 'add-to-button' | 'add-to-new-button';
     sectionId: string;
     commentText: string;
-    buttonName?: string;   // for add-to-button: which button to add under
-    newButtonName?: string; // for add-to-new-button: name of the new button
+    buttonName?: string;
+    newButtonName?: string;
   }) => {
     setWorkingTemplate((prev: any) => {
       const updatedSections = prev.sections.map((section: any) => {
         if (section.id !== action.sectionId) return section;
-
         const newData = { ...section.data };
 
         if (section.type === 'standard-comment' && action.type === 'replace') {
@@ -100,12 +168,8 @@ export const useReportLogic = ({
         if (section.type === 'qualities') {
           const comments = { ...newData.comments };
           if (action.type === 'replace' && action.buttonName) {
-            // Replace the specific option that was selected — find it by matching selectedQuality
             const options = [...(comments[action.buttonName] || [])];
-            const idx = options.indexOf(action.buttonName);
-            // Replace first occurrence or append if not found
-            const replaceIdx = options.findIndex(o => o === action.commentText) === -1
-              ? 0 : options.findIndex(o => o === action.commentText);
+            const replaceIdx = options.length > 0 ? 0 : 0;
             options[replaceIdx] = action.commentText;
             comments[action.buttonName] = options;
           } else if (action.type === 'add-to-button' && action.buttonName) {
@@ -160,22 +224,18 @@ export const useReportLogic = ({
 
         return { ...section, data: newData };
       });
-
       return { ...prev, sections: updatedSections };
     });
-
     setHasTemplateChanges(true);
   }, []);
 
-  // ─── ADD NEW BUTTON TO SECTION ────────────────────────────────────────────
-  // Used by the + button beside headings in qualities/next-steps/personalised sections
+  // ─── ADD NEW BUTTON ───────────────────────────────────────────────────────
 
   const handleAddButton = useCallback((sectionId: string, buttonName: string, firstOption: string) => {
     setWorkingTemplate((prev: any) => {
       const updatedSections = prev.sections.map((section: any) => {
         if (section.id !== sectionId) return section;
         const newData = { ...section.data };
-
         if (section.type === 'qualities') {
           newData.comments = { ...newData.comments, [buttonName]: [firstOption] };
         } else if (section.type === 'next-steps') {
@@ -183,7 +243,6 @@ export const useReportLogic = ({
         } else if (section.type === 'personalised-comment') {
           newData.categories = { ...newData.categories, [buttonName]: [firstOption] };
         }
-
         return { ...section, data: newData };
       });
       return { ...prev, sections: updatedSections };
@@ -211,8 +270,67 @@ export const useReportLogic = ({
     setHasTemplateChanges(true);
   }, []);
 
+  // ─── MERGE SECTIONS ───────────────────────────────────────────────────────
+  // Item 6: merge button banks from two sections of the same type into one.
+  // targetId absorbs all buttons from sourceId, then sourceId is removed.
+
+  const handleMergeSections = useCallback((sourceId: string, targetId: string) => {
+    setWorkingTemplate((prev: any) => {
+      const source = prev.sections.find((s: any) => s.id === sourceId);
+      const target = prev.sections.find((s: any) => s.id === targetId);
+      if (!source || !target || source.type !== target.type) return prev;
+
+      const mergedData = JSON.parse(JSON.stringify(target.data));
+
+      if (source.type === 'qualities') {
+        const sourceComments = source.data?.comments || {};
+        const targetComments = mergedData.comments || {};
+        for (const [key, options] of Object.entries(sourceComments)) {
+          if (targetComments[key]) {
+            // Merge options, deduplicating
+            const combined = [...targetComments[key], ...(options as string[])];
+            targetComments[key] = [...new Set(combined)];
+          } else {
+            targetComments[key] = options;
+          }
+        }
+        mergedData.comments = targetComments;
+      } else if (source.type === 'next-steps') {
+        const sourceFocusAreas = source.data?.focusAreas || {};
+        const targetFocusAreas = mergedData.focusAreas || {};
+        for (const [key, options] of Object.entries(sourceFocusAreas)) {
+          if (targetFocusAreas[key]) {
+            const combined = [...targetFocusAreas[key], ...(options as string[])];
+            targetFocusAreas[key] = [...new Set(combined)];
+          } else {
+            targetFocusAreas[key] = options;
+          }
+        }
+        mergedData.focusAreas = targetFocusAreas;
+      } else if (source.type === 'personalised-comment') {
+        const sourceCategories = source.data?.categories || {};
+        const targetCategories = mergedData.categories || {};
+        for (const [key, options] of Object.entries(sourceCategories)) {
+          if (targetCategories[key]) {
+            const combined = [...targetCategories[key], ...(options as string[])];
+            targetCategories[key] = [...new Set(combined)];
+          } else {
+            targetCategories[key] = options;
+          }
+        }
+        mergedData.categories = targetCategories;
+      }
+
+      const updatedSections = prev.sections
+        .map((s: any) => s.id === targetId ? { ...s, data: mergedData } : s)
+        .filter((s: any) => s.id !== sourceId);
+
+      return { ...prev, sections: updatedSections };
+    });
+    setHasTemplateChanges(true);
+  }, []);
+
   // ─── SAVE WORKING TEMPLATE ────────────────────────────────────────────────
-  // Called at end of session if teacher wants to persist changes
 
   const handleSaveWorkingTemplate = useCallback(async () => {
     try {
@@ -224,10 +342,10 @@ export const useReportLogic = ({
     }
   }, [workingTemplate, updateTemplate]);
 
-  // Handle saving the report
+  // ─── SAVE REPORT ──────────────────────────────────────────────────────────
+
   const handleSaveReport = () => {
     const existingReport = getReport(currentStudent.id, template.id);
-
     let reportContent: string;
     let isManuallyEdited = false;
     let manuallyEditedContent: string | undefined;
@@ -252,9 +370,9 @@ export const useReportLogic = ({
       templateId: template.id,
       classId: classData.id,
       content: reportContent,
-      sectionData: sectionData,
-      isManuallyEdited: isManuallyEdited,
-      manuallyEditedContent: manuallyEditedContent,
+      sectionData,
+      isManuallyEdited,
+      manuallyEditedContent,
       createdAt: existingReport?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -264,26 +382,18 @@ export const useReportLogic = ({
     } else {
       addReport(reportData);
     }
-
     setHasUnsavedChanges(false);
   };
 
-  // Update section data and handle comment selection
+  // ─── UPDATE SECTION DATA ──────────────────────────────────────────────────
+
   const updateSectionData = useCallback((sectionId: string, data: any) => {
     console.log('updateSectionData called:', sectionId, data);
-
     setSectionData((prev: Record<string, any>) => {
-      console.log('Previous sectionData:', prev);
-
-      const newData = {
-        ...prev,
-        [sectionId]: { ...prev[sectionId], ...data }
-      };
-
+      const newData = { ...prev, [sectionId]: { ...prev[sectionId], ...data } };
       const section = workingTemplate.sections.find((s: any) => s.id === sectionId) ||
         dynamicSections.find((s: any) => s.id === sectionId);
 
-      // Handle rated comments
       if (section?.type === 'rated-comment' && data.rating && data.rating !== 'no-comment') {
         const comments = section.data?.comments?.[data.rating] || section.data?.ratings?.[data.rating];
         if (comments && comments.length > 0) {
@@ -292,8 +402,6 @@ export const useReportLogic = ({
           newData[sectionId].selectedCommentIndex = randomIndex;
         }
       }
-
-      // Handle assessment comments
       if (section?.type === 'assessment-comment' && data.performance && data.performance !== 'no-comment') {
         const comments = section.data?.comments?.[data.performance];
         if (comments && comments.length > 0) {
@@ -302,8 +410,6 @@ export const useReportLogic = ({
           newData[sectionId].selectedCommentIndex = randomIndex;
         }
       }
-
-      // Handle personalised comments
       if (section?.type === 'personalised-comment' && data.category) {
         const comments = section.data?.categories?.[data.category] || section.data?.comments?.[data.category];
         if (comments && comments.length > 0) {
@@ -312,8 +418,6 @@ export const useReportLogic = ({
           newData[sectionId].selectedCommentIndex = randomIndex;
         }
       }
-
-      // Handle next steps
       if (section?.type === 'next-steps' && data.focusArea) {
         const suggestions = section.data?.focusAreas?.[data.focusArea] || section.data?.comments?.[data.focusArea];
         if (suggestions && suggestions.length > 0) {
@@ -322,8 +426,6 @@ export const useReportLogic = ({
           newData[sectionId].selectedSuggestionIndex = randomIndex;
         }
       }
-
-      // Handle qualities
       if (section?.type === 'qualities' && data.qualityArea) {
         const qualities = section.data?.comments?.[data.qualityArea];
         if (qualities && qualities.length > 0) {
@@ -332,14 +434,13 @@ export const useReportLogic = ({
           newData[sectionId].selectedQualityIndex = randomIndex;
         }
       }
-
-      console.log('New sectionData after update:', newData);
       return newData;
     });
     setHasUnsavedChanges(true);
   }, [workingTemplate.sections, dynamicSections]);
 
-  // Get all sections correctly interleaved by insertAfter position
+  // ─── GET ALL SECTIONS ─────────────────────────────────────────────────────
+
   const getAllSections = useCallback(() => {
     const result: any[] = [];
     workingTemplate.sections.forEach((section: any, index: number) => {
@@ -350,8 +451,8 @@ export const useReportLogic = ({
     return result;
   }, [workingTemplate.sections, dynamicSections]);
 
-  // ─── PRONOUN HELPER ───────────────────────────────────────────────────────
-  // Returns the display name or pronoun for the current student in this section
+  // ─── NAME/PRONOUN HELPER ──────────────────────────────────────────────────
+  // Per-section: replaces [Name] with pronoun or name
 
   const getNameOrPronoun = useCallback((sectionId: string) => {
     const sd = sectionData[sectionId] || {};
@@ -363,20 +464,22 @@ export const useReportLogic = ({
     }
   }, [sectionData, currentStudent]);
 
-  // Generate report content from section data
+  // ─── GENERATE REPORT CONTENT ──────────────────────────────────────────────
+
   const generateReportContent = useCallback(() => {
     let content = '';
     const allSections = getAllSections();
 
+    // Global pronoun for this student
+    const globalPronoun = sectionData['__student__']?.pronounOverride || '';
+
     allSections.forEach((section: any) => {
       const data = sectionData[section.id] || {};
-
       if (data.exclude) return;
 
       const showHeader = data.showHeader !== undefined ? data.showHeader :
         section.data?.showHeader !== undefined ? section.data.showHeader : false;
 
-      // Resolve name/pronoun for this section
       const nameToken = getNameOrPronoun(section.id);
 
       switch (section.type) {
@@ -384,7 +487,7 @@ export const useReportLogic = ({
           if (data.rating && data.rating !== 'no-comment') {
             if (showHeader && section.name) content += `${section.name}: `;
             const comment = data.customEditedComment || data.selectedComment || '[No comment selected]';
-            content += comment.replace(/\[Name\]/g, nameToken) + ' ';
+            content += replaceNameWithCapital(comment, nameToken) + ' ';
           }
           break;
 
@@ -392,7 +495,13 @@ export const useReportLogic = ({
           if (data.performance && data.performance !== 'no-comment') {
             if (showHeader && section.name) content += `${section.name}: `;
             const comment = data.customEditedComment || data.selectedComment || '[No comment selected]';
-            let processed = comment.replace(/\[Name\]/g, nameToken);
+            let processed = replaceNameWithCapital(comment, nameToken);
+            // Item 5: support [Score 1], [Score 2] etc as well as legacy [Score]
+            const scoreValues: Record<string, string> = data.scoreValues || {};
+            processed = processed.replace(/\[Score (\d+)\]/gi, (_m: string, num: string) => {
+              return scoreValues[`Score ${num}`] || `[Score ${num}]`;
+            });
+            // Legacy single [Score]
             if (data.score !== undefined && data.score !== null) {
               const scoreType = data.scoreType || section.data?.scoreType || 'outOf';
               const maxScore = data.maxScore || section.data?.maxScore || 100;
@@ -407,7 +516,7 @@ export const useReportLogic = ({
           if (data.category) {
             if (showHeader && section.name) content += `${section.name}: `;
             const comment = data.customEditedComment || data.selectedComment || '[No comment selected]';
-            let processed = comment.replace(/\[Name\]/g, nameToken);
+            let processed = replaceNameWithCapital(comment, nameToken);
             const infoValues: Record<string, string> = data.infoValues || {};
             processed = processed.replace(/\[Info (\d+)\]/gi, (_match: string, num: string) => {
               return infoValues[`Info ${num}`] || `[Info ${num}]`;
@@ -425,7 +534,7 @@ export const useReportLogic = ({
           if (data.focusArea) {
             if (showHeader && section.name) content += `${section.name}: `;
             const suggestion = data.customEditedSuggestion || data.selectedSuggestion || '[No suggestion selected]';
-            content += suggestion.replace(/\[Name\]/g, nameToken) + ' ';
+            content += replaceNameWithCapital(suggestion, nameToken) + ' ';
           }
           break;
 
@@ -433,14 +542,14 @@ export const useReportLogic = ({
           if (data.qualityArea) {
             if (showHeader && section.name) content += `${section.name}: `;
             const quality = data.customEditedQuality || data.selectedQuality || '[No quality selected]';
-            content += quality.replace(/\[Name\]/g, nameToken) + ' ';
+            content += replaceNameWithCapital(quality, nameToken) + ' ';
           }
           break;
 
         case 'optional-additional-comment':
           if (data.comment && data.comment.trim()) {
             if (showHeader && section.name) content += `${section.name}: `;
-            content += data.comment.replace(/\[Name\]/g, nameToken) + ' ';
+            content += replaceNameWithCapital(data.comment, nameToken) + ' ';
           }
           break;
 
@@ -448,7 +557,7 @@ export const useReportLogic = ({
           const standardContent = data.comment || section.data?.content;
           if (standardContent && standardContent.trim()) {
             if (showHeader && section.name) content += `${section.name}: `;
-            content += standardContent.replace(/\[Name\]/g, nameToken) + ' ';
+            content += replaceNameWithCapital(standardContent, nameToken) + ' ';
           }
           break;
 
@@ -461,10 +570,18 @@ export const useReportLogic = ({
       }
     });
 
-    return content.trim();
+    let result = content.trim();
+
+    // Apply global pronoun substitution (item 2)
+    if (globalPronoun) {
+      result = applyGlobalPronoun(result, globalPronoun);
+    }
+
+    return result;
   }, [sectionData, currentStudent, getAllSections, getNameOrPronoun]);
 
-  // Dynamic section handlers
+  // ─── DYNAMIC SECTIONS ─────────────────────────────────────────────────────
+
   const handleAddDynamicSection = (sectionType: string, afterIndex: number = 0) => {
     const newSection = {
       id: `dynamic-${Date.now()}`,
@@ -473,19 +590,16 @@ export const useReportLogic = ({
       data: { showHeader: true },
       insertAfter: afterIndex
     };
-
     setDynamicSections((prev: any[]) => {
       const insertAt = prev.filter(s => s.insertAfter <= afterIndex).length;
       const updated = [...prev];
       updated.splice(insertAt, 0, newSection);
       return updated;
     });
-
     setSectionData((prev: Record<string, any>) => ({
       ...prev,
       [newSection.id]: { ...newSection.data, showHeader: false }
     }));
-
     setHasUnsavedChanges(true);
   };
 
@@ -505,7 +619,7 @@ export const useReportLogic = ({
       const allSections = getAllSections();
       const newTemplate = {
         id: `template-${Date.now()}`,
-        name: name,
+        name,
         sections: allSections,
         createdAt: new Date().toISOString()
       };
@@ -548,12 +662,13 @@ export const useReportLogic = ({
     handlePreviewEdit,
     handleSavePreviewEdit,
     handleRefreshPreviewWithNewContent,
-    // Template editing
     workingTemplate,
     hasTemplateChanges,
     handleTemplateAction,
     handleAddButton,
     handleDuplicateSection,
+    handleMergeSections,
+    handleReorderSection,
     handleSaveWorkingTemplate,
   };
 };

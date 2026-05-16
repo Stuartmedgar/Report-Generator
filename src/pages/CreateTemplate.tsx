@@ -303,7 +303,7 @@ const CreateTemplate: React.FC = () => {
       <BuildAsYouGo
         templateName={templateName}
         onComplete={(completedSections) => {
-          // Save the skeleton template and navigate to report writer in build mode
+          // Save the skeleton template and navigate to report writer
           const template = {
             name: templateName,
             sections: completedSections,
@@ -311,7 +311,7 @@ const CreateTemplate: React.FC = () => {
             buildMode: true,
           };
           addTemplate(template);
-          navigate('/manage-templates', { state: { newBuildTemplate: template } });
+          navigate('/write-reports');
         }}
         onCancel={() => setStep('method')}
       />

@@ -52,31 +52,42 @@ function shapeForAssessmentBuilder(section: any) {
 
 function shapeForQualitiesBuilder(section: any) {
   const commentsObj = section.data?.comments || {};
-  return {
-    name: section.name || '',
-    headings: Object.keys(commentsObj),
-    comments: commentsObj,
-  };
+  return { name: section.name || '', headings: Object.keys(commentsObj), comments: commentsObj };
 }
 
 function shapeForNextStepsBuilder(section: any) {
   const focusAreas = section.data?.focusAreas || section.data?.comments || {};
-  return {
-    name: section.name || '',
-    headings: Object.keys(focusAreas),
-    comments: focusAreas,
-  };
+  return { name: section.name || '', headings: Object.keys(focusAreas), comments: focusAreas };
 }
 
 function shapeForPersonalisedBuilder(section: any) {
   const categories = section.data?.categories || section.data?.comments || {};
-  return {
-    name: section.name || '',
-    instruction: section.data?.instruction || '',
-    headings: Object.keys(categories),
-    comments: categories,
-  };
+  return { name: section.name || '', instruction: section.data?.instruction || '', headings: Object.keys(categories), comments: categories };
 }
+
+// ─── BUILDER OVERLAY ─────────────────────────────────────────────────────────
+// Item 4: nearly full-screen width
+
+const BuilderOverlay: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div style={{
+    position: 'fixed', inset: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    zIndex: 1000,
+    display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+    padding: '20px',
+    overflowY: 'auto',
+  }}>
+    <div style={{
+      backgroundColor: 'white',
+      borderRadius: '8px',
+      width: '100%',
+      maxWidth: '1100px',
+      minHeight: 'min-content',
+    }}>
+      {children}
+    </div>
+  </div>
+);
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 
@@ -85,34 +96,21 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
   const { updateTemplate } = useData();
   const [currentStudentIndex, setCurrentStudentIndex] = useState(startStudentIndex);
   const [showSectionOptions, setShowSectionOptions] = useState<number | null>(null);
-
-  // Mobile state
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [activeTab, setActiveTab] = useState<'sections' | 'preview'>('sections');
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
-
-  // Editing state
   const [editingSection, setEditingSection] = useState<{ section: any; index: number } | null>(null);
   const [showRatedCommentBuilder, setShowRatedCommentBuilder] = useState(false);
   const [showAssessmentCommentBuilder, setShowAssessmentCommentBuilder] = useState(false);
   const [showPersonalisedCommentBuilder, setShowPersonalisedCommentBuilder] = useState(false);
   const [showNextStepsCommentBuilder, setShowNextStepsCommentBuilder] = useState(false);
   const [showQualitiesCommentBuilder, setShowQualitiesCommentBuilder] = useState(false);
-
-  // Dynamic sections state
   const [dynamicSections, setDynamicSections] = useState<any[]>([]);
 
   const currentStudent = students[currentStudentIndex];
 
-  const reportLogic = useReportLogic({
-    template,
-    classData,
-    currentStudent,
-    dynamicSections,
-    setDynamicSections
-  });
-
+  const reportLogic = useReportLogic({ template, classData, currentStudent, dynamicSections, setDynamicSections });
   const currentSectionData = reportLogic.sectionData;
 
   useEffect(() => {
@@ -121,15 +119,14 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // ─── PRONOUN HANDLER ──────────────────────────────────────────────────────
-  // Pronoun is stored per-student in sectionData under a special '__student__' key
+  // ─── PRONOUN ──────────────────────────────────────────────────────────────
 
   const currentPronoun = currentSectionData['__student__']?.pronounOverride || '';
 
   const handlePronounChange = (pronoun: string) => {
     reportLogic.setSectionData((prev: any) => ({
       ...prev,
-      '__student__': { ...prev['__student__'], pronounOverride: pronoun }
+      '__student__': { ...prev['__student__'], pronounOverride: pronoun },
     }));
     reportLogic.setHasUnsavedChanges(true);
   };
@@ -139,36 +136,29 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
   const promptSaveTemplate = async () => {
     if (!reportLogic.hasTemplateChanges) return;
     const shouldSave = window.confirm(
-      'You made changes to the template during this session.\n\nWould you like to save these changes? They will replace the current template.'
+      'You made changes to the template during this session.\n\nSave these changes? They will replace the current template.'
     );
     if (shouldSave) {
-      const success = await reportLogic.handleSaveWorkingTemplate();
-      if (success) {
-        alert('Template saved successfully.');
-      } else {
-        alert('There was a problem saving the template. Please try again.');
-      }
+      const ok = await reportLogic.handleSaveWorkingTemplate();
+      alert(ok ? 'Template saved successfully.' : 'Problem saving template. Please try again.');
     }
   };
 
-  // Navigation handlers
+  // ─── NAVIGATION ───────────────────────────────────────────────────────────
+
   const navigationHandlers = {
     handlePreviousStudent: () => {
       if (reportLogic.hasUnsavedChanges) reportLogic.handleSaveReport();
       setCurrentStudentIndex(prev => Math.max(0, prev - 1));
       reportLogic.setHasUnsavedChanges(false);
     },
-
     handleNextStudent: () => {
       if (reportLogic.hasUnsavedChanges) reportLogic.handleSaveReport();
       setCurrentStudentIndex(prev => Math.min(students.length - 1, prev + 1));
       reportLogic.setHasUnsavedChanges(false);
     },
-
     handleSaveReport: reportLogic.handleSaveReport,
-
     handleHome: () => navigate('/'),
-
     handleFinish: async () => {
       if (reportLogic.hasUnsavedChanges) {
         const shouldSave = window.confirm('You have unsaved changes. Would you like to save before finishing?');
@@ -177,7 +167,6 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
       await promptSaveTemplate();
       navigate('/view-reports');
     },
-
     handleViewAllReports: async () => {
       if (reportLogic.hasUnsavedChanges) {
         const shouldSave = window.confirm('You have unsaved changes. Would you like to save before viewing reports?');
@@ -186,7 +175,6 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
       await promptSaveTemplate();
       navigate('/view-reports');
     },
-
     handleSaveAsNewTemplate: reportLogic.handleSaveAsNewTemplate
   };
 
@@ -195,13 +183,10 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
     setTouchStartX(e.touches[0].clientX);
     setTouchStartY(e.touches[0].clientY);
   };
-
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (!touchStartX || !touchStartY) return;
-    const touchEndX = e.changedTouches[0].clientX;
-    const touchEndY = e.changedTouches[0].clientY;
-    const deltaX = touchStartX - touchEndX;
-    const deltaY = Math.abs(touchStartY - touchEndY);
+    const deltaX = touchStartX - e.changedTouches[0].clientX;
+    const deltaY = Math.abs(touchStartY - e.changedTouches[0].clientY);
     if (Math.abs(deltaX) > 50 && deltaY < 50) {
       if (deltaX > 0) navigationHandlers.handleNextStudent();
       else navigationHandlers.handlePreviousStudent();
@@ -209,38 +194,24 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
     setTouchStartX(null);
     setTouchStartY(null);
   };
-
   const touchHandlers = { onTouchStart: handleTouchStart, onTouchEnd: handleTouchEnd };
 
   // Dynamic section handlers
   const dynamicSectionHandlers = {
     handleAddDynamicSection: (sectionType: string, afterIndex: number) => {
-      const newSection = {
-        id: `dynamic-${Date.now()}`,
-        type: sectionType,
-        name: `New ${sectionType}`,
-        data: {},
-        insertAfter: afterIndex
-      };
+      const newSection = { id: `dynamic-${Date.now()}`, type: sectionType, name: `New ${sectionType}`, data: {}, insertAfter: afterIndex };
       setDynamicSections(prev => {
         const insertAt = prev.filter(s => s.insertAfter <= afterIndex).length;
         const updated = [...prev];
         updated.splice(insertAt, 0, newSection);
         return updated;
       });
-      reportLogic.setSectionData((prev: any) => ({
-        ...prev,
-        [newSection.id]: { ...newSection.data }
-      }));
+      reportLogic.setSectionData((prev: any) => ({ ...prev, [newSection.id]: { ...newSection.data } }));
       reportLogic.setHasUnsavedChanges(true);
     },
     handleRemoveDynamicSection: (sectionId: string) => {
       setDynamicSections(prev => prev.filter(section => section.id !== sectionId));
-      reportLogic.setSectionData((prev: any) => {
-        const updated = { ...prev };
-        delete updated[sectionId];
-        return updated;
-      });
+      reportLogic.setSectionData((prev: any) => { const updated = { ...prev }; delete updated[sectionId]; return updated; });
       reportLogic.setHasUnsavedChanges(true);
     },
     dynamicSections
@@ -249,59 +220,14 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
   // ─── EDIT SECTION HANDLERS ────────────────────────────────────────────────
 
   const handleOpenEditSection = (section: any, index: number) => {
-    if (section.type === 'rated-comment') {
-      setEditingSection({ section: { ...section, data: shapeForRatedBuilder(section) }, index });
-      setShowRatedCommentBuilder(true);
-    } else if (section.type === 'assessment-comment') {
-      setEditingSection({ section: { ...section, data: shapeForAssessmentBuilder(section) }, index });
-      setShowAssessmentCommentBuilder(true);
-    } else if (section.type === 'personalised-comment') {
-      setEditingSection({ section: { ...section, data: shapeForPersonalisedBuilder(section) }, index });
-      setShowPersonalisedCommentBuilder(true);
-    } else if (section.type === 'next-steps') {
-      setEditingSection({ section: { ...section, data: shapeForNextStepsBuilder(section) }, index });
-      setShowNextStepsCommentBuilder(true);
-    } else if (section.type === 'qualities') {
-      setEditingSection({ section: { ...section, data: shapeForQualitiesBuilder(section) }, index });
-      setShowQualitiesCommentBuilder(true);
-    }
+    if (section.type === 'rated-comment') { setEditingSection({ section: { ...section, data: shapeForRatedBuilder(section) }, index }); setShowRatedCommentBuilder(true); }
+    else if (section.type === 'assessment-comment') { setEditingSection({ section: { ...section, data: shapeForAssessmentBuilder(section) }, index }); setShowAssessmentCommentBuilder(true); }
+    else if (section.type === 'personalised-comment') { setEditingSection({ section: { ...section, data: shapeForPersonalisedBuilder(section) }, index }); setShowPersonalisedCommentBuilder(true); }
+    else if (section.type === 'next-steps') { setEditingSection({ section: { ...section, data: shapeForNextStepsBuilder(section) }, index }); setShowNextStepsCommentBuilder(true); }
+    else if (section.type === 'qualities') { setEditingSection({ section: { ...section, data: shapeForQualitiesBuilder(section) }, index }); setShowQualitiesCommentBuilder(true); }
   };
 
-  const handleSaveEditedSection = (editedData: any) => {
-    if (editingSection) {
-      const updatedSections = [...reportLogic.workingTemplate.sections];
-      const original = updatedSections[editingSection.index];
-      let newData: any;
-
-      if (original.type === 'rated-comment') {
-        newData = { comments: editedData.comments };
-      } else if (original.type === 'assessment-comment') {
-        newData = { comments: editedData.comments, scoreType: editedData.scoreType, maxScore: editedData.maxScore };
-      } else if (original.type === 'qualities') {
-        newData = { comments: editedData.comments };
-      } else if (original.type === 'next-steps') {
-        newData = { focusAreas: editedData.comments };
-      } else if (original.type === 'personalised-comment') {
-        newData = { instruction: editedData.instruction, categories: editedData.comments };
-      } else {
-        newData = { ...original.data, ...editedData };
-      }
-
-      // Update via workingTemplate rather than saved template
-      reportLogic.handleTemplateAction({
-        type: 'replace',
-        sectionId: original.id,
-        commentText: '',  // not used for full-section edit
-        buttonName: '__full_section_replace__',
-      });
-
-      // Direct working template update for full section replace from builder
-      // We call updateTemplate on workingTemplate shallowly — handled in useReportLogic
-      updateTemplate({ ...reportLogic.workingTemplate, sections: updatedSections.map((s, i) =>
-        i === editingSection.index ? { ...s, name: editedData.name || s.name, data: newData } : s
-      )});
-    }
-
+  const closeAllBuilders = () => {
     setEditingSection(null);
     setShowRatedCommentBuilder(false);
     setShowAssessmentCommentBuilder(false);
@@ -310,19 +236,32 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
     setShowQualitiesCommentBuilder(false);
   };
 
+  const handleSaveEditedSection = (editedData: any) => {
+    if (editingSection) {
+      const updatedSections = [...reportLogic.workingTemplate.sections];
+      const original = updatedSections[editingSection.index];
+      let newData: any;
+      if (original.type === 'rated-comment') newData = { comments: editedData.comments };
+      else if (original.type === 'assessment-comment') newData = { comments: editedData.comments, scoreType: editedData.scoreType, maxScore: editedData.maxScore };
+      else if (original.type === 'qualities') newData = { comments: editedData.comments };
+      else if (original.type === 'next-steps') newData = { focusAreas: editedData.comments };
+      else if (original.type === 'personalised-comment') newData = { instruction: editedData.instruction, categories: editedData.comments };
+      else newData = { ...original.data, ...editedData };
+
+      updateTemplate({ ...reportLogic.workingTemplate, sections: updatedSections.map((s, i) =>
+        i === editingSection.index ? { ...s, name: editedData.name || s.name, data: newData } : s
+      )});
+    }
+    closeAllBuilders();
+  };
+
   const editingState = {
-    editingSection,
-    setEditingSection,
-    showRatedCommentBuilder,
-    setShowRatedCommentBuilder,
-    showAssessmentCommentBuilder,
-    setShowAssessmentCommentBuilder,
-    showPersonalisedCommentBuilder,
-    setShowPersonalisedCommentBuilder,
-    showNextStepsCommentBuilder,
-    setShowNextStepsCommentBuilder,
-    showQualitiesCommentBuilder,
-    setShowQualitiesCommentBuilder,
+    editingSection, setEditingSection,
+    showRatedCommentBuilder, setShowRatedCommentBuilder,
+    showAssessmentCommentBuilder, setShowAssessmentCommentBuilder,
+    showPersonalisedCommentBuilder, setShowPersonalisedCommentBuilder,
+    showNextStepsCommentBuilder, setShowNextStepsCommentBuilder,
+    showQualitiesCommentBuilder, setShowQualitiesCommentBuilder,
     handleSaveEditedSection
   };
 
@@ -330,16 +269,10 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
   if (isMobile) {
     return (
       <MobileReportWriter
-        template={template}
-        classData={classData}
-        students={students}
-        currentStudentIndex={currentStudentIndex}
-        currentStudent={currentStudent}
-        currentSectionData={currentSectionData}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        touchHandlers={touchHandlers}
-        navigationHandlers={navigationHandlers}
+        template={template} classData={classData} students={students}
+        currentStudentIndex={currentStudentIndex} currentStudent={currentStudent}
+        currentSectionData={currentSectionData} activeTab={activeTab} setActiveTab={setActiveTab}
+        touchHandlers={touchHandlers} navigationHandlers={navigationHandlers}
         reportLogic={{
           setSectionData: reportLogic.setSectionData,
           setHasUnsavedChanges: reportLogic.setHasUnsavedChanges,
@@ -352,54 +285,38 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
           getAllSections: reportLogic.getAllSections,
           updateSectionData: reportLogic.updateSectionData
         }}
-        dynamicSectionHandlers={dynamicSectionHandlers}
-        editingState={editingState}
-        showSectionOptions={showSectionOptions}
-        setShowSectionOptions={setShowSectionOptions}
+        dynamicSectionHandlers={dynamicSectionHandlers} editingState={editingState}
+        showSectionOptions={showSectionOptions} setShowSectionOptions={setShowSectionOptions}
         hasTemplateChanges={reportLogic.hasTemplateChanges}
       />
     );
   }
 
   // Desktop layout
+  const allSections = reportLogic.getAllSections();
+  const templateSectionIds = new Set(reportLogic.workingTemplate.sections.map((s: any) => s.id));
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       {/* Header */}
-      <div style={{
-        backgroundColor: 'white',
-        borderBottom: '1px solid #e5e7eb',
-        padding: '16px 20px',
-        position: 'sticky',
-        top: 0,
-        zIndex: 10
-      }}>
+      <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '16px 20px', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <button
-              onClick={onBack}
-              style={{ backgroundColor: '#6b7280', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}
-            >
+            <button onClick={onBack}
+              style={{ backgroundColor: '#6b7280', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
               ← Back
             </button>
-
             {reportLogic.hasTemplateChanges && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '12px', color: '#6b7280', fontStyle: 'italic' }}>
-                  Template has unsaved changes
-                </span>
+                <span style={{ fontSize: '12px', color: '#6b7280', fontStyle: 'italic' }}>Template has unsaved changes</span>
                 <button
-                  onClick={async () => {
-                    const success = await reportLogic.handleSaveWorkingTemplate();
-                    if (success) alert('Template saved.');
-                  }}
-                  style={{ backgroundColor: '#8b5cf6', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}
-                >
+                  onClick={async () => { const ok = await reportLogic.handleSaveWorkingTemplate(); if (ok) alert('Template saved.'); }}
+                  style={{ backgroundColor: '#8b5cf6', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
                   💾 Save Template Now
                 </button>
               </div>
             )}
           </div>
-
           <h1 style={{ fontSize: '20px', fontWeight: '600', margin: 0, color: '#111827' }}>
             {template.name} — {currentStudent?.firstName} {currentStudent?.lastName}
           </h1>
@@ -413,12 +330,47 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
         <div style={{ flex: 1 }}>
           {(() => {
             let templateIndex = -1;
-            return reportLogic.getAllSections().map((section: any, index: number) => {
+            return allSections.map((section: any, index: number) => {
               const isDynamic = section.id?.startsWith('dynamic-');
               if (!isDynamic) templateIndex++;
               const indexForAdd = templateIndex;
+              const isTemplateSec = templateSectionIds.has(section.id);
+              const templateSecIndex = reportLogic.workingTemplate.sections.findIndex((s: any) => s.id === section.id);
+
               return (
-                <div key={section.id || index} style={{ marginBottom: '20px' }}>
+                <div key={section.id || index} style={{ marginBottom: '20px', position: 'relative' }}>
+                  {/* Item 1: Reorder arrows — only for template sections, not dynamic */}
+                  {isTemplateSec && (
+                    <div style={{
+                      position: 'absolute', top: '8px', left: '-36px',
+                      display: 'flex', flexDirection: 'column', gap: '2px', zIndex: 5,
+                    }}>
+                      <button
+                        onClick={() => reportLogic.handleReorderSection(section.id, 'up')}
+                        disabled={templateSecIndex === 0}
+                        title="Move section up"
+                        style={{
+                          width: '28px', height: '24px', border: 'none',
+                          borderRadius: '4px', fontSize: '11px', cursor: templateSecIndex === 0 ? 'default' : 'pointer',
+                          backgroundColor: templateSecIndex === 0 ? '#f3f4f6' : '#e5e7eb',
+                          color: templateSecIndex === 0 ? '#d1d5db' : '#374151',
+                        }}
+                      >▲</button>
+                      <button
+                        onClick={() => reportLogic.handleReorderSection(section.id, 'down')}
+                        disabled={templateSecIndex === reportLogic.workingTemplate.sections.length - 1}
+                        title="Move section down"
+                        style={{
+                          width: '28px', height: '24px', border: 'none',
+                          borderRadius: '4px', fontSize: '11px',
+                          cursor: templateSecIndex === reportLogic.workingTemplate.sections.length - 1 ? 'default' : 'pointer',
+                          backgroundColor: templateSecIndex === reportLogic.workingTemplate.sections.length - 1 ? '#f3f4f6' : '#e5e7eb',
+                          color: templateSecIndex === reportLogic.workingTemplate.sections.length - 1 ? '#d1d5db' : '#374151',
+                        }}
+                      >▼</button>
+                    </div>
+                  )}
+
                   <EditableSection
                     section={section}
                     sectionIndex={indexForAdd}
@@ -433,6 +385,8 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
                     onTemplateAction={reportLogic.handleTemplateAction}
                     onAddButton={reportLogic.handleAddButton}
                     onDuplicateSection={reportLogic.handleDuplicateSection}
+                    onMergeSections={reportLogic.handleMergeSections}
+                    workingTemplateSections={reportLogic.workingTemplate.sections}
                   />
                 </div>
               );
@@ -451,7 +405,6 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
             onSavePreviewEdit={reportLogic.handleSavePreviewEdit}
             hideEditButton={true}
           />
-
           <StudentNavigation
             currentStudentIndex={currentStudentIndex}
             studentsLength={students.length}
@@ -467,50 +420,31 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
         </div>
       </div>
 
-      {/* Comment Builders */}
+      {/* Comment Builders — item 4: full width via BuilderOverlay */}
       {showRatedCommentBuilder && editingSection && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div style={{ backgroundColor: 'white', borderRadius: '8px', maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }}>
-            <RatedCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection}
-              onCancel={() => { setEditingSection(null); setShowRatedCommentBuilder(false); }} />
-          </div>
-        </div>
+        <BuilderOverlay>
+          <RatedCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection} onCancel={closeAllBuilders} />
+        </BuilderOverlay>
       )}
-
       {showAssessmentCommentBuilder && editingSection && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div style={{ backgroundColor: 'white', borderRadius: '8px', maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }}>
-            <AssessmentCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection}
-              onCancel={() => { setEditingSection(null); setShowAssessmentCommentBuilder(false); }} />
-          </div>
-        </div>
+        <BuilderOverlay>
+          <AssessmentCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection} onCancel={closeAllBuilders} />
+        </BuilderOverlay>
       )}
-
       {showPersonalisedCommentBuilder && editingSection && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div style={{ backgroundColor: 'white', borderRadius: '8px', maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }}>
-            <PersonalisedCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection}
-              onCancel={() => { setEditingSection(null); setShowPersonalisedCommentBuilder(false); }} />
-          </div>
-        </div>
+        <BuilderOverlay>
+          <PersonalisedCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection} onCancel={closeAllBuilders} />
+        </BuilderOverlay>
       )}
-
       {showNextStepsCommentBuilder && editingSection && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div style={{ backgroundColor: 'white', borderRadius: '8px', maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }}>
-            <NextStepsCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection}
-              onCancel={() => { setEditingSection(null); setShowNextStepsCommentBuilder(false); }} />
-          </div>
-        </div>
+        <BuilderOverlay>
+          <NextStepsCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection} onCancel={closeAllBuilders} />
+        </BuilderOverlay>
       )}
-
       {showQualitiesCommentBuilder && editingSection && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div style={{ backgroundColor: 'white', borderRadius: '8px', maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }}>
-            <QualitiesCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection}
-              onCancel={() => { setEditingSection(null); setShowQualitiesCommentBuilder(false); }} />
-          </div>
-        </div>
+        <BuilderOverlay>
+          <QualitiesCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection} onCancel={closeAllBuilders} />
+        </BuilderOverlay>
       )}
     </div>
   );
