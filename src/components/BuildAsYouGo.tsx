@@ -7,8 +7,6 @@ interface BuildAsYouGoProps {
   onCancel: () => void;
 }
 
-// ─── TYPES ────────────────────────────────────────────────────────────────────
-
 interface StatementButton {
   name: string;
   statements: string[];
@@ -18,8 +16,8 @@ interface AddedSection {
   id: string;
   type: SectionType;
   name: string;
-  buttons: StatementButton[]; // for button-based sections
-  content: string;            // for standard-comment
+  buttons: StatementButton[];
+  content: string;
 }
 
 interface Question {
@@ -30,7 +28,7 @@ interface Question {
   namePlaceholder: string;
   defaultName: string;
   allowMultiple: boolean;
-  hasButtons: boolean; // qualities, next-steps, personalised → needs button naming
+  hasButtons: boolean;
   noName?: boolean;
 }
 
@@ -141,39 +139,32 @@ const SECTION_LABELS: Record<string, string> = {
   'new-line': 'Paragraph Break',
 };
 
-// Rated comment has fixed button names
 const RATED_BUTTONS = ['Excellent', 'Good', 'Satisfactory', 'Needs Improvement'];
 const ASSESSMENT_BUTTONS = ['Excellent', 'Good', 'Satisfactory', 'Needs Improvement', 'Not Completed'];
 
 const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-// ─── COMPONENT ────────────────────────────────────────────────────────────────
-
 const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, onCancel }) => {
 
-  // ─── REPORTS PANEL ──────────────────────────────────────────────────────
-  const [reportsPanelOpen, setReportsPanelOpen] = useState(false);
+  // Fix 1: reports panel open by default
+  const [reportsPanelOpen, setReportsPanelOpen] = useState(true);
   const [pastedReports, setPastedReports] = useState('');
 
-  // ─── QUESTION FLOW ──────────────────────────────────────────────────────
   const [currentStep, setCurrentStep] = useState(0);
   const [addedSections, setAddedSections] = useState<AddedSection[]>([]);
   const [showSummary, setShowSummary] = useState(false);
 
-  // Per-question state
   const [phase, setPhase] = useState<'ask' | 'name' | 'statements' | 'added'>('ask');
   const [sectionName, setSectionName] = useState('');
 
-  // Buttons state (for hasButtons sections)
   const [buttons, setButtons] = useState<StatementButton[]>([]);
   const [activeButtonIndex, setActiveButtonIndex] = useState(0);
   const [newStatement, setNewStatement] = useState('');
   const [newButtonName, setNewButtonName] = useState('');
   const [addingNewButton, setAddingNewButton] = useState(false);
 
-  // Standard comment content
+  // Fix 7: standard comment is a single textarea, not a list
   const [standardContent, setStandardContent] = useState('');
-  const [newStatementStd, setNewStatementStd] = useState('');
 
   const statementInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -190,7 +181,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
     setNewButtonName('');
     setAddingNewButton(false);
     setStandardContent('');
-    setNewStatementStd('');
   };
 
   const advanceQuestion = () => {
@@ -202,8 +192,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
     }
   };
 
-  // ─── YES HANDLER ──────────────────────────────────────────────────────
-
   const handleYes = () => {
     setSectionName(question.defaultName);
     setPhase('name');
@@ -211,35 +199,27 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
 
   const handleNo = () => advanceQuestion();
 
-  // ─── NAME CONFIRMED ───────────────────────────────────────────────────
-
   const handleNameConfirmed = () => {
     if (question.noName) {
-      // No name needed — go straight to adding
       handleAddSection();
       return;
     }
     if (!sectionName.trim()) return;
 
     if (question.hasButtons) {
-      // For rated/assessment: pre-create fixed buttons
       if (isRatedFixed) {
         const fixedNames = question.sectionType === 'assessment-comment' ? ASSESSMENT_BUTTONS : RATED_BUTTONS;
         setButtons(fixedNames.map(n => ({ name: n, statements: [] })));
         setActiveButtonIndex(0);
       } else {
-        // Free buttons — start with one empty button
         setButtons([{ name: '', statements: [] }]);
         setActiveButtonIndex(0);
       }
       setPhase('statements');
     } else {
-      // standard-comment: go to statement paste
       setPhase('statements');
     }
   };
-
-  // ─── ADD STATEMENT (button-based) ─────────────────────────────────────
 
   const handleAddStatement = () => {
     if (!newStatement.trim()) return;
@@ -266,8 +246,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
     });
   };
 
-  // ─── ADD NEW BUTTON ───────────────────────────────────────────────────
-
   const handleConfirmNewButton = () => {
     if (!newButtonName.trim()) return;
     setButtons(prev => [...prev, { name: newButtonName.trim(), statements: [] }]);
@@ -275,16 +253,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
     setNewButtonName('');
     setAddingNewButton(false);
   };
-
-  // ─── ADD STANDARD STATEMENT ───────────────────────────────────────────
-
-  const handleAddStandardStatement = () => {
-    if (!newStatementStd.trim()) return;
-    setStandardContent(prev => prev ? prev + '\n' + newStatementStd.trim() : newStatementStd.trim());
-    setNewStatementStd('');
-  };
-
-  // ─── SAVE SECTION ─────────────────────────────────────────────────────
 
   const handleAddSection = () => {
     const name = question.noName ? question.defaultName : sectionName.trim() || question.defaultName;
@@ -308,10 +276,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
     setNewButtonName('');
     setAddingNewButton(false);
     setStandardContent('');
-    setNewStatementStd('');
   };
-
-  // ─── SUMMARY ACTIONS ──────────────────────────────────────────────────
 
   const handleMoveSection = (index: number, direction: 'up' | 'down') => {
     const next = [...addedSections];
@@ -324,8 +289,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
   const handleRemoveSection = (id: string) => {
     setAddedSections(prev => prev.filter(s => s.id !== id));
   };
-
-  // ─── COMPLETE ─────────────────────────────────────────────────────────
 
   const handleComplete = () => {
     if (addedSections.length === 0) {
@@ -341,52 +304,46 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
 
       } else if (s.type === 'qualities') {
         const comments: Record<string, string[]> = {};
-        s.buttons.forEach(b => {
-          if (b.name) comments[b.name] = b.statements;
-        });
+        s.buttons.forEach(b => { if (b.name) comments[b.name] = b.statements; });
         data = { comments };
 
       } else if (s.type === 'rated-comment') {
-  const keyMap: Record<string, string> = {
-    'Excellent': 'excellent',
-    'Good': 'good',
-    'Satisfactory': 'satisfactory',
-    'Needs Improvement': 'needsImprovement',
-  };
-  const comments: Record<string, string[]> = {};
-  s.buttons.forEach(b => {
-    const key = keyMap[b.name] || b.name;
-    comments[key] = b.statements;
-  });
-  data = { comments };
+        const keyMap: Record<string, string> = {
+          'Excellent': 'excellent',
+          'Good': 'good',
+          'Satisfactory': 'satisfactory',
+          'Needs Improvement': 'needsImprovement',
+        };
+        const comments: Record<string, string[]> = {};
+        s.buttons.forEach(b => {
+          const key = keyMap[b.name] || b.name;
+          comments[key] = b.statements;
+        });
+        data = { comments };
 
-} else if (s.type === 'assessment-comment') {
-  const keyMap: Record<string, string> = {
-    'Excellent': 'excellent',
-    'Good': 'good',
-    'Satisfactory': 'satisfactory',
-    'Needs Improvement': 'needsImprovement',
-    'Not Completed': 'notCompleted',
-  };
-  const comments: Record<string, string[]> = {};
-  s.buttons.forEach(b => {
-    const key = keyMap[b.name] || b.name;
-    comments[key] = b.statements;
-  });
-  data = { comments };
+      } else if (s.type === 'assessment-comment') {
+        const keyMap: Record<string, string> = {
+          'Excellent': 'excellent',
+          'Good': 'good',
+          'Satisfactory': 'satisfactory',
+          'Needs Improvement': 'needsImprovement',
+          'Not Completed': 'notCompleted',
+        };
+        const comments: Record<string, string[]> = {};
+        s.buttons.forEach(b => {
+          const key = keyMap[b.name] || b.name;
+          comments[key] = b.statements;
+        });
+        data = { comments };
 
       } else if (s.type === 'personalised-comment') {
         const categories: Record<string, string[]> = {};
-        s.buttons.forEach(b => {
-          if (b.name) categories[b.name] = b.statements;
-        });
+        s.buttons.forEach(b => { if (b.name) categories[b.name] = b.statements; });
         data = { categories, instruction: '' };
 
       } else if (s.type === 'next-steps') {
         const focusAreas: Record<string, string[]> = {};
-        s.buttons.forEach(b => {
-          if (b.name) focusAreas[b.name] = b.statements;
-        });
+        s.buttons.forEach(b => { if (b.name) focusAreas[b.name] = b.statements; });
         data = { focusAreas };
       }
 
@@ -417,10 +374,10 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
     width: '100%', padding: '10px 14px',
     border: '2px solid #e5e7eb', borderRadius: '8px',
     fontSize: '14px', outline: 'none', boxSizing: 'border-box',
-    fontFamily: 'inherit',
+    fontFamily: 'inherit', textAlign: 'left',
   };
   const txa: React.CSSProperties = {
-    ...inp, minHeight: '72px', resize: 'vertical',
+    ...inp, resize: 'vertical',
   };
 
   const accentColor = SECTION_COLORS[question.sectionType] || '#3b82f6';
@@ -453,7 +410,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
                     border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '8px',
                   }}>
                     <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: SECTION_COLORS[s.type] || '#9ca3af', flexShrink: 0 }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
                       <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>
                         {s.name || SECTION_LABELS[s.type]}
                       </div>
@@ -491,56 +448,55 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
     );
   }
 
-  // ─── MAIN QUESTION LAYOUT ─────────────────────────────────────────────
+  // ─── MAIN LAYOUT ──────────────────────────────────────────────────────
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
       {/* Top bar */}
-      <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151' }}>{templateName}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          {/* Progress */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ width: '120px', height: '4px', backgroundColor: '#e5e7eb', borderRadius: '2px' }}>
               <div style={{ width: `${((currentStep + 1) / QUESTIONS.length) * 100}%`, height: '100%', backgroundColor: '#3b82f6', borderRadius: '2px', transition: 'width 0.3s ease' }} />
             </div>
             <span style={{ fontSize: '12px', color: '#6b7280' }}>{currentStep + 1}/{QUESTIONS.length}</span>
           </div>
-          {/* Reports panel toggle */}
+
+          {/* Fix 1: toggle label swapped — hide when open, show when closed */}
           <button
             onClick={() => setReportsPanelOpen(o => !o)}
             style={{
-              backgroundColor: reportsPanelOpen ? '#eff6ff' : 'white',
-              color: reportsPanelOpen ? '#3b82f6' : '#6b7280',
-              border: `1px solid ${reportsPanelOpen ? '#3b82f6' : '#d1d5db'}`,
+              backgroundColor: reportsPanelOpen ? '#f3f4f6' : 'white',
+              color: '#6b7280',
+              border: '1px solid #d1d5db',
               borderRadius: '6px', padding: '6px 14px', fontSize: '13px',
               fontWeight: '500', cursor: 'pointer',
             }}
           >
-            {reportsPanelOpen ? '✕ Hide reports' : '📄 Paste existing reports'}
+            {reportsPanelOpen ? 'Hide reports' : '📄 Show reports'}
           </button>
+
           <button onClick={onCancel} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>
             ← Back
           </button>
         </div>
       </div>
 
-      {/* Body */}
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      {/* Fix 2: body uses width:100% and overflow:hidden to prevent overhang */}
+      <div style={{ flex: 1, display: 'flex', width: '100%', overflow: 'hidden', minHeight: 0 }}>
 
         {/* Left — Question panel */}
         <div style={{
-          flex: reportsPanelOpen ? '0 0 50%' : '1',
+          flex: 1,
           overflowY: 'auto',
           padding: '32px 40px',
-          display: 'flex',
-          flexDirection: 'column',
-          transition: 'flex 0.2s ease',
+          minWidth: 0,
         }}>
           <div style={{ maxWidth: '560px', width: '100%', margin: '0 auto' }}>
 
-            {/* Section type badge */}
+            {/* Section badge */}
             <div style={{
               display: 'inline-block',
               backgroundColor: accentColor + '20',
@@ -552,15 +508,14 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
               {SECTION_LABELS[question.sectionType]}
             </div>
 
-            {/* Question */}
-            <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#111827', marginBottom: '10px', lineHeight: '1.3' }}>
+            <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#111827', marginBottom: '10px', lineHeight: '1.3', textAlign: 'left' }}>
               {question.question}
             </h2>
-            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '28px', lineHeight: '1.6' }}>
+            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '28px', lineHeight: '1.6', textAlign: 'left' }}>
               {question.description}
             </p>
 
-            {/* ── PHASE: ASK ──────────────────────────────────────────── */}
+            {/* ── ASK ── */}
             {phase === 'ask' && (
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button onClick={handleYes} style={{ ...primaryBtn, flex: 1 }}>Yes</button>
@@ -568,10 +523,10 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
               </div>
             )}
 
-            {/* ── PHASE: NAME ──────────────────────────────────────────── */}
+            {/* ── NAME ── */}
             {phase === 'name' && !question.noName && (
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px', textAlign: 'left' }}>
                   What would you like to call this section?
                 </label>
                 <input
@@ -591,59 +546,39 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
               </div>
             )}
 
-            {/* ── PHASE: STATEMENTS ────────────────────────────────────── */}
+            {/* ── STATEMENTS ── */}
             {phase === 'statements' && (
               <div>
-                <div style={{
-                  backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0',
-                  borderRadius: '8px', padding: '10px 14px',
-                  fontSize: '13px', color: '#166534', marginBottom: '20px', lineHeight: '1.5',
-                }}>
-                  💡 Even 1–2 statements per button is enough to get started. You can add more as you write reports.
-                </div>
 
-                {/* STANDARD COMMENT — flat statement list */}
+                {/* Fix 5: hint only shown for button-based sections, not standard comment */}
+                {question.hasButtons && (
+                  <div style={{
+                    backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0',
+                    borderRadius: '8px', padding: '10px 14px',
+                    fontSize: '13px', color: '#166534', marginBottom: '20px', lineHeight: '1.5',
+                    textAlign: 'left',
+                  }}>
+                    💡 Even 1–2 statements per button is enough to get started. You can add more as you write reports.
+                  </div>
+                )}
+
+                {/* Fix 7: STANDARD COMMENT — single textarea only, no list building */}
                 {!question.hasButtons && (
                   <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                      Paste a statement:
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px', textAlign: 'left' }}>
+                      Paste your statement here:
                     </label>
+                    {/* Fix 4: larger textarea for standard comment */}
                     <textarea
-                      value={newStatementStd}
-                      onChange={e => setNewStatementStd(e.target.value)}
-                      placeholder="Paste or type a statement here... Use [Name] for pupil name."
-                      style={{ ...txa, borderColor: accentColor, marginBottom: '8px' }}
+                      value={standardContent}
+                      onChange={e => setStandardContent(e.target.value)}
+                      placeholder="Paste or type the statement here... Use [Name] for pupil name."
+                      style={{ ...txa, minHeight: '140px', borderColor: accentColor, marginBottom: '16px' }}
                     />
-                    <button onClick={handleAddStandardStatement} disabled={!newStatementStd.trim()}
-                      style={{ ...smallBtn(accentColor), opacity: !newStatementStd.trim() ? 0.4 : 1, marginBottom: '16px' }}>
-                      + Add
-                    </button>
-
-                    {standardContent && (
-                      <div style={{ marginBottom: '16px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                          Statements added:
-                        </div>
-                        {standardContent.split('\n').map((stmt, i) => (
-                          <div key={i} style={{
-                            display: 'flex', alignItems: 'flex-start', gap: '8px',
-                            padding: '8px 10px', backgroundColor: 'white',
-                            border: '1px solid #e5e7eb', borderRadius: '6px', marginBottom: '6px',
-                          }}>
-                            <span style={{ flex: 1, fontSize: '13px', color: '#374151' }}>{stmt}</span>
-                            <button onClick={() => {
-                              const lines = standardContent.split('\n').filter((_, idx) => idx !== i);
-                              setStandardContent(lines.join('\n'));
-                            }} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '14px', padding: 0 }}>✕</button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
                     <div style={{ display: 'flex', gap: '12px' }}>
                       <button onClick={() => setPhase('name')} style={secondaryBtn}>← Back</button>
                       <button onClick={handleAddSection} style={primaryBtn}>
-                        {standardContent ? 'Save section →' : 'Skip statements →'}
+                        {standardContent.trim() ? 'Save section →' : 'Skip →'}
                       </button>
                     </div>
                   </div>
@@ -655,8 +590,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
                     {/* Button tabs */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px', alignItems: 'center' }}>
                       {buttons.map((btn, i) => (
-                        <button
-                          key={i}
+                        <button key={i}
                           onClick={() => { setActiveButtonIndex(i); setAddingNewButton(false); }}
                           style={{
                             padding: '6px 14px',
@@ -674,7 +608,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
                         </button>
                       ))}
 
-                      {/* Add new button — only for free-button sections */}
                       {!isRatedFixed && !addingNewButton && (
                         <button
                           onClick={() => { setAddingNewButton(true); setNewButtonName(''); }}
@@ -687,10 +620,10 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
                       )}
                     </div>
 
-                    {/* New button name input */}
+                    {/* New button name */}
                     {addingNewButton && (
                       <div style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '12px', marginBottom: '16px' }}>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px', textAlign: 'left' }}>
                           New button name:
                         </label>
                         <input type="text" value={newButtonName} onChange={e => setNewButtonName(e.target.value)}
@@ -705,10 +638,10 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
                       </div>
                     )}
 
-                    {/* Button name input for free-button sections (first button) */}
+                    {/* First button name for free sections */}
                     {!isRatedFixed && !addingNewButton && buttons[activeButtonIndex] && buttons[activeButtonIndex].name === '' && (
                       <div style={{ marginBottom: '16px' }}>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px', textAlign: 'left' }}>
                           Name this button:
                         </label>
                         <input type="text"
@@ -728,22 +661,22 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
                     {/* Statement input */}
                     {(isRatedFixed || buttons[activeButtonIndex]?.name) && !addingNewButton && (
                       <div>
-                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                        <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px', textAlign: 'left' }}>
                           Paste a statement for <span style={{ color: accentColor }}>{buttons[activeButtonIndex]?.name || `Button ${activeButtonIndex + 1}`}</span>:
                         </label>
                         <textarea
                           ref={statementInputRef}
                           value={newStatement}
                           onChange={e => setNewStatement(e.target.value)}
-                          placeholder={`Paste or type a statement... Use [Name] for pupil name.`}
-                          style={{ ...txa, borderColor: accentColor, marginBottom: '8px' }}
+                          placeholder="Paste or type a statement... Use [Name] for pupil name."
+                          style={{ ...txa, minHeight: '80px', borderColor: accentColor, marginBottom: '8px' }}
                         />
                         <button onClick={handleAddStatement} disabled={!newStatement.trim()}
                           style={{ ...smallBtn(accentColor), opacity: !newStatement.trim() ? 0.4 : 1, marginBottom: '16px' }}>
                           + Add
                         </button>
 
-                        {/* Statements for active button */}
+                        {/* Fix 6: statements left-aligned */}
                         {buttons[activeButtonIndex]?.statements.length > 0 && (
                           <div style={{ marginBottom: '16px' }}>
                             {buttons[activeButtonIndex].statements.map((stmt, i) => (
@@ -751,10 +684,11 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
                                 display: 'flex', alignItems: 'flex-start', gap: '8px',
                                 padding: '8px 10px', backgroundColor: 'white',
                                 border: '1px solid #e5e7eb', borderRadius: '6px', marginBottom: '6px',
+                                textAlign: 'left',
                               }}>
-                                <span style={{ flex: 1, fontSize: '13px', color: '#374151' }}>{stmt}</span>
+                                <span style={{ flex: 1, fontSize: '13px', color: '#374151', textAlign: 'left' }}>{stmt}</span>
                                 <button onClick={() => handleRemoveStatement(activeButtonIndex, i)}
-                                  style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '14px', padding: 0 }}>✕</button>
+                                  style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '14px', padding: 0, flexShrink: 0 }}>✕</button>
                               </div>
                             ))}
                           </div>
@@ -764,28 +698,26 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
 
                     <div style={{ display: 'flex', gap: '12px' }}>
                       <button onClick={() => setPhase('name')} style={secondaryBtn}>← Back</button>
-                      <button onClick={handleAddSection} style={primaryBtn}>
-                        Save section →
-                      </button>
+                      <button onClick={handleAddSection} style={primaryBtn}>Save section →</button>
                     </div>
                   </div>
                 )}
               </div>
             )}
 
-            {/* ── PHASE: ADDED ─────────────────────────────────────────── */}
+            {/* ── ADDED ── */}
             {phase === 'added' && (
               <div>
                 <div style={{
                   backgroundColor: '#d1fae5', color: '#065f46',
                   borderRadius: '8px', padding: '12px 16px',
-                  fontSize: '13px', fontWeight: '600', marginBottom: '20px',
+                  fontSize: '13px', fontWeight: '600', marginBottom: '20px', textAlign: 'left',
                 }}>
                   ✓ Section added
                 </div>
                 {question.allowMultiple && (
                   <>
-                    <p style={{ fontSize: '14px', color: '#374151', marginBottom: '16px' }}>
+                    <p style={{ fontSize: '14px', color: '#374151', marginBottom: '16px', textAlign: 'left' }}>
                       Would you like to add another {SECTION_LABELS[question.sectionType].toLowerCase()} section?
                     </p>
                     <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
@@ -800,16 +732,16 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
               </div>
             )}
 
-            {/* Sections added so far — mini summary */}
+            {/* Sections added so far */}
             {addedSections.length > 0 && (
               <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #f3f4f6' }}>
-                <div style={{ fontSize: '12px', fontWeight: '600', color: '#9ca3af', marginBottom: '8px' }}>
+                <div style={{ fontSize: '12px', fontWeight: '600', color: '#9ca3af', marginBottom: '8px', textAlign: 'left' }}>
                   SECTIONS ADDED SO FAR
                 </div>
                 {addedSections.map(s => (
                   <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                     <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: SECTION_COLORS[s.type], flexShrink: 0 }} />
-                    <span style={{ fontSize: '13px', color: '#374151' }}>{s.name || SECTION_LABELS[s.type]}</span>
+                    <span style={{ fontSize: '13px', color: '#374151', textAlign: 'left' }}>{s.name || SECTION_LABELS[s.type]}</span>
                   </div>
                 ))}
               </div>
@@ -817,33 +749,34 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
           </div>
         </div>
 
-        {/* Right — Reports panel */}
+        {/* Fix 2: Right panel uses flex:0 0 45% with overflow hidden and proper containment */}
         {reportsPanelOpen && (
           <div style={{
-            flex: '0 0 50%',
+            flex: '0 0 45%',
             borderLeft: '1px solid #e5e7eb',
             backgroundColor: 'white',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
+            minWidth: 0,
           }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f4f6' }}>
-              <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>
-                Paste existing reports here
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f4f6', flexShrink: 0 }}>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '4px', textAlign: 'left' }}>
+                Your existing reports
               </div>
-              <div style={{ fontSize: '12px', color: '#6b7280', lineHeight: '1.5' }}>
-                Use these as a reference while you work through the questions. Up to 10 reports is plenty — even one or two helps.
+              <div style={{ fontSize: '12px', color: '#6b7280', lineHeight: '1.5', textAlign: 'left' }}>
+                Paste reports here as a reference while you work through the questions. Up to 10 is plenty — even one or two helps.
               </div>
             </div>
-            <div style={{ flex: 1, padding: '16px 20px', overflowY: 'auto' }}>
+            <div style={{ flex: 1, padding: '16px 20px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              {/* Fix 3: white-space: pre-wrap preserves blank lines for readability */}
               <textarea
                 value={pastedReports}
                 onChange={e => setPastedReports(e.target.value)}
-                placeholder="Paste your existing reports here. Separate each report with a blank line or a line of dashes (---). These are for your reference only."
+                placeholder="Paste your existing reports here. Separate each report with a blank line or ---. These are for your reference only."
                 style={{
+                  flex: 1,
                   width: '100%',
-                  height: '100%',
-                  minHeight: '400px',
                   padding: '12px',
                   border: '1px solid #e5e7eb',
                   borderRadius: '8px',
@@ -854,6 +787,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
                   boxSizing: 'border-box',
                   fontFamily: 'inherit',
                   color: '#374151',
+                  whiteSpace: 'pre-wrap',
+                  textAlign: 'left',
                 }}
               />
             </div>
