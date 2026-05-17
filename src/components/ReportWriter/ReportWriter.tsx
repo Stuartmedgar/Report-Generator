@@ -242,8 +242,8 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
       const original = updatedSections[editingSection.index];
       let newData: any;
       if (original.type === 'rated-comment') newData = { comments: editedData.comments };
-      else if (original.type === 'assessment-comment') newData = { comments: editedData.comments, scoreType: editedData.scoreType, maxScore: editedData.maxScore };
-      else if (original.type === 'qualities') newData = { comments: editedData.comments };
+      
+      else if (original.type === 'assessment-comment') newData = { comments: editedData.comments, scoreType: editedData.scoreType, maxScore: editedData.maxScore, instruction: original.data?.instruction || '' };
       else if (original.type === 'next-steps') newData = { focusAreas: editedData.comments };
       else if (original.type === 'personalised-comment') newData = { instruction: editedData.instruction, categories: editedData.comments };
       else newData = { ...original.data, ...editedData };

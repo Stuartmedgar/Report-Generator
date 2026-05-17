@@ -7,18 +7,15 @@ interface AssessmentCommentSectionProps {
   onTemplateAction?: (action: any) => void;
 }
 
-// Find all [Score N] placeholders in a comment string
 function getScorePlaceholders(comment: string): string[] {
   const found: string[] = [];
   const seen = new Set<string>();
-  // Numbered: [Score 1], [Score 2] etc
   const numbered = /\[Score (\d+)\]/gi;
   let match;
   while ((match = numbered.exec(comment)) !== null) {
     const key = `Score ${match[1]}`;
     if (!seen.has(key)) { seen.add(key); found.push(key); }
   }
-  // Legacy single [Score] — only if no numbered ones found
   if (found.length === 0 && /\[Score\]/i.test(comment)) {
     found.push('Score');
   }
@@ -42,6 +39,10 @@ const AssessmentCommentSection: React.FC<AssessmentCommentSectionProps> = ({
     }
   }, [data.selectedComment, data.customEditedComment]);
 
+  // Performance buttons — now free-form (teacher's own names from section.data.comments keys)
+  // Falls back to legacy fixed names if template was built the old way
+  const performanceButtons = Object.keys(section.data?.comments || {});
+
   const handlePerformanceChange = (performance: string) => {
     if (performance !== data.performance && data.customEditedComment && data.customEditedComment !== data.selectedComment) {
       if (!window.confirm('Changing the performance level will replace your custom edits. Continue?')) return;
@@ -50,8 +51,15 @@ const AssessmentCommentSection: React.FC<AssessmentCommentSectionProps> = ({
     setShowEditComment(false);
   };
 
-  const handleSaveEditedComment = () => { updateSectionData(section.id, { customEditedComment: editableComment }); setShowEditComment(false); };
-  const handleCancelEditComment = () => { setEditableComment(data.selectedComment || ''); setShowEditComment(false); };
+  const handleSaveEditedComment = () => {
+    updateSectionData(section.id, { customEditedComment: editableComment });
+    setShowEditComment(false);
+  };
+
+  const handleCancelEditComment = () => {
+    setEditableComment(data.selectedComment || '');
+    setShowEditComment(false);
+  };
 
   const handleScoreTypeChange = (scoreType: 'outOf' | 'percentage') => {
     updateSectionData(section.id, {
@@ -63,7 +71,6 @@ const AssessmentCommentSection: React.FC<AssessmentCommentSectionProps> = ({
   const handleScoreChange = (score: number) => updateSectionData(section.id, { score });
   const handleMaxScoreChange = (maxScore: number) => updateSectionData(section.id, { maxScore });
 
-  // Item 5: handle individual score value changes for [Score N] placeholders
   const handleScoreValueChange = (key: string, value: string) => {
     const scoreValues = { ...(data.scoreValues || {}) };
     scoreValues[key] = value;
@@ -94,22 +101,16 @@ const AssessmentCommentSection: React.FC<AssessmentCommentSectionProps> = ({
     setShowEditComment(false);
   };
 
-  const performances = [
-    { value: 'excellent', label: 'Excellent', color: '#10b981' },
-    { value: 'good', label: 'Good', color: '#3b82f6' },
-    { value: 'satisfactory', label: 'Satisfactory', color: '#f59e0b' },
-    { value: 'needsImprovement', label: 'Needs Improvement', color: '#ef4444' },
-    { value: 'notCompleted', label: 'Not Completed', color: '#6b7280' }
-  ];
-
   const hasSelectedComment = data.selectedComment && data.performance && data.performance !== 'no-comment';
   const currentScoreType = data.scoreType || section.data?.scoreType || 'outOf';
   const currentMaxScore = data.maxScore || section.data?.maxScore || 100;
-
-  // Work out which score placeholders the current comment needs
   const currentComment = data.customEditedComment || data.selectedComment || '';
   const scorePlaceholders = hasSelectedComment ? getScorePlaceholders(currentComment) : [];
   const hasNumberedScores = scorePlaceholders.some(p => p !== 'Score');
+
+  // Button colour — cycle through a few purples/blues for free buttons
+  const BUTTON_COLORS = ['#7c3aed', '#6d28d9', '#5b21b6', '#4c1d95', '#3730a3'];
+  const getButtonColor = (idx: number) => BUTTON_COLORS[idx % BUTTON_COLORS.length];
 
   const actionBtnStyle = (color: string): React.CSSProperties => ({
     backgroundColor: color, color: 'white', border: 'none', borderRadius: '4px',
@@ -140,31 +141,30 @@ const AssessmentCommentSection: React.FC<AssessmentCommentSectionProps> = ({
         </div>
       </div>
 
-      {/* Score inputs — item 5: show per-placeholder inputs if [Score N] detected, else legacy single score */}
+      {/* Fix 7: instruction reminder */}
+      {section.data?.instruction && (
+        <div style={{ fontSize: '13px', color: '#6d28d9', marginBottom: '12px', padding: '8px 12px', backgroundColor: 'rgba(139,92,246,0.08)', borderRadius: '6px', border: '1px solid rgba(139,92,246,0.2)', textAlign: 'left' }}>
+          <strong>Score reminder:</strong> {section.data.instruction}
+        </div>
+      )}
+
+      {/* Score inputs */}
       {hasSelectedComment && hasNumberedScores ? (
-        // Multiple score inputs for [Score 1], [Score 2] etc
         <div style={{ marginBottom: '12px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-            Score values:
-          </div>
+          <div style={{ fontSize: '12px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Score values:</div>
           {scorePlaceholders.map(key => (
             <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <label style={{ fontSize: '12px', color: '#374151', minWidth: '60px' }}>[{key}]:</label>
-              <input
-                type="text"
-                value={(data.scoreValues || {})[key] || ''}
-                onChange={e => handleScoreValueChange(key, e.target.value)}
+              <input type="text" value={(data.scoreValues || {})[key] || ''} onChange={e => handleScoreValueChange(key, e.target.value)}
                 placeholder="e.g. 15 out of 20 or 75%"
-                style={{ flex: 1, padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', outline: 'none' }}
-              />
+                style={{ flex: 1, padding: '4px 8px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', outline: 'none' }} />
             </div>
           ))}
           <div style={{ fontSize: '11px', color: '#6b7280', fontStyle: 'italic' }}>
-            Use [Score 1], [Score 2] etc in your comment template to support multiple scores.
+            Use [Score 1], [Score 2] etc in your comments to support multiple scores.
           </div>
         </div>
       ) : (
-        // Legacy single score type + input
         <>
           <div style={{ marginBottom: '12px' }}>
             <label style={{ fontSize: '12px', fontWeight: '500', color: '#374151', marginBottom: '6px', display: 'block' }}>Score Type:</label>
@@ -190,10 +190,8 @@ const AssessmentCommentSection: React.FC<AssessmentCommentSectionProps> = ({
             {currentScoreType === 'outOf' && (
               <>
                 <span style={{ fontSize: '12px', color: '#6b7280' }}>out of</span>
-                <input type="number" value={currentMaxScore}
-                  onChange={(e) => handleMaxScoreChange(parseFloat(e.target.value) || 100)}
-                  style={{ width: '60px', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', outline: 'none' }}
-                  min="1" />
+                <input type="number" value={currentMaxScore} onChange={(e) => handleMaxScoreChange(parseFloat(e.target.value) || 100)}
+                  style={{ width: '60px', padding: '4px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', outline: 'none' }} min="1" />
               </>
             )}
             {currentScoreType === 'percentage' && <span style={{ fontSize: '12px', color: '#6b7280' }}>%</span>}
@@ -201,19 +199,35 @@ const AssessmentCommentSection: React.FC<AssessmentCommentSectionProps> = ({
         </>
       )}
 
-      {/* Performance Buttons */}
+      {/* Fix 5: score placeholder hint always visible */}
+      <div style={{ fontSize: '11px', color: '#7c3aed', marginBottom: '12px', fontStyle: 'italic', textAlign: 'left' }}>
+        Use <strong>[Score]</strong> in comments for a single score, or <strong>[Score 1]</strong> <strong>[Score 2]</strong> for multiple scores.
+      </div>
+
+      {/* Performance buttons — now teacher's own names */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-        {performances.map((p) => (
-          <button key={p.value} onClick={() => handlePerformanceChange(p.value)}
+        {performanceButtons.map((btn, idx) => (
+          <button key={btn} onClick={() => handlePerformanceChange(btn)}
             style={{
-              backgroundColor: data.performance === p.value ? p.color : 'white',
-              color: data.performance === p.value ? 'white' : p.color,
-              border: `2px solid ${p.color}`, borderRadius: '6px', padding: '6px 12px',
+              backgroundColor: data.performance === btn ? getButtonColor(idx) : 'white',
+              color: data.performance === btn ? 'white' : getButtonColor(idx),
+              border: `2px solid ${getButtonColor(idx)}`,
+              borderRadius: '6px', padding: '6px 12px',
               fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap'
             }}>
-            {p.label}
+            {btn}
           </button>
         ))}
+        {/* No comment option */}
+        <button onClick={() => handlePerformanceChange('no-comment')}
+          style={{
+            backgroundColor: data.performance === 'no-comment' ? '#6b7280' : 'white',
+            color: data.performance === 'no-comment' ? 'white' : '#6b7280',
+            border: '2px solid #6b7280', borderRadius: '6px', padding: '6px 12px',
+            fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap'
+          }}>
+          No Comment
+        </button>
       </div>
 
       {/* Edit toggle */}
@@ -232,10 +246,9 @@ const AssessmentCommentSection: React.FC<AssessmentCommentSectionProps> = ({
           <textarea value={editableComment} onChange={(e) => setEditableComment(e.target.value)}
             placeholder="Edit the comment to better suit this student..."
             style={{ width: '100%', minHeight: '50px', padding: '6px', border: 'none', borderRadius: '4px', resize: 'vertical', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
-          <div style={{ fontSize: '11px', color: '#6b7280', fontStyle: 'italic', marginTop: '4px', marginBottom: '4px' }}>
-            Use [Score] for a single score, or [Score 1] [Score 2] for multiple scores.
+          <div style={{ fontSize: '11px', color: '#6b7280', fontStyle: 'italic', marginTop: '4px', marginBottom: '8px' }}>
+            Use [Score] or [Score 1] [Score 2] for score placeholders.
           </div>
-          <div style={{ marginBottom: '8px' }} />
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             <button onClick={handleCancelEditComment} style={actionBtnStyle('#6b7280')}>Cancel</button>
             <button onClick={handleSaveEditedComment} style={actionBtnStyle('#10b981')}>Save</button>
