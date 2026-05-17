@@ -347,14 +347,33 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
         data = { comments };
 
       } else if (s.type === 'rated-comment') {
-        const comments: Record<string, string[]> = {};
-        s.buttons.forEach(b => { comments[b.name] = b.statements; });
-        data = { comments };
+  const keyMap: Record<string, string> = {
+    'Excellent': 'excellent',
+    'Good': 'good',
+    'Satisfactory': 'satisfactory',
+    'Needs Improvement': 'needsImprovement',
+  };
+  const comments: Record<string, string[]> = {};
+  s.buttons.forEach(b => {
+    const key = keyMap[b.name] || b.name;
+    comments[key] = b.statements;
+  });
+  data = { comments };
 
-      } else if (s.type === 'assessment-comment') {
-        const comments: Record<string, string[]> = {};
-        s.buttons.forEach(b => { comments[b.name] = b.statements; });
-        data = { comments };
+} else if (s.type === 'assessment-comment') {
+  const keyMap: Record<string, string> = {
+    'Excellent': 'excellent',
+    'Good': 'good',
+    'Satisfactory': 'satisfactory',
+    'Needs Improvement': 'needsImprovement',
+    'Not Completed': 'notCompleted',
+  };
+  const comments: Record<string, string[]> = {};
+  s.buttons.forEach(b => {
+    const key = keyMap[b.name] || b.name;
+    comments[key] = b.statements;
+  });
+  data = { comments };
 
       } else if (s.type === 'personalised-comment') {
         const categories: Record<string, string[]> = {};
