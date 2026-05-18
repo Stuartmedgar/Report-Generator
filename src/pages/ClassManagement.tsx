@@ -9,7 +9,7 @@ export default function ClassManagement() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { state, deleteClass } = useData();
-  const [showCreateClass, setShowCreateClass] = useState(false);
+  const [showCreateClass, setShowCreateClass] = useState(() => searchParams.get('create') === 'true');
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
@@ -18,13 +18,6 @@ export default function ClassManagement() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  // If ?create=true is in the URL, open the create form immediately
-  useEffect(() => {
-    if (searchParams.get('create') === 'true') {
-      setShowCreateClass(true);
-    }
-  }, [searchParams]);
 
   const handleCreateClassComplete = () => {
     setShowCreateClass(false);
