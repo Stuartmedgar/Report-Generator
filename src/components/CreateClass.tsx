@@ -3,25 +3,20 @@ import { useData } from '../contexts/DataContext';
 import { Student } from '../types';
 
 interface CreateClassProps {
-  onComplete: () => void;
+  onComplete: (newClassId: string) => void;
   onCancel: () => void;
 }
 
-// Privacy utility function to truncate surnames to first 2 letters
 const truncateSurname = (surname: string): string => {
   if (!surname || surname.length === 0) return '';
   const truncated = surname.slice(0, 2);
-  if (truncated.length === 1) {
-    return truncated.charAt(0).toUpperCase();
-  }
+  if (truncated.length === 1) return truncated.charAt(0).toUpperCase();
   return truncated.charAt(0).toUpperCase() + truncated.charAt(1).toLowerCase();
 };
 
 function CreateClass({ onComplete, onCancel }: CreateClassProps) {
   const [className, setClassName] = useState('');
   const [students, setStudents] = useState<Student[]>([]);
-
-  // Fix: paste list ('csv') is now the default
   const [inputMethod, setInputMethod] = useState<'individual' | 'csv'>('csv');
   const [csvText, setCsvText] = useState('');
   const [newStudent, setNewStudent] = useState({ firstName: '', lastName: '', studentId: '', email: '' });
@@ -32,7 +27,6 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
       alert('Please enter both first name and last name');
       return;
     }
-
     const student: Student = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       firstName: newStudent.firstName.trim(),
@@ -40,7 +34,6 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
       studentId: newStudent.studentId.trim() || undefined,
       email: newStudent.email.trim() || undefined
     };
-
     setStudents([...students, student]);
     setNewStudent({ firstName: '', lastName: '', studentId: '', email: '' });
   };
@@ -50,10 +43,7 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
   };
 
   const handleProcessCSV = () => {
-    if (!csvText.trim()) {
-      alert('Please enter student data');
-      return;
-    }
+    if (!csvText.trim()) { alert('Please enter student data'); return; }
 
     try {
       const lines = csvText.trim().split('\n');
@@ -63,54 +53,44 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
         const line = lines[i].trim();
         if (!line) continue;
 
-        // Check if it's a CSV header line
         if (i === 0 && (line.toLowerCase().includes('first') || line.toLowerCase().includes('last'))) {
           const headers = line.toLowerCase().split(',').map(h => h.trim());
           const firstNameIndex = headers.findIndex(h => h.includes('first') || h.includes('given'));
           const lastNameIndex = headers.findIndex(h => h.includes('last') || h.includes('sur') || h.includes('family'));
-
           if (firstNameIndex >= 0 && lastNameIndex >= 0) {
             for (let j = 1; j < lines.length; j++) {
               const values = lines[j].split(',').map(v => v.trim());
               if (values.length >= 2 && values[firstNameIndex] && values[lastNameIndex]) {
-                const student: Student = {
+                newStudents.push({
                   id: Date.now().toString() + Math.random().toString(36).substr(2, 9) + j,
                   firstName: values[firstNameIndex],
                   lastName: truncateSurname(values[lastNameIndex])
-                };
-                newStudents.push(student);
+                });
               }
             }
             break;
           }
         }
 
-        // Parse as "FirstName LastName" format
         const nameParts = line.split(/\s+/);
-
         if (nameParts.length >= 2) {
           const firstName = nameParts[0];
           const lastName = nameParts[nameParts.length - 1];
-
           if (firstName && lastName) {
-            const student: Student = {
+            newStudents.push({
               id: Date.now().toString() + Math.random().toString(36).substr(2, 9) + i,
-              firstName: firstName,
+              firstName,
               lastName: truncateSurname(lastName)
-            };
-            newStudents.push(student);
+            });
           }
         } else if (nameParts.length === 1 && nameParts[0]) {
           const singleName = nameParts[0];
-          const useAsLastName = window.confirm(
-            `Found single name "${singleName}". Use as Last Name (OK) or First Name (Cancel)?`
-          );
-          const student: Student = {
+          const useAsLastName = window.confirm(`Found single name "${singleName}". Use as Last Name (OK) or First Name (Cancel)?`);
+          newStudents.push({
             id: Date.now().toString() + Math.random().toString(36).substr(2, 9) + i,
             firstName: useAsLastName ? '' : singleName,
             lastName: useAsLastName ? truncateSurname(singleName) : ''
-          };
-          newStudents.push(student);
+          });
         }
       }
 
@@ -127,24 +107,19 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
   };
 
   const handleCreateClass = () => {
-    if (!className.trim()) {
-      alert('Please enter a class name');
-      return;
-    }
-    if (students.length === 0) {
-      alert('Please add at least one student');
-      return;
-    }
+    if (!className.trim()) { alert('Please enter a class name'); return; }
+    if (students.length === 0) { alert('Please add at least one student'); return; }
 
+    const newClassId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
     const newClass = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      id: newClassId,
       name: className.trim(),
-      students: students,
+      students,
       createdAt: new Date().toISOString()
     };
 
     addClass(newClass);
-    onComplete();
+    onComplete(newClassId); // Pass the ID back so ClassManagement can route to SelectTemplate
   };
 
   const isMobile = window.innerWidth <= 768;
@@ -174,92 +149,51 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
 
       {/* Class Name */}
       <div style={{ marginBottom: '20px' }}>
-        <label style={{ display: 'block', fontSize: '16px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-          Class Name *
-        </label>
-        <input
-          type="text"
-          placeholder="e.g., 8A English, Year 9 Science"
-          value={className}
+        <label style={{ display: 'block', fontSize: '16px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>Class Name *</label>
+        <input type="text" placeholder="e.g., 8A English, Year 9 Science" value={className}
           onChange={e => setClassName(e.target.value)}
-          style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '16px', boxSizing: 'border-box' }}
-        />
+          style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '16px', boxSizing: 'border-box' }} />
       </div>
 
-      {/* Input Method Selection — Paste List first, Add Individually second */}
+      {/* Input Method Selection — Paste List first */}
       <div style={{ marginBottom: '20px' }}>
         <label style={{ display: 'block', fontSize: '16px', fontWeight: '600', color: '#374151', marginBottom: '12px' }}>
           How would you like to add students?
         </label>
-
         <div style={{ display: 'flex', gap: '12px', flexDirection: isMobile ? 'column' : 'row' }}>
-
-          {/* Paste List — shown first */}
           <button onClick={() => setInputMethod('csv')}
-            style={{
-              flex: 1, padding: '16px',
-              border: inputMethod === 'csv' ? '2px solid #3b82f6' : '1px solid #d1d5db',
-              borderRadius: '8px',
-              backgroundColor: inputMethod === 'csv' ? '#eff6ff' : 'white',
-              color: inputMethod === 'csv' ? '#1d4ed8' : '#374151',
-              fontSize: '14px', fontWeight: '600', cursor: 'pointer',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
-              transition: 'all 0.2s',
-            }}>
+            style={{ flex: 1, padding: '16px', border: inputMethod === 'csv' ? '2px solid #3b82f6' : '1px solid #d1d5db', borderRadius: '8px', backgroundColor: inputMethod === 'csv' ? '#eff6ff' : 'white', color: inputMethod === 'csv' ? '#1d4ed8' : '#374151', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
             <span style={{ fontSize: '24px' }}>📋</span>
             <span>Paste Full Class List</span>
             <span style={{ fontSize: '12px', fontWeight: '400', opacity: 0.8 }}>Copy and paste from your register</span>
           </button>
-
-          {/* Add Individually — shown second */}
           <button onClick={() => setInputMethod('individual')}
-            style={{
-              flex: 1, padding: '16px',
-              border: inputMethod === 'individual' ? '2px solid #3b82f6' : '1px solid #d1d5db',
-              borderRadius: '8px',
-              backgroundColor: inputMethod === 'individual' ? '#eff6ff' : 'white',
-              color: inputMethod === 'individual' ? '#1d4ed8' : '#374151',
-              fontSize: '14px', fontWeight: '600', cursor: 'pointer',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px',
-              transition: 'all 0.2s',
-            }}>
+            style={{ flex: 1, padding: '16px', border: inputMethod === 'individual' ? '2px solid #3b82f6' : '1px solid #d1d5db', borderRadius: '8px', backgroundColor: inputMethod === 'individual' ? '#eff6ff' : 'white', color: inputMethod === 'individual' ? '#1d4ed8' : '#374151', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
             <span style={{ fontSize: '24px' }}>➕</span>
             <span>Add Individually</span>
             <span style={{ fontSize: '12px', fontWeight: '400', opacity: 0.8 }}>Add pupils one at a time</span>
           </button>
-
         </div>
       </div>
 
-      {/* CSV / Paste Input */}
+      {/* CSV Input */}
       {inputMethod === 'csv' && (
         <div style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '20px', marginBottom: '20px' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#374151', margin: '0 0 16px 0' }}>
-            Paste Your Class List
-          </h3>
-
+          <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#374151', margin: '0 0 16px 0' }}>Paste Your Class List</h3>
           <div style={{ backgroundColor: '#dbeafe', border: '1px solid #3b82f6', borderRadius: '6px', padding: '12px', marginBottom: '16px' }}>
-            <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#1e40af', margin: '0 0 8px 0' }}>
-              Just paste names, one per line:
-            </h4>
+            <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#1e40af', margin: '0 0 8px 0' }}>Just paste names, one per line:</h4>
             <code style={{ fontSize: '12px', color: '#1e40af', display: 'block', lineHeight: '1.6' }}>
-              John Smith<br />
-              Sarah Johnson<br />
-              Michael Brown<br />
-              Emma Davis
+              John Smith<br />Sarah Johnson<br />Michael Brown<br />Emma Davis
             </code>
             <p style={{ fontSize: '12px', color: '#1e40af', margin: '8px 0 0 0' }}>
               Also works with CSV format if you have headers like "firstName,lastName"<br />
               <strong>Surnames will be automatically shortened to 2 letters for privacy.</strong>
             </p>
           </div>
-
           <textarea
             placeholder={"Paste your class list here, one pupil per line:\n\nJohn Smith\nSarah Johnson\nMichael Brown\nEmma Davis"}
-            value={csvText}
-            onChange={e => setCsvText(e.target.value)}
-            style={{ width: '100%', height: '160px', padding: '12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '12px' }}
-          />
+            value={csvText} onChange={e => setCsvText(e.target.value)}
+            style={{ width: '100%', height: '160px', padding: '12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '12px' }} />
           <button onClick={handleProcessCSV} disabled={!csvText.trim()}
             style={{ backgroundColor: csvText.trim() ? '#3b82f6' : '#d1d5db', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: csvText.trim() ? 'pointer' : 'not-allowed' }}>
             📋 Import Students
@@ -267,13 +201,10 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
         </div>
       )}
 
-      {/* Individual Student Input */}
+      {/* Individual Input */}
       {inputMethod === 'individual' && (
         <div style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '20px', marginBottom: '20px' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#374151', margin: '0 0 16px 0' }}>
-            Add Student
-          </h3>
-
+          <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#374151', margin: '0 0 16px 0' }}>Add Student</h3>
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>First Name *</label>
@@ -283,19 +214,16 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
                 style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Last Name * (will be shortened to 2 letters)</label>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Last Name * (shortened to 2 letters)</label>
               <input type="text" placeholder="Last name" value={newStudent.lastName}
                 onChange={e => setNewStudent({ ...newStudent, lastName: e.target.value })}
                 onKeyDown={e => { if (e.key === 'Enter') handleAddIndividualStudent(); }}
                 style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
               {newStudent.lastName && (
-                <p style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0 0' }}>
-                  Will be stored as: {truncateSurname(newStudent.lastName)}
-                </p>
+                <p style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0 0' }}>Will be stored as: {truncateSurname(newStudent.lastName)}</p>
               )}
             </div>
           </div>
-
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Student ID (optional)</label>
@@ -310,7 +238,6 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
                 style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
             </div>
           </div>
-
           <button onClick={handleAddIndividualStudent}
             disabled={!newStudent.firstName.trim() || !newStudent.lastName.trim()}
             style={{ backgroundColor: (newStudent.firstName.trim() && newStudent.lastName.trim()) ? '#3b82f6' : '#d1d5db', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: (newStudent.firstName.trim() && newStudent.lastName.trim()) ? 'pointer' : 'not-allowed' }}>
@@ -328,14 +255,10 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
           <div style={{ display: 'grid', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
             {students.map((student, index) => (
               <div key={student.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                    {index + 1}. {student.firstName} {student.lastName}
-                  </span>
-                  {student.studentId && (
-                    <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '8px' }}>(ID: {student.studentId})</span>
-                  )}
-                </div>
+                <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                  {index + 1}. {student.firstName} {student.lastName}
+                  {student.studentId && <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '8px' }}>(ID: {student.studentId})</span>}
+                </span>
                 <button onClick={() => handleRemoveStudent(student.id)}
                   style={{ backgroundColor: '#ef4444', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
                   onMouseOver={e => e.currentTarget.style.backgroundColor = '#dc2626'}
@@ -352,13 +275,12 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
       <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '20px' }}>
         <button onClick={handleCreateClass}
           disabled={!className.trim() || students.length === 0}
-          style={{ backgroundColor: (className.trim() && students.length > 0) ? '#10b981' : '#d1d5db', color: 'white', padding: isMobile ? '14px 32px' : '16px 40px', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '600', cursor: (className.trim() && students.length > 0) ? 'pointer' : 'not-allowed', transition: 'background-color 0.2s' }}
+          style={{ backgroundColor: (className.trim() && students.length > 0) ? '#10b981' : '#d1d5db', color: 'white', padding: isMobile ? '14px 32px' : '16px 40px', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '600', cursor: (className.trim() && students.length > 0) ? 'pointer' : 'not-allowed' }}
           onMouseOver={e => { if (className.trim() && students.length > 0) e.currentTarget.style.backgroundColor = '#059669'; }}
           onMouseOut={e => { if (className.trim() && students.length > 0) e.currentTarget.style.backgroundColor = '#10b981'; }}>
           🎓 Create Class
         </button>
       </div>
-
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Route, Routes, Link, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import './App.css';
 
 // Context Providers
@@ -21,6 +21,7 @@ import Signup from './pages/Signup';
 import AdminDashboard from './pages/AdminDashboard';
 import ImportTemplate from './pages/ImportTemplate';
 import TemplateReview from './pages/TemplateReview';
+import SelectTemplate from './pages/SelectTemplate';
 
 // Import subscription components
 import { PricingPage, SubscriptionSuccess } from './components/subscription';
@@ -119,20 +120,15 @@ function Home() {
   };
 
   const bigBtn = (bg: string): React.CSSProperties => ({
-    backgroundColor: bg,
-    color: 'white',
+    backgroundColor: bg, color: 'white',
     padding: isMobile ? '36px 24px' : '44px 32px',
     borderRadius: isMobile ? '8px' : '12px',
     border: 'none',
     boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
     transition: 'transform 0.2s, box-shadow 0.2s',
-    cursor: 'pointer',
-    width: '100%',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '8px',
+    cursor: 'pointer', width: '100%',
+    display: 'flex', flexDirection: 'column' as const,
+    alignItems: 'center', justifyContent: 'center', gap: '8px',
     boxSizing: 'border-box' as const,
   });
 
@@ -140,15 +136,8 @@ function Home() {
     <>
       <HamburgerMenu isMobile={isMobile} />
 
-      <div style={{
-        minHeight: '100vh',
-        backgroundColor: '#f8fafc',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: isMobile ? '60px 16px 40px' : '60px 20px 40px',
-      }}>
+      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: isMobile ? '60px 16px 40px' : '60px 20px 40px' }}>
+
         {/* Title */}
         <div style={{ textAlign: 'center', marginBottom: isMobile ? '36px' : '48px', maxWidth: '600px' }}>
           <h1 style={{ fontSize: isMobile ? '28px' : '48px', fontWeight: '800', color: '#1e293b', margin: '0 0 12px 0', lineHeight: 1.2 }}>
@@ -160,29 +149,21 @@ function Home() {
         </div>
 
         {/* Two big buttons */}
-        <div style={{
-          width: '100%',
-          maxWidth: isMobile ? 'none' : '680px',
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-          gap: isMobile ? '16px' : '20px',
-        }}>
+        <div style={{ width: '100%', maxWidth: isMobile ? 'none' : '680px', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '16px' : '20px' }}>
 
-          {/* Create a class */}
+          {/* Create a class — goes directly to create form */}
           <button onClick={() => navigate('/class-management?create=true')}
             style={bigBtn('#8b5cf6')}
-            onMouseEnter={hoverOn}
-            onMouseLeave={hoverOff}>
+            onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
             <span style={{ fontSize: '32px', lineHeight: 1 }}>➕</span>
             <span style={{ fontSize: isMobile ? '18px' : '21px', fontWeight: '700' }}>Create a Class</span>
             <span style={{ fontSize: '13px', opacity: 0.9, fontWeight: '400' }}>Add your pupils to get started</span>
           </button>
 
-          {/* Your current classes */}
-          <button onClick={() => navigate('/write-reports')}
+          {/* Your classes — goes to class management to pick one */}
+          <button onClick={() => navigate('/class-management')}
             style={bigBtn('#10b981')}
-            onMouseEnter={hoverOn}
-            onMouseLeave={hoverOff}>
+            onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
             <span style={{ fontSize: '32px', lineHeight: 1 }}>📋</span>
             <span style={{ fontSize: isMobile ? '18px' : '21px', fontWeight: '700' }}>Your Classes</span>
             <span style={{ fontSize: '13px', opacity: 0.9, fontWeight: '400' }}>
@@ -194,14 +175,8 @@ function Home() {
 
         </div>
 
-        {/* Subtle links for returning users */}
-        <div style={{
-          display: 'flex',
-          gap: '24px',
-          marginTop: '32px',
-          flexWrap: 'wrap' as const,
-          justifyContent: 'center',
-        }}>
+        {/* Subtle links */}
+        <div style={{ display: 'flex', gap: '24px', marginTop: '32px', flexWrap: 'wrap' as const, justifyContent: 'center' }}>
           {[
             { label: 'Report Templates', to: '/manage-templates' },
             { label: 'View Saved Reports', to: '/view-reports' },
@@ -223,6 +198,7 @@ function Home() {
 
 function GetTemplate() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
@@ -231,6 +207,9 @@ function GetTemplate() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Pass classId through if it came from SelectTemplate
+  const classId = location.state?.classId as string | undefined;
+
   const options = [
     {
       icon: '⚡',
@@ -238,7 +217,7 @@ function GetTemplate() {
       badge: 'Fastest',
       badgeColor: '#10b981',
       description: 'Upload a set of your existing reports and we\'ll build your template using your own words and phrases. When you start writing, use the live editing tools to refine it further.',
-      action: () => navigate('/import-template'),
+      action: () => navigate('/import-template', { state: { classId } }),
       borderColor: '#10b981',
       bgColor: '#f0fdf4',
       disabled: false,
@@ -249,7 +228,7 @@ function GetTemplate() {
       badge: 'Recommended',
       badgeColor: '#3b82f6',
       description: 'Answer a few questions about your reports, add a handful of comments to get started, then write reports and build your template as you go. Most teachers are writing within minutes.',
-      action: () => navigate('/create-template', { state: { method: 'build-as-you-go' } }),
+      action: () => navigate('/create-template', { state: { method: 'build-as-you-go', classId } }),
       borderColor: '#3b82f6',
       bgColor: '#eff6ff',
       disabled: false,
@@ -260,7 +239,7 @@ function GetTemplate() {
       badge: null,
       badgeColor: '',
       description: 'We guide you through creating your template step by step with AI assistance. Can be used with or without existing reports. Most teachers are writing within 20 minutes.',
-      action: () => navigate('/import-template'),
+      action: () => navigate('/import-template', { state: { classId } }),
       borderColor: '#8b5cf6',
       bgColor: '#f5f3ff',
       disabled: false,
@@ -282,18 +261,21 @@ function GetTemplate() {
       badge: null,
       badgeColor: '',
       description: 'Start with a blank canvas and build your template section by section. The slowest way to start but gives you complete control from the beginning.',
-      action: () => navigate('/create-template', { state: { method: 'manual' } }),
+      action: () => navigate('/create-template', { state: { method: 'manual', classId } }),
       borderColor: '#d1d5db',
       bgColor: '#f9fafb',
       disabled: false,
     },
   ];
 
+  const backTo = classId ? '/select-template' : '/';
+  const backState = classId ? { classId } : undefined;
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', padding: isMobile ? '24px 16px' : '48px 24px' }}>
       <div style={{ maxWidth: '720px', margin: '0 auto' }}>
 
-        <button onClick={() => navigate('/')}
+        <button onClick={() => navigate(backTo, { state: backState })}
           style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '14px', cursor: 'pointer', padding: '0 0 24px 0', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
           ← Back
         </button>
@@ -315,21 +297,11 @@ function GetTemplate() {
                 borderRadius: '12px',
                 padding: isMobile ? '20px 18px' : '24px 22px',
                 cursor: opt.disabled ? 'default' : 'pointer',
-                textAlign: 'left',
-                transition: 'all 0.15s',
-                width: '100%',
+                textAlign: 'left', transition: 'all 0.15s', width: '100%',
                 opacity: opt.disabled ? 0.6 : 1,
               }}
-              onMouseEnter={e => {
-                if (!opt.disabled) {
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                }
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}>
+              onMouseEnter={e => { if (!opt.disabled) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'; } }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
               <div style={{ fontSize: '28px', flexShrink: 0, lineHeight: 1, paddingTop: '2px' }}>{opt.icon}</div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' as const }}>
@@ -344,14 +316,11 @@ function GetTemplate() {
                   {opt.description}
                 </p>
               </div>
-              {!opt.disabled && (
-                <div style={{ fontSize: '18px', color: opt.borderColor, flexShrink: 0, alignSelf: 'center' }}>→</div>
-              )}
+              {!opt.disabled && <div style={{ fontSize: '18px', color: opt.borderColor, flexShrink: 0, alignSelf: 'center' }}>→</div>}
             </button>
           ))}
         </div>
 
-        {/* Already have one saved */}
         <div style={{ marginTop: '24px', padding: '18px 22px', backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' as const, gap: '12px' }}>
           <div>
             <div style={{ fontSize: '15px', fontWeight: '600', color: '#111827' }}>Already have a saved template?</div>
@@ -384,6 +353,7 @@ function App() {
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/subscription/success" element={<SubscriptionSuccess />} />
                 <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+                <Route path="/select-template" element={<ProtectedRoute><SelectTemplate /></ProtectedRoute>} />
                 <Route path="/get-template" element={<ProtectedRoute><GetTemplate /></ProtectedRoute>} />
                 <Route path="/write-reports" element={<ProtectedRoute><WriteReports /></ProtectedRoute>} />
                 <Route path="/create-template" element={<ProtectedRoute><CreateTemplate /></ProtectedRoute>} />
