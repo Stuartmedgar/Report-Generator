@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { TemplateSection, SectionType } from '../types';
 
+const SUPABASE_URL = 'https://wozbrojwuzktwrzngllh.supabase.co/functions/v1/generate-template';
+
 interface BuildAsYouGoProps {
   templateName: string;
   onComplete: (sections: TemplateSection[]) => void;
@@ -32,11 +34,9 @@ interface Question {
   hasButtons: boolean;
   noName?: boolean;
   isRatedFixed?: boolean;
-  examples?: string[]; // Fix 2: example sentences per section type
+  examples?: string[];
 }
 
-// Fix 4 & 6 & 7: removed optional-comment and new-line questions,
-// replaced with a catch-all "other comments" question and a final choice question
 const QUESTIONS: Question[] = [
   {
     id: 'standard-comment',
@@ -71,7 +71,7 @@ const QUESTIONS: Question[] = [
   {
     id: 'rated-comment',
     question: 'Do your reports rate pupils on their performance?',
-    description: 'Comments tied to a rating — Excellent, Good, Satisfactory, Needs Improvement. Button names can be edited to suit your school\'s language.',
+    description: "Comments tied to a rating — Excellent, Good, Satisfactory, Needs Improvement. Button names can be edited to suit your school's language.",
     sectionType: 'rated-comment',
     namePlaceholder: 'e.g. Progress, Effort Rating',
     defaultName: 'Progress',
@@ -96,7 +96,7 @@ const QUESTIONS: Question[] = [
     isRatedFixed: false,
     examples: [
       '[Name] achieved [Score] in the recent assessment, which reflects their hard work throughout the unit.',
-      '[Name] scored [Score] in the [Score 2] assessment, demonstrating a strong grasp of the material.',
+      '[Name] scored [Score] in the recent test, demonstrating a strong grasp of the material.',
       'In the recent assessment [Name] achieved [Score], which is an area we will continue to develop.',
     ],
   },
@@ -112,7 +112,7 @@ const QUESTIONS: Question[] = [
     examples: [
       '[Name] has shown particular enthusiasm for [Info 1] this term and has made impressive progress.',
       'It was great to see [Name] represent the school in [Info 1] — a real achievement.',
-      '[Name]\'s involvement in [Info 1] has had a positive impact on their confidence and skills.',
+      "[Name]'s involvement in [Info 1] has had a positive impact on their confidence and skills.",
     ],
   },
   {
@@ -126,15 +126,15 @@ const QUESTIONS: Question[] = [
     hasButtons: true,
     examples: [
       '[Name] should focus on developing their extended writing skills to reach the next level.',
-      'To continue improving, [Name] should practise their times tables regularly at home.',
-      '[Name]\'s next step is to take more risks in their learning and back their own judgement.',
+      '[Name] should practise their times tables regularly at home to consolidate their understanding.',
+      "[Name]'s next step is to take more risks in their learning and back their own judgement.",
     ],
   },
   {
     id: 'other-comments',
     question: 'Do your reports contain any other types of comments?',
     description: 'If your reports include any other categories of comment not covered above, add them here as a free-choice section.',
-    sectionType: 'qualities', // uses the same free-button structure as qualities
+    sectionType: 'qualities',
     namePlaceholder: 'e.g. Behaviour, Homework, Wider Achievement',
     defaultName: 'Other Comments',
     allowMultiple: true,
@@ -167,23 +167,28 @@ const SECTION_LABELS: Record<string, string> = {
   'next-steps': 'Next Steps / Targets',
   'optional-additional-comment': 'Optional Notes Box',
   'new-line': 'Paragraph Break',
-  'other-comments': 'Other Comments',
 };
 
+// Rated buttons mapped by position
 const DEFAULT_RATED_BUTTONS = ['Excellent', 'Good', 'Satisfactory', 'Needs Improvement'];
 const RATED_KEYS = ['excellent', 'good', 'satisfactory', 'needsImprovement'];
 
 const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-// ─── AUTOSAVE helper ──────────────────────────────────────────────────────────
+// Map wizard section types to edge function positionType
+const SECTION_TO_POSITION: Record<string, string> = {
+  'qualities': 'qualities',
+  'rated-comment': 'rating',
+  'assessment-comment': 'assessment-comment',
+  'personalised-comment': 'personalised-comment',
+  'next-steps': 'next-steps',
+};
+
+// Autosave
 const AUTOSAVE_KEY = 'buildAsYouGo_draft';
-
 function saveDraft(templateName: string, sections: AddedSection[]) {
-  try {
-    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ templateName, sections, savedAt: Date.now() }));
-  } catch (_) {}
+  try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ templateName, sections, savedAt: Date.now() })); } catch (_) {}
 }
-
 function clearDraft() {
   try { localStorage.removeItem(AUTOSAVE_KEY); } catch (_) {}
 }
@@ -195,11 +200,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
 
   const [currentStep, setCurrentStep] = useState(0);
   const [addedSections, setAddedSections] = useState<AddedSection[]>([]);
-
-  // Fix 7: 'questions' | 'final-choice' | 'summary'
   const [screen, setScreen] = useState<'questions' | 'final-choice' | 'summary'>('questions');
-
-  // Fix 3: which section is being edited in summary
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
 
   const [phase, setPhase] = useState<'ask' | 'name' | 'instruction' | 'statements' | 'added'>('ask');
@@ -214,9 +215,11 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
   const [namingButtonIndex, setNamingButtonIndex] = useState<number | null>(null);
   const [namingButtonValue, setNamingButtonValue] = useState('');
   const [standardContent, setStandardContent] = useState('');
-
-  // Fix 2: examples dropdown
   const [showExamples, setShowExamples] = useState(false);
+
+  // AI extraction state
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const statementInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -224,12 +227,10 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
   const isLastQuestion = currentStep === QUESTIONS.length - 1;
   const isRatedFixed = question?.isRatedFixed === true;
   const isAssessment = question?.sectionType === 'assessment-comment';
+  const hasReports = pastedReports.trim().length > 50;
 
-  // Fix 5: autosave whenever sections change
   useEffect(() => {
-    if (addedSections.length > 0) {
-      saveDraft(templateName, addedSections);
-    }
+    if (addedSections.length > 0) saveDraft(templateName, addedSections);
   }, [addedSections, templateName]);
 
   const resetQuestion = () => {
@@ -245,23 +246,16 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
     setNamingButtonValue('');
     setStandardContent('');
     setShowExamples(false);
+    setAiError(null);
   };
 
-  // Fix 1: go back to previous question
   const handlePreviousQuestion = () => {
-    if (currentStep > 0) {
-      setCurrentStep(s => s - 1);
-      resetQuestion();
-    }
+    if (currentStep > 0) { setCurrentStep(s => s - 1); resetQuestion(); }
   };
 
   const advanceQuestion = () => {
-    if (isLastQuestion) {
-      setScreen('final-choice');
-    } else {
-      setCurrentStep(s => s + 1);
-      resetQuestion();
-    }
+    if (isLastQuestion) setScreen('final-choice');
+    else { setCurrentStep(s => s + 1); resetQuestion(); }
   };
 
   const handleYes = () => { setSectionName(question.defaultName); setPhase('name'); };
@@ -337,6 +331,126 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
     setButtons(prev => { const updated = [...prev]; updated[idx] = { ...updated[idx], name: value }; return updated; });
   };
 
+  // ─── AI FIND IN REPORTS ───────────────────────────────────────────────────
+  // Calls the edge function auto-build mode scoped to this one section.
+  // Merges returned buttons/statements with what the teacher already has.
+
+  const handleAiFindInReports = async () => {
+    if (!hasReports) return;
+    setAiLoading(true);
+    setAiError(null);
+
+    try {
+      // Build the section descriptor for the edge function
+      const sectionDescriptor = {
+        name: sectionName,
+        type: question.sectionType,
+        description: question.description,
+      };
+
+      // Include any existing buttons as context in the section name/description
+      const existingButtonNames = buttons.filter(b => b.name).map(b => b.name);
+      const contextNote = existingButtonNames.length > 0
+        ? ` Existing buttons already created: ${existingButtonNames.join(', ')}. Add to these or create new ones.`
+        : '';
+
+      const response = await fetch(SUPABASE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'auto-build',
+          subject: sectionName,
+          yearGroup: '',
+          pronounSet: 'they/their',
+          reportText: pastedReports,
+          builtSections: [{
+            name: sectionName,
+            type: question.sectionType,
+            description: question.description + contextNote,
+          }],
+        }),
+      });
+
+      if (!response.ok) throw new Error('AI extraction failed');
+      const data = await response.json();
+
+      // Find the matching section in the response
+      const returnedSection = data.sections?.find((s: any) =>
+        s.type === question.sectionType || s.name === sectionName
+      ) || data.sections?.[0];
+
+      if (!returnedSection) throw new Error('No results returned');
+
+      // Extract buttons/statements from the returned section data
+      let newButtons: StatementButton[] = [];
+
+      if (returnedSection.type === 'qualities' || returnedSection.type === 'assessment-comment') {
+        const comments = returnedSection.data?.comments || {};
+        newButtons = Object.entries(comments).map(([name, stmts]) => ({
+          name,
+          statements: (stmts as string[]) || [],
+        }));
+      } else if (returnedSection.type === 'next-steps') {
+        const focusAreas = returnedSection.data?.focusAreas || {};
+        newButtons = Object.entries(focusAreas).map(([name, stmts]) => ({
+          name,
+          statements: (stmts as string[]) || [],
+        }));
+      } else if (returnedSection.type === 'personalised-comment') {
+        const categories = returnedSection.data?.categories || {};
+        newButtons = Object.entries(categories).map(([name, stmts]) => ({
+          name,
+          statements: (stmts as string[]) || [],
+        }));
+      } else if (returnedSection.type === 'rated-comment') {
+        // Rated comes back with fixed keys — map to current button names by position
+        const comments = returnedSection.data?.comments || {};
+        const ratedKeyOrder = ['excellent', 'good', 'satisfactory', 'needsImprovement'];
+        newButtons = buttons.map((existing, i) => {
+          const key = ratedKeyOrder[i];
+          const aiStmts: string[] = comments[key] || [];
+          // Merge: add AI statements not already present
+          const merged = [...existing.statements];
+          aiStmts.forEach(stmt => {
+            if (!merged.includes(stmt)) merged.push(stmt);
+          });
+          return { name: existing.name, statements: merged };
+        });
+        // For rated, update directly and return early
+        setButtons(newButtons);
+        setAiLoading(false);
+        return;
+      }
+
+      // Merge new buttons with existing ones
+      setButtons(prev => {
+        const merged = [...prev];
+        newButtons.forEach(newBtn => {
+          const existingIdx = merged.findIndex(b => b.name.toLowerCase() === newBtn.name.toLowerCase());
+          if (existingIdx >= 0) {
+            // Merge statements, deduplicating
+            const combined = [...merged[existingIdx].statements];
+            newBtn.statements.forEach(stmt => {
+              if (!combined.includes(stmt)) combined.push(stmt);
+            });
+            merged[existingIdx] = { ...merged[existingIdx], statements: combined };
+          } else {
+            // New button — add it
+            if (newBtn.name && newBtn.statements.length > 0) {
+              merged.push(newBtn);
+            }
+          }
+        });
+        return merged.filter(b => b.name); // Remove any unnamed buttons
+      });
+
+    } catch (err: any) {
+      setAiError('AI extraction failed. Please try again or add statements manually.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const handleAddSection = () => {
     const name = question.noName ? question.defaultName : sectionName.trim() || question.defaultName;
     const newSection: AddedSection = {
@@ -347,9 +461,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
       content: standardContent,
       instruction: sectionInstruction,
     };
-
     if (editingSectionId) {
-      // Fix 3: update existing section
       setAddedSections(prev => prev.map(s => s.id === editingSectionId ? newSection : s));
       setEditingSectionId(null);
       setScreen('summary');
@@ -372,17 +484,15 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
     setNamingButtonValue('');
     setStandardContent('');
     setShowExamples(false);
+    setAiError(null);
   };
 
-  // Fix 3: edit an existing section from summary
   const handleEditExistingSection = (section: AddedSection) => {
-    // Find which question matches this section type
     const qIdx = QUESTIONS.findIndex(q => {
       if (section.type === 'qualities' && section.name === 'Other Comments') return q.id === 'other-comments';
       return q.sectionType === section.type;
     });
     if (qIdx === -1) return;
-
     setCurrentStep(qIdx);
     setEditingSectionId(section.id);
     setSectionName(section.name);
@@ -394,6 +504,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
     setNamingButtonValue('');
     setAddingNewButton(false);
     setShowExamples(false);
+    setAiError(null);
     setPhase('statements');
     setScreen('questions');
   };
@@ -441,26 +552,23 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
     onComplete(sections);
   };
 
-  // Fix 5: warn before cancelling
   const handleCancel = () => {
     if (addedSections.length > 0) {
-      const ok = window.confirm('You have sections in progress. Your work has been saved as a draft — but going back will exit this wizard. Continue?');
-      if (!ok) return;
+      if (!window.confirm('You have sections in progress. Your work has been saved as a draft — but going back will exit this wizard. Continue?')) return;
     }
     onCancel();
   };
 
-  // ─── STYLES ───────────────────────────────────────────────────────────
+  // ─── STYLES ───────────────────────────────────────────────────────────────
 
   const primaryBtn: React.CSSProperties = { backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', padding: '11px 24px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' };
   const secondaryBtn: React.CSSProperties = { backgroundColor: '#f3f4f6', color: '#374151', border: 'none', borderRadius: '8px', padding: '11px 24px', fontSize: '15px', fontWeight: '500', cursor: 'pointer' };
   const smallBtn = (color: string): React.CSSProperties => ({ backgroundColor: color, color: 'white', border: 'none', borderRadius: '6px', padding: '6px 14px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' });
   const inp: React.CSSProperties = { width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', textAlign: 'left' };
   const txa: React.CSSProperties = { ...inp, resize: 'vertical' };
-
   const accentColor = question ? (SECTION_COLORS[question.sectionType] || '#3b82f6') : '#3b82f6';
 
-  // ─── REPORTS PANEL (shared) ───────────────────────────────────────────
+  // ─── REPORTS PANEL ────────────────────────────────────────────────────────
 
   const ReportsPanel = () => (
     <div style={{ flex: '0 0 45%', borderLeft: '1px solid #e5e7eb', backgroundColor: 'white', display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
@@ -468,6 +576,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
         <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Your existing reports</div>
         <div style={{ fontSize: '12px', color: '#6b7280', lineHeight: '1.5' }}>
           Paste reports here as a reference. Up to 10 is plenty — even one or two helps.
+          {hasReports && <span style={{ color: '#10b981', fontWeight: '500' }}> ✓ Reports ready for AI search.</span>}
         </div>
       </div>
       <div style={{ flex: 1, padding: '16px 20px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -478,7 +587,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
     </div>
   );
 
-  // ─── TOP BAR (shared) ─────────────────────────────────────────────────
+  // ─── TOP BAR ──────────────────────────────────────────────────────────────
 
   const TopBar = () => (
     <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
@@ -496,13 +605,12 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
           style={{ backgroundColor: '#f3f4f6', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: '6px', padding: '6px 14px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
           {reportsPanelOpen ? 'Hide reports' : '📄 Show reports'}
         </button>
-        {/* Fix 5: warn before cancelling */}
         <button onClick={handleCancel} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>← Back</button>
       </div>
     </div>
   );
 
-  // ─── FINAL CHOICE SCREEN (Fix 7) ──────────────────────────────────────
+  // ─── FINAL CHOICE SCREEN ──────────────────────────────────────────────────
 
   if (screen === 'final-choice') {
     return (
@@ -511,13 +619,10 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
         <div style={{ flex: 1, display: 'flex', width: '100%', overflow: 'hidden', minHeight: 0 }}>
           <div style={{ flex: 1, overflowY: 'auto', padding: '32px 40px', display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
             <div style={{ maxWidth: '520px', width: '100%' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '10px' }}>
-                Your template is ready to use.
-              </h2>
+              <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '10px' }}>Your template is ready to use.</h2>
               <p style={{ fontSize: '15px', color: '#6b7280', marginBottom: '32px', lineHeight: '1.6' }}>
                 You can start writing reports now and add more comments as you go — or review your template first and add more statements from your existing reports.
               </p>
-
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '32px' }}>
                 <button onClick={handleComplete}
                   style={{ ...primaryBtn, fontSize: '16px', padding: '16px 24px', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -527,7 +632,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
                     <div style={{ fontSize: '13px', fontWeight: '400', opacity: 0.85 }}>Go straight to the report writer with the template as it is</div>
                   </div>
                 </button>
-
                 <button onClick={() => setScreen('summary')}
                   style={{ ...secondaryBtn, fontSize: '16px', padding: '16px 24px', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '12px', border: '2px solid #e5e7eb' }}>
                   <span style={{ fontSize: '24px' }}>📋</span>
@@ -537,8 +641,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
                   </div>
                 </button>
               </div>
-
-              {/* Sections summary */}
               <div style={{ fontSize: '12px', fontWeight: '600', color: '#9ca3af', marginBottom: '10px' }}>SECTIONS IN YOUR TEMPLATE</div>
               {addedSections.map(s => (
                 <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
@@ -554,7 +656,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
     );
   }
 
-  // ─── SUMMARY SCREEN (Fix 3 & 8) ───────────────────────────────────────
+  // ─── SUMMARY SCREEN ───────────────────────────────────────────────────────
 
   if (screen === 'summary') {
     return (
@@ -564,10 +666,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
           <div style={{ flex: 1, overflowY: 'auto', padding: '32px 40px', minWidth: 0 }}>
             <div style={{ maxWidth: '680px', width: '100%', margin: '0 auto' }}>
               <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>Review your template</h1>
-              <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '24px' }}>
-                Reorder or remove sections. Click any section to edit it and add more statements.
-              </p>
-
+              <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '24px' }}>Reorder or remove sections. Click any section to edit it and add more statements.</p>
               {addedSections.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '32px', color: '#9ca3af', border: '2px dashed #e5e7eb', borderRadius: '8px', marginBottom: '24px' }}>No sections added yet.</div>
               ) : (
@@ -600,7 +699,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
                   })}
                 </div>
               )}
-
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                 <button onClick={() => setScreen('final-choice')} style={secondaryBtn}>← Back</button>
                 <button onClick={handleComplete} disabled={addedSections.length === 0}
@@ -610,14 +708,13 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
               </div>
             </div>
           </div>
-          {/* Fix 8: reports panel visible at summary */}
           {reportsPanelOpen && <ReportsPanel />}
         </div>
       </div>
     );
   }
 
-  // ─── QUESTIONS SCREEN ─────────────────────────────────────────────────
+  // ─── QUESTIONS SCREEN ─────────────────────────────────────────────────────
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -635,7 +732,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
             <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#111827', marginBottom: '10px', lineHeight: '1.3', textAlign: 'left' }}>{question.question}</h2>
             <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '20px', lineHeight: '1.6', textAlign: 'left' }}>{question.description}</p>
 
-            {/* Fix 2: examples dropdown */}
+            {/* Examples dropdown */}
             {question.examples && phase !== 'ask' && (
               <div style={{ marginBottom: '20px' }}>
                 <button onClick={() => setShowExamples(o => !o)}
@@ -665,10 +762,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
                   <button onClick={handleYes} style={{ ...primaryBtn, flex: 1 }}>Yes</button>
                   <button onClick={handleNo} style={{ ...secondaryBtn, flex: 1 }}>No</button>
                 </div>
-                {/* Fix 1: back to previous question */}
                 {currentStep > 0 && (
-                  <button onClick={handlePreviousQuestion}
-                    style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>
+                  <button onClick={handlePreviousQuestion} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>
                     ← Previous question
                   </button>
                 )}
@@ -738,7 +833,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
                   </div>
                 )}
 
-                {/* BUTTON-BASED */}
+                {/* BUTTON-BASED SECTIONS */}
                 {question.hasButtons && (
                   <div>
                     {/* Rated — editable fixed buttons */}
@@ -771,13 +866,10 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
                               {btn.name}{btn.statements.length > 0 && <span style={{ marginLeft: '6px', fontSize: '11px', opacity: 0.8 }}>({btn.statements.length})</span>}
                             </button>
                           ) : null)}
-                          {/* Fix 2: + New Button label */}
                           {!addingNewButton && namingButtonIndex === null && (
                             <button onClick={() => {
-                              if (buttons.some(b => !b.name)) {
-                                const idx = buttons.findIndex(b => !b.name);
-                                setNamingButtonIndex(idx); setNamingButtonValue(''); setActiveButtonIndex(idx);
-                              } else { setAddingNewButton(true); setNewButtonName(''); }
+                              if (buttons.some(b => !b.name)) { const idx = buttons.findIndex(b => !b.name); setNamingButtonIndex(idx); setNamingButtonValue(''); setActiveButtonIndex(idx); }
+                              else { setAddingNewButton(true); setNewButtonName(''); }
                             }}
                               style={{ padding: '6px 14px', border: `2px dashed ${accentColor}`, borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', backgroundColor: 'white', color: accentColor }}>
                               + New Button
@@ -812,10 +904,10 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
                       </div>
                     )}
 
-                    {/* Score placeholder hint for assessment */}
+                    {/* Score placeholder hint */}
                     {isAssessment && (
                       <div style={{ backgroundColor: '#f3e8ff', border: '1px solid #d8b4fe', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#7c3aed', marginBottom: '16px', textAlign: 'left', lineHeight: '1.5' }}>
-                        <strong>Score placeholders:</strong> use <code>[Score]</code> for a single score, or <code>[Score 1]</code> <code>[Score 2]</code> for multiple scores.
+                        <strong>Score placeholders:</strong> use <code>[Score]</code> for a single score, or <code>[Score 1]</code> <code>[Score 2]</code> for multiple.
                         {sectionInstruction && <div style={{ marginTop: '6px' }}><strong>Reminder:</strong> {sectionInstruction}</div>}
                       </div>
                     )}
@@ -843,6 +935,59 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
                             ))}
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* ── AI FIND IN REPORTS BUTTON ── */}
+                    {hasReports && !aiLoading && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <div style={{ height: '1px', backgroundColor: '#f3f4f6', margin: '8px 0 16px' }} />
+                        <button onClick={handleAiFindInReports}
+                          style={{
+                            width: '100%', padding: '12px 16px',
+                            backgroundColor: '#faf5ff',
+                            border: '2px solid #8b5cf6',
+                            borderRadius: '8px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '10px',
+                            transition: 'all 0.15s',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f3e8ff'; }}
+                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#faf5ff'; }}>
+                          <span style={{ fontSize: '20px' }}>🔍</span>
+                          <div style={{ textAlign: 'left' }}>
+                            <div style={{ fontSize: '14px', fontWeight: '700', color: '#7c3aed' }}>Find in my reports</div>
+                            <div style={{ fontSize: '12px', color: '#9ca3af' }}>
+                              AI will search your pasted reports for {SECTION_LABELS[question.sectionType]?.toLowerCase()} sentences and add them as buttons
+                            </div>
+                          </div>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* AI loading state */}
+                    {aiLoading && (
+                      <div style={{ marginBottom: '16px', padding: '14px 16px', backgroundColor: '#faf5ff', border: '2px solid #8b5cf6', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          {[0,1,2].map(i => (
+                            <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#8b5cf6', animation: 'pulse 1.2s ease-in-out infinite', animationDelay: `${i * 0.2}s` }} />
+                          ))}
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#7c3aed' }}>Searching your reports for {SECTION_LABELS[question.sectionType]?.toLowerCase()} sentences...</div>
+                        <style>{`@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}`}</style>
+                      </div>
+                    )}
+
+                    {/* AI error */}
+                    {aiError && (
+                      <div style={{ marginBottom: '16px', padding: '10px 14px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '13px', color: '#b91c1c', textAlign: 'left' }}>
+                        ⚠️ {aiError}
+                      </div>
+                    )}
+
+                    {/* Prompt to paste reports if none yet */}
+                    {!hasReports && phase === 'statements' && question.hasButtons && (
+                      <div style={{ marginBottom: '16px', padding: '10px 14px', backgroundColor: '#f9fafb', border: '1px dashed #d1d5db', borderRadius: '8px', fontSize: '12px', color: '#9ca3af', textAlign: 'left' }}>
+                        💡 Paste existing reports in the panel on the right to enable AI search for this section.
                       </div>
                     )}
 
