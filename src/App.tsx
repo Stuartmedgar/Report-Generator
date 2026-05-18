@@ -169,7 +169,7 @@ function Home() {
         }}>
 
           {/* Create a class */}
-          <button onClick={() => navigate('/class-management')}
+          <button onClick={() => navigate('/class-management?create=true')}
             style={bigBtn('#8b5cf6')}
             onMouseEnter={hoverOn}
             onMouseLeave={hoverOff}>
