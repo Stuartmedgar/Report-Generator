@@ -7,7 +7,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider, useData } from './contexts/DataContext';
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
 
-// Import pages (not components!)
+// Import pages
 import WriteReports from './pages/WriteReports';
 import CreateTemplate from './pages/CreateTemplate';
 import ManageTemplates from './pages/ManageTemplates';
@@ -40,7 +40,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// ─── HAMBURGER MENU (shared) ──────────────────────────────────────────────────
+// ─── HAMBURGER MENU ───────────────────────────────────────────────────────────
 
 function HamburgerMenu({ isMobile }: { isMobile: boolean }) {
   const { signOut } = useAuth();
@@ -61,21 +61,19 @@ function HamburgerMenu({ isMobile }: { isMobile: boolean }) {
   return (
     <div style={{ position: isMobile ? 'fixed' : 'absolute', top: isMobile ? '16px' : '20px', right: isMobile ? '16px' : '20px', zIndex: 1000 }}>
       <button onClick={() => setShowMenu(!showMenu)}
-        style={{ width: '40px', height: '40px', border: '2px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', transition: 'all 0.2s' }}
+        style={{ width: '40px', height: '40px', border: '2px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
         onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f9fafb'; }}
         onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'white'; }}>
         ☰
       </button>
       {showMenu && (
         <div style={{ position: 'absolute', top: '45px', right: '0', backgroundColor: 'white', border: '2px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', minWidth: '150px', overflow: 'hidden' }}>
-          <button onClick={() => { alert('Account details coming soon!'); setShowMenu(false); }}
-            style={menuItemStyle}
+          <button onClick={() => { alert('Account details coming soon!'); setShowMenu(false); }} style={menuItemStyle}
             onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f9fafb'; }}
             onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}>
             👤 Account
           </button>
-          <button onClick={() => { alert('Settings coming soon!'); setShowMenu(false); }}
-            style={menuItemStyle}
+          <button onClick={() => { alert('Settings coming soon!'); setShowMenu(false); }} style={menuItemStyle}
             onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f9fafb'; }}
             onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}>
             ⚙️ Settings
@@ -92,9 +90,7 @@ function HamburgerMenu({ isMobile }: { isMobile: boolean }) {
   );
 }
 
-// ─── HOME COMPONENT ───────────────────────────────────────────────────────────
-// Always the starting point. "Which class are you writing reports for?"
-// Class first — it anchors the session and gives the teacher immediate ownership.
+// ─── HOME ─────────────────────────────────────────────────────────────────────
 
 function Home() {
   const { state } = useData();
@@ -108,142 +104,115 @@ function Home() {
   }, []);
 
   const hasClasses = state.classes.length > 0;
-  const hasTemplates = state.templates.length > 0;
 
   const hoverOn = (e: React.MouseEvent<HTMLElement>) => {
-    if (!isMobile) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 15px rgba(0,0,0,0.15)'; }
+    if (!isMobile) {
+      e.currentTarget.style.transform = 'translateY(-2px)';
+      e.currentTarget.style.boxShadow = '0 8px 15px rgba(0,0,0,0.15)';
+    }
   };
   const hoverOff = (e: React.MouseEvent<HTMLElement>) => {
-    if (!isMobile) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)'; }
+    if (!isMobile) {
+      e.currentTarget.style.transform = 'translateY(0)';
+      e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+    }
   };
 
-  const cardBtn = (bg: string): React.CSSProperties => ({
-    backgroundColor: bg, color: 'white',
-    padding: isMobile ? '28px 24px' : '32px 28px',
+  const bigBtn = (bg: string): React.CSSProperties => ({
+    backgroundColor: bg,
+    color: 'white',
+    padding: isMobile ? '36px 24px' : '44px 32px',
     borderRadius: isMobile ? '8px' : '12px',
-    textDecoration: 'none', textAlign: 'center',
+    border: 'none',
     boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
     transition: 'transform 0.2s, box-shadow 0.2s',
-    width: '100%', boxSizing: 'border-box' as const,
-    display: 'flex', flexDirection: 'column' as const,
-    alignItems: 'center', justifyContent: 'center', gap: '6px',
-    cursor: 'pointer', border: 'none',
+    cursor: 'pointer',
+    width: '100%',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    boxSizing: 'border-box' as const,
   });
 
   return (
     <>
       <HamburgerMenu isMobile={isMobile} />
 
-      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', padding: isMobile ? '40px 16px' : '60px 20px 40px' }}>
-
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#f8fafc',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: isMobile ? '60px 16px 40px' : '60px 20px 40px',
+      }}>
         {/* Title */}
-        <div style={{ textAlign: 'center', marginBottom: isMobile ? '8px' : '12px' }}>
-          <h1 style={{ fontSize: isMobile ? '26px' : '42px', fontWeight: '800', color: '#1e293b', margin: '0 0 10px 0', lineHeight: 1.2 }}>
+        <div style={{ textAlign: 'center', marginBottom: isMobile ? '36px' : '48px', maxWidth: '600px' }}>
+          <h1 style={{ fontSize: isMobile ? '28px' : '48px', fontWeight: '800', color: '#1e293b', margin: '0 0 12px 0', lineHeight: 1.2 }}>
             Ready to Report
           </h1>
-          <p style={{ fontSize: isMobile ? '14px' : '16px', color: '#64748b', margin: 0, maxWidth: '480px' }}>
-            High quality, error-free reports — in your own words, quickly.
+          <p style={{ fontSize: isMobile ? '15px' : '18px', color: '#64748b', margin: 0, lineHeight: 1.6 }}>
+            Let's get you started. Select the class you want to write reports for.
           </p>
         </div>
 
-        <div style={{ width: '100%', maxWidth: isMobile ? 'none' : '760px', display: 'flex', flexDirection: 'column', gap: isMobile ? '14px' : '18px', marginTop: isMobile ? '28px' : '40px' }}>
+        {/* Two big buttons */}
+        <div style={{
+          width: '100%',
+          maxWidth: isMobile ? 'none' : '680px',
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+          gap: isMobile ? '16px' : '20px',
+        }}>
 
-          {/* ── CLASS SECTION ── */}
-          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: isMobile ? '20px' : '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', border: '1px solid #e5e7eb' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: hasClasses ? '14px' : '0' }}>
-              <div>
-                <div style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: '700', color: '#1e293b' }}>
-                  👥 Your Classes
-                </div>
-                <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px' }}>
-                  {hasClasses
-                    ? `${state.classes.length} ${state.classes.length === 1 ? 'class' : 'classes'} saved`
-                    : 'Add your class to get started'}
-                </div>
-              </div>
-              <Link to="/class-management"
-                style={{ backgroundColor: '#8b5cf6', color: 'white', padding: '8px 16px', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: '600', whiteSpace: 'nowrap' }}>
-                {hasClasses ? 'Manage' : '+ Add Class'}
-              </Link>
-            </div>
+          {/* Create a class */}
+          <button onClick={() => navigate('/class-management')}
+            style={bigBtn('#8b5cf6')}
+            onMouseEnter={hoverOn}
+            onMouseLeave={hoverOff}>
+            <span style={{ fontSize: '32px', lineHeight: 1 }}>➕</span>
+            <span style={{ fontSize: isMobile ? '18px' : '21px', fontWeight: '700' }}>Create a Class</span>
+            <span style={{ fontSize: '13px', opacity: 0.9, fontWeight: '400' }}>Add your pupils to get started</span>
+          </button>
 
-            {/* Class list — click to go straight to write reports */}
-            {hasClasses && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {state.classes.map(cls => (
-                  <button key={cls.id} onClick={() => navigate('/write-reports', { state: { preselectedClassId: cls.id } })}
-                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s', width: '100%' }}
-                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f0fdf4'; e.currentTarget.style.borderColor = '#10b981'; }}
-                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#f9fafb'; e.currentTarget.style.borderColor = '#e5e7eb'; }}>
-                    <div>
-                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>{cls.name}</div>
-                      <div style={{ fontSize: '12px', color: '#6b7280' }}>{cls.students.length} pupils</div>
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#10b981', fontWeight: '600' }}>Write reports →</div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Your current classes */}
+          <button onClick={() => navigate('/write-reports')}
+            style={bigBtn('#10b981')}
+            onMouseEnter={hoverOn}
+            onMouseLeave={hoverOff}>
+            <span style={{ fontSize: '32px', lineHeight: 1 }}>📋</span>
+            <span style={{ fontSize: isMobile ? '18px' : '21px', fontWeight: '700' }}>Your Classes</span>
+            <span style={{ fontSize: '13px', opacity: 0.9, fontWeight: '400' }}>
+              {hasClasses
+                ? `${state.classes.length} ${state.classes.length === 1 ? 'class' : 'classes'} saved`
+                : 'Select and write reports'}
+            </span>
+          </button>
 
-          {/* ── TEMPLATE SECTION ── */}
-          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: isMobile ? '20px' : '24px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', border: '1px solid #e5e7eb' }}>
-            <div style={{ fontSize: isMobile ? '16px' : '18px', fontWeight: '700', color: '#1e293b', marginBottom: '6px' }}>
-              📋 Report Templates
-            </div>
-            <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>
-              {hasTemplates
-                ? `${state.templates.length} ${state.templates.length === 1 ? 'template' : 'templates'} saved`
-                : 'You need a template before you can write reports'}
-            </div>
+        </div>
 
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' as const }}>
-              {/* Need a template */}
-              <button onClick={() => navigate('/get-template')}
-                style={{ ...cardBtn('#3b82f6'), flex: '1 1 200px', padding: isMobile ? '20px 16px' : '22px 20px' }}
-                onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
-                <span style={{ fontSize: isMobile ? '15px' : '17px', fontWeight: '700' }}>
-                  {hasTemplates ? '+ New Template' : 'Need a template?'}
-                </span>
-                <span style={{ fontSize: '12px', opacity: 0.9 }}>Choose how to create one</span>
-              </button>
-
-              {/* Got one saved */}
-              {hasTemplates && (
-                <button onClick={() => navigate('/manage-templates')}
-                  style={{ ...cardBtn('#10b981'), flex: '1 1 200px', padding: isMobile ? '20px 16px' : '22px 20px' }}
-                  onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
-                  <span style={{ fontSize: isMobile ? '15px' : '17px', fontWeight: '700' }}>Manage Templates</span>
-                  <span style={{ fontSize: '12px', opacity: 0.9 }}>Edit, import or delete</span>
-                </button>
-              )}
-
-              {/* No templates yet — second option */}
-              {!hasTemplates && (
-                <button onClick={() => navigate('/manage-templates')}
-                  style={{ ...cardBtn('#6b7280'), flex: '1 1 200px', padding: isMobile ? '20px 16px' : '22px 20px' }}
-                  onMouseEnter={hoverOn} onMouseLeave={hoverOff}>
-                  <span style={{ fontSize: isMobile ? '15px' : '17px', fontWeight: '700' }}>Got one saved?</span>
-                  <span style={{ fontSize: '12px', opacity: 0.9 }}>Import a file or restore a template</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* ── VIEW REPORTS ── smaller, bottom ── */}
-          {state.reports && state.reports.length > 0 && (
-            <Link to="/view-reports"
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '14px 18px' : '16px 22px', backgroundColor: 'white', borderRadius: '10px', textDecoration: 'none', border: '1px solid #e5e7eb', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', transition: 'all 0.15s' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.backgroundColor = '#f8f7ff'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.backgroundColor = 'white'; }}>
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>📄 View Saved Reports</div>
-                <div style={{ fontSize: '12px', color: '#6b7280' }}>{state.reports.length} report{state.reports.length !== 1 ? 's' : ''} saved</div>
-              </div>
-              <div style={{ fontSize: '13px', color: '#6366f1', fontWeight: '600' }}>View →</div>
+        {/* Subtle links for returning users */}
+        <div style={{
+          display: 'flex',
+          gap: '24px',
+          marginTop: '32px',
+          flexWrap: 'wrap' as const,
+          justifyContent: 'center',
+        }}>
+          {[
+            { label: 'Report Templates', to: '/manage-templates' },
+            { label: 'View Saved Reports', to: '/view-reports' },
+          ].map(link => (
+            <Link key={link.to} to={link.to}
+              style={{ fontSize: '14px', color: '#94a3b8', textDecoration: 'none', fontWeight: '500', transition: 'color 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#64748b'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; }}>
+              {link.label}
             </Link>
-          )}
-
+          ))}
         </div>
       </div>
     </>
@@ -251,7 +220,6 @@ function Home() {
 }
 
 // ─── GET TEMPLATE PAGE ────────────────────────────────────────────────────────
-// The four template creation methods, presented clearly with honest descriptions.
 
 function GetTemplate() {
   const navigate = useNavigate();
@@ -273,6 +241,7 @@ function GetTemplate() {
       action: () => navigate('/import-template'),
       borderColor: '#10b981',
       bgColor: '#f0fdf4',
+      disabled: false,
     },
     {
       icon: '🧱',
@@ -283,6 +252,7 @@ function GetTemplate() {
       action: () => navigate('/create-template', { state: { method: 'build-as-you-go' } }),
       borderColor: '#3b82f6',
       bgColor: '#eff6ff',
+      disabled: false,
     },
     {
       icon: '🪄',
@@ -293,6 +263,7 @@ function GetTemplate() {
       action: () => navigate('/import-template'),
       borderColor: '#8b5cf6',
       bgColor: '#f5f3ff',
+      disabled: false,
     },
     {
       icon: '📚',
@@ -300,9 +271,10 @@ function GetTemplate() {
       badge: 'Coming soon',
       badgeColor: '#9ca3af',
       description: 'Choose from our growing library of ready-made templates, then edit on the go to suit your subject and school.',
-      action: () => alert('Template library coming soon!'),
+      action: () => {},
       borderColor: '#d1d5db',
       bgColor: '#f9fafb',
+      disabled: true,
     },
     {
       icon: '⚙️',
@@ -313,6 +285,7 @@ function GetTemplate() {
       action: () => navigate('/create-template', { state: { method: 'manual' } }),
       borderColor: '#d1d5db',
       bgColor: '#f9fafb',
+      disabled: false,
     },
   ];
 
@@ -320,7 +293,6 @@ function GetTemplate() {
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', padding: isMobile ? '24px 16px' : '48px 24px' }}>
       <div style={{ maxWidth: '720px', margin: '0 auto' }}>
 
-        {/* Back */}
         <button onClick={() => navigate('/')}
           style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '14px', cursor: 'pointer', padding: '0 0 24px 0', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
           ← Back
@@ -330,23 +302,26 @@ function GetTemplate() {
           Get a Template
         </h1>
         <p style={{ fontSize: '15px', color: '#64748b', marginBottom: '32px', lineHeight: '1.6' }}>
-          Choose how you'd like to create your report template. You can always switch approach or create more templates later.
+          Choose how you'd like to create your report template. You can always create more later.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {options.map((opt, i) => (
-            <button key={i} onClick={opt.action}
+            <button key={i} onClick={opt.disabled ? undefined : opt.action}
               style={{
                 display: 'flex', alignItems: 'flex-start', gap: '18px',
                 backgroundColor: opt.bgColor,
                 border: `2px solid ${opt.borderColor}`,
-                borderRadius: '12px', padding: isMobile ? '20px 18px' : '24px 22px',
-                cursor: opt.title === 'Import from Library' ? 'default' : 'pointer',
-                textAlign: 'left', transition: 'all 0.15s', width: '100%',
-                opacity: opt.title === 'Import from Library' ? 0.7 : 1,
+                borderRadius: '12px',
+                padding: isMobile ? '20px 18px' : '24px 22px',
+                cursor: opt.disabled ? 'default' : 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.15s',
+                width: '100%',
+                opacity: opt.disabled ? 0.6 : 1,
               }}
               onMouseEnter={e => {
-                if (opt.title !== 'Import from Library') {
+                if (!opt.disabled) {
                   e.currentTarget.style.transform = 'translateY(-1px)';
                   e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
                 }
@@ -369,14 +344,14 @@ function GetTemplate() {
                   {opt.description}
                 </p>
               </div>
-              {opt.title !== 'Import from Library' && (
+              {!opt.disabled && (
                 <div style={{ fontSize: '18px', color: opt.borderColor, flexShrink: 0, alignSelf: 'center' }}>→</div>
               )}
             </button>
           ))}
         </div>
 
-        {/* Already have a saved template */}
+        {/* Already have one saved */}
         <div style={{ marginTop: '24px', padding: '18px 22px', backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' as const, gap: '12px' }}>
           <div>
             <div style={{ fontSize: '15px', fontWeight: '600', color: '#111827' }}>Already have a saved template?</div>
@@ -403,18 +378,11 @@ function App() {
           <Router>
             <div className="App">
               <Routes>
-                {/* Auth Routes */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
-
-                {/* Admin Route */}
                 <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-
-                {/* Public Routes */}
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/subscription/success" element={<SubscriptionSuccess />} />
-
-                {/* Protected Routes */}
                 <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
                 <Route path="/get-template" element={<ProtectedRoute><GetTemplate /></ProtectedRoute>} />
                 <Route path="/write-reports" element={<ProtectedRoute><WriteReports /></ProtectedRoute>} />
