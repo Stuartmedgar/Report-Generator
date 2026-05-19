@@ -46,7 +46,7 @@ export default function SelectTemplate() {
   };
 
   const handleNeedTemplate = () => {
-    navigate('/get-template', { state: { classId } });
+    navigate('/create-template', { state: { classId } });
   };
 
   return (
