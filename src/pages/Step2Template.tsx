@@ -73,8 +73,8 @@ function Step2Template() {
         maxWidth: '580px'
       }}>
 
-        {/* Need a Template */}
-        <Link to="/get-template" style={{ textDecoration: 'none' }}>
+        {/* Need a Template → goes to the template wizard */}
+        <Link to="/import-template" style={{ textDecoration: 'none' }}>
           <div
             style={{
               backgroundColor: '#8b5cf6', color: 'white',
@@ -104,7 +104,7 @@ function Step2Template() {
           </div>
         </Link>
 
-        {/* Got a Template */}
+        {/* Got a Template → manage templates */}
         <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
           <div
             style={{
