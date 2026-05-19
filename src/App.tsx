@@ -21,6 +21,7 @@ import Signup from './pages/Signup';
 import AdminDashboard from './pages/AdminDashboard';
 import ImportTemplate from './pages/ImportTemplate';
 import TemplateReview from './pages/TemplateReview';
+import SelectTemplate from './pages/SelectTemplate';
 import StartReports from './pages/StartReports';
 import SelectClass from './pages/SelectClass';
 import Step2Template from './pages/Step2Template';
@@ -459,6 +460,11 @@ function App() {
                 <Route path="/step2" element={
                   <ProtectedRoute>
                     <Step2Template />
+                  </ProtectedRoute>
+                } />
+                <Route path="/select-template" element={
+                  <ProtectedRoute>
+                    <SelectTemplate />
                   </ProtectedRoute>
                 } />
                 <Route path="/pick-template" element={

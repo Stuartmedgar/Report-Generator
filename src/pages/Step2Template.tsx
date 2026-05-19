@@ -73,8 +73,8 @@ function Step2Template() {
         maxWidth: '580px'
       }}>
 
-        {/* Need a Template → create template choice page */}
-        <Link to="/create-template" style={{ textDecoration: 'none' }}>
+        {/* Need a Template → select-template (the page with all build options) */}
+        <Link to="/select-template" style={{ textDecoration: 'none' }}>
           <div
             style={{
               backgroundColor: '#8b5cf6', color: 'white',
