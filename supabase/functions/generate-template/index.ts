@@ -10,7 +10,43 @@ PRINCIPLE 1: The teacher should be able to use the finished template to recreate
 
 PRINCIPLE 2: The teacher should be able to use the finished template to write a new set of reports that they would recognise as their own — same voice, same vocabulary, same sentence structure, same tone.
 
-CRITICAL — NAME REPLACEMENT: Every sentence you output must have ALL student names replaced with [Name]. Replace ALL numeric scores and percentages with [Score] — remove any % symbol. Keep pronoun pattern consistent within each section.`;
+CRITICAL — NAME REPLACEMENT: Every sentence you output must have ALL student names replaced with [Name]. Replace ALL numeric scores and percentages with [Score] — remove any % symbol. Keep pronoun pattern consistent within each section.
+
+CRITICAL — PRONOUN TO [Name] CONVERSION:
+When a sentence begins with He, She, or They and that pronoun is standing in for the pupil's name (i.e. no [Name] appears earlier in the same sentence), you MUST:
+1. Replace the opening pronoun with [Name]
+2. Fix the verb to agree with a singular subject:
+   - "They are" → "[Name] is"
+   - "They have" → "[Name] has"
+   - "They make" → "[Name] makes"
+   - "They pick" → "[Name] picks"
+   - "They contribute" → "[Name] contributes"
+   - "They show" → "[Name] shows"
+   - "They work" → "[Name] works"
+   - "They present" → "[Name] presents"
+   - "They are getting" → "[Name] is getting"
+   - "They have shown" → "[Name] has shown"
+   - "They have started" → "[Name] has started"
+   - "They have adapted" → "[Name] has adapted"
+   - "He is" → "[Name] is", "She is" → "[Name] is"
+   - "He has" → "[Name] has", "She has" → "[Name] has"
+   - Apply this pattern to ALL plural/pronoun verb forms
+
+HOWEVER — if the pronoun appears mid-sentence AFTER [Name] has already been used, leave it as-is. For example: "[Name] is polite and hardworking, and he is always well behaved" — the "he" here refers to [Name] already named, so leave "he" (or normalise to their/them if needed for consistency).
+
+CRITICAL — NO SENTENCE FRAGMENTS:
+Every extracted statement must be able to stand alone as a complete, independent comment about a pupil. Never extract a sentence that begins with a continuation word and cannot stand alone. These words signal a fragment that must be joined to the preceding sentence rather than extracted alone:
+- "They should..." (when not a name replacement — i.e. when it's continuing a thought)
+- "Continued...", "Regular...", "Attendance...", "This...", "A higher...", "Making...", "Taking...", "Slowing...", "Increasing...", "Being...", "Also,..."
+- Any sentence that starts mid-thought and requires context from the sentence before it
+
+When you find such a continuation sentence, join it to the preceding [Name]-led sentence to form one complete option.
+
+CRITICAL — NO DUPLICATES:
+- The same sentence (or near-identical sentence) must appear only ONCE across the entire section
+- A sentence must not appear under two different buttons/headings
+- A sentence must not appear twice under the same button/heading
+- If near-identical sentences exist (same meaning, minor wording difference), include only the clearest version`;
 
 const EXTRACT_ONLY_SYSTEM = `${KNOWLEDGE_BASE}
 
@@ -24,9 +60,11 @@ Rules:
 5. Where sentences reflect a performance judgement, heading names must make that judgement immediately obvious
 6. Copy sentences EXACTLY as written — do not paraphrase, improve, or rewrite them
 7. Replace ALL student names with [Name] and all scores/percentages with [Score]
-8. Every option in a section must use the same opener — all [Name] OR all pronoun, never mix
-9. Do NOT generate variety options — only include sentences that actually appear in the reports
-10. PRONOUN CONSISTENCY: Every single option must use pronouns consistently throughout the ENTIRE sentence — not just the opener. If using [Name] opener, check that no "he/his/him/himself" or "she/her/hers/herself" pronouns appear mid-sentence unless they are in a quote. If using pronoun opener, ensure ALL mid-sentence pronouns match the chosen pronoun set throughout.
+8. Apply the PRONOUN TO [Name] CONVERSION rules above — fix verb agreement when replacing pronoun openers
+9. Apply the NO SENTENCE FRAGMENTS rules above — join continuation sentences to their preceding [Name] sentence
+10. Apply the NO DUPLICATES rules above — each sentence appears exactly once
+11. Every option in a section must use the same opener — all [Name] OR all pronoun, never mix
+12. Do NOT generate variety options — only include sentences that actually appear in the reports
 
 Return ONLY valid JSON, no markdown, no backticks:
 {
@@ -60,14 +98,11 @@ CRITICAL RULES:
    - If only one personal detail appears in a sentence, always use [Info 1] only
 
 4. Replace ALL student names with [Name]
-
-5. Copy sentences EXACTLY as written — do not paraphrase, rewrite or combine them
-
-6. Group sentences by tone or context using short clear heading names
-
-7. ONLY extract sentences that actually appear in the reports — do NOT generate new ones
-
-8. Deduplicate — if the same sentence (or near-identical sentence) appears more than once, include it only once
+5. Apply the PRONOUN TO [Name] CONVERSION rules — fix verb agreement when replacing pronoun openers
+6. Copy sentences EXACTLY as written — do not paraphrase, rewrite or combine them
+7. Group sentences by tone or context using short clear heading names
+8. ONLY extract sentences that actually appear in the reports — do NOT generate new ones
+9. Apply the NO DUPLICATES rules — each sentence appears exactly once
 
 Return ONLY valid JSON, no markdown, no backticks:
 {
@@ -139,61 +174,78 @@ Your task is to automatically build a complete report template from a set of tea
 
 RULES FOR EACH SECTION TYPE:
 
+SECTION BOUNDARY RULE — CRITICAL:
+Each section type has a strict definition. A sentence belongs to exactly ONE section. When unsure, ask: what is the PRIMARY purpose of this sentence? Assign it to that section only.
+
 For "rated-comment" sections:
-- Find every sentence of this type across all reports
+- ONLY extract sentences whose PRIMARY purpose is an overall performance judgement — how well the pupil is doing overall, their level of progress, their attainment
+- DO NOT INCLUDE: character/attitude/effort sentences (qualities); specific test result sentences (assessment-comment); forward-looking improvement sentences (next-steps)
 - Group by performance level into: excellent, good, satisfactory, needsImprovement
 - Each level must have at least 2-3 options
 - Copy sentences EXACTLY — do not paraphrase
 - Replace ALL student names with [Name]
+- Apply PRONOUN TO [Name] CONVERSION — fix verb agreement
+- Apply NO DUPLICATES — each sentence appears exactly once across all levels
 
 For "qualities" sections:
+- ONLY extract sentences whose PRIMARY purpose is to describe character, personality, attitude, behaviour, effort, or working style — who the pupil is as a learner
+- DO NOT INCLUDE: overall progress/attainment sentences (rated-comment); specific test result sentences (assessment-comment); forward-looking target sentences (next-steps)
 - Read each pupil's complete qualities sentences carefully before extracting anything
-- Identify where one qualities POINT ends and another begins using the same logic as next-steps — a new point starts when a sentence names the pupil or clearly introduces a new topic
+- Identify where one qualities POINT ends and another begins — a new point starts when a sentence names the pupil or clearly introduces a new topic
 - Keep sentences belonging to the same point together as ONE complete option
-- Every option MUST start with [Name] — if sentences start with "He/She/They" rewrite the opener to start with [Name] while keeping the rest exactly as written
-- Each complete option should make sense independently as a statement about a pupil
-- CRITICAL: Create a SEPARATE heading for each genuinely distinct quality or topic — do not merge sentences about different things into the same heading. For example, sentences about teamwork, sentences about individual work style, sentences about classroom discussion, sentences about focus challenges, and sentences about effort and behaviour are all DIFFERENT topics and must each have their own heading
+- Every option MUST start with [Name] — apply PRONOUN TO [Name] CONVERSION with verb agreement fixes
+- Apply NO SENTENCE FRAGMENTS — join continuation sentences to their preceding [Name] sentence
+- CRITICAL: Create a SEPARATE heading for each genuinely distinct quality or topic
 - Each heading should have 2-6 complete options
-- Copy sentences EXACTLY — do not paraphrase
-- Replace ALL student names with [Name]
+- Apply NO DUPLICATES — the same sentence must not appear under two different headings or twice under the same heading
+- Merge near-duplicate headings (e.g. "Sharing ideas" and "Contributes to class discussions" should be one heading)
+- A heading with only one statement should be merged into a related heading rather than left isolated
+- FINAL CHECK: Remove any sentence that already appears in the rated-comment section
 
 For "next-steps" sections:
+- ONLY extract sentences whose PRIMARY purpose is forward-looking — what the pupil should do, focus on, or improve going forward
+- DO NOT INCLUDE: current quality/character sentences (qualities); current overall progress sentences (rated-comment); past assessment result sentences (assessment-comment)
 - Read each pupil's complete next steps paragraph carefully before extracting anything
-- Identify where one next steps POINT ends and another begins. A new point starts when a sentence names the pupil ([Name]) or clearly introduces a new topic after sentences that didn't mention the pupil
-- Keep all sentences belonging to the same point together as ONE complete option — never split a point mid-thought
-- Every option MUST start with [Name] — if a group of sentences starts with "He/She/They" or has no subject, attach it to the preceding sentence that names the pupil, or rewrite the opener to start with [Name]
-- Each complete option should be something a teacher could use independently in a report for any pupil with that characteristic — it must make sense on its own without needing context from surrounding sentences
-- CRITICAL: Create a SEPARATE heading for each genuinely distinct topic — do not merge sentences about different things into the same heading. For example, sentences about effort, sentences about attendance, sentences about help-seeking and revision, sentences about participation are all DIFFERENT topics and must each have their own heading
-- Each heading should have 2-6 complete multi-sentence options
-- Copy sentences EXACTLY — do not paraphrase
-- Replace ALL student names with [Name]
-- CRITICAL: Preserve any fixed opening phrase exactly as it appears (e.g. if sentences start with "Moving forward," keep that phrase at the start of every option in that heading)
+- Identify where one next steps POINT ends and another begins
+- Keep all sentences belonging to the same point together as ONE complete option
+- Every option MUST start with [Name] — apply PRONOUN TO [Name] CONVERSION with verb agreement fixes
+- Apply NO SENTENCE FRAGMENTS — never extract a sentence beginning with "Continued", "Regular", "They should", "Attendance", "This", "A higher", "Making", "Taking", "Slowing", "Increasing" as a standalone option. Join it to the preceding [Name] sentence instead
+- CRITICAL: Create a SEPARATE heading for each genuinely distinct topic
+- Apply NO DUPLICATES — each sentence appears exactly once
+- FINAL CHECK: Remove any sentence that already appears in the qualities or rated-comment sections
 
 For "standard-comment" sections:
-- Find the text that is identical or near-identical across all reports
+- ONLY extract text that is identical or near-identical across ALL reports — every pupil gets exactly this text
+- DO NOT INCLUDE: sentences that vary by pupil
 - Return it as a single content string
 - Replace ALL student names with [Name]
 
 For "assessment-comment" sections:
-- Find assessment-related sentences
+- ONLY extract sentences whose PRIMARY purpose is to comment on a specific named formal assessment, test, or exam result
+- DO NOT INCLUDE: general progress sentences (rated-comment); character/quality sentences (qualities); next steps sentences (next-steps)
 - Group by performance level: excellent, good, satisfactory, needsImprovement, notCompleted
 - Replace ALL student names with [Name] and scores/percentages with [Score]
+- Apply PRONOUN TO [Name] CONVERSION — fix verb agreement
+- Apply NO DUPLICATES
+- FINAL CHECK: Remove any sentence that also appears in the rated-comment section — assessment sentences must specifically reference a named test or exam, not general progress
 
 For "personalised-comment" sections:
-- Find sentences where one specific detail varies per pupil
+- ONLY extract sentences where one specific personal detail varies per pupil (sport, instrument, target grade etc)
 - Replace the variable detail with [Info 1] (and [Info 2] if two distinct details in same sentence)
 - Group by scenario or tone
 - Mark these sections with needsRefinement: true
 - Copy sentences EXACTLY — do not paraphrase
 
 ALSO — CLOSING ENCOURAGEMENT:
-Look for short closing encouragement sentences at the end of reports (e.g. "Keep up the good work!", "Keep working hard!"). If these appear consistently across reports, include them as a separate qualities section named "Closing Encouragement".
+Look for short closing encouragement sentences at the end of reports (e.g. "Keep up the good work!", "Keep working hard!"). If these appear consistently, include them as a separate qualities section named "Closing Encouragement".
 
-CRITICAL RULES:
+CRITICAL RULES (apply to every section type):
 - Extract ONLY sentences that actually appear in the reports — do NOT generate new ones
 - Replace ALL student names with [Name]
-- Keep pronoun consistency within each section
-- Do not mix [Name]-led and pronoun-led sentences in the same section
+- Apply PRONOUN TO [Name] CONVERSION throughout — fix verb agreement every time
+- Apply NO SENTENCE FRAGMENTS throughout — join continuation sentences
+- Apply NO DUPLICATES throughout — each sentence appears exactly once across the ENTIRE template
+- TWO-PASS DEDUPLICATION: After building all sections, scan across ALL sections — if the same sentence appears in more than one section, keep it only in the most appropriate section and remove it from the others
 
 Return ONLY valid JSON, no markdown, no backticks:
 {
@@ -269,10 +321,11 @@ Rules:
 6. Never write anything that sounds formal, corporate, or AI-generated
 7. Keep [Name] and [Score] placeholders — never substitute real names
 8. Keep the same opener style (all [Name] or all pronoun) as the existing options
-9. CRITICAL: Do NOT remove, restructure, reorder or replace ANY existing options
-10. CRITICAL: Only ADD new options in the newOptions array — never touch existing ones
-11. CRITICAL: Heading names must remain EXACTLY unchanged
-12. If a heading already has many options, you may return an empty newOptions array for that heading
+9. Apply PRONOUN TO [Name] CONVERSION — all options must start with [Name] with correct verb agreement
+10. CRITICAL: Do NOT remove, restructure, reorder or replace ANY existing options
+11. CRITICAL: Only ADD new options in the newOptions array — never touch existing ones
+12. CRITICAL: Heading names must remain EXACTLY unchanged
+13. If a heading already has many options, you may return an empty newOptions array for that heading
 
 Return ONLY valid JSON, no markdown, no backticks:
 {
@@ -288,7 +341,7 @@ const REWRITE_SYSTEM = `${KNOWLEDGE_BASE}
 
 Your task is to rewrite a qualities section so every comment uses a consistent opener.
 
-If [Name]-led: every comment starts with [Name]. Replace pronoun openers with [Name].
+If [Name]-led: every comment starts with [Name]. Replace pronoun openers with [Name]. Apply PRONOUN TO [Name] CONVERSION — fix verb agreement throughout.
 If pronoun-led: every comment starts with the selected pronoun. Replace [Name] openers with the pronoun.
 Keep everything else identical. Replace any student names with [Name].
 
@@ -348,6 +401,60 @@ function stripPercent(text: string): string {
       if (b - a <= 2 && a >= 1 && b <= 6) return match;
       return '[Score]';
     });
+}
+
+// ─── VERB AGREEMENT WARNING ───────────────────────────────────────────────────
+// Detects statements where [Name] is followed by a plural verb form
+// Returns list of flagged statements for the frontend to show as a warning
+
+function detectVerbAgreementIssues(sections: any[]): string[] {
+  const pluralVerbPatterns = [
+    /\[Name\] pick /i,
+    /\[Name\] contribute /i,
+    /\[Name\] are /i,
+    /\[Name\] make /i,
+    /\[Name\] have /i,
+    /\[Name\] show /i,
+    /\[Name\] work /i,
+    /\[Name\] present /i,
+    /\[Name\] demonstrate /i,
+    /\[Name\] achieve /i,
+    /\[Name\] perform /i,
+    /\[Name\] find /i,
+    /\[Name\] need /i,
+    /\[Name\] attend /i,
+  ];
+
+  const flagged: string[] = [];
+
+  for (const section of sections) {
+    if (!section.data) continue;
+    const allStatements: string[] = [];
+
+    if (section.data.comments && typeof section.data.comments === 'object') {
+      Object.values(section.data.comments).forEach((stmts: any) => {
+        if (Array.isArray(stmts)) allStatements.push(...stmts);
+      });
+    }
+    if (section.data.focusAreas && typeof section.data.focusAreas === 'object') {
+      Object.values(section.data.focusAreas).forEach((stmts: any) => {
+        if (Array.isArray(stmts)) allStatements.push(...stmts);
+      });
+    }
+    if (section.data.categories && typeof section.data.categories === 'object') {
+      Object.values(section.data.categories).forEach((stmts: any) => {
+        if (Array.isArray(stmts)) allStatements.push(...stmts);
+      });
+    }
+
+    for (const stmt of allStatements) {
+      if (pluralVerbPatterns.some(p => p.test(stmt))) {
+        flagged.push(stmt.substring(0, 100) + (stmt.length > 100 ? '...' : ''));
+      }
+    }
+  }
+
+  return flagged;
 }
 
 serve(async (req) => {
@@ -422,7 +529,6 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
     }
   }
 
-
   // ─── MODE: AUTO-BUILD ─────────────────────────────────────────────────────
   if (mode === "auto-build") {
     if (!reportText) return new Response(JSON.stringify({ error: "reportText is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -449,6 +555,14 @@ Pronoun set: ${pronounSet}
 Build a complete template from these reports. The template should contain these sections in this order:
 ${sectionsList}
 
+CRITICAL REMINDERS:
+- Every statement must start with [Name] — apply PRONOUN TO [Name] CONVERSION with verb agreement fixes throughout
+- Never extract fragment sentences — join continuation sentences to their [Name] opener
+- No duplicates — each sentence appears exactly once across the ENTIRE template
+- Merge single-statement headings into related headings rather than leaving them isolated
+- SECTION BOUNDARIES: Each sentence belongs to exactly ONE section. rated-comment = overall performance judgement ONLY. qualities = character/attitude/effort ONLY. assessment-comment = specific named test/exam ONLY. next-steps = forward-looking targets ONLY. If a sentence could fit two sections, put it in the most specific one and exclude it from the other.
+- TWO-PASS CHECK: After completing all sections, scan for any sentence appearing in more than one section and remove the duplicate
+
 For each section, extract the actual sentences from the reports. Do NOT generate new sentences.
 For personalised-comment sections, set needsRefinement: true.
 Template name should be: ${subject}${yearGroup ? ' ' + yearGroup : ''} Report Template
@@ -464,6 +578,13 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
       const data = await response.json();
       const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
       const parsed = JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
+
+      // Run verb agreement detection and attach warnings
+      const verbWarnings = detectVerbAgreementIssues(parsed.sections || []);
+      if (verbWarnings.length > 0) {
+        parsed.verbAgreementWarnings = verbWarnings;
+      }
+
       return new Response(JSON.stringify(parsed), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     } catch {
@@ -482,7 +603,7 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
     if (!sourceSection) return new Response(JSON.stringify({ error: "sourceSection is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     const openerInstruction = openerType === "pronoun"
       ? `Rewrite every comment to start with ${pronounCapital}. Replace [Name] openers with ${pronounCapital}. Use ${pronounFull} for possessives mid-sentence.`
-      : `Rewrite every comment to start with [Name]. Replace pronoun openers with [Name]. Keep correct pronoun possessives mid-sentence.`;
+      : `Rewrite every comment to start with [Name]. Replace pronoun openers with [Name]. Apply PRONOUN TO [Name] CONVERSION — fix verb agreement (they are → is, they have → has, they make → makes, they pick → picks, etc).`;
     try {
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -521,10 +642,10 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
 Year Group: ${yearGroup || "Not specified"}
 Section name: ${sectionName}
 
-TEACHER'S HIGHLIGHTED SELECTION — these are the exact examples to match. Study them carefully. Only extract sentences from the full reports that follow the same pattern as these examples. If these examples contain one personal detail, only extract sentences with one personal detail. If these examples contain two distinct personal details, only extract sentences with two distinct personal details. Do not extract sentences about clearly different aspects of the topic.
+TEACHER'S HIGHLIGHTED SELECTION — these are the exact examples to match. Study them carefully. Only extract sentences from the full reports that follow the same pattern as these examples.
 ${selectedText}
 
-Replace personal details with [Info 1], [Info 2] etc. Replace all student names with [Name]. Group by tone or context. Deduplicate near-identical sentences.
+Replace personal details with [Info 1], [Info 2] etc. Replace all student names with [Name]. Apply PRONOUN TO [Name] CONVERSION with verb agreement fixes. Group by tone or context. Deduplicate near-identical sentences.
 
 FULL REPORTS:
 ${reportText.substring(0, GENERATION_CHAR_LIMIT)}
@@ -555,47 +676,56 @@ IMPORTANT: Extract ONLY sentences that match the pattern of the highlighted exam
     // ── Standard extract-only for all other section types ──
     const openerInstruction = openerType === "pronoun"
       ? `All options must start with ${pronounCapital}. Replace [Name] openers with ${pronounCapital}. Use ${pronounFull} for possessives mid-sentence. Never use [Name] as a sentence opener in this section.`
-      : `All options must start with [Name]. Replace ALL student names with [Name]. Use ${pronounFull} for possessives mid-sentence. Never use a pronoun as a sentence opener in this section.`;
+      : `All options must start with [Name]. Apply PRONOUN TO [Name] CONVERSION — when a sentence begins with He, She, or They standing in for the pupil's name, replace with [Name] and fix verb agreement (they are → [Name] is, they have → [Name] has, they make → [Name] makes, they pick → [Name] picks, they contribute → [Name] contributes, they show → [Name] shows, they work → [Name] works, etc). Never use a pronoun as a sentence opener in this section.`;
 
     const positionInstructions: Record<string, string> = {
-      progress: `PROGRESS sentence — usually the opening. Find every sentence describing overall progress or how the student is doing. Group by performance level with judgement-clear headings (e.g. "Strong Progress", "Good Progress", "Making Progress", "Struggling Despite Effort", "Needs More Effort"). ${openerInstruction}`,
+      progress: `PROGRESS sentence — usually the opening. Find every sentence describing overall progress or how the student is doing. ONLY include sentences whose PRIMARY purpose is an overall performance judgement. DO NOT INCLUDE character/attitude/effort sentences or specific test result sentences. Group by performance level with judgement-clear headings (e.g. "Strong Progress", "Good Progress", "Making Progress", "Struggling Despite Effort", "Needs More Effort"). Apply NO SENTENCE FRAGMENTS and NO DUPLICATES. ${openerInstruction}`,
+
       qualities: `QUALITIES sentences — character, behaviour, attitude, effort, working style. Find every sentence describing personal qualities.
 
 CRITICAL — SENTENCE GROUPING:
-Before extracting, read each pupil's qualities sentences as a complete block. Identify where one qualities POINT ends and another begins — a new point starts when a sentence names the pupil ([Name]) or clearly introduces a new topic after sentences that did not mention the pupil. Keep all sentences belonging to the same point together as ONE complete option string. Never split a naturally flowing thought across separate options.
+Before extracting, read each pupil's qualities sentences as a complete block. Identify where one qualities POINT ends and another begins — a new point starts when a sentence names the pupil ([Name]) or clearly introduces a new topic. Keep all sentences belonging to the same point together as ONE complete option string.
 
-Every option MUST start with [Name] — if a group of sentences starts with a pronoun (He/She/They) or has no subject at all, attach it to the preceding sentence that names the pupil so that the combined option starts with [Name].
+Every option MUST start with [Name] — apply PRONOUN TO [Name] CONVERSION with verb agreement fixes throughout.
 
-A sentence that cannot stand alone as an opening statement about a specific pupil — for example one that starts with "Also,", "This", "Continued", "Regular", "Being" or similar words that imply something came before — must never appear as a standalone option. It must be joined to the sentence before it.
+Apply NO SENTENCE FRAGMENTS — a sentence starting with "Also,", "This", "Continued", "Regular", "Being", or any continuation word must be joined to the preceding [Name] sentence, never extracted alone.
 
-Group complete options by the quality or topic described — heading names must make any judgement clear. ${openerInstruction}`,
+Apply NO DUPLICATES — the same sentence must not appear under two different headings.
+
+Merge near-duplicate headings that cover the same ground into one heading. A heading with only one statement should be merged into a related heading rather than left isolated.
+
+Group complete options by the quality or topic described. ${openerInstruction}`,
 
       development: `AREAS FOR DEVELOPMENT sentences. Find every developmental or improvement sentence.
 
 CRITICAL — SENTENCE GROUPING:
-Before extracting, read each pupil's development section as a complete block. Identify where one development POINT ends and another begins — a new point starts when a sentence names the pupil ([Name]) or clearly introduces a new topic. Keep all sentences belonging to the same point together as ONE complete option string.
+Before extracting, read each pupil's development section as a complete block. Identify where one development POINT ends and another begins. Keep all sentences belonging to the same point together as ONE complete option string.
 
-Every option MUST start with [Name] — if a group starts with a pronoun or has no subject, attach it to the preceding [Name] sentence.
+Every option MUST start with [Name] — apply PRONOUN TO [Name] CONVERSION with verb agreement fixes.
 
-A sentence that cannot stand alone as an opening statement — one starting with "Also,", "This", "Continued", "Regular", "Being", "A higher", "Making", "Taking", "Slowing" or similar continuation words — must be joined to the sentence before it, never extracted alone.
+Apply NO SENTENCE FRAGMENTS — sentences starting with "Also,", "This", "Continued", "Regular", "Being", "A higher", "Making", "Taking", "Slowing" must be joined to the preceding [Name] sentence.
 
-Group complete options by TOPIC — different focus areas cover DIFFERENT topics. ${openerInstruction}`,
+Apply NO DUPLICATES.
+
+Group complete options by TOPIC. ${openerInstruction}`,
 
       "next-steps": `NEXT STEPS sentences. Find every improvement suggestion at this position.
 
 CRITICAL — SENTENCE GROUPING:
-Before extracting, read each pupil's next steps section as a complete block. Identify where one next steps POINT ends and another begins. A new point starts when a sentence names the pupil ([Name]) or clearly introduces a new and distinct improvement topic. Keep all sentences belonging to the same point together as ONE complete option string.
+Before extracting, read each pupil's next steps section as a complete block. Identify where one next steps POINT ends and another begins. Keep all sentences belonging to the same point together as ONE complete option string.
 
-Every option MUST start with [Name] — if a group starts with a pronoun or has no subject, attach it to the preceding [Name] sentence so the combined option starts with [Name].
+Every option MUST start with [Name] — apply PRONOUN TO [Name] CONVERSION with verb agreement fixes.
 
-A sentence that cannot stand alone as an opening statement about a specific pupil — one starting with "Also,", "This will", "Continued", "Regular", "Being", "A higher", "Making better", "Taking", "Slowing", "Increasing" or any other word that implies something came before — must NEVER appear as a standalone option. It must be joined to the sentence before it.
+Apply NO SENTENCE FRAGMENTS — sentences starting with "Also,", "This will", "Continued", "Regular", "Being", "A higher", "Making better", "Taking", "Slowing", "Increasing", "Attendance" must NEVER appear as standalone options. Join to the preceding [Name] sentence.
+
+Apply NO DUPLICATES.
 
 Preserve any fixed opening phrase exactly (e.g. "Moving forward," must stay at the start of every option in its heading).
 Group complete options by topic. ${openerInstruction}`,
 
-      assessment: `ASSESSMENT sentences. Find every assessment-related sentence. Group by performance level with judgement-clear headings. Replace actual scores with [Score]. ${openerInstruction}`,
-      "assessment-comment": `ASSESSMENT COMMENT sentences — teacher uses different sentences by performance level. Group into: excellent, good, satisfactory, needsImprovement. Replace names with [Name] and scores with [Score]. ${openerInstruction}`,
-      rating: `RATING/JUDGEMENT sentences. Find every sentence at this position. ${scaleType === 'four-level' ? 'Map to: excellent, good, satisfactory, needsImprovement.' : 'Derive the teacher\'s own groupings from their language.'} ${openerInstruction}`,
+      assessment: `ASSESSMENT sentences — ONLY extract sentences specifically about a named formal test or exam result. DO NOT INCLUDE general progress sentences or character sentences. Group by performance level with judgement-clear headings. Replace actual scores with [Score]. Apply NO DUPLICATES. ${openerInstruction}`,
+      "assessment-comment": `ASSESSMENT COMMENT sentences — ONLY extract sentences specifically about a named formal test or exam result where the teacher uses different sentences by performance level. DO NOT INCLUDE general progress or quality sentences. Group into: excellent, good, satisfactory, needsImprovement. Replace names with [Name] and scores with [Score]. Apply PRONOUN TO [Name] CONVERSION with verb agreement fixes. Apply NO DUPLICATES. ${openerInstruction}`,
+      rating: `RATING/JUDGEMENT sentences. Find every sentence at this position. ${scaleType === 'four-level' ? 'Map to: excellent, good, satisfactory, needsImprovement.' : 'Derive the teacher\'s own groupings from their language.'} Apply NO DUPLICATES. ${openerInstruction}`,
     };
 
     const instruction = positionInstructions[positionType] || positionInstructions.qualities;
@@ -658,6 +788,7 @@ Opener type: ${openerType === "pronoun" ? pronounCapital : "[Name]"}
 
 Generate 1-2 additional options per heading that the teacher would recognise as their own.
 Write in exactly the same voice, vocabulary, sentence length, and level of formality.
+All new options must start with [Name] with correct singular verb agreement.
 
 EXISTING HEADINGS AND OPTIONS:
 ${JSON.stringify(existingHeadings, null, 2)}
@@ -690,7 +821,7 @@ Generate additional options only. Do not change or repeat the existing options.`
         headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514", max_tokens: 16000,
-          system: `${KNOWLEDGE_BASE}\n\nImprove an existing report template using additional reports. Return ONLY valid JSON. Replace ALL student names with [Name]. Replace ALL scores with [Score]. Keep same template name.`,
+          system: `${KNOWLEDGE_BASE}\n\nImprove an existing report template using additional reports. Return ONLY valid JSON. Replace ALL student names with [Name]. Replace ALL scores with [Score]. Keep same template name. Apply PRONOUN TO [Name] CONVERSION throughout — fix verb agreement. Apply NO SENTENCE FRAGMENTS. Apply NO DUPLICATES.`,
           messages: [{
             role: "user",
             content: `Subject: ${subject}\nYear Group: ${yearGroup || "Not specified"}\n\nEXISTING TEMPLATE:\n${JSON.stringify(existingTemplate, null, 2)}\n\nADDITIONAL REPORTS:\n${refineText.substring(0, GENERATION_CHAR_LIMIT)}\n\nAdd new options where new sentences appear. Add new sections if new positions are found. Keep same template name.`,

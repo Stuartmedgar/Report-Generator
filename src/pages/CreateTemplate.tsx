@@ -301,20 +301,21 @@ const CreateTemplate: React.FC = () => {
   if (step === 'build-as-you-go') {
     return (
       <BuildAsYouGo
-        templateName={templateName}
-        onComplete={(completedSections) => {
-          // Save the skeleton template and navigate to report writer
-          const template = {
-            name: templateName,
-            sections: completedSections,
-            sectionData: {},
-            buildMode: true,
-          };
-          addTemplate(template);
-          navigate('/write-reports');
-        }}
-        onCancel={() => setStep('method')}
-      />
+  templateName={templateName}
+  classId={location.state?.classId}
+  onComplete={(completedSections) => {
+    const template = {
+      name: templateName,
+      sections: completedSections,
+      sectionData: {},
+    };
+    addTemplate(template);
+    navigate('/write-reports', {
+      state: { preselectedClassId: location.state?.classId }
+    });
+  }}
+  onCancel={() => setStep('method')}
+/>
     );
   }
 
