@@ -24,6 +24,7 @@ import TemplateReview from './pages/TemplateReview';
 import StartReports from './pages/StartReports';
 import SelectClass from './pages/SelectClass';
 import Step2Template from './pages/Step2Template';
+import PickTemplate from './pages/PickTemplate';
 
 // Import subscription components
 import { PricingPage, SubscriptionSuccess } from './components/subscription';
@@ -79,7 +80,6 @@ function Home() {
     }
   };
 
-  // Check whether there are any saved reports in localStorage to continue
   const handleContinueWriting = () => {
     const reportsExist = state.reports && state.reports.length > 0;
     if (reportsExist) {
@@ -445,7 +445,7 @@ function App() {
                   </ProtectedRoute>
                 } />
 
-                {/* New onboarding flow routes */}
+                {/* Onboarding flow */}
                 <Route path="/start" element={
                   <ProtectedRoute>
                     <StartReports />
@@ -461,12 +461,18 @@ function App() {
                     <Step2Template />
                   </ProtectedRoute>
                 } />
+                <Route path="/pick-template" element={
+                  <ProtectedRoute>
+                    <PickTemplate />
+                  </ProtectedRoute>
+                } />
                 <Route path="/no-reports" element={
                   <ProtectedRoute>
                     <NoReports />
                   </ProtectedRoute>
                 } />
 
+                {/* Existing routes — unchanged */}
                 <Route path="/write-reports" element={
                   <ProtectedRoute>
                     <WriteReports />
