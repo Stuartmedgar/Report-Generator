@@ -200,6 +200,8 @@ For "qualities" sections:
 - Apply NO DUPLICATES — the same sentence must not appear under two different headings or twice under the same heading
 - Merge near-duplicate headings (e.g. "Sharing ideas" and "Contributes to class discussions" should be one heading)
 - A heading with only one statement should be merged into a related heading rather than left isolated
+- NO CROSS-BUTTON DUPLICATES: Each statement appears under exactly one heading — if a statement already appears elsewhere, do not repeat it
+- STATEMENT CAP: If a heading would contain more than 6 statements, check whether they naturally fall into two genuinely distinct sub-groups (e.g. some about effort, some about participation). If a clear distinction exists, split into two headings of 3-5 each. If all statements are essentially saying the same thing with minor wording differences, keep as one heading but include only the 5 most distinct versions — remove near-identical duplicates
 - FINAL CHECK: Remove any sentence that already appears in the rated-comment section
 
 For "next-steps" sections:
@@ -212,6 +214,8 @@ For "next-steps" sections:
 - Apply NO SENTENCE FRAGMENTS — never extract a sentence beginning with "Continued", "Regular", "They should", "Attendance", "This", "A higher", "Making", "Taking", "Slowing", "Increasing" as a standalone option. Join it to the preceding [Name] sentence instead
 - CRITICAL: Create a SEPARATE heading for each genuinely distinct topic
 - Apply NO DUPLICATES — each sentence appears exactly once
+- NO CROSS-AREA DUPLICATES: Each statement appears under exactly one focus area — if a statement already appears elsewhere do not repeat it
+- STATEMENT CAP: If a focus area would contain more than 6 statements, check whether they fall into two genuinely distinct sub-topics. If yes, split. If all are saying essentially the same thing, keep only the 5 most distinct versions
 - FINAL CHECK: Remove any sentence that already appears in the qualities or rated-comment sections
 
 For "standard-comment" sections:
