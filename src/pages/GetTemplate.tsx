@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 function GetTemplate() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -144,15 +144,6 @@ function GetTemplate() {
         />
 
         <OptionCard
-          icon="🪄"
-          title="Guided Wizard"
-          description="Paste your reports and highlight sections one by one to build a template at your own pace. Great for precise control."
-          buttonLabel="Start Wizard"
-          buttonColor="#10b981"
-          onClick={() => navigate('/import-template', { state: { mode: 'wizard' } })}
-        />
-
-        <OptionCard
           icon="📚"
           title="Import from Library"
           description="Browse and import a ready-made template from the library. Coming soon."
@@ -168,15 +159,6 @@ function GetTemplate() {
           buttonLabel="Build Manually"
           buttonColor="#f59e0b"
           onClick={() => navigate('/create-template')}
-        />
-
-        <OptionCard
-          icon="📂"
-          title="Import from File"
-          description="Got a .json template file from a colleague? Import it directly and you'll be ready to write reports straight away."
-          buttonLabel="Import File"
-          buttonColor="#64748b"
-          onClick={() => navigate('/manage-templates')}
         />
 
       </div>
