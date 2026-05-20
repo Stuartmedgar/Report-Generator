@@ -112,11 +112,11 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      padding: isMobile ? '32px 16px' : '60px 24px',
+      padding: isMobile ? '20px 16px' : '32px 24px',
     }}>
 
       {/* Back */}
-      <div style={{ width: '100%', maxWidth: '640px', marginBottom: '32px' }}>
+      <div style={{ width: '100%', maxWidth: '600px', marginBottom: '16px' }}>
         <button
           onClick={onCancel}
           style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: '14px', cursor: 'pointer', padding: 0 }}
@@ -126,51 +126,46 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
       </div>
 
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '40px', maxWidth: '560px', width: '100%' }}>
+      <div style={{ textAlign: 'center', marginBottom: '20px', maxWidth: '600px', width: '100%' }}>
         <h1 style={{
-          fontSize: isMobile ? '30px' : '38px', fontWeight: '800',
-          color: '#1e293b', margin: '0 0 12px 0', lineHeight: '1.15'
+          fontSize: isMobile ? '26px' : '32px', fontWeight: '800',
+          color: '#1e293b', margin: '0 0 6px 0', lineHeight: '1.15'
         }}>
           Create a Class
         </h1>
-        <p style={{ fontSize: '16px', color: '#64748b', margin: 0, lineHeight: '1.6' }}>
+        <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>
           Paste your class list and we'll set everything up for you.
         </p>
       </div>
 
-      <div style={{ width: '100%', maxWidth: '640px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div style={{ width: '100%', maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
         {/* Privacy notice */}
         <div style={{
           backgroundColor: '#fefce8',
           border: '1px solid #fde68a',
-          borderRadius: '12px',
-          padding: '16px 20px',
+          borderRadius: '10px',
+          padding: '12px 16px',
           display: 'flex',
-          gap: '12px',
+          gap: '10px',
           alignItems: 'flex-start'
         }}>
-          <span style={{ fontSize: '20px', flexShrink: 0 }}>🔒</span>
-          <div>
-            <p style={{ fontSize: '14px', fontWeight: '600', color: '#92400e', margin: '0 0 4px 0' }}>
-              Privacy Protection
-            </p>
-            <p style={{ fontSize: '13px', color: '#92400e', margin: 0, lineHeight: '1.6' }}>
-              Surnames are automatically shortened to the first 2 letters only (e.g. "Smith" becomes "SM").
-              Names are stored only on your own computer and are never sent to any server.
-            </p>
-          </div>
+          <span style={{ fontSize: '16px', flexShrink: 0, marginTop: '1px' }}>🔒</span>
+          <p style={{ fontSize: '12px', color: '#92400e', margin: 0, lineHeight: '1.6' }}>
+            <strong>Privacy Protection:</strong> Surnames are shortened to 2 letters only (e.g. "Smith" → "SM").
+            Names are stored only on your own computer and never sent to any server.
+          </p>
         </div>
 
         {/* Class name */}
         <div style={{
-          backgroundColor: 'white', borderRadius: '16px',
-          padding: isMobile ? '24px' : '32px',
+          backgroundColor: 'white', borderRadius: '12px',
+          padding: '16px 20px',
           boxShadow: '0 1px 4px rgba(0,0,0,0.06)'
         }}>
           <label style={{
-            display: 'block', fontSize: '14px', fontWeight: '600',
-            color: '#374151', marginBottom: '10px'
+            display: 'block', fontSize: '13px', fontWeight: '600',
+            color: '#374151', marginBottom: '8px'
           }}>
             Class Name
           </label>
@@ -181,9 +176,9 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
             onChange={e => setClassName(e.target.value)}
             autoFocus
             style={{
-              width: '100%', padding: '12px 16px',
-              border: '2px solid #e5e7eb', borderRadius: '10px',
-              fontSize: '16px', outline: 'none', boxSizing: 'border-box',
+              width: '100%', padding: '10px 14px',
+              border: '2px solid #e5e7eb', borderRadius: '8px',
+              fontSize: '15px', outline: 'none', boxSizing: 'border-box',
               transition: 'border-color 0.15s'
             }}
             onFocus={e => e.target.style.borderColor = '#8b5cf6'}
@@ -193,44 +188,28 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
 
         {/* Paste class list */}
         <div style={{
-          backgroundColor: 'white', borderRadius: '16px',
-          padding: isMobile ? '24px' : '32px',
+          backgroundColor: 'white', borderRadius: '12px',
+          padding: '16px 20px',
           boxShadow: '0 1px 4px rgba(0,0,0,0.06)'
         }}>
-          <h2 style={{
-            fontSize: '18px', fontWeight: '700', color: '#1e293b',
-            margin: '0 0 8px 0'
-          }}>
-            Paste Your Class List
-          </h2>
-          <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 20px 0', lineHeight: '1.6' }}>
-            One pupil per line — first name then last name. You can also type names directly.
-          </p>
-
-          {/* Example */}
-          <div style={{
-            backgroundColor: '#f1f5f9', borderRadius: '10px',
-            padding: '14px 18px', marginBottom: '16px',
-            fontFamily: 'monospace', fontSize: '13px',
-            color: '#475569', lineHeight: '1.8'
-          }}>
-            John Smith<br />
-            Sarah Johnson<br />
-            Michael Brown<br />
-            Emma Davis
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '8px' }}>
+            <label style={{ fontSize: '13px', fontWeight: '600', color: '#374151' }}>
+              Paste Your Class List
+            </label>
+            <span style={{ fontSize: '11px', color: '#94a3b8' }}>one pupil per line</span>
           </div>
 
           <textarea
-            placeholder="Paste or type your class list here..."
+            placeholder={'John Smith\nSarah Johnson\nMichael Brown\nEmma Davis'}
             value={csvText}
             onChange={e => setCsvText(e.target.value)}
             style={{
-              width: '100%', height: '180px',
-              padding: '14px 16px',
-              border: '2px solid #e5e7eb', borderRadius: '10px',
-              fontSize: '14px', resize: 'vertical',
+              width: '100%', height: isMobile ? '120px' : '140px',
+              padding: '10px 14px',
+              border: '2px solid #e5e7eb', borderRadius: '8px',
+              fontSize: '14px', resize: 'none',
               fontFamily: 'inherit', boxSizing: 'border-box',
-              marginBottom: '16px', outline: 'none',
+              marginBottom: '10px', outline: 'none',
               transition: 'border-color 0.15s'
             }}
             onFocus={e => e.target.style.borderColor = '#8b5cf6'}
@@ -243,8 +222,8 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
             style={{
               backgroundColor: csvText.trim() ? '#8b5cf6' : '#e2e8f0',
               color: csvText.trim() ? 'white' : '#94a3b8',
-              padding: '12px 24px', border: 'none', borderRadius: '10px',
-              fontSize: '15px', fontWeight: '600',
+              padding: '9px 20px', border: 'none', borderRadius: '8px',
+              fontSize: '14px', fontWeight: '600',
               cursor: csvText.trim() ? 'pointer' : 'not-allowed',
               transition: 'background-color 0.15s'
             }}
@@ -253,38 +232,36 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
           </button>
         </div>
 
-        {/* Student list preview */}
+        {/* Student list preview — only shown after import */}
         {students.length > 0 && (
           <div style={{
-            backgroundColor: 'white', borderRadius: '16px',
-            padding: isMobile ? '24px' : '32px',
+            backgroundColor: 'white', borderRadius: '12px',
+            padding: '16px 20px',
             boxShadow: '0 1px 4px rgba(0,0,0,0.06)'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#1e293b', margin: 0 }}>
-                Pupils Added
-              </h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <span style={{ fontSize: '13px', fontWeight: '600', color: '#374151' }}>Pupils Added</span>
               <span style={{
                 backgroundColor: '#f0fdf4', color: '#059669',
-                fontSize: '13px', fontWeight: '600',
-                padding: '4px 12px', borderRadius: '20px',
+                fontSize: '12px', fontWeight: '600',
+                padding: '3px 10px', borderRadius: '20px',
                 border: '1px solid #bbf7d0'
               }}>
                 {students.length} {students.length === 1 ? 'pupil' : 'pupils'}
               </span>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '160px', overflowY: 'auto' }}>
               {students.map((student, index) => (
                 <div
                   key={student.id}
                   style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '12px 16px', backgroundColor: '#f8fafc',
-                    borderRadius: '10px', border: '1px solid #f1f5f9'
+                    padding: '8px 12px', backgroundColor: '#f8fafc',
+                    borderRadius: '8px', border: '1px solid #f1f5f9'
                   }}
                 >
-                  <span style={{ fontSize: '14px', fontWeight: '500', color: '#1e293b' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#1e293b' }}>
                     {index + 1}. {student.firstName} {student.lastName}
                   </span>
                   <button
@@ -292,8 +269,7 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
                     style={{
                       backgroundColor: 'transparent', color: '#94a3b8',
                       border: 'none', cursor: 'pointer',
-                      fontSize: '13px', padding: '4px 8px',
-                      borderRadius: '6px'
+                      fontSize: '12px', padding: '3px 8px', borderRadius: '6px'
                     }}
                     onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.backgroundColor = '#fef2f2'; }}
                     onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.backgroundColor = 'transparent'; }}
@@ -313,8 +289,8 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
           style={{
             backgroundColor: (className.trim() && students.length > 0) ? '#10b981' : '#e2e8f0',
             color: (className.trim() && students.length > 0) ? 'white' : '#94a3b8',
-            padding: '18px 32px', border: 'none', borderRadius: '14px',
-            fontSize: '18px', fontWeight: '700',
+            padding: '14px 32px', border: 'none', borderRadius: '12px',
+            fontSize: '16px', fontWeight: '700',
             cursor: (className.trim() && students.length > 0) ? 'pointer' : 'not-allowed',
             width: '100%', transition: 'background-color 0.15s',
             boxShadow: (className.trim() && students.length > 0) ? '0 4px 14px rgba(16,185,129,0.3)' : 'none'
