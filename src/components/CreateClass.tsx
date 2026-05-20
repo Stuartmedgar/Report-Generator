@@ -17,30 +17,10 @@ const truncateSurname = (surname: string): string => {
 function CreateClass({ onComplete, onCancel }: CreateClassProps) {
   const [className, setClassName] = useState('');
   const [students, setStudents] = useState<Student[]>([]);
-  const [inputMethod, setInputMethod] = useState<'individual' | 'csv'>('csv');
   const [csvText, setCsvText] = useState('');
-  const [newStudent, setNewStudent] = useState({ firstName: '', lastName: '', studentId: '', email: '' });
   const { addClass } = useData();
 
-  const handleAddIndividualStudent = () => {
-    if (!newStudent.firstName.trim() || !newStudent.lastName.trim()) {
-      alert('Please enter both first name and last name');
-      return;
-    }
-    const student: Student = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      firstName: newStudent.firstName.trim(),
-      lastName: truncateSurname(newStudent.lastName.trim()),
-      studentId: newStudent.studentId.trim() || undefined,
-      email: newStudent.email.trim() || undefined
-    };
-    setStudents([...students, student]);
-    setNewStudent({ firstName: '', lastName: '', studentId: '', email: '' });
-  };
-
-  const handleRemoveStudent = (studentId: string) => {
-    setStudents(students.filter(s => s.id !== studentId));
-  };
+  const isMobile = window.innerWidth <= 768;
 
   const handleProcessCSV = () => {
     if (!csvText.trim()) { alert('Please enter student data'); return; }
@@ -97,13 +77,16 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
       if (newStudents.length > 0) {
         setStudents([...students, ...newStudents]);
         setCsvText('');
-        alert(`Successfully imported ${newStudents.length} students! (Surnames truncated to first 2 letters for privacy)`);
       } else {
         alert('No valid student names found. Please check the format and try again.');
       }
     } catch (error) {
       alert('Error processing student list. Please check the format and try again.');
     }
+  };
+
+  const handleRemoveStudent = (studentId: string) => {
+    setStudents(students.filter(s => s.id !== studentId));
   };
 
   const handleCreateClass = () => {
@@ -119,167 +102,229 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
     };
 
     addClass(newClass);
-    onComplete(newClassId); // Pass the ID back so ClassManagement can route to SelectTemplate
+    onComplete(newClassId);
   };
 
-  const isMobile = window.innerWidth <= 768;
-
   return (
-    <div style={{ padding: isMobile ? '16px' : '20px', maxWidth: '800px', margin: '0 auto', fontFamily: 'Arial, sans-serif' }}>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#f8fafc',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      padding: isMobile ? '32px 16px' : '60px 24px',
+    }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '12px' : '0' }}>
-        <h1 style={{ fontSize: isMobile ? '24px' : '28px', fontWeight: 'bold', color: '#1f2937', margin: 0, textAlign: isMobile ? 'center' : 'left' }}>
-          Create New Class
-        </h1>
-        <button onClick={onCancel}
-          style={{ backgroundColor: '#6b7280', color: 'white', padding: isMobile ? '10px 20px' : '12px 24px', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}
-          onMouseOver={e => e.currentTarget.style.backgroundColor = '#4b5563'}
-          onMouseOut={e => e.currentTarget.style.backgroundColor = '#6b7280'}>
-          Cancel
+      {/* Back */}
+      <div style={{ width: '100%', maxWidth: '640px', marginBottom: '32px' }}>
+        <button
+          onClick={onCancel}
+          style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: '14px', cursor: 'pointer', padding: 0 }}
+        >
+          ← Back
         </button>
       </div>
 
-      {/* Privacy Notice */}
-      <div style={{ backgroundColor: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '6px', padding: '12px', marginBottom: '20px' }}>
-        <p style={{ fontSize: '14px', color: '#92400e', margin: 0, fontWeight: '500' }}>
-          🔒 Privacy Protection: Surnames will be automatically shortened to first 2 letters only (e.g., "Smith" becomes "SM")
+      {/* Header */}
+      <div style={{ textAlign: 'center', marginBottom: '40px', maxWidth: '560px', width: '100%' }}>
+        <h1 style={{
+          fontSize: isMobile ? '30px' : '38px', fontWeight: '800',
+          color: '#1e293b', margin: '0 0 12px 0', lineHeight: '1.15'
+        }}>
+          Create a Class
+        </h1>
+        <p style={{ fontSize: '16px', color: '#64748b', margin: 0, lineHeight: '1.6' }}>
+          Paste your class list and we'll set everything up for you.
         </p>
       </div>
 
-      {/* Class Name */}
-      <div style={{ marginBottom: '20px' }}>
-        <label style={{ display: 'block', fontSize: '16px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>Class Name *</label>
-        <input type="text" placeholder="e.g., 8A English, Year 9 Science" value={className}
-          onChange={e => setClassName(e.target.value)}
-          style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '16px', boxSizing: 'border-box' }} />
-      </div>
+      <div style={{ width: '100%', maxWidth: '640px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-      {/* Input Method Selection — Paste List first */}
-      <div style={{ marginBottom: '20px' }}>
-        <label style={{ display: 'block', fontSize: '16px', fontWeight: '600', color: '#374151', marginBottom: '12px' }}>
-          How would you like to add students?
-        </label>
-        <div style={{ display: 'flex', gap: '12px', flexDirection: isMobile ? 'column' : 'row' }}>
-          <button onClick={() => setInputMethod('csv')}
-            style={{ flex: 1, padding: '16px', border: inputMethod === 'csv' ? '2px solid #3b82f6' : '1px solid #d1d5db', borderRadius: '8px', backgroundColor: inputMethod === 'csv' ? '#eff6ff' : 'white', color: inputMethod === 'csv' ? '#1d4ed8' : '#374151', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '24px' }}>📋</span>
-            <span>Paste Full Class List</span>
-            <span style={{ fontSize: '12px', fontWeight: '400', opacity: 0.8 }}>Copy and paste from your register</span>
-          </button>
-          <button onClick={() => setInputMethod('individual')}
-            style={{ flex: 1, padding: '16px', border: inputMethod === 'individual' ? '2px solid #3b82f6' : '1px solid #d1d5db', borderRadius: '8px', backgroundColor: inputMethod === 'individual' ? '#eff6ff' : 'white', color: inputMethod === 'individual' ? '#1d4ed8' : '#374151', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '24px' }}>➕</span>
-            <span>Add Individually</span>
-            <span style={{ fontSize: '12px', fontWeight: '400', opacity: 0.8 }}>Add pupils one at a time</span>
-          </button>
-        </div>
-      </div>
-
-      {/* CSV Input */}
-      {inputMethod === 'csv' && (
-        <div style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '20px', marginBottom: '20px' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#374151', margin: '0 0 16px 0' }}>Paste Your Class List</h3>
-          <div style={{ backgroundColor: '#dbeafe', border: '1px solid #3b82f6', borderRadius: '6px', padding: '12px', marginBottom: '16px' }}>
-            <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#1e40af', margin: '0 0 8px 0' }}>Just paste names, one per line:</h4>
-            <code style={{ fontSize: '12px', color: '#1e40af', display: 'block', lineHeight: '1.6' }}>
-              John Smith<br />Sarah Johnson<br />Michael Brown<br />Emma Davis
-            </code>
-            <p style={{ fontSize: '12px', color: '#1e40af', margin: '8px 0 0 0' }}>
-              Also works with CSV format if you have headers like "firstName,lastName"<br />
-              <strong>Surnames will be automatically shortened to 2 letters for privacy.</strong>
+        {/* Privacy notice */}
+        <div style={{
+          backgroundColor: '#fefce8',
+          border: '1px solid #fde68a',
+          borderRadius: '12px',
+          padding: '16px 20px',
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'flex-start'
+        }}>
+          <span style={{ fontSize: '20px', flexShrink: 0 }}>🔒</span>
+          <div>
+            <p style={{ fontSize: '14px', fontWeight: '600', color: '#92400e', margin: '0 0 4px 0' }}>
+              Privacy Protection
+            </p>
+            <p style={{ fontSize: '13px', color: '#92400e', margin: 0, lineHeight: '1.6' }}>
+              Surnames are automatically shortened to the first 2 letters only (e.g. "Smith" becomes "SM").
+              Names are stored only on your own computer and are never sent to any server.
             </p>
           </div>
+        </div>
+
+        {/* Class name */}
+        <div style={{
+          backgroundColor: 'white', borderRadius: '16px',
+          padding: isMobile ? '24px' : '32px',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.06)'
+        }}>
+          <label style={{
+            display: 'block', fontSize: '14px', fontWeight: '600',
+            color: '#374151', marginBottom: '10px'
+          }}>
+            Class Name
+          </label>
+          <input
+            type="text"
+            placeholder="e.g., 8A English, Year 9 Science"
+            value={className}
+            onChange={e => setClassName(e.target.value)}
+            autoFocus
+            style={{
+              width: '100%', padding: '12px 16px',
+              border: '2px solid #e5e7eb', borderRadius: '10px',
+              fontSize: '16px', outline: 'none', boxSizing: 'border-box',
+              transition: 'border-color 0.15s'
+            }}
+            onFocus={e => e.target.style.borderColor = '#8b5cf6'}
+            onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+          />
+        </div>
+
+        {/* Paste class list */}
+        <div style={{
+          backgroundColor: 'white', borderRadius: '16px',
+          padding: isMobile ? '24px' : '32px',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.06)'
+        }}>
+          <h2 style={{
+            fontSize: '18px', fontWeight: '700', color: '#1e293b',
+            margin: '0 0 8px 0'
+          }}>
+            Paste Your Class List
+          </h2>
+          <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 20px 0', lineHeight: '1.6' }}>
+            One pupil per line — first name then last name. You can also type names directly.
+          </p>
+
+          {/* Example */}
+          <div style={{
+            backgroundColor: '#f1f5f9', borderRadius: '10px',
+            padding: '14px 18px', marginBottom: '16px',
+            fontFamily: 'monospace', fontSize: '13px',
+            color: '#475569', lineHeight: '1.8'
+          }}>
+            John Smith<br />
+            Sarah Johnson<br />
+            Michael Brown<br />
+            Emma Davis
+          </div>
+
           <textarea
-            placeholder={"Paste your class list here, one pupil per line:\n\nJohn Smith\nSarah Johnson\nMichael Brown\nEmma Davis"}
-            value={csvText} onChange={e => setCsvText(e.target.value)}
-            style={{ width: '100%', height: '160px', padding: '12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '12px' }} />
-          <button onClick={handleProcessCSV} disabled={!csvText.trim()}
-            style={{ backgroundColor: csvText.trim() ? '#3b82f6' : '#d1d5db', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: csvText.trim() ? 'pointer' : 'not-allowed' }}>
-            📋 Import Students
+            placeholder="Paste or type your class list here..."
+            value={csvText}
+            onChange={e => setCsvText(e.target.value)}
+            style={{
+              width: '100%', height: '180px',
+              padding: '14px 16px',
+              border: '2px solid #e5e7eb', borderRadius: '10px',
+              fontSize: '14px', resize: 'vertical',
+              fontFamily: 'inherit', boxSizing: 'border-box',
+              marginBottom: '16px', outline: 'none',
+              transition: 'border-color 0.15s'
+            }}
+            onFocus={e => e.target.style.borderColor = '#8b5cf6'}
+            onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+          />
+
+          <button
+            onClick={handleProcessCSV}
+            disabled={!csvText.trim()}
+            style={{
+              backgroundColor: csvText.trim() ? '#8b5cf6' : '#e2e8f0',
+              color: csvText.trim() ? 'white' : '#94a3b8',
+              padding: '12px 24px', border: 'none', borderRadius: '10px',
+              fontSize: '15px', fontWeight: '600',
+              cursor: csvText.trim() ? 'pointer' : 'not-allowed',
+              transition: 'background-color 0.15s'
+            }}
+          >
+            Import Pupils
           </button>
         </div>
-      )}
 
-      {/* Individual Input */}
-      {inputMethod === 'individual' && (
-        <div style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '20px', marginBottom: '20px' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#374151', margin: '0 0 16px 0' }}>Add Student</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>First Name *</label>
-              <input type="text" placeholder="First name" value={newStudent.firstName}
-                onChange={e => setNewStudent({ ...newStudent, firstName: e.target.value })}
-                onKeyDown={e => { if (e.key === 'Enter') handleAddIndividualStudent(); }}
-                style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
+        {/* Student list preview */}
+        {students.length > 0 && (
+          <div style={{
+            backgroundColor: 'white', borderRadius: '16px',
+            padding: isMobile ? '24px' : '32px',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.06)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#1e293b', margin: 0 }}>
+                Pupils Added
+              </h2>
+              <span style={{
+                backgroundColor: '#f0fdf4', color: '#059669',
+                fontSize: '13px', fontWeight: '600',
+                padding: '4px 12px', borderRadius: '20px',
+                border: '1px solid #bbf7d0'
+              }}>
+                {students.length} {students.length === 1 ? 'pupil' : 'pupils'}
+              </span>
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Last Name * (shortened to 2 letters)</label>
-              <input type="text" placeholder="Last name" value={newStudent.lastName}
-                onChange={e => setNewStudent({ ...newStudent, lastName: e.target.value })}
-                onKeyDown={e => { if (e.key === 'Enter') handleAddIndividualStudent(); }}
-                style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
-              {newStudent.lastName && (
-                <p style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0 0' }}>Will be stored as: {truncateSurname(newStudent.lastName)}</p>
-              )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
+              {students.map((student, index) => (
+                <div
+                  key={student.id}
+                  style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '12px 16px', backgroundColor: '#f8fafc',
+                    borderRadius: '10px', border: '1px solid #f1f5f9'
+                  }}
+                >
+                  <span style={{ fontSize: '14px', fontWeight: '500', color: '#1e293b' }}>
+                    {index + 1}. {student.firstName} {student.lastName}
+                  </span>
+                  <button
+                    onClick={() => handleRemoveStudent(student.id)}
+                    style={{
+                      backgroundColor: 'transparent', color: '#94a3b8',
+                      border: 'none', cursor: 'pointer',
+                      fontSize: '13px', padding: '4px 8px',
+                      borderRadius: '6px'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; e.currentTarget.style.backgroundColor = 'transparent'; }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Student ID (optional)</label>
-              <input type="text" placeholder="Student ID" value={newStudent.studentId}
-                onChange={e => setNewStudent({ ...newStudent, studentId: e.target.value })}
-                style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>Email (optional)</label>
-              <input type="email" placeholder="Email address" value={newStudent.email}
-                onChange={e => setNewStudent({ ...newStudent, email: e.target.value })}
-                style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
-            </div>
-          </div>
-          <button onClick={handleAddIndividualStudent}
-            disabled={!newStudent.firstName.trim() || !newStudent.lastName.trim()}
-            style={{ backgroundColor: (newStudent.firstName.trim() && newStudent.lastName.trim()) ? '#3b82f6' : '#d1d5db', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: (newStudent.firstName.trim() && newStudent.lastName.trim()) ? 'pointer' : 'not-allowed' }}>
-            ➕ Add Student
-          </button>
-        </div>
-      )}
+        )}
 
-      {/* Student List */}
-      {students.length > 0 && (
-        <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '20px', marginBottom: '20px' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#374151', margin: '0 0 16px 0' }}>
-            Students in Class ({students.length})
-          </h3>
-          <div style={{ display: 'grid', gap: '8px', maxHeight: '300px', overflowY: 'auto' }}>
-            {students.map((student, index) => (
-              <div key={student.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
-                <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
-                  {index + 1}. {student.firstName} {student.lastName}
-                  {student.studentId && <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '8px' }}>(ID: {student.studentId})</span>}
-                </span>
-                <button onClick={() => handleRemoveStudent(student.id)}
-                  style={{ backgroundColor: '#ef4444', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
-                  onMouseOver={e => e.currentTarget.style.backgroundColor = '#dc2626'}
-                  onMouseOut={e => e.currentTarget.style.backgroundColor = '#ef4444'}>
-                  Remove
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Create Class Button */}
-      <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '20px' }}>
-        <button onClick={handleCreateClass}
+        {/* Create class button */}
+        <button
+          onClick={handleCreateClass}
           disabled={!className.trim() || students.length === 0}
-          style={{ backgroundColor: (className.trim() && students.length > 0) ? '#10b981' : '#d1d5db', color: 'white', padding: isMobile ? '14px 32px' : '16px 40px', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '600', cursor: (className.trim() && students.length > 0) ? 'pointer' : 'not-allowed' }}
-          onMouseOver={e => { if (className.trim() && students.length > 0) e.currentTarget.style.backgroundColor = '#059669'; }}
-          onMouseOut={e => { if (className.trim() && students.length > 0) e.currentTarget.style.backgroundColor = '#10b981'; }}>
-          🎓 Create Class
+          style={{
+            backgroundColor: (className.trim() && students.length > 0) ? '#10b981' : '#e2e8f0',
+            color: (className.trim() && students.length > 0) ? 'white' : '#94a3b8',
+            padding: '18px 32px', border: 'none', borderRadius: '14px',
+            fontSize: '18px', fontWeight: '700',
+            cursor: (className.trim() && students.length > 0) ? 'pointer' : 'not-allowed',
+            width: '100%', transition: 'background-color 0.15s',
+            boxShadow: (className.trim() && students.length > 0) ? '0 4px 14px rgba(16,185,129,0.3)' : 'none'
+          }}
+          onMouseEnter={e => { if (className.trim() && students.length > 0) (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#059669'; }}
+          onMouseLeave={e => { if (className.trim() && students.length > 0) (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#10b981'; }}
+        >
+          Create Class →
         </button>
+
       </div>
     </div>
   );
