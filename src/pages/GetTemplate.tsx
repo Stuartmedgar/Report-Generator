@@ -140,7 +140,7 @@ function GetTemplate() {
           description="Answer a few questions and build your comment bank as you write reports. Perfect if you're starting from scratch."
           buttonLabel="Start Building"
           buttonColor="#3b82f6"
-          onClick={() => navigate('/create-template')}
+          onClick={() => navigate('/create-template', { state: { method: 'build-as-you-go' } })}
         />
 
         <OptionCard
@@ -158,7 +158,7 @@ function GetTemplate() {
           description="Add and configure each section yourself using the full template builder. Best if you know exactly what you want."
           buttonLabel="Build Manually"
           buttonColor="#f59e0b"
-          onClick={() => navigate('/create-template')}
+          onClick={() => navigate('/create-template', { state: { method: 'building' } })}
         />
 
       </div>

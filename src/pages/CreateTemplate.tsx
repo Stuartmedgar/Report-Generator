@@ -18,6 +18,9 @@ const CreateTemplate: React.FC = () => {
   const editTemplate = location.state?.editTemplate;
   const isEditing = !!editTemplate;
 
+  // If a method was passed in from GetTemplate, use it to skip the method screen after naming
+  const preselectedMethod = location.state?.method as 'build-as-you-go' | 'building' | undefined;
+
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [templateName, setTemplateName] = useState(editTemplate?.name || '');
   const [sections, setSections] = useState<TemplateSection[]>(editTemplate?.sections || []);
@@ -170,6 +173,16 @@ const CreateTemplate: React.FC = () => {
   // ─── NAMING STEP ──────────────────────────────────────────────────────────
 
   if (step === 'naming') {
+    // After naming, go straight to the preselected method if one was passed in,
+    // otherwise show the method choice screen as normal
+    const handleContinue = () => {
+      if (preselectedMethod) {
+        setStep(preselectedMethod);
+      } else {
+        setStep('method');
+      }
+    };
+
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ maxWidth: '600px', width: '100%', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', padding: '48px' }}>
@@ -187,7 +200,7 @@ const CreateTemplate: React.FC = () => {
               type="text"
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && templateName.trim()) setStep('method'); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && templateName.trim()) handleContinue(); }}
               placeholder="e.g., S3 PE Report, Primary Mathematics"
               style={{ width: '100%', padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }}
               onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
@@ -202,7 +215,7 @@ const CreateTemplate: React.FC = () => {
               </button>
             </Link>
             <button
-              onClick={() => setStep('method')}
+              onClick={handleContinue}
               disabled={!templateName.trim()}
               style={{ backgroundColor: templateName.trim() ? '#3b82f6' : '#e5e7eb', color: templateName.trim() ? 'white' : '#9ca3af', padding: '12px 24px', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '500', cursor: templateName.trim() ? 'pointer' : 'not-allowed' }}
             >
@@ -215,6 +228,7 @@ const CreateTemplate: React.FC = () => {
   }
 
   // ─── METHOD CHOICE STEP ───────────────────────────────────────────────────
+  // Only shown when arriving directly at /create-template without a preselected method
 
   if (step === 'method') {
     const optionCard = (
@@ -301,21 +315,21 @@ const CreateTemplate: React.FC = () => {
   if (step === 'build-as-you-go') {
     return (
       <BuildAsYouGo
-  templateName={templateName}
-  classId={location.state?.classId}
-  onComplete={(completedSections) => {
-    const template = {
-      name: templateName,
-      sections: completedSections,
-      sectionData: {},
-    };
-    addTemplate(template);
-    navigate('/write-reports', {
-      state: { preselectedClassId: location.state?.classId }
-    });
-  }}
-  onCancel={() => setStep('method')}
-/>
+        templateName={templateName}
+        classId={location.state?.classId}
+        onComplete={(completedSections) => {
+          const template = {
+            name: templateName,
+            sections: completedSections,
+            sectionData: {},
+          };
+          addTemplate(template);
+          navigate('/write-reports', {
+            state: { preselectedClassId: location.state?.classId }
+          });
+        }}
+        onCancel={() => setStep('method')}
+      />
     );
   }
 
