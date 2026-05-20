@@ -7,7 +7,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider, useData } from './contexts/DataContext';
 import { SubscriptionProvider } from './contexts/SubscriptionContext';
 
-// Import pages (not components!)
+// Import pages
 import WriteReports from './pages/WriteReports';
 import CreateTemplate from './pages/CreateTemplate';
 import ManageTemplates from './pages/ManageTemplates';
@@ -26,6 +26,7 @@ import StartReports from './pages/StartReports';
 import SelectClass from './pages/SelectClass';
 import Step2Template from './pages/Step2Template';
 import PickTemplate from './pages/PickTemplate';
+import GetTemplate from './pages/GetTemplate';
 
 // Import subscription components
 import { PricingPage, SubscriptionSuccess } from './components/subscription';
@@ -59,7 +60,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 // ─── HOME COMPONENT ───────────────────────────────────────────────────────────
 
 function Home() {
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
   const { state } = useData();
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
@@ -460,6 +461,11 @@ function App() {
                 <Route path="/step2" element={
                   <ProtectedRoute>
                     <Step2Template />
+                  </ProtectedRoute>
+                } />
+                <Route path="/get-template" element={
+                  <ProtectedRoute>
+                    <GetTemplate />
                   </ProtectedRoute>
                 } />
                 <Route path="/select-template" element={
