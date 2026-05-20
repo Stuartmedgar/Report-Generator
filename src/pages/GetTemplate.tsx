@@ -12,67 +12,47 @@ function GetTemplate() {
   }, []);
 
   const OptionCard = ({
-    icon,
-    title,
-    description,
-    buttonLabel,
-    buttonColor,
-    onClick,
-    recommended,
+    icon, title, description, buttonLabel, buttonColor, onClick, recommended,
   }: {
-    icon: string;
-    title: string;
-    description: string;
-    buttonLabel: string;
-    buttonColor: string;
-    onClick: () => void;
-    recommended?: boolean;
+    icon: string; title: string; description: string;
+    buttonLabel: string; buttonColor: string;
+    onClick: () => void; recommended?: boolean;
   }) => (
-    <div
-      style={{
-        backgroundColor: 'white',
-        border: recommended ? '2px solid #8b5cf6' : '1px solid #e5e7eb',
-        borderRadius: '14px',
-        padding: isMobile ? '20px' : '24px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
-        boxShadow: recommended ? '0 4px 12px rgba(139,92,246,0.12)' : '0 1px 4px rgba(0,0,0,0.05)',
-        position: 'relative',
-      }}
-    >
+    <div style={{
+      backgroundColor: 'white',
+      border: recommended ? '2px solid #8b5cf6' : '1px solid #e5e7eb',
+      borderRadius: '16px',
+      padding: isMobile ? '24px' : '32px',
+      display: 'flex', flexDirection: 'column', gap: '14px',
+      boxShadow: recommended ? '0 4px 12px rgba(139,92,246,0.12)' : '0 1px 4px rgba(0,0,0,0.05)',
+      position: 'relative',
+    }}>
       {recommended && (
         <div style={{
-          position: 'absolute', top: '-12px', left: '20px',
+          position: 'absolute', top: '-12px', left: '24px',
           backgroundColor: '#8b5cf6', color: 'white',
-          fontSize: '11px', fontWeight: '700', padding: '3px 10px',
+          fontSize: '11px', fontWeight: '700', padding: '3px 12px',
           borderRadius: '10px', letterSpacing: '0.04em'
         }}>
           RECOMMENDED
         </div>
       )}
-      <div style={{ fontSize: '32px' }}>{icon}</div>
+      <div style={{ fontSize: '36px' }}>{icon}</div>
       <div>
-        <div style={{ fontSize: '16px', fontWeight: '700', color: '#1e293b', marginBottom: '6px' }}>
+        <div style={{ fontSize: isMobile ? '17px' : '19px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>
           {title}
         </div>
-        <div style={{ fontSize: '13px', color: '#64748b', lineHeight: '1.6' }}>
+        <div style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.6' }}>
           {description}
         </div>
       </div>
       <button
         onClick={onClick}
         style={{
-          backgroundColor: buttonColor,
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
-          padding: '10px 18px',
-          fontSize: '14px',
-          fontWeight: '600',
-          cursor: 'pointer',
-          alignSelf: 'flex-start',
-          marginTop: 'auto',
+          backgroundColor: buttonColor, color: 'white',
+          border: 'none', borderRadius: '10px',
+          padding: '12px 22px', fontSize: '15px', fontWeight: '600',
+          cursor: 'pointer', alignSelf: 'flex-start', marginTop: 'auto',
         }}
         onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.88'; }}
         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
@@ -86,14 +66,12 @@ function GetTemplate() {
     <div style={{
       minHeight: '100vh',
       backgroundColor: '#f8fafc',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      padding: isMobile ? '40px 16px' : '60px 24px',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: isMobile ? '40px 16px' : '60px 40px',
     }}>
 
       {/* Back */}
-      <div style={{ width: '100%', maxWidth: '780px', marginBottom: '32px' }}>
+      <div style={{ width: '100%', maxWidth: '960px', marginBottom: '32px' }}>
         <button
           onClick={() => navigate(-1)}
           style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: '14px', cursor: 'pointer', padding: 0 }}
@@ -103,14 +81,14 @@ function GetTemplate() {
       </div>
 
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '40px', maxWidth: '600px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '44px', maxWidth: '680px' }}>
         <h1 style={{
-          fontSize: isMobile ? '28px' : '36px', fontWeight: '800',
+          fontSize: isMobile ? '30px' : '44px', fontWeight: '800',
           color: '#1e293b', margin: '0 0 12px 0', lineHeight: '1.2'
         }}>
           Get a Template
         </h1>
-        <p style={{ fontSize: '16px', color: '#64748b', margin: 0, lineHeight: '1.6' }}>
+        <p style={{ fontSize: '17px', color: '#64748b', margin: 0, lineHeight: '1.6' }}>
           Choose how you'd like to create or import your template.
         </p>
       </div>
@@ -119,11 +97,10 @@ function GetTemplate() {
       <div style={{
         display: 'grid',
         gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-        gap: '20px',
+        gap: '24px',
         width: '100%',
-        maxWidth: '780px',
+        maxWidth: '960px',
       }}>
-
         <OptionCard
           icon="⚡"
           title="AI Quick Build"
@@ -133,7 +110,6 @@ function GetTemplate() {
           onClick={() => navigate('/import-template', { state: { mode: 'quick' } })}
           recommended
         />
-
         <OptionCard
           icon="🧱"
           title="Build as You Go"
@@ -142,7 +118,6 @@ function GetTemplate() {
           buttonColor="#3b82f6"
           onClick={() => navigate('/create-template', { state: { method: 'build-as-you-go' } })}
         />
-
         <OptionCard
           icon="📚"
           title="Import from Library"
@@ -151,7 +126,6 @@ function GetTemplate() {
           buttonColor="#94a3b8"
           onClick={() => alert('Template library coming soon!')}
         />
-
         <OptionCard
           icon="⚙️"
           title="Manual Build"
@@ -160,7 +134,6 @@ function GetTemplate() {
           buttonColor="#f59e0b"
           onClick={() => navigate('/create-template', { state: { method: 'building' } })}
         />
-
       </div>
     </div>
   );
