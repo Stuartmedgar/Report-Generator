@@ -9,7 +9,6 @@ export default function ClassManagement() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { state, deleteClass } = useData();
-  // Fix: initialise directly from URL so create form shows immediately with no flash
   const [showCreateClass, setShowCreateClass] = useState(() => searchParams.get('create') === 'true');
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -20,19 +19,19 @@ export default function ClassManagement() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // After class is created, navigate to template selection with the new class
+  // ─── FIXED: After creating a class, go to /step2 (got template or need one?)
+  // Store classId in sessionStorage so PickTemplate can read it.
   const handleCreateClassComplete = (newClassId?: string) => {
     setShowCreateClass(false);
-    if (newClassId) {
-      navigate('/select-template', { state: { classId: newClassId } });
-    } else {
-      // Fallback: find the most recently created class
+    const classId = newClassId || (() => {
       const latest = [...state.classes].sort((a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       )[0];
-      if (latest) {
-        navigate('/select-template', { state: { classId: latest.id } });
-      }
+      return latest?.id;
+    })();
+    if (classId) {
+      sessionStorage.setItem('selectedClassId', classId);
+      navigate('/step2');
     }
   };
 
@@ -54,9 +53,10 @@ export default function ClassManagement() {
     setSelectedClassId(null);
   };
 
-  // Clicking "Write Reports" for a class goes to template selection
+  // Clicking "Write Reports" for a class goes to step2 (pick or get template)
   const handleSelectClassForReports = (classId: string) => {
-    navigate('/select-template', { state: { classId } });
+    sessionStorage.setItem('selectedClassId', classId);
+    navigate('/step2');
   };
 
   const getLastStudentWorkedOn = (classData: any) => {
@@ -206,7 +206,6 @@ export default function ClassManagement() {
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: reportCount > 0 ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap: '8px' }}>
-                      {/* Write reports — goes to template selection */}
                       <button onClick={() => handleSelectClassForReports(classItem.id)} style={btnStyle('#10b981')}>
                         ✏️ Write Reports
                       </button>

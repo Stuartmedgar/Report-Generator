@@ -9,16 +9,52 @@ import StudentSelection from '../components/WriteReports/StudentSelection';
 
 type Step = 'template-selection' | 'class-selection' | 'student-selection' | 'writing';
 
+// ─── Read sessionStorage synchronously before first render ───────────────────
+// This prevents the flicker where the template-selection screen briefly appears
+// before the useEffect fires and switches to 'writing' mode.
+function getInitialState(classes: Class[], templates: Template[]) {
+  try {
+    const raw = sessionStorage.getItem('continueEditing');
+    if (raw) {
+      const { classId, templateId, studentIndex } = JSON.parse(raw);
+      const template = templates.find(t => t.id === templateId) || null;
+      const classData = classes.find(c => c.id === classId) || null;
+      if (template && classData) {
+        sessionStorage.removeItem('continueEditing');
+        return {
+          step: 'writing' as Step,
+          template,
+          classData,
+          students: classData.students.map((s: Student) => s.id),
+          studentIndex: studentIndex >= 0 ? studentIndex : 0,
+        };
+      }
+    }
+  } catch (_) {
+    sessionStorage.removeItem('continueEditing');
+  }
+  return {
+    step: 'template-selection' as Step,
+    template: null,
+    classData: null,
+    students: [] as string[],
+    studentIndex: 0,
+  };
+}
+
 function WriteReports() {
   const navigate = useNavigate();
   const location = useLocation();
   const { state } = useData();
-  const [currentStep, setCurrentStep] = useState<Step>('template-selection');
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
-  const [selectedClass, setSelectedClass] = useState<Class | null>(null);
-  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
-  const [resumeStudentIndex, setResumeStudentIndex] = useState<number>(0);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  // ─── Initialise from sessionStorage synchronously (no flicker) ───────────
+  const init = getInitialState(state.classes, state.templates);
+  const [currentStep, setCurrentStep] = useState<Step>(init.step);
+  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(init.template);
+  const [selectedClass, setSelectedClass] = useState<Class | null>(init.classData);
+  const [selectedStudents, setSelectedStudents] = useState<string[]>(init.students);
+  const [resumeStudentIndex, setResumeStudentIndex] = useState<number>(init.studentIndex);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -26,7 +62,7 @@ function WriteReports() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Handle preselected class and template coming from SelectTemplate page
+  // Handle preselected class and template coming from SelectTemplate / navigation state
   useEffect(() => {
     const preselectedClassId = location.state?.preselectedClassId as string | undefined;
     const preselectedTemplateId = location.state?.preselectedTemplateId as string | undefined;
@@ -42,34 +78,10 @@ function WriteReports() {
       if (classData && template) {
         setCurrentStep('student-selection');
       } else if (classData) {
-        // Class selected, still need template
         setCurrentStep('template-selection');
       }
     }
   }, [location.state, state.classes, state.templates]);
-
-  // Handle continueEditing from sessionStorage
-  useEffect(() => {
-    const continueEditingData = sessionStorage.getItem('continueEditing');
-    if (continueEditingData) {
-      try {
-        const { classId, templateId, studentIndex } = JSON.parse(continueEditingData);
-        const template = state.templates.find(t => t.id === templateId);
-        const classData = state.classes.find(c => c.id === classId);
-        if (template && classData) {
-          setSelectedTemplate(template);
-          setSelectedClass(classData);
-          setSelectedStudents(classData.students.map(s => s.id));
-          setResumeStudentIndex(studentIndex);
-          setCurrentStep('writing');
-          sessionStorage.removeItem('continueEditing');
-        }
-      } catch (error) {
-        console.error('Error parsing continue editing data:', error);
-        sessionStorage.removeItem('continueEditing');
-      }
-    }
-  }, [state.templates, state.classes]);
 
   const handleTemplateSelect = (template: Template) => {
     setSelectedTemplate(template);
