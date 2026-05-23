@@ -82,13 +82,37 @@ function Home() {
     }
   };
 
+  // ─── FIXED: Find the most recently updated report across ALL classes,
+  //     set sessionStorage the same way ClassManagement's orange button does,
+  //     then navigate straight into the report writer. ─────────────────────
   const handleContinueWriting = () => {
-    const reportsExist = state.reports && state.reports.length > 0;
-    if (reportsExist) {
-      navigate('/write-reports');
-    } else {
+    if (!state.reports || state.reports.length === 0) {
       navigate('/no-reports');
+      return;
     }
+
+    // Find the single most recently updated report across all classes
+    const mostRecentReport = state.reports.reduce((latest, current) =>
+      new Date(current.updatedAt) > new Date(latest.updatedAt) ? current : latest
+    );
+
+    const classData = state.classes.find(c => c.id === mostRecentReport.classId);
+    if (!classData) {
+      navigate('/no-reports');
+      return;
+    }
+
+    const studentIndex = classData.students.findIndex(
+      s => s.id === mostRecentReport.studentId
+    );
+
+    sessionStorage.setItem('continueEditing', JSON.stringify({
+      classId: classData.id,
+      templateId: mostRecentReport.templateId,
+      studentIndex: studentIndex >= 0 ? studentIndex : 0
+    }));
+
+    navigate('/write-reports');
   };
 
   return (
