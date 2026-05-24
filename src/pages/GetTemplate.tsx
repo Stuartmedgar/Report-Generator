@@ -1,9 +1,64 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import PageNav from '../components/PageNav';
+
+interface OptionCardProps {
+  icon: string;
+  title: string;
+  description: string;
+  buttonLabel: string;
+  buttonColor: string;
+  onClick: () => void;
+  recommended?: boolean;
+}
+
+function OptionCard({ icon, title, description, buttonLabel, buttonColor, onClick, recommended }: OptionCardProps) {
+  return (
+    <div style={{
+      backgroundColor: 'white',
+      borderRadius: '16px',
+      padding: '32px 28px',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+      border: recommended ? `2px solid ${buttonColor}` : '2px solid transparent',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '12px',
+      position: 'relative',
+    }}>
+      {recommended && (
+        <div style={{
+          position: 'absolute', top: '-12px', left: '24px',
+          backgroundColor: buttonColor, color: 'white',
+          fontSize: '11px', fontWeight: '700', padding: '3px 10px',
+          borderRadius: '20px', letterSpacing: '0.05em',
+          textTransform: 'uppercase'
+        }}>
+          Recommended
+        </div>
+      )}
+      <div style={{ fontSize: '36px' }}>{icon}</div>
+      <div style={{ fontSize: '18px', fontWeight: '700', color: '#1e293b' }}>{title}</div>
+      <div style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.6', flexGrow: 1 }}>{description}</div>
+      <button
+        onClick={onClick}
+        style={{
+          backgroundColor: buttonColor, color: 'white',
+          padding: '12px 20px', border: 'none', borderRadius: '10px',
+          fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+          marginTop: '8px', transition: 'opacity 0.15s'
+        }}
+        onMouseEnter={e => { e.currentTarget.style.opacity = '0.88'; }}
+        onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+      >
+        {buttonLabel}
+      </button>
+    </div>
+  );
+}
 
 function GetTemplate() {
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const navigate = useNavigate();
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -11,129 +66,73 @@ function GetTemplate() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const OptionCard = ({
-    icon, title, description, buttonLabel, buttonColor, onClick, recommended,
-  }: {
-    icon: string; title: string; description: string;
-    buttonLabel: string; buttonColor: string;
-    onClick: () => void; recommended?: boolean;
-  }) => (
-    <div style={{
-      backgroundColor: 'white',
-      border: recommended ? '2px solid #8b5cf6' : '1px solid #e5e7eb',
-      borderRadius: '16px',
-      padding: isMobile ? '24px' : '32px',
-      display: 'flex', flexDirection: 'column', gap: '14px',
-      boxShadow: recommended ? '0 4px 12px rgba(139,92,246,0.12)' : '0 1px 4px rgba(0,0,0,0.05)',
-      position: 'relative',
-    }}>
-      {recommended && (
-        <div style={{
-          position: 'absolute', top: '-12px', left: '24px',
-          backgroundColor: '#8b5cf6', color: 'white',
-          fontSize: '11px', fontWeight: '700', padding: '3px 12px',
-          borderRadius: '10px', letterSpacing: '0.04em'
-        }}>
-          RECOMMENDED
-        </div>
-      )}
-      <div style={{ fontSize: '36px' }}>{icon}</div>
-      <div>
-        <div style={{ fontSize: isMobile ? '17px' : '19px', fontWeight: '700', color: '#1e293b', marginBottom: '8px' }}>
-          {title}
-        </div>
-        <div style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.6' }}>
-          {description}
-        </div>
-      </div>
-      <button
-        onClick={onClick}
-        style={{
-          backgroundColor: buttonColor, color: 'white',
-          border: 'none', borderRadius: '10px',
-          padding: '12px 22px', fontSize: '15px', fontWeight: '600',
-          cursor: 'pointer', alignSelf: 'flex-start', marginTop: 'auto',
-        }}
-        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.88'; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
-      >
-        {buttonLabel}
-      </button>
-    </div>
-  );
-
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#f8fafc',
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: isMobile ? '40px 16px' : '60px 40px',
-    }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
 
-      {/* Back */}
-      <div style={{ width: '100%', maxWidth: '960px', marginBottom: '32px' }}>
-        <button
-          onClick={() => navigate(-1)}
-          style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: '14px', cursor: 'pointer', padding: 0 }}
-        >
-          ← Back
-        </button>
-      </div>
+      <PageNav />
 
-      {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '44px', maxWidth: '680px' }}>
-        <h1 style={{
-          fontSize: isMobile ? '30px' : '44px', fontWeight: '800',
-          color: '#1e293b', margin: '0 0 12px 0', lineHeight: '1.2'
-        }}>
-          Get a Template
-        </h1>
-        <p style={{ fontSize: '17px', color: '#64748b', margin: 0, lineHeight: '1.6' }}>
-          Choose how you'd like to create or import your template.
-        </p>
-      </div>
-
-      {/* Options grid */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-        gap: '24px',
-        width: '100%',
-        maxWidth: '960px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: isMobile ? '40px 16px' : '60px 40px',
       }}>
-        <OptionCard
-          icon="⚡"
-          title="AI Quick Build"
-          description="Paste your existing reports and AI will build a full template in about 2 minutes. The fastest way to get started."
-          buttonLabel="Quick Build"
-          buttonColor="#8b5cf6"
-          onClick={() => navigate('/import-template', { state: { mode: 'quick' } })}
-          recommended
-        />
-        <OptionCard
-          icon="🧱"
-          title="Build as You Go"
-          description="Answer a few questions and build your comment bank as you write reports. Perfect if you're starting from scratch."
-          buttonLabel="Start Building"
-          buttonColor="#3b82f6"
-          onClick={() => navigate('/create-template', { state: { method: 'build-as-you-go' } })}
-        />
-        <OptionCard
-          icon="📚"
-          title="Import from Library"
-          description="Browse and import a ready-made template from the library. Coming soon."
-          buttonLabel="Browse Library"
-          buttonColor="#94a3b8"
-          onClick={() => alert('Template library coming soon!')}
-        />
-        <OptionCard
-          icon="⚙️"
-          title="Manual Build"
-          description="Add and configure each section yourself using the full template builder. Best if you know exactly what you want."
-          buttonLabel="Build Manually"
-          buttonColor="#f59e0b"
-          onClick={() => navigate('/create-template', { state: { method: 'building' } })}
-        />
+
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: '44px', maxWidth: '680px' }}>
+          <h1 style={{
+            fontSize: isMobile ? '30px' : '44px', fontWeight: '800',
+            color: '#1e293b', margin: '0 0 12px 0', lineHeight: '1.2'
+          }}>
+            Get a Template
+          </h1>
+          <p style={{ fontSize: '17px', color: '#64748b', margin: 0, lineHeight: '1.6' }}>
+            Choose how you'd like to create or import your template.
+          </p>
+        </div>
+
+        {/* Options grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+          gap: '24px',
+          width: '100%',
+          maxWidth: '960px',
+        }}>
+          <OptionCard
+            icon="⚡"
+            title="AI Quick Build"
+            description="Paste your existing reports and AI will build a full template in about 2 minutes. The fastest way to get started."
+            buttonLabel="Quick Build"
+            buttonColor="#8b5cf6"
+            onClick={() => navigate('/import-template', { state: { mode: 'quick' } })}
+            recommended
+          />
+          <OptionCard
+            icon="🧱"
+            title="Build as You Go"
+            description="Answer a few questions and build your comment bank as you write reports. Perfect if you're starting from scratch."
+            buttonLabel="Start Building"
+            buttonColor="#3b82f6"
+            onClick={() => navigate('/create-template', { state: { method: 'build-as-you-go' } })}
+          />
+          <OptionCard
+            icon="📚"
+            title="Import from Library"
+            description="Browse and import a ready-made template from the library. Coming soon."
+            buttonLabel="Browse Library"
+            buttonColor="#94a3b8"
+            onClick={() => alert('Template library coming soon!')}
+          />
+          <OptionCard
+            icon="⚙️"
+            title="Manual Build"
+            description="Add and configure each section yourself using the full template builder. Best if you know exactly what you want."
+            buttonLabel="Build Manually"
+            buttonColor="#f59e0b"
+            onClick={() => navigate('/create-template', { state: { method: 'building' } })}
+          />
+        </div>
       </div>
     </div>
   );

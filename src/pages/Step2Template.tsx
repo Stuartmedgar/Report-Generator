@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import PageNav from '../components/PageNav';
 
 function Step2Template() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -11,130 +12,126 @@ function Step2Template() {
   }, []);
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#f8fafc',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: isMobile ? '40px 16px' : '60px 40px',
-    }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
 
-      {/* Back */}
-      <div style={{ width: '100%', maxWidth: '860px', marginBottom: '32px' }}>
-        <Link to="/start" style={{ color: '#6b7280', textDecoration: 'none', fontSize: '14px' }}>
-          ← Back
-        </Link>
-      </div>
+      <PageNav />
 
-      {/* Step indicator */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '36px' }}>
-        <div style={{
-          width: '36px', height: '36px', borderRadius: '50%',
-          backgroundColor: '#10b981', color: 'white',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '18px', fontWeight: '700'
-        }}>✓</div>
-        <div style={{ width: '60px', height: '3px', backgroundColor: '#10b981', borderRadius: '2px' }} />
-        <div style={{
-          width: '36px', height: '36px', borderRadius: '50%',
-          backgroundColor: '#8b5cf6', color: 'white',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '15px', fontWeight: '700'
-        }}>2</div>
-      </div>
-
-      {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '48px', maxWidth: '680px', width: '100%' }}>
-        <p style={{
-          fontSize: '13px', fontWeight: '600', color: '#8b5cf6',
-          textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px 0'
-        }}>
-          Step 2
-        </p>
-        <h1 style={{
-          fontSize: isMobile ? '32px' : '44px', fontWeight: '800',
-          color: '#1e293b', margin: '0 0 14px 0', lineHeight: '1.15'
-        }}>
-          Create or Select a Template
-        </h1>
-        <p style={{ fontSize: isMobile ? '15px' : '17px', color: '#64748b', margin: 0, lineHeight: '1.6' }}>
-          To write reports you need a template where all of your comments are stored.
-        </p>
-      </div>
-
-      {/* Buttons */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-        gap: '24px',
-        width: '100%',
-        maxWidth: '860px'
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: isMobile ? '40px 16px' : '60px 40px',
       }}>
 
-        {/* Need a Template */}
-        <Link to="/get-template" style={{ textDecoration: 'none' }}>
-          <div
-            style={{
-              backgroundColor: '#8b5cf6', color: 'white',
-              borderRadius: '16px',
-              padding: isMobile ? '40px 28px' : '56px 40px',
-              textAlign: 'center', cursor: 'pointer',
-              boxShadow: '0 4px 14px rgba(139,92,246,0.3)',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              boxSizing: 'border-box'
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-3px)';
-              (e.currentTarget as HTMLDivElement).style.boxShadow = '0 10px 24px rgba(139,92,246,0.4)';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
-              (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 14px rgba(139,92,246,0.3)';
-            }}
-          >
-            <div style={{ fontSize: '44px', marginBottom: '16px' }}>✨</div>
-            <div style={{ fontSize: isMobile ? '20px' : '24px', fontWeight: '700', marginBottom: '10px' }}>
-              Need a Template
-            </div>
-            <div style={{ fontSize: '14px', opacity: 0.88, lineHeight: '1.5' }}>
-              Create one using AI or build it yourself
-            </div>
-          </div>
-        </Link>
+        {/* Step indicator */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '36px' }}>
+          <div style={{
+            width: '36px', height: '36px', borderRadius: '50%',
+            backgroundColor: '#10b981', color: 'white',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '18px', fontWeight: '700'
+          }}>✓</div>
+          <div style={{ width: '60px', height: '3px', backgroundColor: '#10b981', borderRadius: '2px' }} />
+          <div style={{
+            width: '36px', height: '36px', borderRadius: '50%',
+            backgroundColor: '#8b5cf6', color: 'white',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '15px', fontWeight: '700'
+          }}>2</div>
+        </div>
 
-        {/* Got a Template */}
-        <Link to="/pick-template" style={{ textDecoration: 'none' }}>
-          <div
-            style={{
-              backgroundColor: '#10b981', color: 'white',
-              borderRadius: '16px',
-              padding: isMobile ? '40px 28px' : '56px 40px',
-              textAlign: 'center', cursor: 'pointer',
-              boxShadow: '0 4px 14px rgba(16,185,129,0.3)',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              boxSizing: 'border-box'
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-3px)';
-              (e.currentTarget as HTMLDivElement).style.boxShadow = '0 10px 24px rgba(16,185,129,0.4)';
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
-              (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 14px rgba(16,185,129,0.3)';
-            }}
-          >
-            <div style={{ fontSize: '44px', marginBottom: '16px' }}>📋</div>
-            <div style={{ fontSize: isMobile ? '20px' : '24px', fontWeight: '700', marginBottom: '10px' }}>
-              Got a Template
-            </div>
-            <div style={{ fontSize: '14px', opacity: 0.88, lineHeight: '1.5' }}>
-              Pick from your saved templates
-            </div>
-          </div>
-        </Link>
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: '48px', maxWidth: '680px', width: '100%' }}>
+          <p style={{
+            fontSize: '13px', fontWeight: '600', color: '#8b5cf6',
+            textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px 0'
+          }}>
+            Step 2
+          </p>
+          <h1 style={{
+            fontSize: isMobile ? '32px' : '44px', fontWeight: '800',
+            color: '#1e293b', margin: '0 0 14px 0', lineHeight: '1.15'
+          }}>
+            Create or Select a Template
+          </h1>
+          <p style={{ fontSize: isMobile ? '15px' : '17px', color: '#64748b', margin: 0, lineHeight: '1.6' }}>
+            To write reports you need a template where all of your comments are stored.
+          </p>
+        </div>
 
+        {/* Buttons */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+          gap: '24px',
+          width: '100%',
+          maxWidth: '860px'
+        }}>
+
+          {/* Need a Template */}
+          <Link to="/get-template" style={{ textDecoration: 'none' }}>
+            <div
+              style={{
+                backgroundColor: '#8b5cf6', color: 'white',
+                borderRadius: '16px',
+                padding: isMobile ? '40px 28px' : '56px 40px',
+                textAlign: 'center', cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(139,92,246,0.3)',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                boxSizing: 'border-box'
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-3px)';
+                (e.currentTarget as HTMLDivElement).style.boxShadow = '0 10px 24px rgba(139,92,246,0.4)';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
+                (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 14px rgba(139,92,246,0.3)';
+              }}
+            >
+              <div style={{ fontSize: '44px', marginBottom: '16px' }}>✨</div>
+              <div style={{ fontSize: isMobile ? '20px' : '24px', fontWeight: '700', marginBottom: '10px' }}>
+                Need a Template
+              </div>
+              <div style={{ fontSize: '14px', opacity: 0.88, lineHeight: '1.5' }}>
+                Create one using AI or build it yourself
+              </div>
+            </div>
+          </Link>
+
+          {/* Got a Template */}
+          <Link to="/pick-template" style={{ textDecoration: 'none' }}>
+            <div
+              style={{
+                backgroundColor: '#10b981', color: 'white',
+                borderRadius: '16px',
+                padding: isMobile ? '40px 28px' : '56px 40px',
+                textAlign: 'center', cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(16,185,129,0.3)',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                boxSizing: 'border-box'
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-3px)';
+                (e.currentTarget as HTMLDivElement).style.boxShadow = '0 10px 24px rgba(16,185,129,0.4)';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)';
+                (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 14px rgba(16,185,129,0.3)';
+              }}
+            >
+              <div style={{ fontSize: '44px', marginBottom: '16px' }}>📋</div>
+              <div style={{ fontSize: isMobile ? '20px' : '24px', fontWeight: '700', marginBottom: '10px' }}>
+                Got a Template
+              </div>
+              <div style={{ fontSize: '14px', opacity: 0.88, lineHeight: '1.5' }}>
+                Pick from your saved templates
+              </div>
+            </div>
+          </Link>
+
+        </div>
       </div>
     </div>
   );
