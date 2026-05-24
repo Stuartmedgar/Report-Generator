@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import MobileViewReports from '../components/MobileViewReports';
+import PageNav from '../components/PageNav';
 
 export default function ViewReports() {
   const navigate = useNavigate();
@@ -97,6 +98,7 @@ export default function ViewReports() {
   // Desktop view - PRESERVED EXACTLY AS ORIGINAL
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+      <PageNav />
       {/* Header with consistent layout */}
       <header style={{ 
         backgroundColor: 'white', 

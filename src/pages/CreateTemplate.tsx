@@ -10,6 +10,7 @@ import NextStepsCommentBuilder from '../components/NextStepsCommentBuilder';
 import QualitiesCommentBuilder from '../components/QualitiesCommentBuilder';
 import MobileCreateTemplate from '../components/MobileCreateTemplate';
 import BuildAsYouGo from '../components/BuildAsYouGo';
+import PageNav from '../components/PageNav';
 
 const CreateTemplate: React.FC = () => {
   const { state, addTemplate, updateTemplate } = useData();
@@ -18,7 +19,6 @@ const CreateTemplate: React.FC = () => {
   const editTemplate = location.state?.editTemplate;
   const isEditing = !!editTemplate;
 
-  // If a method was passed in from GetTemplate, use it to skip the method screen after naming
   const preselectedMethod = location.state?.method as 'build-as-you-go' | 'building' | undefined;
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -26,7 +26,6 @@ const CreateTemplate: React.FC = () => {
   const [sections, setSections] = useState<TemplateSection[]>(editTemplate?.sections || []);
   const [sectionData, setSectionData] = useState<Record<string, any>>(editTemplate?.sectionData || {});
 
-  // Step flow: 'naming' → 'method' → 'building' (or 'build-as-you-go')
   const [step, setStep] = useState<'naming' | 'method' | 'building' | 'build-as-you-go'>(
     !isEditing ? 'naming' : 'building'
   );
@@ -173,8 +172,6 @@ const CreateTemplate: React.FC = () => {
   // ─── NAMING STEP ──────────────────────────────────────────────────────────
 
   if (step === 'naming') {
-    // After naming, go straight to the preselected method if one was passed in,
-    // otherwise show the method choice screen as normal
     const handleContinue = () => {
       if (preselectedMethod) {
         setStep(preselectedMethod);
@@ -184,43 +181,46 @@ const CreateTemplate: React.FC = () => {
     };
 
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ maxWidth: '600px', width: '100%', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', padding: '48px' }}>
-          <h1 style={{ fontSize: '32px', fontWeight: '700', color: '#111827', marginBottom: '12px', textAlign: 'center' }}>
-            Name Your Template
-          </h1>
-          <p style={{ color: '#6b7280', marginBottom: '32px', fontSize: '16px', textAlign: 'center' }}>
-            Choose a descriptive name for your report template
-          </p>
-          <div style={{ marginBottom: '32px' }}>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-              Template Name
-            </label>
-            <input
-              type="text"
-              value={templateName}
-              onChange={(e) => setTemplateName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && templateName.trim()) handleContinue(); }}
-              placeholder="e.g., S3 PE Report, Primary Mathematics"
-              style={{ width: '100%', padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-              autoFocus
-            />
-          </div>
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-            <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
-              <button style={{ backgroundColor: '#f3f4f6', color: '#374151', padding: '12px 24px', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '500', cursor: 'pointer' }}>
-                Cancel
+      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column' }}>
+        <PageNav />
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
+          <div style={{ maxWidth: '600px', width: '100%', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', padding: '48px' }}>
+            <h1 style={{ fontSize: '32px', fontWeight: '700', color: '#111827', marginBottom: '12px', textAlign: 'center' }}>
+              Name Your Template
+            </h1>
+            <p style={{ color: '#6b7280', marginBottom: '32px', fontSize: '16px', textAlign: 'center' }}>
+              Choose a descriptive name for your report template
+            </p>
+            <div style={{ marginBottom: '32px' }}>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                Template Name
+              </label>
+              <input
+                type="text"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && templateName.trim()) handleContinue(); }}
+                placeholder="e.g., S3 PE Report, Primary Mathematics"
+                style={{ width: '100%', padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }}
+                onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                autoFocus
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
+                <button style={{ backgroundColor: '#f3f4f6', color: '#374151', padding: '12px 24px', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '500', cursor: 'pointer' }}>
+                  Cancel
+                </button>
+              </Link>
+              <button
+                onClick={handleContinue}
+                disabled={!templateName.trim()}
+                style={{ backgroundColor: templateName.trim() ? '#3b82f6' : '#e5e7eb', color: templateName.trim() ? 'white' : '#9ca3af', padding: '12px 24px', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '500', cursor: templateName.trim() ? 'pointer' : 'not-allowed' }}
+              >
+                Continue →
               </button>
-            </Link>
-            <button
-              onClick={handleContinue}
-              disabled={!templateName.trim()}
-              style={{ backgroundColor: templateName.trim() ? '#3b82f6' : '#e5e7eb', color: templateName.trim() ? 'white' : '#9ca3af', padding: '12px 24px', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '500', cursor: templateName.trim() ? 'pointer' : 'not-allowed' }}
-            >
-              Continue →
-            </button>
+            </div>
           </div>
         </div>
       </div>
@@ -228,7 +228,6 @@ const CreateTemplate: React.FC = () => {
   }
 
   // ─── METHOD CHOICE STEP ───────────────────────────────────────────────────
-  // Only shown when arriving directly at /create-template without a preselected method
 
   if (step === 'method') {
     const optionCard = (
@@ -268,42 +267,45 @@ const CreateTemplate: React.FC = () => {
     );
 
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-        <div style={{ maxWidth: '600px', width: '100%', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', padding: '48px' }}>
-          <h1 style={{ fontSize: '26px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>
-            How would you like to build "{templateName}"?
-          </h1>
-          <p style={{ color: '#6b7280', marginBottom: '32px', fontSize: '15px' }}>
-            Choose the approach that suits you best.
-          </p>
+      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column' }}>
+        <PageNav />
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div style={{ maxWidth: '600px', width: '100%', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', padding: '48px' }}>
+            <h1 style={{ fontSize: '26px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>
+              How would you like to build "{templateName}"?
+            </h1>
+            <p style={{ color: '#6b7280', marginBottom: '32px', fontSize: '15px' }}>
+              Choose the approach that suits you best.
+            </p>
 
-          {optionCard(
-            'Build as you go',
-            'Answer a few questions about your reports and we\'ll set up the structure. Then write reports and build up your comment bank as you go — perfect for starting fresh.',
-            '🧱',
-            () => setStep('build-as-you-go'),
-            true
-          )}
+            {optionCard(
+              'Build as you go',
+              'Answer a few questions about your reports and we\'ll set up the structure. Then write reports and build up your comment bank as you go — perfect for starting fresh.',
+              '🧱',
+              () => setStep('build-as-you-go'),
+              true
+            )}
 
-          {optionCard(
-            'Import from existing reports',
-            'Paste reports you\'ve already written and we\'ll extract comments to build your template automatically.',
-            '📥',
-            () => navigate('/import-template'),
-          )}
+            {optionCard(
+              'Import from existing reports',
+              'Paste reports you\'ve already written and we\'ll extract comments to build your template automatically.',
+              '📥',
+              () => navigate('/import-template'),
+            )}
 
-          {optionCard(
-            'Build manually',
-            'Add and configure sections yourself using the full template builder. Best if you know exactly what you want.',
-            '⚙️',
-            () => setStep('building'),
-          )}
+            {optionCard(
+              'Build manually',
+              'Add and configure sections yourself using the full template builder. Best if you know exactly what you want.',
+              '⚙️',
+              () => setStep('building'),
+            )}
 
-          <div style={{ marginTop: '16px' }}>
-            <button onClick={() => setStep('naming')}
-              style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>
-              ← Change template name
-            </button>
+            <div style={{ marginTop: '16px' }}>
+              <button onClick={() => setStep('naming')}
+                style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>
+                ← Change template name
+              </button>
+            </div>
           </div>
         </div>
       </div>
