@@ -3,6 +3,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { TemplateSection } from '../types';
+import PageNav from '../components/PageNav';
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 
@@ -581,9 +582,10 @@ export default function ImportTemplate() {
 
   if (mainStep === 'paste') return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-      <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-        <Link to="/manage-templates" style={{ textDecoration: 'none' }}><button style={btnS}>← Back</button></Link>
-        <div><h1 style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: '#111827' }}>🪄 Import from Reports</h1><p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Build a template from your existing reports</p></div>
+      <PageNav />
+      <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '16px 24px' }}>
+        <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: '#111827' }}>🪄 Import from Reports</h1>
+        <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280' }}>Build a template from your existing reports</p>
       </header>
       <main style={{ maxWidth: '800px', margin: '0 auto', padding: '32px 24px' }}>
         <div style={card}>
