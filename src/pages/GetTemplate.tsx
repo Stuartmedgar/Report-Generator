@@ -17,12 +17,12 @@ function OptionCard({ icon, title, description, buttonLabel, buttonColor, onClic
     <div style={{
       backgroundColor: 'white',
       borderRadius: '16px',
-      padding: '32px 28px',
+      padding: '28px 24px',
       boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
       border: recommended ? `2px solid ${buttonColor}` : '2px solid transparent',
       display: 'flex',
       flexDirection: 'column',
-      gap: '12px',
+      gap: '10px',
       position: 'relative',
     }}>
       {recommended && (
@@ -36,16 +36,16 @@ function OptionCard({ icon, title, description, buttonLabel, buttonColor, onClic
           Recommended
         </div>
       )}
-      <div style={{ fontSize: '36px' }}>{icon}</div>
-      <div style={{ fontSize: '18px', fontWeight: '700', color: '#1e293b' }}>{title}</div>
+      <div style={{ fontSize: '32px' }}>{icon}</div>
+      <div style={{ fontSize: '17px', fontWeight: '700', color: '#1e293b' }}>{title}</div>
       <div style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.6', flexGrow: 1 }}>{description}</div>
       <button
         onClick={onClick}
         style={{
           backgroundColor: buttonColor, color: 'white',
-          padding: '12px 20px', border: 'none', borderRadius: '10px',
+          padding: '11px 20px', border: 'none', borderRadius: '10px',
           fontSize: '14px', fontWeight: '600', cursor: 'pointer',
-          marginTop: '8px', transition: 'opacity 0.15s'
+          marginTop: '4px', transition: 'opacity 0.15s'
         }}
         onMouseEnter={e => { e.currentTarget.style.opacity = '0.88'; }}
         onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
@@ -67,19 +67,21 @@ function GetTemplate() {
   }, []);
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
 
       <PageNav />
 
       <div style={{
+        flex: 1,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        padding: isMobile ? '40px 16px' : '60px 40px',
+        padding: isMobile ? '32px 16px 40px' : '48px 40px 56px',
+        overflowY: 'auto',
       }}>
 
         {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '44px', maxWidth: '680px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '36px', maxWidth: '680px' }}>
           <h1 style={{
             fontSize: isMobile ? '30px' : '44px', fontWeight: '800',
             color: '#1e293b', margin: '0 0 12px 0', lineHeight: '1.2'
@@ -95,7 +97,7 @@ function GetTemplate() {
         <div style={{
           display: 'grid',
           gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-          gap: '24px',
+          gap: '20px',
           width: '100%',
           maxWidth: '960px',
         }}>
@@ -110,11 +112,11 @@ function GetTemplate() {
           />
           <OptionCard
             icon="🧱"
-            title="Build as You Go"
+            title="Template Wizard"
             description="Answer a few questions and build your comment bank as you write reports. Perfect if you're starting from scratch."
-            buttonLabel="Start Building"
+            buttonLabel="Start Wizard"
             buttonColor="#3b82f6"
-            onClick={() => navigate('/create-template', { state: { method: 'build-as-you-go' } })}
+            onClick={() => navigate('/create-template', { state: { method: 'build-as-you-go', from: 'get-template' } })}
           />
           <OptionCard
             icon="📚"

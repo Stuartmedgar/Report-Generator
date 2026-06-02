@@ -20,6 +20,8 @@ const CreateTemplate: React.FC = () => {
   const isEditing = !!editTemplate;
 
   const preselectedMethod = location.state?.method as 'build-as-you-go' | 'building' | undefined;
+  // Track whether user arrived from /get-template so back goes there
+  const fromGetTemplate = location.state?.from === 'get-template';
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [templateName, setTemplateName] = useState(editTemplate?.name || '');
@@ -279,7 +281,7 @@ const CreateTemplate: React.FC = () => {
             </p>
 
             {optionCard(
-              'Build as you go',
+              'Template Wizard',
               'Answer a few questions about your reports and we\'ll set up the structure. Then write reports and build up your comment bank as you go — perfect for starting fresh.',
               '🧱',
               () => setStep('build-as-you-go'),
@@ -312,7 +314,7 @@ const CreateTemplate: React.FC = () => {
     );
   }
 
-  // ─── BUILD AS YOU GO ──────────────────────────────────────────────────────
+  // ─── BUILD AS YOU GO (Template Wizard) ────────────────────────────────────
 
   if (step === 'build-as-you-go') {
     return (
@@ -330,7 +332,15 @@ const CreateTemplate: React.FC = () => {
             state: { preselectedClassId: location.state?.classId }
           });
         }}
-        onCancel={() => setStep('method')}
+        // ─── FIXED: If user came from /get-template, back goes there.
+        // Otherwise fall back to the method choice screen.
+        onCancel={() => {
+          if (fromGetTemplate) {
+            navigate('/get-template');
+          } else {
+            setStep('method');
+          }
+        }}
       />
     );
   }
@@ -427,7 +437,6 @@ const CreateTemplate: React.FC = () => {
         </div>
       )}
 
-      {/* Comment Builder Modals */}
       {showRatedCommentBuilder && editingSection && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, overflow: 'auto', padding: '20px' }}>
           <div style={{ minHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
