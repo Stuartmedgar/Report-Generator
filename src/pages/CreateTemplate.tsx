@@ -323,7 +323,7 @@ const CreateTemplate: React.FC = () => {
         classId={location.state?.classId}
         onComplete={(completedSections) => {
           const templateId = `template-${Date.now()}`;
-          addTemplate({ name: templateName, sections: completedSections, sectionData: {} });
+          addTemplate({ name: templateName, sections: completedSections });
           const classId = location.state?.classId || sessionStorage.getItem('selectedClassId');
           if (classId) {
             sessionStorage.setItem('continueEditing', JSON.stringify({
