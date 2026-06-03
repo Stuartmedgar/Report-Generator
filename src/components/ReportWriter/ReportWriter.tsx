@@ -66,7 +66,6 @@ function shapeForPersonalisedBuilder(section: any) {
 }
 
 // ─── BUILDER OVERLAY ─────────────────────────────────────────────────────────
-// Item 4: nearly full-screen width
 
 const BuilderOverlay: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div style={{
@@ -242,7 +241,6 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
       const original = updatedSections[editingSection.index];
       let newData: any;
       if (original.type === 'rated-comment') newData = { comments: editedData.comments };
-      
       else if (original.type === 'assessment-comment') newData = { comments: editedData.comments, scoreType: editedData.scoreType, maxScore: editedData.maxScore, instruction: original.data?.instruction || '' };
       else if (original.type === 'next-steps') newData = { focusAreas: editedData.comments };
       else if (original.type === 'personalised-comment') newData = { instruction: editedData.instruction, categories: editedData.comments };
@@ -302,10 +300,16 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
       <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '16px 20px', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+
+            {/* ─── UPDATED: subtle exit button instead of prominent back ─── */}
             <button onClick={onBack}
-              style={{ backgroundColor: '#6b7280', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
-              ← Back
+              style={{
+                background: 'none', border: 'none', color: '#9ca3af',
+                fontSize: '13px', cursor: 'pointer', padding: 0
+              }}>
+              ⌂ Exit to Home
             </button>
+
             {reportLogic.hasTemplateChanges && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '12px', color: '#6b7280', fontStyle: 'italic' }}>Template has unsaved changes</span>
@@ -339,7 +343,6 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
 
               return (
                 <div key={section.id || index} style={{ marginBottom: '20px', position: 'relative' }}>
-                  {/* Item 1: Reorder arrows — only for template sections, not dynamic */}
                   {isTemplateSec && (
                     <div style={{
                       position: 'absolute', top: '8px', left: '-36px',
@@ -420,7 +423,7 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
         </div>
       </div>
 
-      {/* Comment Builders — item 4: full width via BuilderOverlay */}
+      {/* Comment Builders */}
       {showRatedCommentBuilder && editingSection && (
         <BuilderOverlay>
           <RatedCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection} onCancel={closeAllBuilders} />

@@ -121,11 +121,11 @@ function WriteReports() {
     setCurrentStep('student-selection');
   };
 
-  // ─── When arrived via direct nav (continueEditing), back goes home ────────
+  // ─── When arrived via direct nav (continueEditing), exit goes home ─────────
   const handleBackFromWriting = directNav
     ? () => {
         if (window.confirm('Leave the report writer? Any unsaved changes will be lost.')) {
-          navigate('/');
+          navigate('/', { replace: true });
         }
       }
     : handleBackToStudents;
