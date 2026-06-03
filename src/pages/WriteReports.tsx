@@ -168,16 +168,9 @@ function WriteReports() {
     );
   }
 
-  return (
-    <TemplateSelection
-      selectedTemplate={selectedTemplate}
-      selectedClass={selectedClass}
-      onTemplateSelect={handleTemplateSelect}
-      onClassSelect={handleClassSelect}
-      onContinueToStudents={() => setCurrentStep('student-selection')}
-      isMobile={isMobile}
-    />
-  );
+  // ─── No continueEditing set — redirect to the new onboarding flow ──────────
+  navigate('/start', { replace: true });
+  return null;
 }
 
 export default WriteReports;
