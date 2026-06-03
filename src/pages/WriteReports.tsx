@@ -10,8 +10,6 @@ import StudentSelection from '../components/WriteReports/StudentSelection';
 type Step = 'template-selection' | 'class-selection' | 'student-selection' | 'writing';
 
 // ─── Read sessionStorage synchronously before first render ───────────────────
-// This prevents the flicker where the template-selection screen briefly appears
-// before the useEffect fires and switches to 'writing' mode.
 function getInitialState(classes: Class[], templates: Template[]) {
   try {
     const raw = sessionStorage.getItem('continueEditing');
@@ -27,6 +25,7 @@ function getInitialState(classes: Class[], templates: Template[]) {
           classData,
           students: classData.students.map((s: Student) => s.id),
           studentIndex: studentIndex >= 0 ? studentIndex : 0,
+          directNav: true,
         };
       }
     }
@@ -39,6 +38,7 @@ function getInitialState(classes: Class[], templates: Template[]) {
     classData: null,
     students: [] as string[],
     studentIndex: 0,
+    directNav: false,
   };
 }
 
@@ -48,13 +48,13 @@ function WriteReports() {
   const { state } = useData();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
-  // ─── Initialise from sessionStorage synchronously (no flicker) ───────────
   const init = getInitialState(state.classes, state.templates);
   const [currentStep, setCurrentStep] = useState<Step>(init.step);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(init.template);
   const [selectedClass, setSelectedClass] = useState<Class | null>(init.classData);
   const [selectedStudents, setSelectedStudents] = useState<string[]>(init.students);
   const [resumeStudentIndex, setResumeStudentIndex] = useState<number>(init.studentIndex);
+  const [directNav] = useState<boolean>(init.directNav || false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -62,7 +62,6 @@ function WriteReports() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Handle preselected class and template coming from SelectTemplate / navigation state
   useEffect(() => {
     const preselectedClassId = location.state?.preselectedClassId as string | undefined;
     const preselectedTemplateId = location.state?.preselectedTemplateId as string | undefined;
@@ -74,7 +73,6 @@ function WriteReports() {
       if (classData) setSelectedClass(classData);
       if (template) setSelectedTemplate(template);
 
-      // If both are set, go straight to student selection
       if (classData && template) {
         setCurrentStep('student-selection');
       } else if (classData) {
@@ -123,6 +121,15 @@ function WriteReports() {
     setCurrentStep('student-selection');
   };
 
+  // ─── When arrived via direct nav (continueEditing), back goes home ────────
+  const handleBackFromWriting = directNav
+    ? () => {
+        if (window.confirm('Leave the report writer? Any unsaved changes will be lost.')) {
+          navigate('/');
+        }
+      }
+    : handleBackToStudents;
+
   const studentsToWrite = selectedClass?.students.filter(s =>
     selectedStudents.includes(s.id)
   ) || [];
@@ -133,7 +140,7 @@ function WriteReports() {
         template={selectedTemplate}
         classData={selectedClass}
         students={studentsToWrite}
-        onBack={handleBackToStudents}
+        onBack={handleBackFromWriting}
         startStudentIndex={resumeStudentIndex}
       />
     );
