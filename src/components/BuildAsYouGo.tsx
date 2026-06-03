@@ -210,7 +210,6 @@ function generateTestReport(sections: AddedSection[]): string {
 
 const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onComplete, onCancel }) => {
 
-  // Fix 1: preserve reports panel scroll
   const reportsPanelScrollRef = useRef<number>(0);
   const reportsPanelRef = useRef<HTMLTextAreaElement>(null);
   const handleReportsPanelScroll = useCallback((e: React.UIEvent<HTMLTextAreaElement>) => {
@@ -239,7 +238,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const [standardContent, setStandardContent] = useState('');
   const [showExamples, setShowExamples] = useState(false);
 
-  // Fix 8: inline statement editing & move
   const [editingStatementKey, setEditingStatementKey] = useState<{ buttonIdx: number; stmtIdx: number } | null>(null);
   const [editingStatementValue, setEditingStatementValue] = useState('');
   const [movingStatementKey, setMovingStatementKey] = useState<{ buttonIdx: number; stmtIdx: number } | null>(null);
@@ -247,7 +245,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  // Fix 5: review screen state
   const [reviewViewMode, setReviewViewMode] = useState<'reports' | 'test-report'>('reports');
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const dragSourceIndex = useRef<number | null>(null);
@@ -320,7 +317,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     setButtons(prev => { const u = [...prev]; u[bi] = { ...u[bi], statements: u[bi].statements.filter((_, i) => i !== si) }; return u; });
   };
 
-  // Fix 8
   const handleStartEditStatement = (bi: number, si: number, val: string) => {
     setEditingStatementKey({ buttonIdx: bi, stmtIdx: si });
     setEditingStatementValue(val);
@@ -352,7 +348,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     setActiveButtonIndex(idx); setNewButtonName(''); setAddingNewButton(false);
   };
 
-  // Fix 2: rated add/delete
   const handleAddRatedButton = () => setButtons(prev => [...prev, { name: 'New Level', statements: [] }]);
   const handleDeleteRatedButton = (idx: number) => {
     if (buttons.length <= 1) return;
@@ -363,7 +358,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     setButtons(prev => { const u = [...prev]; u[idx] = { ...u[idx], name: val }; return u; });
   };
 
-  // Fix: AI uses teacher's existing statements as the pattern anchor (like highlighted wizard)
   const handleAiFindInReports = async () => {
     if (!hasReports) return;
     setAiLoading(true); setAiError(null);
@@ -504,7 +498,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     setAddedSections(prev => { const u = [...prev]; u.splice(afterIndex + 1, 0, newSection); return u; });
   };
 
-  // Drag and drop
   const handleDragStart = (index: number) => { dragSourceIndex.current = index; };
   const handleDragOver = (e: React.DragEvent, index: number) => { e.preventDefault(); setDragOverIndex(index); };
   const handleDrop = (e: React.DragEvent, targetIndex: number) => {
@@ -534,8 +527,14 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     onComplete(sections);
   };
 
+  // ─── FIXED: warn before losing progress ───────────────────────────────────
   const handleCancel = () => {
-    if (addedSections.length > 0 && !window.confirm('Your work has been autosaved as a draft — but going back will exit this wizard. Continue?')) return;
+    if (addedSections.length > 0) {
+      const confirmed = window.confirm(
+        'Are you sure you want to go back? Your progress on this template will be lost.'
+      );
+      if (!confirmed) return;
+    }
     onCancel();
   };
 
@@ -670,9 +669,9 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
             </div>
           </div>
 
-          {/* Right panel — reports or test report */}
+          {/* ─── FIXED: Right panel wider + test report left-aligned ─────────── */}
           {reportsPanelOpen && (
-            <div style={{ flex: '0 0 42%', borderLeft: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ flex: '0 0 48%', borderLeft: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
                 {(['reports', 'test-report'] as const).map(mode => (
                   <button key={mode} onClick={() => setReviewViewMode(mode)}
@@ -686,7 +685,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
               ) : (
                 <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
                   <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '10px' }}>Sample using first statement from each section. Pupil shown as "Alex".</div>
-                  <div style={{ fontSize: '14px', color: '#374151', lineHeight: '1.9', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px', whiteSpace: 'pre-wrap' }}>
+                  <div style={{ fontSize: '14px', color: '#374151', lineHeight: '1.9', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px', whiteSpace: 'pre-wrap', textAlign: 'left' as const }}>
                     {testReport || <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Add sections with statements to see a preview here.</span>}
                   </div>
                 </div>
@@ -806,7 +805,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
                 {/* Button-based */}
                 {question.hasButtons && (
                   <div>
-                    {/* Fix 2 & 3: Rated buttons */}
                     {isRatedFixed && (
                       <div style={{ marginBottom: '16px' }}>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'flex-start' }}>
@@ -841,7 +839,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
                       </div>
                     )}
 
-                    {/* Free buttons */}
                     {!isRatedFixed && (
                       <div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px', alignItems: 'center' }}>
@@ -887,7 +884,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
                       </div>
                     )}
 
-                    {/* Assessment score hint */}
                     {isAssessment && (
                       <div style={{ backgroundColor: '#f3e8ff', border: '1px solid #d8b4fe', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#7c3aed', marginBottom: '16px', textAlign: 'left', lineHeight: '1.5' }}>
                         <strong>Score placeholders:</strong> use <code>[Score]</code> or <code>[Score 1]</code> <code>[Score 2]</code> for multiple scores.
@@ -895,7 +891,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
                       </div>
                     )}
 
-                    {/* Statement input */}
                     {(isRatedFixed || (buttons[activeButtonIndex]?.name && namingButtonIndex === null)) && !addingNewButton && (
                       <div>
                         <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px', textAlign: 'left' }}>
@@ -907,7 +902,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
                         <button onClick={handleAddStatement} disabled={!newStatement.trim()}
                           style={{ ...smallBtn(accentColor), opacity: !newStatement.trim() ? 0.4 : 1, marginBottom: '16px' }}>+ Add</button>
 
-                        {/* Fix 8: statements with inline edit & move */}
                         {buttons[activeButtonIndex]?.statements.length > 0 && (
                           <div style={{ marginBottom: '16px' }}>
                             {buttons[activeButtonIndex].statements.map((stmt, i) => {
@@ -958,7 +952,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
                       </div>
                     )}
 
-                    {/* AI Find button */}
                     {hasReports && !aiLoading && (
                       <div style={{ marginBottom: '16px' }}>
                         <div style={{ height: '1px', backgroundColor: '#f3f4f6', margin: '4px 0 14px' }} />
@@ -1031,7 +1024,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
               </div>
             )}
 
-            {/* Sections so far */}
             {addedSections.length > 0 && phase !== 'added' && (
               <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #f3f4f6' }}>
                 <div style={{ fontSize: '12px', fontWeight: '600', color: '#9ca3af', marginBottom: '8px', textAlign: 'left' }}>SECTIONS ADDED SO FAR</div>
