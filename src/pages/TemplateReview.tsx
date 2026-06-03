@@ -3,6 +3,7 @@ import React, { useState, useCallback } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { TemplateSection } from '../types';
+import PageNav from '../components/PageNav';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -72,10 +73,10 @@ function makeId() { return `s_${Date.now()}_${Math.random().toString(36).slice(2
 export default function TemplateReview() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { addTemplate, updateTemplate } = useData();
+  // ─── UPDATED: added state so we can find the saved template by name ───────
+  const { addTemplate, updateTemplate, state } = useData();
   const [isMobile] = useState(window.innerWidth <= 768);
 
-  // Get template from navigation state
   const incoming = location.state?.template as ReviewTemplate | undefined;
   const isEditing = location.state?.isEditing as boolean | undefined;
   const existingId = location.state?.templateId as string | undefined;
@@ -84,11 +85,9 @@ export default function TemplateReview() {
     incoming || { name: 'Untitled Template', sections: [] }
   );
 
-  // Preview state — one selected option per section
   const [previewSelections, setPreviewSelections] = useState<Record<string, string>>({});
   const [showPreview, setShowPreview] = useState(false);
 
-  // Edit state
   const [editMode, setEditMode] = useState<EditMode>(null);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editingHeading, setEditingHeading] = useState<string | null>(null);
@@ -287,6 +286,34 @@ export default function TemplateReview() {
     setTimeout(() => navigate('/manage-templates'), 300);
   };
 
+  // ─── UPDATED: go straight to report writer with class + template ──────────
+  const handleStartWriting = () => {
+    handleSave();
+    const classId = sessionStorage.getItem('selectedClassId');
+    if (!classId) {
+      // No class in session — fall back to pick-template
+      setTimeout(() => navigate('/pick-template'), 300);
+      return;
+    }
+    setTimeout(() => {
+      // Find the template we just saved by name (or by existingId if editing)
+      const savedTemplate = isEditing && existingId
+        ? state.templates.find(t => t.id === existingId)
+        : state.templates.find(t => t.name === template.name);
+      if (savedTemplate) {
+        sessionStorage.setItem('continueEditing', JSON.stringify({
+          classId,
+          templateId: savedTemplate.id,
+          studentIndex: 0
+        }));
+        navigate('/write-reports');
+      } else {
+        // Template not found yet — fall back to pick-template
+        navigate('/pick-template');
+      }
+    }, 300);
+  };
+
   // ─── PREVIEW ────────────────────────────────────────────────────────────────
 
   const buildPreviewText = () => {
@@ -296,7 +323,6 @@ export default function TemplateReview() {
       if (section.type === 'standard-comment') return section.data?.content || '';
       const sel = previewSelections[section.id];
       if (sel) return sel;
-      // Default to first option of first heading
       const headings = getHeadings(section);
       if (headings.length > 0) {
         const opts = getOptions(section, headings[0]);
@@ -338,7 +364,6 @@ export default function TemplateReview() {
 
     return (
       <div style={{ ...card, border: '1px solid #e5e7eb' }}>
-        {/* Header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
@@ -378,7 +403,6 @@ export default function TemplateReview() {
           </div>
         </div>
 
-        {/* Expanded content */}
         {isExpanded && headings.length > 0 && (
           <div style={{ marginTop: '12px', borderTop: '1px solid #f3f4f6', paddingTop: '12px' }}>
             {headings.map(heading => (
@@ -409,7 +433,6 @@ export default function TemplateReview() {
                 </div>
               </div>
             ))}
-            {/* Add heading button for editable section types */}
             {(section.type === 'qualities' || section.type === 'next-steps' || section.type === 'personalised-comment') && (
               <button onClick={() => { setEditMode('add-heading'); setEditingSectionId(section.id); setEditValue(''); setEditValue2(''); }}
                 style={{ ...btn('#374151', '#f3f4f6', '1px solid #d1d5db'), width: '100%', marginTop: '4px', textAlign: 'center' }}>+ Add Heading</button>
@@ -417,7 +440,6 @@ export default function TemplateReview() {
           </div>
         )}
 
-        {/* Insert between buttons */}
         <div style={{ display: 'flex', gap: '6px', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f9fafb' }}>
           <span style={{ fontSize: '11px', color: '#9ca3af', alignSelf: 'center' }}>Insert after:</span>
           <button onClick={() => insertNewLine(index)} style={{ ...btn('#374151', '#f9fafb', '1px solid #e5e7eb'), padding: '3px 8px', fontSize: '11px' }}>↵ Line Break</button>
@@ -537,6 +559,7 @@ export default function TemplateReview() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+      <PageNav />
       {/* Header */}
       <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: isMobile ? '16px' : '16px 24px', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
@@ -560,6 +583,7 @@ export default function TemplateReview() {
               <button onClick={handleSave} style={{ ...btn('white', '#3b82f6') }}>💾 Save</button>
             )}
             <button onClick={handleSaveAndGo} style={{ ...btn('white', '#10b981') }}>Save & Close</button>
+            <button onClick={handleStartWriting} style={{ ...btn('white', '#8b5cf6') }}>✏️ Start Writing</button>
           </div>
         </div>
       </header>
@@ -567,7 +591,6 @@ export default function TemplateReview() {
       <div ref={mainScrollRef} style={{ flex: 1, overflow: 'auto' }}>
       <main style={{ maxWidth: '900px', margin: '0 auto', padding: isMobile ? '16px' : '24px', display: showPreview ? 'grid' : 'block', gridTemplateColumns: showPreview ? '1fr 1fr' : undefined, gap: '24px' }}>
 
-        {/* Edit panel */}
         <div>
           {!showPreview && (
             <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '14px', marginBottom: '20px' }}>
@@ -591,7 +614,6 @@ export default function TemplateReview() {
           )}
         </div>
 
-        {/* Preview panel */}
         {showPreview && (
           <div style={{ position: isMobile ? 'static' : 'sticky', top: '80px', alignSelf: 'start' }}>
             <div style={{ backgroundColor: 'white', border: '2px solid #3b82f6', borderRadius: '10px', padding: '20px' }}>
