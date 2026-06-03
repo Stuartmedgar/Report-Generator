@@ -322,15 +322,17 @@ const CreateTemplate: React.FC = () => {
         templateName={templateName}
         classId={location.state?.classId}
         onComplete={(completedSections) => {
-          const template = {
-            name: templateName,
-            sections: completedSections,
-            sectionData: {},
-          };
-          addTemplate(template);
-          navigate('/write-reports', {
-            state: { preselectedClassId: location.state?.classId }
-          });
+          const templateId = `template-${Date.now()}`;
+          addTemplate({ name: templateName, sections: completedSections, sectionData: {} });
+          const classId = location.state?.classId || sessionStorage.getItem('selectedClassId');
+          if (classId) {
+            sessionStorage.setItem('continueEditing', JSON.stringify({
+              classId,
+              templateId,
+              studentIndex: 0
+            }));
+          }
+          navigate('/write-reports');
         }}
         // ─── FIXED: If user came from /get-template, back goes there.
         // Otherwise fall back to the method choice screen.
