@@ -288,30 +288,36 @@ export default function TemplateReview() {
 
   // ─── UPDATED: go straight to report writer with class + template ──────────
   const handleStartWriting = () => {
-    handleSave();
+    if (!template.name.trim()) { setError('Please enter a template name.'); return; }
+
     const classId = sessionStorage.getItem('selectedClassId');
+
+    // Generate ID the same way DataContext does so we know it immediately
+    const templateId = isEditing && existingId
+      ? existingId
+      : `template-${Date.now()}`;
+
+    // Save the template
+    if (isEditing && existingId) {
+      updateTemplate({ id: existingId, name: template.name, sections: template.sections, createdAt: new Date().toISOString() });
+    } else {
+      addTemplate({ name: template.name, sections: template.sections });
+    }
+    setSaved(true);
+    setError(null);
+
     if (!classId) {
-      // No class in session — fall back to pick-template
       setTimeout(() => navigate('/pick-template'), 300);
       return;
     }
-    setTimeout(() => {
-      // Find the template we just saved by name (or by existingId if editing)
-      const savedTemplate = isEditing && existingId
-        ? state.templates.find(t => t.id === existingId)
-        : state.templates.find(t => t.name === template.name);
-      if (savedTemplate) {
-        sessionStorage.setItem('continueEditing', JSON.stringify({
-          classId,
-          templateId: savedTemplate.id,
-          studentIndex: 0
-        }));
-        navigate('/write-reports');
-      } else {
-        // Template not found yet — fall back to pick-template
-        navigate('/pick-template');
-      }
-    }, 300);
+
+    // Set sessionStorage and navigate — ID is known immediately, no timeout needed
+    sessionStorage.setItem('continueEditing', JSON.stringify({
+      classId,
+      templateId,
+      studentIndex: 0
+    }));
+    navigate('/write-reports');
   };
 
   // ─── PREVIEW ────────────────────────────────────────────────────────────────
