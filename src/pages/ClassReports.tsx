@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
+import PageNav from '../components/PageNav';
 
 export default function ClassReports() {
   const { classId } = useParams<{ classId: string }>();
@@ -54,6 +55,7 @@ export default function ClassReports() {
       margin: '0 auto',
       fontFamily: 'Arial, sans-serif'
     }}>
+      <PageNav />
       {/* Header */}
       <div style={{ 
         display: 'flex', 
