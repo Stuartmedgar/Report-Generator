@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { Template } from '../types';
 import MobileManageTemplates from '../components/MobileManageTemplates';
+import PageNav from '../components/PageNav';
 
 export default function ManageTemplates() {
   const navigate = useNavigate();
@@ -23,9 +24,7 @@ export default function ManageTemplates() {
     return () => window.removeEventListener('resize', checkIfMobile);
   }, []);
 
-  if (isMobile) {
-    return <MobileManageTemplates />;
-  }
+  if (isMobile) return <MobileManageTemplates />;
 
   const handleEdit = (template: Template) => {
     navigate('/create-template', { state: { editTemplate: template } });
@@ -36,12 +35,7 @@ export default function ManageTemplates() {
   };
 
   const handleDuplicate = (template: Template) => {
-    const duplicatedTemplate = {
-      ...template,
-      name: `${template.name} (Copy)`,
-      id: undefined,
-      createdAt: undefined
-    };
+    const duplicatedTemplate = { ...template, name: `${template.name} (Copy)`, id: undefined, createdAt: undefined };
     const { id, createdAt, ...templateData } = duplicatedTemplate;
     addTemplate(templateData);
     alert(`Template "${template.name}" has been duplicated as "${duplicatedTemplate.name}"`);
@@ -55,57 +49,39 @@ export default function ManageTemplates() {
       'they/their': { he: 'they', him: 'them', his: 'their', himself: 'themselves', He: 'They', Him: 'Them', His: 'Their', Himself: 'Themselves' },
     };
     const map = pronounMap[targetPronoun];
-
     const replacePronouns = (text: string): string => {
       let t = text;
-      Object.entries(map).forEach(([from, to]) => {
-        t = t.replace(new RegExp(`\\b${from}\\b`, 'g'), to);
-      });
+      Object.entries(map).forEach(([from, to]) => { t = t.replace(new RegExp(`\\b${from}\\b`, 'g'), to); });
       return t;
     };
-
-    const rewriteSections = (sections: any[]): any[] => {
-      return sections.map(section => {
-        if (section.type === 'qualities' || section.type === 'rated-comment') {
-          const comments: Record<string, string[]> = {};
-          Object.entries(section.data?.comments || {}).forEach(([heading, options]) => {
-            comments[replacePronouns(heading)] = (options as string[]).map(replacePronouns);
-          });
-          return { ...section, data: { ...section.data, comments } };
-        }
-        if (section.type === 'next-steps') {
-          const focusAreas: Record<string, string[]> = {};
-          Object.entries(section.data?.focusAreas || {}).forEach(([heading, options]) => {
-            focusAreas[replacePronouns(heading)] = (options as string[]).map(replacePronouns);
-          });
-          return { ...section, data: { ...section.data, focusAreas } };
-        }
-        if (section.type === 'assessment-comment') {
-          const comments: Record<string, string[]> = {};
-          Object.entries(section.data?.comments || {}).forEach(([level, options]) => {
-            comments[level] = (options as string[]).map(replacePronouns);
-          });
-          return { ...section, data: { ...section.data, comments } };
-        }
-        if (section.type === 'personalised-comment') {
-          const categories: Record<string, string[]> = {};
-          Object.entries(section.data?.categories || {}).forEach(([cat, options]) => {
-            categories[cat] = (options as string[]).map(replacePronouns);
-          });
-          return { ...section, data: { ...section.data, categories } };
-        }
-        if (section.type === 'standard-comment') {
-          return { ...section, data: { ...section.data, content: replacePronouns(section.data?.content || '') } };
-        }
-        return section;
-      });
-    };
-
+    const rewriteSections = (sections: any[]): any[] => sections.map(section => {
+      if (section.type === 'qualities' || section.type === 'rated-comment') {
+        const comments: Record<string, string[]> = {};
+        Object.entries(section.data?.comments || {}).forEach(([heading, options]) => { comments[replacePronouns(heading)] = (options as string[]).map(replacePronouns); });
+        return { ...section, data: { ...section.data, comments } };
+      }
+      if (section.type === 'next-steps') {
+        const focusAreas: Record<string, string[]> = {};
+        Object.entries(section.data?.focusAreas || {}).forEach(([heading, options]) => { focusAreas[replacePronouns(heading)] = (options as string[]).map(replacePronouns); });
+        return { ...section, data: { ...section.data, focusAreas } };
+      }
+      if (section.type === 'assessment-comment') {
+        const comments: Record<string, string[]> = {};
+        Object.entries(section.data?.comments || {}).forEach(([level, options]) => { comments[level] = (options as string[]).map(replacePronouns); });
+        return { ...section, data: { ...section.data, comments } };
+      }
+      if (section.type === 'personalised-comment') {
+        const categories: Record<string, string[]> = {};
+        Object.entries(section.data?.categories || {}).forEach(([cat, options]) => { categories[cat] = (options as string[]).map(replacePronouns); });
+        return { ...section, data: { ...section.data, categories } };
+      }
+      if (section.type === 'standard-comment') return { ...section, data: { ...section.data, content: replacePronouns(section.data?.content || '') } };
+      return section;
+    });
     const pronounLabel = targetPronoun === 'he/his' ? 'He/His' : targetPronoun === 'she/her' ? 'She/Her' : 'They/Their';
     const heLed = targetPronoun === 'he/his' ? 'He-led' : targetPronoun === 'she/her' ? 'She-led' : 'They-led';
     const newName = template.name.replace(/He\/His|She\/Her|They\/Their|He|She|They/i, '').trim() + ` — ${pronounLabel}`;
-    const renameSection = (name: string): string =>
-      name.replace(/— He-led/g, `— ${heLed}`).replace(/— She-led/g, `— ${heLed}`).replace(/— They-led/g, `— ${heLed}`);
+    const renameSection = (name: string): string => name.replace(/— He-led/g, `— ${heLed}`).replace(/— She-led/g, `— ${heLed}`).replace(/— They-led/g, `— ${heLed}`);
     const renamedSections = rewriteSections(template.sections).map((s: any) => ({ ...s, name: renameSection(s.name || '') }));
     const { id, createdAt, ...templateData } = template;
     addTemplate({ ...templateData, name: newName, sections: renamedSections });
@@ -115,9 +91,7 @@ export default function ManageTemplates() {
   };
 
   const handleDelete = (template: Template) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete the template "${template.name}"? This action cannot be undone.`
-    );
+    const confirmed = window.confirm(`Are you sure you want to delete the template "${template.name}"? This action cannot be undone.`);
     if (confirmed) {
       deleteTemplate(template.id);
       alert(`Template "${template.name}" has been deleted.`);
@@ -125,12 +99,7 @@ export default function ManageTemplates() {
   };
 
   const handleShare = (template: Template) => {
-    const exportData = {
-      template: template,
-      exportedAt: new Date().toISOString(),
-      exportedBy: 'Report Writing App',
-      version: '1.0'
-    };
+    const exportData = { template, exportedAt: new Date().toISOString(), exportedBy: 'Report Writing App', version: '1.0' };
     const jsonString = JSON.stringify(exportData, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -142,52 +111,28 @@ export default function ManageTemplates() {
     alert(`Template "${template.name}" has been exported! Share the downloaded file with others.`);
   };
 
-  const handleImportClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleBrowseTemplates = () => {
-    window.open(TEMPLATE_LIBRARY_URL, '_blank', 'noopener,noreferrer');
-  };
+  const handleImportClick = () => fileInputRef.current?.click();
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
-    if (!file.name.endsWith('.json')) {
-      alert('Please select a valid template file (.json)');
-      return;
-    }
-
+    if (!file.name.endsWith('.json')) { alert('Please select a valid template file (.json)'); return; }
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const result = e.target?.result as string;
         const importData = JSON.parse(result);
-
-        if (!importData.template || !importData.template.name || !importData.template.sections) {
-          throw new Error('Invalid template file format');
-        }
-
+        if (!importData.template || !importData.template.name || !importData.template.sections) throw new Error('Invalid template file format');
         const importedTemplate = importData.template;
         const existingTemplate = state.templates.find(t => t.name === importedTemplate.name);
-
         let templateName = importedTemplate.name;
         if (existingTemplate) {
-          const shouldReplace = window.confirm(
-            `A template named "${importedTemplate.name}" already exists. Do you want to replace it (OK) or import as a copy (Cancel)?`
-          );
-          if (shouldReplace) {
-            deleteTemplate(existingTemplate.id);
-          } else {
-            templateName = `${importedTemplate.name} (Imported)`;
-          }
+          const shouldReplace = window.confirm(`A template named "${importedTemplate.name}" already exists. Do you want to replace it (OK) or import as a copy (Cancel)?`);
+          if (shouldReplace) { deleteTemplate(existingTemplate.id); } else { templateName = `${importedTemplate.name} (Imported)`; }
         }
-
         const { id, createdAt, ...templateData } = importedTemplate;
         addTemplate({ ...templateData, name: templateName });
         alert(`Template "${templateName}" has been imported successfully!`);
-
       } catch (error) {
         console.error('Import error:', error);
         alert('Error importing template. Please check that you selected a valid template file.');
@@ -196,60 +141,20 @@ export default function ManageTemplates() {
         setIsImporting(false);
       }
     };
-
-    reader.onerror = () => {
-      alert('Error reading file. Please try again.');
-      setIsImporting(false);
-    };
-
+    reader.onerror = () => { alert('Error reading file. Please try again.'); setIsImporting(false); };
     setIsImporting(true);
     reader.readAsText(file);
   };
 
-  const sectionHeadingStyle: React.CSSProperties = {
-    fontSize: '13px',
-    fontWeight: '600',
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    letterSpacing: '0.06em',
-    margin: '0 0 10px 0'
-  };
-
-  const panelBtnPrimary = (bg: string): React.CSSProperties => ({
-    backgroundColor: bg,
-    color: 'white',
-    padding: '12px 20px',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '14px',
-    fontWeight: '500',
-    cursor: 'pointer'
-  });
-
-  const panelBtnSecondary: React.CSSProperties = {
-    backgroundColor: '#f3f4f6',
-    color: '#374151',
-    padding: '12px 20px',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    fontSize: '14px',
-    fontWeight: '500',
-    cursor: 'pointer'
-  };
-
   const actionBtnStyle = (color: string): React.CSSProperties => ({
-    backgroundColor: color,
-    color: 'white',
-    padding: '8px 16px',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '14px',
-    fontWeight: '500',
-    cursor: 'pointer'
+    backgroundColor: color, color: 'white', padding: '8px 16px',
+    border: 'none', borderRadius: '6px', fontSize: '14px',
+    fontWeight: '500', cursor: 'pointer'
   });
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+      <PageNav />
 
       {/* Pronoun Duplicate Modal */}
       {pronounModal && (
@@ -257,7 +162,7 @@ export default function ManageTemplates() {
           <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '28px', maxWidth: '460px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
             <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '700', color: '#111827' }}>🔄 Duplicate with Different Pronouns</h3>
             <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>
-              Creates a copy of <strong>"{pronounModal.template.name}"</strong> with all pronouns changed. Every he/his/him/himself will be replaced throughout.
+              Creates a copy of <strong>"{pronounModal.template.name}"</strong> with all pronouns changed.
             </p>
             <div style={{ marginBottom: '20px' }}>
               <p style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Target pronoun set:</p>
@@ -276,9 +181,7 @@ export default function ManageTemplates() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setPronounModal(null)} style={{ flex: 1, padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', backgroundColor: '#f3f4f6', color: '#374151', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
-                Cancel
-              </button>
+              <button onClick={() => setPronounModal(null)} style={{ flex: 1, padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', backgroundColor: '#f3f4f6', color: '#374151', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>Cancel</button>
               <button onClick={() => handlePronounDuplicate(pronounModal.template, pronounTarget)} disabled={isDuplicatingPronoun}
                 style={{ flex: 1, padding: '12px', border: 'none', borderRadius: '8px', backgroundColor: isDuplicatingPronoun ? '#9ca3af' : '#ec4899', color: 'white', fontSize: '14px', fontWeight: '600', cursor: isDuplicatingPronoun ? 'not-allowed' : 'pointer' }}>
                 {isDuplicatingPronoun ? 'Duplicating...' : '🔄 Create Copy'}
@@ -291,262 +194,81 @@ export default function ManageTemplates() {
       {/* Hidden file input */}
       <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileSelect} style={{ display: 'none' }} />
 
-      {/* Header */}
-      <header style={{
-        backgroundColor: 'white',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-        padding: '32px 24px'
-      }}>
-        <div style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '16px'
-        }}>
-          <div>
-            <h1 style={{ fontSize: '28px', fontWeight: '600', color: '#111827', margin: 0 }}>
-              Report Templates
-            </h1>
-            <p style={{ color: '#6b7280', margin: '8px 0 0 0', fontSize: '16px' }}>
-              Create, import and manage your report templates
-            </p>
-          </div>
-          <Link to="/" style={{ textDecoration: 'none' }}>
-            <button style={{
-              backgroundColor: '#6b7280',
-              color: 'white',
-              padding: '12px 20px',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer'
-            }}>
-              ← Back to Home
-            </button>
-          </Link>
-        </div>
-      </header>
-
       <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
 
-        {/* ── Top two panels side by side ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
-
-          {/* CREATE A TEMPLATE */}
-          <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px 0 rgba(0,0,0,0.05)' }}>
-            <p style={sectionHeadingStyle}>Create a template</p>
-            <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 20px 0', lineHeight: '1.6' }}>
-              Build a template from your existing reports using the guided wizard, or construct one manually from scratch.
-            </p>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <Link to="/import-template" style={{ textDecoration: 'none' }}>
-                <button style={panelBtnPrimary('#8b5cf6')}>
-                  🪄 Use the Wizard
-                </button>
-              </Link>
-              <Link to="/create-template" style={{ textDecoration: 'none' }}>
-                <button style={panelBtnSecondary}>
-                  ✏️ Build Manually
-                </button>
-              </Link>
-            </div>
-          </div>
-
-          {/* IMPORT A TEMPLATE */}
-          <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px 0 rgba(0,0,0,0.05)' }}>
-            <p style={sectionHeadingStyle}>Import a template</p>
-            <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 20px 0', lineHeight: '1.6' }}>
-              Already have a template? Import a file shared by a colleague, or browse the library to see what's available.
-            </p>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button
-                onClick={handleImportClick}
-                disabled={isImporting}
-                style={{
-                  ...panelBtnPrimary('#3b82f6'),
-                  opacity: isImporting ? 0.7 : 1,
-                  cursor: isImporting ? 'not-allowed' : 'pointer'
-                }}
-              >
-                📂 Import from File
-              </button>
-              <button onClick={handleBrowseTemplates} style={panelBtnSecondary}>
-                📚 Browse Library
-              </button>
-            </div>
+        {/* Page title + action buttons */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', flexWrap: 'wrap', gap: '12px' }}>
+          <h1 style={{ fontSize: '26px', fontWeight: '700', color: '#111827', margin: 0 }}>
+            Report Templates
+          </h1>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => navigate('/get-template')}
+              style={{ backgroundColor: '#8b5cf6', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
+            >
+              + Create Template
+            </button>
+            <button
+              onClick={() => navigate('/pick-template')}
+              style={{ backgroundColor: '#3b82f6', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
+            >
+              ✏️ Write Reports
+            </button>
           </div>
         </div>
 
-        {/* ── YOUR TEMPLATES ── */}
-        <div style={{
-          backgroundColor: 'white',
-          padding: '32px',
-          borderRadius: '12px',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-        }}>
-          <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
+        {/* Templates list */}
+        <div style={{ backgroundColor: 'white', padding: '28px', borderRadius: '12px', boxShadow: '0 1px 3px 0 rgba(0,0,0,0.08)' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 16px 0' }}>
             Your Templates ({state.templates.length})
           </h2>
 
           {state.templates.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 20px', color: '#6b7280' }}>
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>📝</div>
-              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
-                No templates yet
-              </h3>
-              <p style={{ marginBottom: '24px' }}>
-                Get started by creating your first template or browse our template library.
-              </p>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <Link to="/import-template" style={{ textDecoration: 'none' }}>
-                  <button style={{
-                    backgroundColor: '#8b5cf6',
-                    color: 'white',
-                    padding: '12px 24px',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    fontWeight: '500',
-                    cursor: 'pointer'
-                  }}>
-                    🪄 Use the Wizard
-                  </button>
-                </Link>
-                <button
-                  onClick={handleBrowseTemplates}
-                  style={{
-                    backgroundColor: '#3b82f6',
-                    color: 'white',
-                    padding: '12px 24px',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    fontWeight: '500',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Browse Template Library
-                </button>
-              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>No templates yet</h3>
+              <p style={{ marginBottom: '24px' }}>Get started by creating your first template.</p>
+              <button
+                onClick={() => navigate('/get-template')}
+                style={{ backgroundColor: '#8b5cf6', color: 'white', padding: '12px 24px', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '500', cursor: 'pointer' }}
+              >
+                + Create Your First Template
+              </button>
             </div>
           ) : (
-            <div style={{ display: 'grid', gap: '16px' }}>
+            <div style={{ display: 'grid', gap: '12px' }}>
               {state.templates.map((template) => (
-                <div
-                  key={template.id}
-                  style={{
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px',
-                    padding: '24px',
-                    backgroundColor: '#f9fafb'
-                  }}
-                >
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    gap: '16px',
-                    flexWrap: 'wrap'
-                  }}>
-                    {/* Template info */}
+                <div key={template.id} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '20px', backgroundColor: '#f9fafb' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
                     <div style={{ flex: 1, minWidth: '200px' }}>
-                      <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', marginBottom: '8px' }}>
+                      <h3 style={{ fontSize: '17px', fontWeight: '600', color: '#111827', marginBottom: '6px' }}>
                         {template.name}
                       </h3>
-                      <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '8px' }}>
-                        {template.sections.length} sections • Created {new Date(template.createdAt).toLocaleDateString()}
+                      <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '8px' }}>
+                        {template.sections.length} sections · Created {new Date(template.createdAt).toLocaleDateString()}
                       </p>
-                      {/* Section type badges */}
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                         {template.sections.slice(0, 3).map((section, index) => (
-                          <span
-                            key={index}
-                            style={{
-                              backgroundColor: '#e0e7ff',
-                              color: '#3730a3',
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              fontSize: '12px'
-                            }}
-                          >
+                          <span key={index} style={{ backgroundColor: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: '4px', fontSize: '12px' }}>
                             {section.type.replace('-', ' ')}
                           </span>
                         ))}
-                        {template.sections.length > 3 && (
-                          <span style={{ color: '#6b7280', fontSize: '12px' }}>
-                            +{template.sections.length - 3} more
-                          </span>
-                        )}
+                        {template.sections.length > 3 && <span style={{ color: '#6b7280', fontSize: '12px' }}>+{template.sections.length - 3} more</span>}
                       </div>
                     </div>
-
-                    {/* Action buttons */}
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      <button onClick={() => handleEdit(template)} style={actionBtnStyle('#3b82f6')}>
-                        ✏️ Edit
-                      </button>
-                      <button onClick={() => handleReview(template)} style={actionBtnStyle('#8b5cf6')}>
-                        👁 Review & Edit
-                      </button>
-                      <button onClick={() => handleShare(template)} style={actionBtnStyle('#10b981')}>
-                        📤 Share
-                      </button>
-                      <button onClick={() => handleDuplicate(template)} style={actionBtnStyle('#f59e0b')}>
-                        📋 Duplicate
-                      </button>
-                      <button
-                        onClick={() => { setPronounModal({ template }); setPronounTarget('she/her'); }}
-                        style={actionBtnStyle('#ec4899')}
-                      >
-                        🔄 Change Pronouns
-                      </button>
-                      <button onClick={() => handleDelete(template)} style={actionBtnStyle('#ef4444')}>
-                        🗑️ Delete
-                      </button>
+                      <button onClick={() => handleEdit(template)} style={actionBtnStyle('#3b82f6')}>✏️ Edit</button>
+                      <button onClick={() => handleReview(template)} style={actionBtnStyle('#8b5cf6')}>👁 Review</button>
+                      <button onClick={() => handleShare(template)} style={actionBtnStyle('#10b981')}>📤 Share</button>
+                      <button onClick={() => handleDuplicate(template)} style={actionBtnStyle('#f59e0b')}>📋 Duplicate</button>
+                      <button onClick={() => { setPronounModal({ template }); setPronounTarget('she/her'); }} style={actionBtnStyle('#ec4899')}>🔄 Pronouns</button>
+                      <button onClick={() => handleDelete(template)} style={actionBtnStyle('#ef4444')}>🗑️ Delete</button>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </div>
-
-        {/* Help Section */}
-        <div style={{
-          backgroundColor: '#f0f9ff',
-          border: '2px solid #3b82f6',
-          borderRadius: '12px',
-          padding: '20px',
-          textAlign: 'center',
-          marginTop: '24px'
-        }}>
-          <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1e40af', margin: '0 0 8px 0' }}>
-            💡 Template Management Tips
-          </h3>
-          <p style={{ color: '#1e40af', fontSize: '14px', margin: '0 0 16px 0' }}>
-            Edit templates to customize content, share them with colleagues, or duplicate them to create variations.
-            You can also import templates that others have shared with you.
-          </p>
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link to="/create-template" style={{ textDecoration: 'none' }}>
-              <button style={{
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                padding: '8px 16px',
-                border: 'none',
-                borderRadius: '6px',
-                fontSize: '14px',
-                fontWeight: '500',
-                cursor: 'pointer'
-              }}>
-                Create New Template
-              </button>
-            </Link>
-          </div>
         </div>
 
       </main>
