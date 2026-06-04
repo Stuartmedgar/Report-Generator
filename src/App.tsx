@@ -365,6 +365,16 @@ function Home() {
           >
             Your Classes
           </Link>
+
+          <Link to="/get-template" style={{
+            color: '#94a3b8', textDecoration: 'none',
+            fontSize: isMobile ? '13px' : '14px', fontWeight: '500'
+          }}
+            onMouseEnter={e => { e.currentTarget.style.color = '#64748b'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; }}
+          >
+            Create a Template
+          </Link>
         </div>
 
       </div>
