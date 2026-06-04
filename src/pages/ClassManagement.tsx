@@ -52,29 +52,19 @@ export default function ClassManagement() {
     navigate('/step2');
   };
 
-  const getLastStudentWorkedOn = (classData: any) => {
+  const handleContinueEditing = (classData: any) => {
     const classReports = state.reports.filter(report => report.classId === classData.id);
-    if (classReports.length === 0) return null;
+    if (classReports.length === 0) return;
     const mostRecentReport = classReports.reduce((latest, current) =>
       new Date(current.updatedAt) > new Date(latest.updatedAt) ? current : latest
     );
     const studentIndex = classData.students.findIndex(
       (student: any) => student.id === mostRecentReport.studentId
     );
-    return {
-      studentIndex: studentIndex >= 0 ? studentIndex : 0,
-      templateId: mostRecentReport.templateId,
-      student: classData.students[studentIndex >= 0 ? studentIndex : 0]
-    };
-  };
-
-  const handleContinueEditing = (classData: any) => {
-    const lastWorked = getLastStudentWorkedOn(classData);
-    if (!lastWorked) return;
     sessionStorage.setItem('continueEditing', JSON.stringify({
       classId: classData.id,
-      templateId: lastWorked.templateId,
-      studentIndex: lastWorked.studentIndex
+      templateId: mostRecentReport.templateId,
+      studentIndex: studentIndex >= 0 ? studentIndex : 0
     }));
     navigate('/write-reports');
   };
@@ -109,12 +99,6 @@ export default function ClassManagement() {
     );
   }
 
-  const btnStyle = (bg: string): React.CSSProperties => ({
-    backgroundColor: bg, color: 'white', padding: '8px 16px',
-    border: 'none', borderRadius: '6px', fontSize: '14px',
-    fontWeight: '500', cursor: 'pointer'
-  });
-
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
       <PageNav />
@@ -134,72 +118,94 @@ export default function ClassManagement() {
           </button>
         </div>
 
-        {/* Classes list */}
-        <div style={{ backgroundColor: 'white', padding: '28px', borderRadius: '12px', boxShadow: '0 1px 3px 0 rgba(0,0,0,0.08)' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 16px 0' }}>
-            {state.classes.length} {state.classes.length === 1 ? 'Class' : 'Classes'}
-          </h2>
-
-          {state.classes.length === 0 ? (
-            <div style={{ border: '2px dashed #d1d5db', borderRadius: '8px', padding: '48px', textAlign: 'center', color: '#9ca3af' }}>
-              <p style={{ margin: '0 0 8px 0' }}>No classes created yet.</p>
-              <p style={{ margin: '0 0 16px 0' }}>Create your first class to start managing students!</p>
-              <button
-                onClick={() => setShowCreateClass(true)}
-                style={{ backgroundColor: '#10b981', color: 'white', padding: '12px 24px', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '500', cursor: 'pointer' }}
-              >
-                Create Your First Class
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '16px' }}>
-              {state.classes.map((classItem) => {
-                const reportCount = state.reports.filter(r => r.classId === classItem.id).length;
-                return (
-                  <div key={classItem.id} style={{ border: '1px solid #e5e7eb', borderRadius: '12px', padding: '20px', backgroundColor: '#f9fafb' }}>
-                    <div style={{ marginBottom: '16px' }}>
-                      <h3 style={{ fontSize: '17px', fontWeight: '600', color: '#111827', margin: '0 0 6px 0' }}>{classItem.name}</h3>
-                      <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: '#6b7280', marginBottom: '6px' }}>
-                        <span>👥 {classItem.students.length} students</span>
-                        <span>📅 {new Date(classItem.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      {reportCount > 0 && (
-                        <div style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '3px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: '500', display: 'inline-block' }}>
-                          📝 {reportCount} reports written
-                        </div>
-                      )}
+        {state.classes.length === 0 ? (
+          <div style={{
+            backgroundColor: 'white', borderRadius: '12px',
+            border: '2px dashed #d1d5db', padding: '48px',
+            textAlign: 'center', color: '#9ca3af'
+          }}>
+            <p style={{ margin: '0 0 8px 0' }}>No classes created yet.</p>
+            <p style={{ margin: '0 0 16px 0' }}>Create your first class to start managing students!</p>
+            <button
+              onClick={() => setShowCreateClass(true)}
+              style={{ backgroundColor: '#10b981', color: 'white', padding: '12px 24px', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '500', cursor: 'pointer' }}
+            >
+              Create Your First Class
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {state.classes.map((classItem) => {
+              const reportCount = state.reports.filter(r => r.classId === classItem.id).length;
+              return (
+                <div key={classItem.id} style={{
+                  backgroundColor: 'white',
+                  borderRadius: '12px',
+                  border: '1px solid #e5e7eb',
+                  padding: '16px 20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                }}>
+                  {/* Class info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '4px' }}>
+                      {classItem.name}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#6b7280', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                      <span>👥 {classItem.students.length} students</span>
+                      <span>📅 {new Date(classItem.createdAt).toLocaleDateString()}</span>
+                      {reportCount > 0 && <span>📝 {reportCount} reports written</span>}
                       {classItem.students.length > 0 && (
-                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '6px' }}>
+                        <span style={{ color: '#9ca3af' }}>
                           {classItem.students.sort((a, b) => a.lastName.localeCompare(b.lastName)).slice(0, 3).map(s => `${s.firstName} ${s.lastName}`).join(', ')}
                           {classItem.students.length > 3 && ` +${classItem.students.length - 3} more`}
-                        </div>
+                        </span>
                       )}
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '8px' }}>
-                      <button onClick={() => handleViewClass(classItem.id)} style={btnStyle('#3b82f6')}>👀 View Details</button>
-                      <button onClick={() => navigate(`/view-reports/${classItem.id}`)} style={btnStyle('#8b5cf6')}>📊 View Reports</button>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: reportCount > 0 ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', gap: '8px' }}>
-                      <button onClick={() => handleSelectClassForReports(classItem.id)} style={btnStyle('#10b981')}>
-                        ✏️ Write Reports
-                      </button>
-                      {reportCount > 0 && (
-                        <button onClick={() => handleContinueEditing(classItem)} style={btnStyle('#f59e0b')}>
-                          ↩ Continue
-                        </button>
-                      )}
-                      <button onClick={() => handleDeleteClass(classItem.id, classItem.name)} style={btnStyle('#ef4444')}>
-                        🗑️ Delete
-                      </button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+
+                  {/* Action buttons — all on one line */}
+                  <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                    <button
+                      onClick={() => handleViewClass(classItem.id)}
+                      style={{ backgroundColor: '#3b82f6', color: 'white', padding: '8px 14px', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '500', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      👀 View Details
+                    </button>
+                    <button
+                      onClick={() => navigate(`/view-reports/${classItem.id}`)}
+                      style={{ backgroundColor: '#8b5cf6', color: 'white', padding: '8px 14px', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '500', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      📊 Reports
+                    </button>
+                    <button
+                      onClick={() => handleSelectClassForReports(classItem.id)}
+                      style={{ backgroundColor: '#10b981', color: 'white', padding: '8px 14px', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '500', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      ✏️ Write Reports
+                    </button>
+                    {reportCount > 0 && (
+                      <button
+                        onClick={() => handleContinueEditing(classItem)}
+                        style={{ backgroundColor: '#f59e0b', color: 'white', padding: '8px 14px', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '500', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        ↩ Continue
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDeleteClass(classItem.id, classItem.name)}
+                      style={{ backgroundColor: '#fee2e2', color: '#ef4444', padding: '8px 14px', border: 'none', borderRadius: '6px', fontSize: '13px', fontWeight: '500', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      🗑️ Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
       </main>
     </div>
