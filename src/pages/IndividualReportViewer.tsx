@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
+import PageNav from '../components/PageNav';
 
 export default function IndividualReportViewer() {
   const { classId, studentId } = useParams<{ classId: string; studentId: string }>();
@@ -88,6 +89,7 @@ export default function IndividualReportViewer() {
       margin: '0 auto',
       fontFamily: 'Arial, sans-serif'
     }}>
+      <PageNav />
       {/* Header */}
       <div style={{ 
         display: 'flex', 

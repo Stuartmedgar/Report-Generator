@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
+import PageNav from '../components/PageNav';
 
 export default function AllReportsViewer() {
   const { classId } = useParams<{ classId: string }>();
@@ -69,6 +70,7 @@ export default function AllReportsViewer() {
       margin: '0 auto',
       fontFamily: 'Arial, sans-serif'
     }}>
+      <PageNav />
       {/* Header - MOBILE OPTIMIZED */}
       <div style={{ 
         display: 'flex', 

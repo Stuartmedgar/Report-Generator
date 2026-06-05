@@ -36,13 +36,12 @@ function stripPercent(text: string) {
 
 function makeId() { return `s_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`; }
 
-
-
-
 function normalisePronouns(text: string, pronounSet: PronounSet): string {
   if (pronounSet === 'he/his') {
     return text
       .replace(/\bshe\b/g, 'he').replace(/\bShe\b/g, 'He')
+      // "her" before a word = possessive → "his"; remaining "her" = object → "him"
+      .replace(/\bher(?=\s+\w)/g, 'his').replace(/\bHer(?=\s+\w)/g, 'His')
       .replace(/\bher\b/g, 'him').replace(/\bHer\b/g, 'Him')
       .replace(/\bhers\b/g, 'his').replace(/\bHers\b/g, 'His')
       .replace(/\bherself\b/g, 'himself').replace(/\bHerself\b/g, 'Himself')
@@ -65,6 +64,7 @@ function normalisePronouns(text: string, pronounSet: PronounSet): string {
       .replace(/\bhe\b/g, 'they').replace(/\bHe\b/g, 'They')
       .replace(/\bshe\b/g, 'they').replace(/\bShe\b/g, 'They')
       .replace(/\bhim\b/g, 'them').replace(/\bHim\b/g, 'Them')
+      .replace(/\bher(?=\s+\w)/g, 'their').replace(/\bHer(?=\s+\w)/g, 'Their')
       .replace(/\bher\b/g, 'them').replace(/\bHer\b/g, 'Them')
       .replace(/\bhis\b/g, 'their').replace(/\bHis\b/g, 'Their')
       .replace(/\bhers\b/g, 'their').replace(/\bHers\b/g, 'Their')
@@ -137,8 +137,6 @@ export default function ImportTemplate() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
 
-
-
   // Selection state - accumulated
   const [selectedText, setSelectedText] = useState('');
   const [selectionActive, setSelectionActive] = useState(false);
@@ -180,8 +178,6 @@ export default function ImportTemplate() {
   // Menu state
   const [menuOpen, setMenuOpen] = useState(false);
   const [subMenu, setSubMenu] = useState<string | null>(null);
-
-
 
   const pronounCapital = getPronounCapital(pronounSet);
 
@@ -248,7 +244,6 @@ export default function ImportTemplate() {
     if (!response.ok) throw new Error('API call failed');
     return response.json();
   };
-
 
   // ─── POST-PROCESS: SPLIT SECTIONS BY typicalCount ─────────────────────────
 
@@ -633,7 +628,6 @@ export default function ImportTemplate() {
     </div>
   );
 
-
   // ─── STEP: BUILDER (split panel) ──────────────────────────────────────────
 
   if (mainStep === 'builder') {
@@ -641,7 +635,6 @@ export default function ImportTemplate() {
     const canCopyLast = lastBuiltSection && (lastBuiltSection.type === 'qualities' || lastBuiltSection.type === 'next-steps');
     return (
       <div style={{ height: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* Header */}
         <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, zIndex: 10, position: 'sticky', top: 0 }}>
           <button onClick={() => setMainStep('paste')} style={btnS}>← Back</button>
           <div style={{ flex: 1 }}>
@@ -653,7 +646,6 @@ export default function ImportTemplate() {
           )}
         </header>
 
-        {/* Split panel body */}
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', height: 'calc(100vh - 65px)' }}>
 
           {/* LEFT: Reports panel */}
@@ -693,7 +685,6 @@ export default function ImportTemplate() {
           {/* RIGHT: Builder panel */}
           <div style={{ flex: '0 0 400px', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
 
-            {/* Selection indicator */}
             {(accumulatedText || pendingSelection) && (
               <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', margin: '8px 12px 0', borderRadius: '8px', padding: '10px 12px', flexShrink: 0 }}>
                 {pendingSelection && !accumulatedText && (
@@ -717,15 +708,12 @@ export default function ImportTemplate() {
               </div>
             )}
 
-            {/* Error */}
             {error && (
               <div style={{ margin: '8px 12px 0', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '8px 12px', fontSize: '13px', color: '#b91c1c', flexShrink: 0 }}>⚠️ {error}</div>
             )}
 
-            {/* Main action area */}
             <div style={{ flex: 1, overflow: 'auto', padding: '12px' }}>
 
-              {/* Copy last section */}
               {canCopyLast && (
                 <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
                   <p style={{ margin: '0 0 4px 0', fontSize: '12px', fontWeight: '600', color: '#1e40af' }}>📋 Add a copy of "{lastBuiltSection!.name}"?</p>
@@ -737,7 +725,6 @@ export default function ImportTemplate() {
                 </div>
               )}
 
-              {/* Add section menu */}
               {!subMenu && (
                 <div>
                   <p style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '600', color: '#374151' }}>
@@ -797,7 +784,6 @@ export default function ImportTemplate() {
                 </div>
               )}
 
-              {/* ── RATING sub-menu ── */}
               {subMenu === 'rating' && (
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
@@ -806,8 +792,7 @@ export default function ImportTemplate() {
                   </div>
                   <div style={{ marginBottom: '10px' }}>
                     <label style={lbl}>Section name</label>
-                    <input type="text" placeholder="e.g. Overall Progress, Effort" style={inp} id="rating-name-input"
-                      defaultValue="Progress" />
+                    <input type="text" placeholder="e.g. Overall Progress, Effort" style={inp} id="rating-name-input" defaultValue="Progress" />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <button disabled={!accumulatedText} onClick={() => {
@@ -828,7 +813,6 @@ export default function ImportTemplate() {
                 </div>
               )}
 
-              {/* ── QUALITIES sub-menu ── */}
               {subMenu === 'qualities' && (
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
@@ -837,8 +821,7 @@ export default function ImportTemplate() {
                   </div>
                   <div style={{ marginBottom: '10px' }}>
                     <label style={lbl}>Section name</label>
-                    <input type="text" placeholder="e.g. Personal Qualities, Strengths" style={inp} id="qualities-name-input"
-                      defaultValue="Personal Qualities" />
+                    <input type="text" placeholder="e.g. Personal Qualities, Strengths" style={inp} id="qualities-name-input" defaultValue="Personal Qualities" />
                   </div>
                   <div style={{ marginBottom: '10px' }}>
                     <label style={lbl}>Opener</label>
@@ -858,7 +841,6 @@ export default function ImportTemplate() {
                 </div>
               )}
 
-              {/* ── PERSONAL INFORMATION sub-menu ── */}
               {subMenu === 'personalinfo' && (
                 <div>
                   <button onClick={() => { setSubMenu(null); setPiName(''); setPiInstruction(''); setError(null); }} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
@@ -872,8 +854,7 @@ export default function ImportTemplate() {
                   <div style={{ marginBottom: '12px' }}>
                     <label style={lbl}>Instruction for teacher</label>
                     <input type="text" value={piInstruction} onChange={e => setPiInstruction(e.target.value)}
-                      placeholder="e.g. Enter this pupil's chosen sport"
-                      style={inp} />
+                      placeholder="e.g. Enter this pupil's chosen sport" style={inp} />
                   </div>
                   <button
                     disabled={!accumulatedText || !piName.trim()}
@@ -885,7 +866,6 @@ export default function ImportTemplate() {
                 </div>
               )}
 
-              {/* ── STANDARD sub-menu ── */}
               {subMenu === 'standard' && (
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
@@ -946,12 +926,11 @@ export default function ImportTemplate() {
                 </div>
               )}
 
-              {/* ── ASSESSMENT sub-menu ── */}
               {subMenu === 'assessment' && (
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
                   <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the assessment sentence(s) from your reports, name the section, then choose which type fits. Add as many assessment sections as you need for different tests.</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the assessment sentence(s) from your reports, name the section, then choose which type fits.</p>
                   </div>
                   <div style={{ marginBottom: '12px' }}>
                     <label style={lbl}>Section name <span style={{ color: '#9ca3af', fontWeight: '400' }}>(e.g. MQS Assessment, Calculator Test)</span></label>
@@ -963,14 +942,14 @@ export default function ImportTemplate() {
                       setAssessSectionName('');
                     }} style={{ ...btnP, textAlign: 'left', padding: '12px', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed' }}>
                       <div style={{ fontWeight: '700' }}>A) Same sentence — only score changes per pupil</div>
-                      <div style={{ fontSize: '12px', opacity: 0.9 }}>e.g. "[Name] scored [Score] in the assessment" — teacher types score per pupil when writing</div>
+                      <div style={{ fontSize: '12px', opacity: 0.9 }}>e.g. "[Name] scored [Score] in the assessment"</div>
                     </button>
                     <button disabled={!accumulatedText} onClick={() => {
                       handleExtractAndAdd('assessment-comment', 'name', assessSectionName.trim() || 'Assessment');
                       setAssessSectionName('');
                     }} style={{ ...btnV, textAlign: 'left', padding: '12px', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed' }}>
                       <div style={{ fontWeight: '700' }}>B) Different sentences by performance level</div>
-                      <div style={{ fontSize: '12px', opacity: 0.9 }}>Different language for strong/good/satisfactory/struggling pupils — Claude groups them</div>
+                      <div style={{ fontSize: '12px', opacity: 0.9 }}>Claude groups them by strong/good/satisfactory/struggling</div>
                     </button>
                   </div>
                   {!accumulatedText && (
@@ -979,12 +958,11 @@ export default function ImportTemplate() {
                 </div>
               )}
 
-              {/* ── DEVELOPMENT sub-menu ── */}
               {subMenu === 'development' && (
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
                   <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the Areas for Development sentences from several reports. Include a variety of different types. Claude will find ALL development sentences across all reports and group by topic.</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the Areas for Development sentences from several reports. Claude will find ALL development sentences across all reports and group by topic.</p>
                   </div>
                   <div style={{ marginBottom: '10px' }}><label style={lbl}>Section name</label><input type="text" placeholder="e.g. Areas for Development" style={inp} id="dev-name-input" defaultValue="Areas for Development" /></div>
                   <div style={{ marginBottom: '10px' }}>
@@ -1005,12 +983,11 @@ export default function ImportTemplate() {
                 </div>
               )}
 
-              {/* ── NEXT STEPS sub-menu ── */}
               {subMenu === 'nextsteps' && (
                 <div>
                   <button onClick={() => setSubMenu(null)} style={{ ...btnS, marginBottom: '12px', padding: '6px 12px', fontSize: '12px' }}>← Back</button>
                   <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px' }}>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the next steps sentences from several reports. If they always start with "Moving forward," include that. Claude will group by topic.</p>
+                    <p style={{ margin: 0, fontSize: '12px', color: '#78350f' }}>💡 Highlight the next steps sentences from several reports. Claude will group by topic.</p>
                   </div>
                   <div style={{ marginBottom: '10px' }}><label style={lbl}>Section name</label><input type="text" placeholder="e.g. Next Steps, Moving Forward" style={inp} id="ns-name-input" defaultValue="Next Steps" /></div>
                   <div style={{ marginBottom: '10px' }}>
@@ -1071,7 +1048,7 @@ export default function ImportTemplate() {
           }} style={{ ...btnG, padding: '10px 16px', fontSize: '14px' }}>💾 Save Now</button>
         </header>
         <main style={{ maxWidth: '700px', margin: '0 auto', padding: '32px 24px' }}>
-          <div style={{ ...card, border: '2px solid #8b5cf6', marginBottom: '24px' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '10px', border: '2px solid #8b5cf6', padding: '16px', marginBottom: '24px' }}>
             <h3 style={{ margin: '0 0 8px 0', fontSize: '15px', fontWeight: '700', color: '#111827' }}>What happens next?</h3>
             <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#6b7280', lineHeight: '1.6' }}>
               Your template currently contains <strong>only your exact sentences</strong> from the reports — nothing AI-generated. If you want more variety (so teachers have more options to choose from per heading), select the sections below and Claude will add 1-2 additional options per heading, written to match your voice and style.
@@ -1080,7 +1057,7 @@ export default function ImportTemplate() {
           </div>
 
           {sectionsForVariety.length > 0 ? (
-            <div style={card}>
+            <div style={{ backgroundColor: 'white', borderRadius: '10px', border: '1px solid #e5e7eb', padding: '16px', marginBottom: '12px' }}>
               <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: '600', color: '#111827' }}>Select sections to add variety to:</h3>
               {sectionsForVariety.map((item, i) => (
                 <div key={item.section.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 0', borderBottom: i < sectionsForVariety.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
@@ -1099,7 +1076,9 @@ export default function ImportTemplate() {
               ))}
             </div>
           ) : (
-            <div style={card}><p style={{ margin: 0, fontSize: '14px', color: '#6b7280', textAlign: 'center' }}>No sections eligible for variety generation.</p></div>
+            <div style={{ backgroundColor: 'white', borderRadius: '10px', border: '1px solid #e5e7eb', padding: '16px', marginBottom: '12px' }}>
+              <p style={{ margin: 0, fontSize: '14px', color: '#6b7280', textAlign: 'center' }}>No sections eligible for variety generation.</p>
+            </div>
           )}
 
           <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px 14px', marginBottom: '10px', fontSize: '13px', color: '#166534' }}>
