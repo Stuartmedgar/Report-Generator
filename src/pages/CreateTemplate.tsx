@@ -358,25 +358,31 @@ const CreateTemplate: React.FC = () => {
   // ─── BUILD AS YOU GO ──────────────────────────────────────────────────────
 
   if (step === 'build-as-you-go') {
-    return (
-      <BuildAsYouGo
-        templateName={templateName}
-        classId={location.state?.classId}
-        onComplete={(completedSections) => {
-          const template = {
-            name: templateName,
-            sections: completedSections,
-            sectionData: {},
-          };
-          addTemplate(template);
-          navigate('/write-reports', {
-            state: { preselectedClassId: location.state?.classId }
-          });
-        }}
-        onCancel={() => setStep('method')}
-      />
-    );
-  }
+  return (
+    <BuildAsYouGo
+      templateName={templateName}
+      classId={location.state?.classId}
+      onComplete={(completedSections) => {
+        const newTemplateId = `template-${Date.now()}`;
+        const template = {
+          id: newTemplateId,
+          name: templateName,
+          sections: completedSections,
+          sectionData: {},
+          createdAt: new Date().toISOString(),
+        };
+        addTemplate(template);
+        navigate('/write-reports', {
+          state: {
+            preselectedClassId: location.state?.classId,
+            preselectedTemplateId: newTemplateId,
+          }
+        });
+      }}
+      onCancel={() => setStep('method')}
+    />
+  );
+}
 
   // ─── MANUAL BUILDER ───────────────────────────────────────────────────────
 
