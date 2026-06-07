@@ -358,31 +358,36 @@ const CreateTemplate: React.FC = () => {
   // ─── BUILD AS YOU GO ──────────────────────────────────────────────────────
 
   if (step === 'build-as-you-go') {
-  return (
-    <BuildAsYouGo
-      templateName={templateName}
-      classId={location.state?.classId}
-      onComplete={(completedSections) => {
-        const newTemplateId = `template-${Date.now()}`;
-        const template = {
-          id: newTemplateId,
-          name: templateName,
-          sections: completedSections,
-          sectionData: {},
-          createdAt: new Date().toISOString(),
-        };
-        addTemplate(template);
-        navigate('/write-reports', {
-          state: {
-            preselectedClassId: location.state?.classId,
-            preselectedTemplateId: newTemplateId,
+    return (
+      <BuildAsYouGo
+        templateName={templateName}
+        classId={location.state?.classId}
+        onComplete={(completedSections) => {
+          const newTemplateId = `template-${Date.now()}`;
+          addTemplate({
+            id: newTemplateId,
+            name: templateName,
+            sections: completedSections,
+            createdAt: new Date().toISOString(),
+          } as any);
+          const classId = location.state?.classId;
+          if (classId) {
+            // Use sessionStorage handoff so WriteReports reads it synchronously
+            // before first render — same pattern as rest of app
+            sessionStorage.setItem('continueEditing', JSON.stringify({
+              classId,
+              templateId: newTemplateId,
+              studentIndex: 0,
+            }));
+            navigate('/write-reports');
+          } else {
+            navigate('/manage-templates');
           }
-        });
-      }}
-      onCancel={() => setStep('method')}
-    />
-  );
-}
+        }}
+        onCancel={() => setStep('method')}
+      />
+    );
+  }
 
   // ─── MANUAL BUILDER ───────────────────────────────────────────────────────
 
