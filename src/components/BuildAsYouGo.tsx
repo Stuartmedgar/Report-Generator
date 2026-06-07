@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { TemplateSection, SectionType } from '../types';
+import { buildUniversalSections, SUBJECT_EXTRAS } from '../data/starterComments';
 
 const SUPABASE_URL = 'https://wozbrojwuzktwrzngllh.supabase.co/functions/v1/generate-template';
 
@@ -39,6 +40,61 @@ interface Question {
   examples?: string[];
   positionType: string;
 }
+
+// ─── STARTER OPTIONS ──────────────────────────────────────────────────────────
+// Pre-populated options offered when teacher says Yes to a question.
+// Built from the same universal sections used by Quick Start.
+
+interface StarterOption {
+  label: string;
+  name: string;
+  buttons: StatementButton[];
+}
+
+const STARTER_OPTIONS: Record<string, StarterOption[]> = (() => {
+  const universal = buildUniversalSections();
+
+  const ratedStarters: StarterOption[] = universal
+    .filter(s => s.type === 'rated-comment')
+    .map(s => ({
+      label: s.name!,
+      name: s.name!,
+      buttons: [
+        { name: 'Excellent', statements: s.data.comments.excellent || [] },
+        { name: 'Good', statements: s.data.comments.good || [] },
+        { name: 'Satisfactory', statements: s.data.comments.satisfactory || [] },
+        { name: 'Needs Improvement', statements: s.data.comments.needsImprovement || [] },
+      ],
+    }));
+
+  const qualityStarters: StarterOption[] = universal
+    .filter(s => s.type === 'qualities')
+    .map(s => ({
+      label: s.name!,
+      name: s.name!,
+      buttons: Object.entries(s.data.comments).map(([key, stmts]) => ({
+        name: key,
+        statements: stmts as string[],
+      })),
+    }));
+
+  const nextStepsSection = universal.find(s => s.type === 'next-steps');
+  const nextStepsStarters: StarterOption[] = nextStepsSection ? [{
+    label: 'Next Steps',
+    name: 'Next Steps',
+    buttons: Object.entries(nextStepsSection.data.focusAreas).map(([key, stmts]) => ({
+      name: key,
+      statements: stmts as string[],
+    })),
+  }] : [];
+
+  return {
+    'rated-comment': ratedStarters,
+    'qualities': qualityStarters,
+    'other-comments': qualityStarters,
+    'next-steps': nextStepsStarters,
+  };
+})();
 
 const QUESTIONS: Question[] = [
   {
@@ -225,7 +281,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const [addedSections, setAddedSections] = useState<AddedSection[]>([]);
   const [screen, setScreen] = useState<'questions' | 'review'>('questions');
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
-  const [phase, setPhase] = useState<'ask' | 'name' | 'instruction' | 'statements' | 'added'>('ask');
+  const [phase, setPhase] = useState<'ask' | 'starter-pick' | 'name' | 'instruction' | 'statements' | 'added'>('ask');
   const [sectionName, setSectionName] = useState('');
   const [sectionInstruction, setSectionInstruction] = useState('');
   const [buttons, setButtons] = useState<StatementButton[]>([]);
@@ -278,8 +334,49 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     else { setCurrentStep(s => s + 1); resetQuestion(); }
   };
 
-  const handleYes = () => { setSectionName(question.defaultName); setPhase('name'); };
+  // ─── MODIFIED: go to starter-pick if starters exist, else straight to name ──
+  const handleYes = () => {
+    setSectionName(question.defaultName);
+    const starters = STARTER_OPTIONS[question.id];
+    const hasStarters = !!(starters && starters.length > 0);
+    setPhase(hasStarters ? 'starter-pick' : 'name');
+  };
+
   const handleNo = () => advanceQuestion();
+
+  // ─── NEW: load chosen starter's name + buttons then go to statements ────────
+  const handleStarterPick = (starter: StarterOption | null) => {
+    if (starter) {
+      setSectionName(starter.name);
+      if (isRatedFixed) {
+        // Map starter buttons to the fixed DEFAULT_RATED_BUTTONS order
+        const mapped = DEFAULT_RATED_BUTTONS.map((btnName, i) => {
+          const match = starter.buttons.find(b =>
+            b.name.toLowerCase().replace(/\s+/g, '') === btnName.toLowerCase().replace(/\s+/g, '')
+          ) || starter.buttons[i];
+          return { name: btnName, statements: match?.statements || [] };
+        });
+        setButtons(mapped);
+      } else {
+        setButtons(starter.buttons.map(b => ({ name: b.name, statements: [...b.statements] })));
+      }
+      setActiveButtonIndex(0);
+      setNamingButtonIndex(null);
+      setNamingButtonValue('');
+    } else {
+      // Start from scratch — blank buttons
+      setSectionName(question.defaultName);
+      if (isRatedFixed) {
+        setButtons(DEFAULT_RATED_BUTTONS.map(n => ({ name: n, statements: [] })));
+      } else {
+        setButtons([{ name: '', statements: [] }]);
+        setNamingButtonIndex(0);
+        setNamingButtonValue('');
+      }
+      setActiveButtonIndex(0);
+    }
+    setPhase('statements');
+  };
 
   const handleNameConfirmed = () => {
     if (!sectionName.trim()) return;
@@ -462,7 +559,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
 
   const handleAddAnother = () => {
     setSectionName(question.defaultName); setSectionInstruction('');
-    setPhase('name'); setButtons([]); setActiveButtonIndex(0);
+    setPhase('starter-pick' in STARTER_OPTIONS && STARTER_OPTIONS[question.id]?.length ? 'starter-pick' : 'name');
+    setButtons([]); setActiveButtonIndex(0);
     setNewStatement(''); setNewButtonName(''); setAddingNewButton(false);
     setNamingButtonIndex(null); setNamingButtonValue('');
     setStandardContent(''); setShowExamples(false);
@@ -527,7 +625,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     onComplete(sections);
   };
 
-  // ─── FIXED: warn before losing progress ───────────────────────────────────
   const handleCancel = () => {
     if (addedSections.length > 0) {
       const confirmed = window.confirm(
@@ -669,7 +766,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
             </div>
           </div>
 
-          {/* ─── FIXED: Right panel wider + test report left-aligned ─────────── */}
           {reportsPanelOpen && (
             <div style={{ flex: '0 0 48%', borderLeft: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
@@ -713,7 +809,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
             <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#111827', marginBottom: '10px', lineHeight: '1.3', textAlign: 'left' }}>{question.question}</h2>
             <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '20px', lineHeight: '1.6', textAlign: 'left' }}>{question.description}</p>
 
-            {question.examples && phase !== 'ask' && (
+            {question.examples && phase !== 'ask' && phase !== 'starter-pick' && (
               <div style={{ marginBottom: '20px' }}>
                 <button onClick={() => setShowExamples(o => !o)}
                   style={{ background: 'none', border: 'none', color: accentColor, fontSize: '13px', cursor: 'pointer', padding: 0, fontWeight: '500', textDecoration: 'underline' }}>
@@ -745,6 +841,61 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
                 {currentStep > 0 && (
                   <button onClick={handlePreviousQuestion} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>← Previous question</button>
                 )}
+              </div>
+            )}
+
+            {/* STARTER PICK */}
+            {phase === 'starter-pick' && (
+              <div>
+                <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#1e40af', marginBottom: '16px', lineHeight: '1.5' }}>
+                  ✨ We have ready-made options for this section. Pick one to get started with pre-written statements, or start from scratch.
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                  {(STARTER_OPTIONS[question.id] || []).map((starter, i) => {
+                    const totalStmts = starter.buttons.reduce((n, b) => n + b.statements.length, 0);
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => handleStarterPick(starter)}
+                        style={{
+                          textAlign: 'left',
+                          padding: '14px 16px',
+                          backgroundColor: 'white',
+                          border: `2px solid ${accentColor}40`,
+                          borderRadius: '10px',
+                          cursor: 'pointer',
+                          width: '100%',
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.borderColor = accentColor;
+                          e.currentTarget.style.backgroundColor = accentColor + '10';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.borderColor = accentColor + '40';
+                          e.currentTarget.style.backgroundColor = 'white';
+                        }}
+                      >
+                        <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827', marginBottom: '4px' }}>
+                          {starter.label}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                          {starter.buttons.length} button{starter.buttons.length !== 1 ? 's' : ''}
+                          {' · '}
+                          {totalStmts} statement{totalStmts !== 1 ? 's' : ''} ready to use
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button onClick={() => setPhase('ask')} style={secondaryBtn}>← Back</button>
+                  <button
+                    onClick={() => handleStarterPick(null)}
+                    style={{ ...secondaryBtn, color: accentColor, border: `1px solid ${accentColor}60` }}
+                  >
+                    Start from scratch
+                  </button>
+                </div>
               </div>
             )}
 
@@ -784,7 +935,9 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
               <div>
                 {question.hasButtons && (
                   <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#166534', marginBottom: '20px', lineHeight: '1.5', textAlign: 'left' }}>
-                    💡 Add 1–2 statements to get started. Use the AI button to find more from your reports once you have an example.
+                    💡 {buttons.some(b => b.statements.length > 0)
+                      ? 'Pre-populated statements loaded — edit, remove or add your own below.'
+                      : 'Add 1–2 statements to get started. Use the AI button to find more from your reports once you have an example.'}
                   </div>
                 )}
 
@@ -995,7 +1148,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
                     )}
 
                     <div style={{ display: 'flex', gap: '12px' }}>
-                      <button onClick={() => editingSectionId ? setScreen('review') : setPhase('name')} style={secondaryBtn}>← Back</button>
+                      <button onClick={() => editingSectionId ? setScreen('review') : setPhase('starter-pick' in STARTER_OPTIONS && STARTER_OPTIONS[question.id]?.length ? 'starter-pick' : 'name')} style={secondaryBtn}>← Back</button>
                       <button onClick={handleAddSection} style={primaryBtn}>
                         {editingSectionId ? 'Save changes →' : 'Save section →'}
                       </button>
