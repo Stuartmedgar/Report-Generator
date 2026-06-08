@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { TemplateSection, SectionType } from '../types';
-import { buildUniversalSections, SUBJECT_EXTRAS, SUBJECTS } from '../data/starterComments';
+import { buildUniversalSections, buildDevelopmentSection, SUBJECT_EXTRAS, SUBJECTS, STRENGTHS_DEFAULT_BUTTONS, STRENGTHS_ADDABLE_UNIVERSAL, STRENGTHS_ADDABLE_BY_SUBJECT, NEXT_STEPS_DEFAULT_BUTTONS, NEXT_STEPS_ADDABLE_UNIVERSAL, NEXT_STEPS_ADDABLE_BY_SUBJECT, DEVELOPMENT_DEFAULT_BUTTONS, DEVELOPMENT_ADDABLE_UNIVERSAL, DEVELOPMENT_ADDABLE_BY_SUBJECT, AddableButton } from '../data/starterComments';
 
 const SUPABASE_URL = 'https://wozbrojwuzktwrzngllh.supabase.co/functions/v1/generate-template';
 
@@ -113,6 +113,14 @@ function buildSectionsFromSelection(
     });
   }
 
+  // Areas for Development (special case — not in universal, added separately)
+  const devSection = buildDevelopmentSection();
+  const devAdded: AddedSection = {
+    id: makeId(), type: devSection.type as SectionType, name: devSection.name!,
+    buttons: Object.entries(devSection.data.focusAreas || {}).map(([k, v]) => ({ name: k, statements: v as string[] })),
+    content: '', instruction: '', showHeader: false,
+  };
+
   // Universal sections in order
   const universalMap: Record<string, AddedSection> = {};
   for (const s of universal) {
@@ -161,7 +169,8 @@ function buildSectionsFromSelection(
 
   // Add in selected order
   for (const id of selectedIds) {
-    if (universalMap[id]) result.push(universalMap[id]);
+    if (id === 'areas-for-development') result.push(devAdded);
+    else if (universalMap[id]) result.push(universalMap[id]);
     else if (extrasMap[id]) result.push(extrasMap[id]);
   }
 
@@ -681,6 +690,15 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
               ))}
             </div>
 
+            {/* Areas for Development — optional, unticked by default */}
+            <div style={{ fontSize: '12px', fontWeight: '700', color: '#6b7280', letterSpacing: '0.05em', marginBottom: '10px', marginTop: '8px' }}>OPTIONAL</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
+              <SectionCard id="areas-for-development" label="Areas for Development"
+                description="Focus areas and targets for pupils who need to improve"
+                type={'next-steps' as SectionType}
+                checked={selectedSectionIds.includes('areas-for-development')} />
+            </div>
+
             {/* Subject-specific extras */}
             {subjectExtras.length > 0 && (
               <>
@@ -798,6 +816,77 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
                   )}
                 </div>
               )}
+
+              {/* Addable buttons panel — shown for Strengths, Next Steps, Areas for Development */}
+              {(() => {
+                const sName = currentSection.name;
+                const isStrengths = sName === 'Strengths';
+                const isNextSteps = sName === 'Next Steps';
+                const isDevelopment = sName === 'Areas for Development';
+                if (!isStrengths && !isNextSteps && !isDevelopment) return null;
+
+                const universalPool: AddableButton[] = isStrengths ? STRENGTHS_ADDABLE_UNIVERSAL
+                  : isNextSteps ? NEXT_STEPS_ADDABLE_UNIVERSAL
+                  : DEVELOPMENT_ADDABLE_UNIVERSAL;
+
+                const subjectPool: AddableButton[] = isStrengths
+                  ? (STRENGTHS_ADDABLE_BY_SUBJECT[subject] || [])
+                  : isNextSteps
+                  ? (NEXT_STEPS_ADDABLE_BY_SUBJECT[subject] || [])
+                  : (DEVELOPMENT_ADDABLE_BY_SUBJECT[subject] || []);
+
+                const activeNames = buttons.map(b => b.name);
+                const availableUniversal = universalPool.filter(b => !activeNames.includes(b.name));
+                const availableSubject = subjectPool.filter(b => !activeNames.includes(b.name));
+
+                if (availableUniversal.length === 0 && availableSubject.length === 0) return null;
+
+                return (
+                  <div style={{ marginBottom: '20px' }}>
+                    <div style={{ height: '1px', backgroundColor: '#f3f4f6', margin: '8px 0 14px' }} />
+                    <div style={{ fontSize: '12px', fontWeight: '700', color: '#9ca3af', letterSpacing: '0.04em', marginBottom: '10px' }}>
+                      ADD MORE BUTTONS
+                    </div>
+                    {availableUniversal.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: availableSubject.length > 0 ? '10px' : '0' }}>
+                        {availableUniversal.map((btn, i) => (
+                          <button key={i}
+                            onClick={() => {
+                              setButtons(prev => [...prev, { name: btn.name, statements: btn.statements }]);
+                            }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', border: `2px solid ${accentColor}`, borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', backgroundColor: 'white', color: accentColor, opacity: 0.7 }}
+                            onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.backgroundColor = accentColor + '15'; }}
+                            onMouseLeave={e => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.backgroundColor = 'white'; }}>
+                            <span style={{ fontSize: '14px', fontWeight: '700', lineHeight: 1 }}>﹢</span>
+                            {btn.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {availableSubject.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px', fontWeight: '600' }}>
+                          {subject.toUpperCase()} SPECIFIC
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {availableSubject.map((btn, i) => (
+                            <button key={i}
+                              onClick={() => {
+                                setButtons(prev => [...prev, { name: btn.name, statements: btn.statements }]);
+                              }}
+                              style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', border: `2px solid ${accentColor}`, borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', backgroundColor: 'white', color: accentColor, opacity: 0.7 }}
+                              onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.backgroundColor = accentColor + '15'; }}
+                              onMouseLeave={e => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.backgroundColor = 'white'; }}>
+                              <span style={{ fontSize: '14px', fontWeight: '700', lineHeight: 1 }}>﹢</span>
+                              {btn.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Statement editor for active button */}
               {(isRatedFixed || (buttons[activeButtonIndex]?.name && !addingNewButton)) && currentSection.type !== 'standard-comment' && (
