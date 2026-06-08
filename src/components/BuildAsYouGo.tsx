@@ -226,6 +226,18 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     if (addedSections.length > 0) saveDraft(templateName, addedSections);
   }, [addedSections, templateName]);
 
+  // Initialise section picker selection when arriving at that screen
+  useEffect(() => {
+    if (screen === 'section-picker' && selectedSectionIds.length === 0 && subject) {
+      const universal = buildUniversalSections().filter(s => s.name && s.type !== 'new-line' && s.type !== 'optional-additional-comment');
+      const subjectExtras = SUBJECT_EXTRAS[subject] || [];
+      setSelectedSectionIds([
+        ...universal.map(s => s.name!),
+        ...subjectExtras.map(e => e.id),
+      ]);
+    }
+  }, [screen, subject]);
+
   // ─── STYLES ───────────────────────────────────────────────────────────────
   const primaryBtn: React.CSSProperties = { backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', padding: '11px 24px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' };
   const secondaryBtn: React.CSSProperties = { backgroundColor: '#f3f4f6', color: '#374151', border: 'none', borderRadius: '8px', padding: '11px 24px', fontSize: '15px', fontWeight: '500', cursor: 'pointer' };
@@ -602,16 +614,9 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     const universal = buildUniversalSections().filter(s => s.name && s.type !== 'new-line' && s.type !== 'optional-additional-comment');
     const subjectExtras = SUBJECT_EXTRAS[subject] || [];
 
-    // Build full list of selectable section IDs (defaults all selected)
+    // Build full list of selectable section IDs
     const allUniversalIds = universal.map(s => s.name!);
     const allExtraIds = subjectExtras.map(e => e.id);
-
-    // Initialise selection on first render
-    useEffect(() => {
-      if (selectedSectionIds.length === 0) {
-        setSelectedSectionIds([...allUniversalIds, ...allExtraIds]);
-      }
-    }, []);
 
     const toggleSection = (id: string) => {
       setSelectedSectionIds(prev =>
