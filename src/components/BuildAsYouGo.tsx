@@ -100,17 +100,19 @@ function generateTestReport(sections: AddedSection[]): string {
 function buildSectionsFromSelection(
   selectedIds: string[],
   subject: string,
-  standardContent: string
+  standardStatements: string[]
 ): AddedSection[] {
   const universal = buildUniversalSections();
   const result: AddedSection[] = [];
 
-  // Standard comment first if provided
-  if (standardContent.trim()) {
-    result.push({
-      id: makeId(), type: 'standard-comment', name: 'Introduction',
-      buttons: [], content: standardContent, instruction: '', showHeader: false,
-    });
+  // Standard comments first if provided — one AddedSection per statement
+  for (const stmt of standardStatements) {
+    if (stmt.trim()) {
+      result.push({
+        id: makeId(), type: 'standard-comment', name: 'Fixed Statement',
+        buttons: [], content: stmt.trim(), instruction: '', showHeader: false,
+      });
+    }
   }
 
   // Areas for Development (special case — not in universal, added separately)
@@ -196,6 +198,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const [screen, setScreen] = useState<Screen>('subject');
   const [subject, setSubject] = useState<string>('');
   const [standardContent, setStandardContent] = useState('');
+  const [standardStatements, setStandardStatements] = useState<string[]>([]);
   const [hasStandardComment, setHasStandardComment] = useState<boolean | null>(null);
 
   // Section picker state
@@ -352,9 +355,17 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     ));
   };
 
+  const MAX_STATEMENTS = 8;
+
   const handleAddStatement = () => {
     if (!newStatement.trim()) return;
-    setButtons(prev => { const u = [...prev]; u[activeButtonIndex] = { ...u[activeButtonIndex], statements: [...u[activeButtonIndex].statements, newStatement.trim()] }; return u; });
+    setButtons(prev => {
+      const u = [...prev];
+      const current = u[activeButtonIndex];
+      if (current.statements.length >= MAX_STATEMENTS) return u;
+      u[activeButtonIndex] = { ...current, statements: [...current.statements, newStatement.trim()] };
+      return u;
+    });
     setNewStatement('');
     statementInputRef.current?.focus();
   };
@@ -481,7 +492,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
             else if (n.includes('improvement') || n.includes('needs') || n.includes('limited') || n.includes('poor') || n.includes('difficult')) ti = 3;
             if (ti < u.length) {
               const newStmts = h.comments.filter(c => !u[ti].statements.includes(c));
-              u[ti] = { ...u[ti], statements: [...u[ti].statements, ...newStmts] };
+              const combined = [...u[ti].statements, ...newStmts];
+              u[ti] = { ...u[ti], statements: combined.slice(0, MAX_STATEMENTS) };
             }
           });
           return u;
@@ -499,7 +511,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
             );
             if (ei >= 0) {
               const newStmts = h.comments.filter(c => !merged[ei].statements.includes(c));
-              merged[ei] = { ...merged[ei], statements: [...merged[ei].statements, ...newStmts] };
+              const combined = [...merged[ei].statements, ...newStmts];
+              merged[ei] = { ...merged[ei], statements: combined.slice(0, MAX_STATEMENTS) };
             } else if (h.name && h.comments.length > 0) {
               merged.push({ name: h.name, statements: h.comments });
             }
@@ -594,6 +607,12 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   // ─── SCREEN: STANDARD COMMENT ─────────────────────────────────────────────
 
   if (screen === 'standard-comment') {
+    const addStandardStatement = () => {
+      if (!standardContent.trim()) return;
+      setStandardStatements(prev => [...prev, standardContent.trim()]);
+      setStandardContent('');
+    };
+
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column' }}>
         <TopBar title="Build as You Go" />
@@ -606,34 +625,60 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
               Do your reports contain fixed statements that all pupils receive?
             </h2>
             <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '24px', lineHeight: '1.6' }}>
-              For example, an introduction sentence or closing remark that is the same for every pupil.
+              For example, an introduction sentence or closing remark that is the same for every pupil. You can add as many as you need.
             </p>
 
             {hasStandardComment === null && (
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={() => setHasStandardComment(true)} style={{ ...primaryBtn, flex: 1 }}>Yes</button>
-                <button onClick={() => { setHasStandardComment(false); setScreen('section-picker'); }} style={{ ...secondaryBtn, flex: 1 }}>No</button>
+              <div>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button onClick={() => setHasStandardComment(true)} style={{ ...primaryBtn, flex: 1 }}>Yes</button>
+                  <button onClick={() => { setHasStandardComment(false); setScreen('section-picker'); }} style={{ ...secondaryBtn, flex: 1 }}>No</button>
+                </div>
+                <div style={{ marginTop: '16px' }}>
+                  <button onClick={() => setScreen('subject')} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>← Change subject</button>
+                </div>
               </div>
             )}
 
             {hasStandardComment === true && (
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>Paste your statement here:</label>
+                {/* Added statements list */}
+                {standardStatements.length > 0 && (
+                  <div style={{ marginBottom: '16px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '700', color: '#6b7280', letterSpacing: '0.04em', marginBottom: '8px' }}>
+                      ADDED STATEMENTS ({standardStatements.length})
+                    </div>
+                    {standardStatements.map((stmt, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '10px 12px', marginBottom: '6px' }}>
+                        <span style={{ flex: 1, fontSize: '13px', color: '#166534', lineHeight: '1.5' }}>{stmt}</span>
+                        <button onClick={() => setStandardStatements(prev => prev.filter((_, j) => j !== i))}
+                          style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '14px', flexShrink: 0, padding: '0 2px' }}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                  {standardStatements.length === 0 ? 'Paste your statement here:' : 'Add another statement:'}
+                </label>
                 <textarea value={standardContent} onChange={e => setStandardContent(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && e.metaKey) addStandardStatement(); }}
                   placeholder="e.g. It has been a pleasure teaching [Name] this term..."
-                  style={{ ...txa, minHeight: '120px', borderColor: '#10b981', marginBottom: '20px' }} />
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  <button onClick={() => setHasStandardComment(null)} style={secondaryBtn}>← Back</button>
+                  style={{ ...txa, minHeight: '100px', borderColor: '#10b981', marginBottom: '10px' }} />
+
+                {standardContent.trim() && (
+                  <button onClick={addStandardStatement}
+                    style={{ backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '16px' }}>
+                    + Add statement
+                  </button>
+                )}
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                  <button onClick={() => { setHasStandardComment(null); setStandardStatements([]); setStandardContent(''); }} style={secondaryBtn}>← Back</button>
                   <button onClick={() => setScreen('section-picker')} style={primaryBtn}>
-                    {standardContent.trim() ? 'Continue →' : 'Skip →'}
+                    {standardStatements.length > 0 ? `Continue with ${standardStatements.length} statement${standardStatements.length !== 1 ? 's' : ''} →` : 'Skip →'}
                   </button>
                 </div>
-              </div>
-            )}
-
-            {hasStandardComment === null && (
-              <div style={{ marginTop: '16px' }}>
-                <button onClick={() => setScreen('subject')} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>← Change subject</button>
               </div>
             )}
           </div>
@@ -660,7 +705,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
 
     const handleConfirmSections = () => {
       if (selectedSectionIds.length === 0) { alert('Please select at least one section.'); return; }
-      const sections = buildSectionsFromSelection(selectedSectionIds, subject, standardContent);
+      const sections = buildSectionsFromSelection(selectedSectionIds, subject, standardStatements);
       setAddedSections(sections);
       setCurrentSectionIndex(0);
       loadSectionIntoEditor(sections[0]);
@@ -977,8 +1022,14 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
                   <textarea ref={statementInputRef} value={newStatement} onChange={e => setNewStatement(e.target.value)}
                     placeholder="Type or paste a statement... Use [Name] for pupil name."
                     style={{ ...txa, minHeight: '70px', borderColor: accentColor, marginBottom: '8px' }} />
-                  <button onClick={handleAddStatement} disabled={!newStatement.trim()}
-                    style={{ ...smallBtn(accentColor), opacity: !newStatement.trim() ? 0.4 : 1, marginBottom: '20px' }}>+ Add statement</button>
+                  {buttons[activeButtonIndex]?.statements.length >= MAX_STATEMENTS ? (
+                    <div style={{ fontSize: '12px', color: '#6b7280', backgroundColor: '#f3f4f6', borderRadius: '6px', padding: '8px 12px', marginBottom: '20px' }}>
+                      Maximum {MAX_STATEMENTS} statements per button reached.
+                    </div>
+                  ) : (
+                    <button onClick={handleAddStatement} disabled={!newStatement.trim()}
+                      style={{ ...smallBtn(accentColor), opacity: !newStatement.trim() ? 0.4 : 1, marginBottom: '20px' }}>+ Add statement</button>
+                  )}
                 </div>
               )}
 
