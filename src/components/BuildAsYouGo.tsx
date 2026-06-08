@@ -414,53 +414,71 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     if (!hasReports || !currentSection) return;
     setAiLoading(true); setAiError(null);
     try {
-      const existingStatements: string[] = [];
-      buttons.forEach(b => { if (b.name && b.statements.length > 0) existingStatements.push(...b.statements); });
-      if (!existingStatements.length) {
-        setAiError('The pre-populated statements will be used as examples for the AI to match against your reports.');
+      // Build selectedText — take up to 2 statements per button as pattern examples
+      // This gives the AI a clear picture of what to look for across all performance levels
+      const exampleLines: string[] = [];
+      buttons.forEach(b => {
+        if (b.name && b.statements.length > 0) {
+          exampleLines.push(...b.statements.slice(0, 2));
+        }
+      });
+
+      if (!exampleLines.length) {
+        setAiError('No statements found to use as examples. Add at least one statement to a button first.');
         setAiLoading(false); return;
       }
+
+      // Map section type to the positionType the edge function expects
       const positionType = currentSection.type === 'next-steps' ? 'next-steps'
         : currentSection.type === 'rated-comment' ? 'rating'
         : currentSection.type === 'assessment-comment' ? 'assessment-comment'
+        : currentSection.name === 'Areas for Development' ? 'next-steps'
         : 'qualities';
+
+      const scaleType = isRatedFixed ? 'four-level' : 'own';
 
       const response = await fetch(SUPABASE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mode: 'extract-only',
-          subject: currentSection.name,
+          subject: subject || currentSection.name,
           yearGroup: '',
           reportText: pastedReports,
           pronounSet: 'they/their',
           openerType: 'name',
           sectionName: currentSection.name,
           positionType,
-          selectedText: existingStatements.slice(0, 4).join('\n'),
-          scaleType: isRatedFixed ? 'four-level' : 'own',
+          selectedText: exampleLines.join('\n'),
+          scaleType,
         }),
       });
 
-      if (!response.ok) throw new Error('failed');
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error('AI extraction error:', response.status, errText);
+        throw new Error('API call failed');
+      }
+
       const data = await response.json();
       const headings: { name: string; comments: string[] }[] = data.headings || [];
 
       if (headings.length === 0) {
-        setAiError('No matching sentences found in your reports for this section.');
+        setAiError('No matching sentences found in your reports for this section. Make sure your reports contain sentences about ' + currentSection.name.toLowerCase() + '.');
         setAiLoading(false); return;
       }
 
       if (isRatedFixed) {
+        // For rated sections: map returned headings to the correct button by performance level
         setButtons(prev => {
           const u = [...prev];
           headings.forEach(h => {
             const n = h.name.toLowerCase();
-            let ti = 1;
-            if (n.includes('excellent') || n.includes('outstanding') || n.includes('strong')) ti = 0;
-            else if (n.includes('good') || n.includes('solid')) ti = 1;
-            else if (n.includes('satisfactory') || n.includes('making')) ti = 2;
-            else if (n.includes('improvement') || n.includes('needs') || n.includes('difficult')) ti = 3;
+            let ti = 1; // default to 'good'
+            if (n.includes('excellent') || n.includes('outstanding') || n.includes('very good') || n.includes('strong')) ti = 0;
+            else if (n.includes('good') || n.includes('solid') || n.includes('pleasing')) ti = 1;
+            else if (n.includes('satisfactory') || n.includes('adequate') || n.includes('reasonable') || n.includes('making')) ti = 2;
+            else if (n.includes('improvement') || n.includes('needs') || n.includes('limited') || n.includes('poor') || n.includes('difficult')) ti = 3;
             if (ti < u.length) {
               const newStmts = h.comments.filter(c => !u[ti].statements.includes(c));
               u[ti] = { ...u[ti], statements: [...u[ti].statements, ...newStmts] };
@@ -469,10 +487,16 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
           return u;
         });
       } else {
+        // For qualities/next-steps: try to match returned headings to existing buttons by name,
+        // or add as new buttons if no match found
         setButtons(prev => {
           const merged = [...prev];
           headings.forEach(h => {
-            const ei = merged.findIndex(b => b.name.toLowerCase() === h.name.toLowerCase());
+            const ei = merged.findIndex(b =>
+              b.name.toLowerCase() === h.name.toLowerCase() ||
+              h.name.toLowerCase().includes(b.name.toLowerCase()) ||
+              b.name.toLowerCase().includes(h.name.toLowerCase())
+            );
             if (ei >= 0) {
               const newStmts = h.comments.filter(c => !merged[ei].statements.includes(c));
               merged[ei] = { ...merged[ei], statements: [...merged[ei].statements, ...newStmts] };
@@ -483,8 +507,9 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
           return merged.filter(b => b.name);
         });
       }
-    } catch {
-      setAiError('AI extraction failed. Please try again.');
+    } catch (err) {
+      console.error('AI extraction error:', err);
+      setAiError('AI extraction failed. Please check your reports are pasted in the right panel and try again.');
     } finally {
       setAiLoading(false);
     }
@@ -991,8 +1016,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
               )}
 
               {!hasReports && currentSection.type !== 'standard-comment' && (
-                <div style={{ marginBottom: '16px', padding: '10px 14px', backgroundColor: '#f9fafb', border: '1px dashed #d1d5db', borderRadius: '8px', fontSize: '12px', color: '#9ca3af' }}>
-                  💡 Paste existing reports in the right panel to enable AI search.
+                <div style={{ marginBottom: '16px', padding: '12px 16px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', fontSize: '13px', color: '#78350f', lineHeight: '1.5' }}>
+                  💡 <strong>Have existing reports?</strong> Paste them in the panel on the right and click "Find in my reports" — the AI will scan them and add matching sentences to the right buttons automatically.
                 </div>
               )}
 
