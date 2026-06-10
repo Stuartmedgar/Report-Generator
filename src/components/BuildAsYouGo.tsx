@@ -324,7 +324,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   );
 
   // Shared statement editor used by both section-editor and wizard
-  const StatementEditor = ({ sType, sName }: { sType: string; sName: string }) => {
+  const renderStatementEditor = (sType: string, sName: string) => {
     const isRated = sType === 'rated-comment';
     const isStrengths = sName === 'Strengths'; const isNextSteps = sName === 'Next Steps'; const isDevelopment = sName === 'Areas for Development';
     const universalPool: AddableButton[] = isStrengths ? STRENGTHS_ADDABLE_UNIVERSAL : isNextSteps ? NEXT_STEPS_ADDABLE_UNIVERSAL : isDevelopment ? DEVELOPMENT_ADDABLE_UNIVERSAL : [];
@@ -660,10 +660,32 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
                 )}
               </div>
               <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px', lineHeight: '1.6' }}>Pre-populated statements are loaded below. Edit, delete or add your own — or use AI to find matching sentences from your existing reports.</p>
-              <div style={{ backgroundColor: totalStmts > 0 ? '#f0fdf4' : '#fffbeb', border: `1px solid ${totalStmts > 0 ? '#bbf7d0' : '#fde68a'}`, borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: totalStmts > 0 ? '#166534' : '#78350f', marginBottom: '20px' }}>
-                {totalStmts > 0 ? `✓ ${totalStmts} statement${totalStmts !== 1 ? 's' : ''} ready — edit, remove or add more below` : '⚠️ No statements yet — add some below or use AI to find them from your reports'}
-              </div>
-              <StatementEditor sType={currentSection.type} sName={sectionName} />
+              {currentSection.type !== 'standard-comment' && (
+                <div style={{ backgroundColor: totalStmts > 0 ? '#f0fdf4' : '#fffbeb', border: `1px solid ${totalStmts > 0 ? '#bbf7d0' : '#fde68a'}`, borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: totalStmts > 0 ? '#166534' : '#78350f', marginBottom: '20px' }}>
+                  {totalStmts > 0 ? `✓ ${totalStmts} statement${totalStmts !== 1 ? 's' : ''} ready — edit, remove or add more below` : '⚠️ No statements yet — add some below or use AI to find them from your reports'}
+                </div>
+              )}
+              {currentSection.type === 'standard-comment' ? (
+                <div>
+                  <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#166534', marginBottom: '16px', lineHeight: '1.5' }}>
+                    This statement will appear as fixed text in every report — it is included automatically.
+                  </div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>Statement text:</label>
+                  <textarea
+                    value={addedSections[currentSectionIndex]?.content || ''}
+                    onChange={e => {
+                      const updated = [...addedSections];
+                      updated[currentSectionIndex] = { ...updated[currentSectionIndex], content: e.target.value };
+                      setAddedSections(updated);
+                    }}
+                    placeholder="e.g. It has been a pleasure teaching [Name] this term..."
+                    style={{ ...txa, minHeight: '100px', borderColor: '#10b981', marginBottom: '8px' }}
+                  />
+                  <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '16px' }}>Use [Name] as a placeholder for the pupil's name.</div>
+                </div>
+              ) : (
+                renderStatementEditor(currentSection.type, sectionName)
+              )}
               <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
                 <button onClick={handleSectionBack} style={secondaryBtn}>← Back</button>
                 <button onClick={handleSectionNext} style={primaryBtn}>{currentSectionIndex < addedSections.length - 1 ? `Next: ${addedSections[currentSectionIndex + 1]?.name} →` : 'Review template →'}</button>
@@ -761,7 +783,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
                     </div>
                   ) : (
                     <div>
-                      <StatementEditor sType={question.sectionType} sName={sectionName} />
+                      {renderStatementEditor(question.sectionType, sectionName)}
                       {wIsAssessment && <div style={{ backgroundColor: '#f3e8ff', border: '1px solid #d8b4fe', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#7c3aed', marginBottom: '16px', lineHeight: '1.5' }}><strong>Score placeholders:</strong> use <code>[Score]</code> or <code>[Score 1]</code> <code>[Score 2]</code>.{sectionInstruction && <div style={{ marginTop: '6px' }}><strong>Reminder:</strong> {sectionInstruction}</div>}</div>}
                       <div style={{ display: 'flex', gap: '12px' }}>
                         <button onClick={() => editingSectionId ? setScreen('review') : setPhase('name')} style={secondaryBtn}>← Back</button>
