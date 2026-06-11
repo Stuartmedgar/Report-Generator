@@ -51,19 +51,6 @@ const CreateTemplate: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (showSectionSelector || showRatedCommentBuilder || showAssessmentCommentBuilder ||
-        showPersonalisedCommentBuilder || showNextStepsCommentBuilder || showStandardCommentEditor ||
-        showQualitiesCommentBuilder) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [showSectionSelector, showRatedCommentBuilder, showAssessmentCommentBuilder,
-      showPersonalisedCommentBuilder, showNextStepsCommentBuilder, showStandardCommentEditor,
-      showQualitiesCommentBuilder]);
-
-  useEffect(() => {
     if (editTemplate) {
       setTemplateName(editTemplate.name);
       setSections(editTemplate.sections || []);
@@ -77,42 +64,79 @@ const CreateTemplate: React.FC = () => {
 
   // ─── SECTION MANAGEMENT ───────────────────────────────────────────────────
 
-  const handleAddSection = (type: string, data: any) => {
-    const newSection: TemplateSection = {
-      id: `${Date.now()}-${Math.random()}`,
-      type: type as SectionType,
-      name: data.name,
-      data
-    };
-    setSections(prev => [...prev, newSection]);
-    setSectionData(prev => ({ ...prev, [newSection.id]: data }));
+  const handleSectionAdded = (newSection: TemplateSection) => {
+    setSections([...sections, newSection]);
     setShowSectionSelector(false);
   };
 
+  const handleAddNewLine = () => {
+    const newLineSection: TemplateSection = {
+      id: Date.now().toString(),
+      type: 'new-line' as SectionType,
+      name: 'New Line',
+      data: {}
+    };
+    setSections([...sections, newLineSection]);
+  };
+
+  const handleAddOptionalComment = () => {
+    const optionalSection: TemplateSection = {
+      id: Date.now().toString(),
+      type: 'optional-additional-comment' as SectionType,
+      name: 'Additional Comments',
+      data: {}
+    };
+    setSections([...sections, optionalSection]);
+  };
+
   const handleEditSection = (section: TemplateSection, index: number) => {
-    setEditingSection({ section, index });
-    switch (section.type) {
-      case 'rated-comment': setShowRatedCommentBuilder(true); break;
-      case 'assessment-comment': setShowAssessmentCommentBuilder(true); break;
-      case 'personalised-comment': setShowPersonalisedCommentBuilder(true); break;
-      case 'next-steps': setShowNextStepsCommentBuilder(true); break;
-      case 'qualities': setShowQualitiesCommentBuilder(true); break;
-      case 'standard-comment':
-        setStandardCommentName(section.name || '');
-        setStandardCommentContent(section.data?.comment || section.data?.content || '');
-        setShowStandardCommentEditor(true);
-        break;
+    // For qualities, editingSection is set after shaping data (below)
+    if (section.type !== 'qualities') setEditingSection({ section, index });
+    if (section.type === 'rated-comment') setShowRatedCommentBuilder(true);
+    else if (section.type === 'assessment-comment') setShowAssessmentCommentBuilder(true);
+    else if (section.type === 'personalised-comment') setShowPersonalisedCommentBuilder(true);
+    else if (section.type === 'next-steps') setShowNextStepsCommentBuilder(true);
+    else if (section.type === 'qualities') {
+      const commentsObj = section.data?.comments || {};
+      setEditingSection({
+        section: {
+          ...section,
+          data: {
+            name: section.name || '',
+            headings: Object.keys(commentsObj),
+            comments: commentsObj,
+          },
+        },
+        index,
+      });
+      setShowQualitiesCommentBuilder(true);
+    }
+    else if (section.type === 'standard-comment') {
+      setStandardCommentName(section.name || '');
+      setStandardCommentContent(section.data?.content || section.data?.comment || '');
+      setShowStandardCommentEditor(true);
     }
   };
 
-  const handleSaveEditedSection = (updatedData: any) => {
+  const handleSectionUpdated = (updatedData: any) => {
     if (!editingSection) return;
     const updatedSections = [...sections];
-    const newData = updatedData.name && updatedData.data ? updatedData.data : updatedData;
+    const originalType = editingSection.section.type;
+    let newData: any;
+    if (originalType === 'qualities') {
+      newData = { comments: updatedData.comments };
+    } else if (originalType === 'next-steps') {
+      newData = { focusAreas: updatedData.comments };
+    } else if (originalType === 'personalised-comment') {
+      newData = { instruction: updatedData.instruction, categories: updatedData.comments };
+    } else {
+      newData = updatedData.name ? updatedData.data : updatedData;
+    }
+    const _newData = newData;
     updatedSections[editingSection.index] = {
       ...editingSection.section,
       name: updatedData.name || editingSection.section.name,
-      data: newData
+      data: _newData
     };
     setSections(updatedSections);
     setEditingSection(null);
@@ -161,14 +185,6 @@ const CreateTemplate: React.FC = () => {
     setSections(newSections);
   };
 
-  const handleAddNewLine = () => {
-    setSections(prev => [...prev, { id: `${Date.now()}`, type: 'new-line' as SectionType, name: 'New Line', data: {} }]);
-  };
-
-  const handleAddOptionalComment = () => {
-    setSections(prev => [...prev, { id: `${Date.now()}`, type: 'optional-additional-comment' as SectionType, name: 'Additional Comments', data: {} }]);
-  };
-
   const isSectionEditable = (type: string): boolean =>
     ['rated-comment', 'assessment-comment', 'personalised-comment', 'next-steps', 'qualities', 'standard-comment'].includes(type);
 
@@ -189,6 +205,8 @@ const CreateTemplate: React.FC = () => {
   // ─── NAMING STEP ──────────────────────────────────────────────────────────
 
   if (step === 'naming') {
+    // After naming, go straight to the preselected method if one was passed in,
+    // otherwise show the method choice screen as normal
     const handleContinue = () => {
       if (preselectedMethod) {
         setStep(preselectedMethod);
@@ -295,7 +313,7 @@ const CreateTemplate: React.FC = () => {
 
           {optionCard(
             'Quick Start Template',
-            "Pick your subject and we'll instantly build a ready-to-use template pre-populated with generic comments. Fully editable.",
+            'Pick your subject and we\'ll instantly build a ready-to-use template pre-populated with generic comments. Fully editable.',
             '🚀',
             () => setStep('quick-start'),
             false,
@@ -305,7 +323,7 @@ const CreateTemplate: React.FC = () => {
 
           {optionCard(
             'Build as you go',
-            "Answer a few questions about your reports and we'll set up the structure. Then write reports and build up your comment bank as you go — perfect for starting fresh.",
+            'Answer a few questions about your reports and we\'ll set up the structure. Then write reports and build up your comment bank as you go — perfect for starting fresh.',
             '🧱',
             () => setStep('build-as-you-go'),
             true
@@ -313,7 +331,7 @@ const CreateTemplate: React.FC = () => {
 
           {optionCard(
             'Import from existing reports',
-            "Paste reports you've already written and we'll extract comments to build your template automatically.",
+            'Paste reports you\'ve already written and we\'ll extract comments to build your template automatically.',
             '📥',
             () => navigate('/import-template'),
           )}
@@ -343,6 +361,7 @@ const CreateTemplate: React.FC = () => {
       <QuickStartWizard
         templateName={templateName}
         onComplete={(builtTemplate) => {
+          // Navigate to TemplateReview so teacher can see and edit everything
           navigate('/template-review', {
             state: {
               template: builtTemplate,
@@ -363,26 +382,15 @@ const CreateTemplate: React.FC = () => {
         templateName={templateName}
         classId={location.state?.classId}
         onComplete={(completedSections) => {
-          const newTemplateId = `template-${Date.now()}`;
-          addTemplate({
-            id: newTemplateId,
+          const template = {
             name: templateName,
             sections: completedSections,
-            createdAt: new Date().toISOString(),
-          } as any);
-          const classId = location.state?.classId;
-          if (classId) {
-            // Use sessionStorage handoff so WriteReports reads it synchronously
-            // before first render — same pattern as rest of app
-            sessionStorage.setItem('continueEditing', JSON.stringify({
-              classId,
-              templateId: newTemplateId,
-              studentIndex: 0,
-            }));
-            navigate('/write-reports');
-          } else {
-            navigate('/manage-templates');
-          }
+            sectionData: {},
+          };
+          addTemplate(template);
+          navigate('/write-reports', {
+            state: { preselectedClassId: location.state?.classId }
+          });
         }}
         onCancel={() => setStep('method')}
       />
@@ -419,6 +427,7 @@ const CreateTemplate: React.FC = () => {
       <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: '32px', alignItems: 'start' }}>
 
+          {/* Section List */}
           <div>
             <div style={{ backgroundColor: 'white', border: '2px solid #e5e7eb', borderRadius: '12px', padding: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -458,15 +467,15 @@ const CreateTemplate: React.FC = () => {
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button onClick={() => handleMoveSection(index, 'up')} disabled={index === 0}
-                            style={{ padding: '6px 12px', backgroundColor: index === 0 ? '#f3f4f6' : '#e5e7eb', color: index === 0 ? '#9ca3af' : '#374151', border: 'none', borderRadius: '4px', cursor: index === 0 ? 'not-allowed' : 'pointer', fontSize: '12px' }}>↑</button>
+                            style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '4px', padding: '4px 8px', cursor: index === 0 ? 'not-allowed' : 'pointer', color: '#6b7280', fontSize: '12px' }}>↑</button>
                           <button onClick={() => handleMoveSection(index, 'down')} disabled={index === sections.length - 1}
-                            style={{ padding: '6px 12px', backgroundColor: index === sections.length - 1 ? '#f3f4f6' : '#e5e7eb', color: index === sections.length - 1 ? '#9ca3af' : '#374151', border: 'none', borderRadius: '4px', cursor: index === sections.length - 1 ? 'not-allowed' : 'pointer', fontSize: '12px' }}>↓</button>
+                            style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '4px', padding: '4px 8px', cursor: index === sections.length - 1 ? 'not-allowed' : 'pointer', color: '#6b7280', fontSize: '12px' }}>↓</button>
                           {isSectionEditable(section.type) && (
                             <button onClick={() => handleEditSection(section, index)}
-                              style={{ padding: '6px 12px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}>Edit</button>
+                              style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 12px', cursor: 'pointer', fontSize: '12px' }}>Edit</button>
                           )}
                           <button onClick={() => handleDeleteSection(index)}
-                            style={{ padding: '6px 12px', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}>Delete</button>
+                            style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 12px', cursor: 'pointer', fontSize: '12px' }}>Delete</button>
                         </div>
                       </div>
                     </div>
@@ -489,6 +498,7 @@ const CreateTemplate: React.FC = () => {
             </div>
           </div>
 
+          {/* Info panel */}
           <div style={{ backgroundColor: 'white', border: '2px solid #e5e7eb', borderRadius: '12px', padding: '24px', position: 'sticky', top: '80px' }}>
             <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '12px' }}>About Section Types</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>
@@ -503,60 +513,51 @@ const CreateTemplate: React.FC = () => {
         </div>
       </main>
 
-      {/* Section Selector */}
+      {/* Section Selector Modal */}
       {showSectionSelector && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'white', zIndex: 1000, overflow: 'auto' }}>
-          <SectionSelector onSelectSection={handleAddSection} onBack={() => setShowSectionSelector(false)} />
-        </div>
+        <SectionSelector
+          onSelect={handleSectionAdded}
+          onCancel={() => setShowSectionSelector(false)}
+        />
       )}
 
-      {/* Comment Builder Modals */}
+      {/* Edit modals */}
       {showRatedCommentBuilder && editingSection && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, overflow: 'auto', padding: '20px' }}>
-          <div style={{ minHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ width: '100%', maxWidth: '900px', margin: '0 auto' }}>
-              <RatedCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection} onCancel={handleCancelEdit} />
-            </div>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', maxWidth: '700px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
+            <RatedCommentBuilder initialData={editingSection.section.data} onSave={handleSectionUpdated} onCancel={handleCancelEdit} />
           </div>
         </div>
       )}
 
       {showAssessmentCommentBuilder && editingSection && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, overflow: 'auto', padding: '20px' }}>
-          <div style={{ minHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ width: '100%', maxWidth: '900px', margin: '0 auto' }}>
-              <AssessmentCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection} onCancel={handleCancelEdit} />
-            </div>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', maxWidth: '700px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
+            <AssessmentCommentBuilder initialData={editingSection.section.data} onSave={handleSectionUpdated} onCancel={handleCancelEdit} />
           </div>
         </div>
       )}
 
       {showPersonalisedCommentBuilder && editingSection && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, overflow: 'auto', padding: '20px' }}>
-          <div style={{ minHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ width: '100%', maxWidth: '900px', margin: '0 auto' }}>
-              <PersonalisedCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection} onCancel={handleCancelEdit} />
-            </div>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', maxWidth: '700px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
+            <PersonalisedCommentBuilder initialData={editingSection.section.data} onSave={handleSectionUpdated} onCancel={handleCancelEdit} />
           </div>
         </div>
       )}
 
       {showNextStepsCommentBuilder && editingSection && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, overflow: 'auto', padding: '20px' }}>
-          <div style={{ minHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ width: '100%', maxWidth: '900px', margin: '0 auto' }}>
-              <NextStepsCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection} onCancel={handleCancelEdit} />
-            </div>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', maxWidth: '700px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
+            <NextStepsCommentBuilder initialData={editingSection.section.data} onSave={handleSectionUpdated} onCancel={handleCancelEdit} />
           </div>
         </div>
       )}
 
       {showQualitiesCommentBuilder && editingSection && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000, overflow: 'auto', padding: '20px' }}>
-          <div style={{ minHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ width: '100%', maxWidth: '900px', margin: '0 auto' }}>
-              <QualitiesCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection} onCancel={handleCancelEdit} />
-            </div>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', maxWidth: '700px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
+            <QualitiesCommentBuilder initialData={editingSection.section.data} onSave={handleSectionUpdated} onCancel={handleCancelEdit} />
           </div>
         </div>
       )}

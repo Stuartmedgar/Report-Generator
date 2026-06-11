@@ -244,6 +244,7 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
       else if (original.type === 'assessment-comment') newData = { comments: editedData.comments, scoreType: editedData.scoreType, maxScore: editedData.maxScore, instruction: original.data?.instruction || '' };
       else if (original.type === 'next-steps') newData = { focusAreas: editedData.comments };
       else if (original.type === 'personalised-comment') newData = { instruction: editedData.instruction, categories: editedData.comments };
+      else if (original.type === 'qualities') newData = { comments: editedData.comments };
       else newData = { ...original.data, ...editedData };
 
       updateTemplate({ ...reportLogic.workingTemplate, sections: updatedSections.map((s, i) =>
