@@ -515,10 +515,21 @@ const CreateTemplate: React.FC = () => {
 
       {/* Section Selector Modal */}
       {showSectionSelector && (
-        <SectionSelector
-          onSelect={handleSectionAdded}
-          onCancel={() => setShowSectionSelector(false)}
-        />
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'white', zIndex: 1000, overflow: 'auto' }}>
+          <SectionSelector
+            onSelectSection={(type: string, data: any) => {
+              const newSection: any = {
+                id: `${Date.now()}-${Math.random()}`,
+                type,
+                name: data?.name || type,
+                data: data || {},
+              };
+              setSections((prev: any) => [...prev, newSection]);
+              setShowSectionSelector(false);
+            }}
+            onBack={() => setShowSectionSelector(false)}
+          />
+        </div>
       )}
 
       {/* Edit modals */}
