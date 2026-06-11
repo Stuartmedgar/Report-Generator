@@ -525,7 +525,7 @@ const CreateTemplate: React.FC = () => {
       {showRatedCommentBuilder && editingSection && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
           <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', maxWidth: '700px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
-            <RatedCommentBuilder initialData={editingSection.section.data} onSave={handleSectionUpdated} onCancel={handleCancelEdit} />
+            <RatedCommentBuilder existingComment={editingSection.section.data} onSave={handleSectionUpdated} onCancel={handleCancelEdit} />
           </div>
         </div>
       )}
@@ -533,7 +533,7 @@ const CreateTemplate: React.FC = () => {
       {showAssessmentCommentBuilder && editingSection && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
           <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', maxWidth: '700px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
-            <AssessmentCommentBuilder initialData={editingSection.section.data} onSave={handleSectionUpdated} onCancel={handleCancelEdit} />
+            <AssessmentCommentBuilder existingComment={editingSection.section.data} onSave={handleSectionUpdated} onCancel={handleCancelEdit} />
           </div>
         </div>
       )}
@@ -541,7 +541,7 @@ const CreateTemplate: React.FC = () => {
       {showPersonalisedCommentBuilder && editingSection && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
           <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', maxWidth: '700px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
-            <PersonalisedCommentBuilder initialData={editingSection.section.data} onSave={handleSectionUpdated} onCancel={handleCancelEdit} />
+            <PersonalisedCommentBuilder existingComment={editingSection.section.data} onSave={handleSectionUpdated} onCancel={handleCancelEdit} />
           </div>
         </div>
       )}
@@ -549,7 +549,7 @@ const CreateTemplate: React.FC = () => {
       {showNextStepsCommentBuilder && editingSection && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
           <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', maxWidth: '700px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
-            <NextStepsCommentBuilder initialData={editingSection.section.data} onSave={handleSectionUpdated} onCancel={handleCancelEdit} />
+            <NextStepsCommentBuilder existingComment={editingSection.section.data} onSave={handleSectionUpdated} onCancel={handleCancelEdit} />
           </div>
         </div>
       )}
@@ -557,7 +557,7 @@ const CreateTemplate: React.FC = () => {
       {showQualitiesCommentBuilder && editingSection && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
           <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', maxWidth: '700px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
-            <QualitiesCommentBuilder initialData={editingSection.section.data} onSave={handleSectionUpdated} onCancel={handleCancelEdit} />
+            <QualitiesCommentBuilder existingComment={editingSection.section.data} onSave={handleSectionUpdated} onCancel={handleCancelEdit} />
           </div>
         </div>
       )}
