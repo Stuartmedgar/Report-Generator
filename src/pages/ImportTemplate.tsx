@@ -40,7 +40,6 @@ function normalisePronouns(text: string, pronounSet: PronounSet): string {
   if (pronounSet === 'he/his') {
     return text
       .replace(/\bshe\b/g, 'he').replace(/\bShe\b/g, 'He')
-      // "her" before a word = possessive → "his"; remaining "her" = object → "him"
       .replace(/\bher(?=\s+\w)/g, 'his').replace(/\bHer(?=\s+\w)/g, 'His')
       .replace(/\bher\b/g, 'him').replace(/\bHer\b/g, 'Him')
       .replace(/\bhers\b/g, 'his').replace(/\bHers\b/g, 'His')
@@ -303,13 +302,11 @@ export default function ImportTemplate() {
         reportText: rawReportText,
         builtSections: identifiedSections,
       });
-      // Build typicalCount map
       const typicalCountMap: Record<string, number> = {};
       identifiedSections.forEach((s: any) => { typicalCountMap[s.name] = s.typicalCount || 1; });
 
       if (!result.sections || result.sections.length === 0) throw new Error('No sections returned');
 
-      // Add IDs and normalise section data
       const sections = result.sections.map((s: any) => ({
         ...s,
         id: makeId(),
@@ -318,9 +315,13 @@ export default function ImportTemplate() {
 
       const normalisedSections = normaliseTemplateSections(sections, pronounSet);
       const splitResult = splitSections(normalisedSections, typicalCountMap);
-      setGeneratedTemplate({ name: templateName.trim() || result.templateName || `${subject} ${yearGroup} Report Template`,
 
-      // Set up variety for eligible sections
+      // ── FIX: setGeneratedTemplate is a complete, properly closed call ──
+      setGeneratedTemplate({
+        name: templateName.trim() || result.templateName || `${subject} ${yearGroup} Report Template`,
+        sections: splitResult,
+      });
+
       const builtForVariety = splitResult
         .filter((s: any) => s.type === 'qualities' || s.type === 'next-steps')
         .map((s: any) => ({
@@ -442,21 +443,6 @@ export default function ImportTemplate() {
     });
     if (!levels.notCompleted.length) levels.notCompleted = ['[Name] has not yet completed this assessment.', '[Name] was absent for this assessment.'];
     return levels;
-  };
-
-  const handleBuildSameAssessment = (name: string) => {
-    if (!selectedText.trim()) { setError('Please highlight the assessment sentence from your reports.'); return; }
-    const safeWords = new Set(['Monday','Tuesday','Wednesday','Thursday','Friday','National','Maths','Mathematics','English','History','Science','French','Spanish','Biology','Chemistry','Physics','Computing','Geography','Drama','Music','Art','Business','Black','Death','Mary','Queen','Scots','Romans']);
-    let cleaned = selectedText.trim();
-    cleaned = cleaned.replace(/\u0000NAME\u0000/g, '[Name]').replace(/\u0000SCORE\u0000/g, '[Score]');
-    cleaned = cleaned.replace(/\[Name\]/g, '\u0000NAME\u0000').replace(/\[Score\]/g, '\u0000SCORE\u0000');
-    cleaned = cleaned.replace(/\b([A-Z][a-z]{2,})\b/g, (m: string) => safeWords.has(m) ? m : '[Name]');
-    cleaned = stripPercent(cleaned);
-    cleaned = cleaned.replace(/\u0000NAME\u0000/g, '[Name]').replace(/\u0000SCORE\u0000/g, '[Score]');
-    addSection({
-      id: makeId(), type: 'personalised-comment', name, openerType: 'name', positionType: 'personalised-comment',
-      data: { instruction: 'Enter the score or information for this pupil', categories: { 'Assessment Score': [cleaned] } },
-    });
   };
 
   // ─── VARIETY GENERATION ───────────────────────────────────────────────────
@@ -587,15 +573,9 @@ export default function ImportTemplate() {
         <div style={card}>
           <h2 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Template Details</h2>
           <div style={{ marginBottom: '12px' }}>
-  <label style={lbl}>Template Name</label>
-  <input
-    type="text"
-    value={templateName}
-    onChange={e => setTemplateName(e.target.value)}
-    placeholder="e.g. S3 History Reports"
-    style={inp}
-  />
-</div>
+            <label style={lbl}>Template Name</label>
+            <input type="text" value={templateName} onChange={e => setTemplateName(e.target.value)} placeholder="e.g. S3 History Reports" style={inp} />
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div><label style={lbl}>Subject *</label><input type="text" value={subject} onChange={e => setSubject(e.target.value)} placeholder="e.g. History" style={inp} /></div>
             <div><label style={lbl}>Year Group</label><select value={yearGroup} onChange={e => setYearGroup(e.target.value)} style={inp}><option value="">Select...</option>{['S1','S2','S3','S4','S5','S6','Mixed'].map(y => <option key={y}>{y}</option>)}</select></div>
@@ -742,51 +722,42 @@ export default function ImportTemplate() {
                     {selectionActive ? 'What type of section is this?' : 'What would you like to add?'}
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-
                     <button onClick={() => setSubMenu('rating')} style={{ padding: '12px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}
                       onMouseEnter={e => e.currentTarget.style.borderColor = '#3b82f6'} onMouseLeave={e => e.currentTarget.style.borderColor = '#e5e7eb'}>
                       <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>⭐ Rating / Judgement Statement</div>
                       <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Progress, effort, attainment — how well they are doing</div>
                     </button>
-
                     <button onClick={() => setSubMenu('qualities')} style={{ padding: '12px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}
                       onMouseEnter={e => e.currentTarget.style.borderColor = '#f59e0b'} onMouseLeave={e => e.currentTarget.style.borderColor = '#e5e7eb'}>
                       <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>🎯 Pupil Qualities</div>
                       <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Character, effort, behaviour, attitude, working style</div>
                     </button>
-
                     <button onClick={() => setSubMenu('personalinfo')} style={{ padding: '12px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}
                       onMouseEnter={e => e.currentTarget.style.borderColor = '#f59e0b'} onMouseLeave={e => e.currentTarget.style.borderColor = '#e5e7eb'}>
                       <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>👤 Personal Information</div>
                       <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Sentences where a unique detail per pupil is typed in — sport, grade, personal goal</div>
                     </button>
-
                     <button onClick={() => setSubMenu('standard')} style={{ padding: '12px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}
                       onMouseEnter={e => e.currentTarget.style.borderColor = '#10b981'} onMouseLeave={e => e.currentTarget.style.borderColor = '#e5e7eb'}>
                       <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>📌 Standard Comment or Comments</div>
                       <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Fixed text or selectable options — no AI</div>
                     </button>
-
                     <button onClick={() => setSubMenu('assessment')} style={{ padding: '12px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}
                       onMouseEnter={e => e.currentTarget.style.borderColor = '#8b5cf6'} onMouseLeave={e => e.currentTarget.style.borderColor = '#e5e7eb'}>
                       <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>📊 Assessment Score</div>
                       <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Test results, with or without a numeric score</div>
                     </button>
-
                     <button onClick={() => setSubMenu('development')} style={{ padding: '12px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}
                       onMouseEnter={e => e.currentTarget.style.borderColor = '#06b6d4'} onMouseLeave={e => e.currentTarget.style.borderColor = '#e5e7eb'}>
                       <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>📈 Areas for Development</div>
                       <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>What the pupil needs to improve</div>
                     </button>
-
                     <button onClick={() => setSubMenu('nextsteps')} style={{ padding: '12px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer', textAlign: 'left' }}
                       onMouseEnter={e => e.currentTarget.style.borderColor = '#06b6d4'} onMouseLeave={e => e.currentTarget.style.borderColor = '#e5e7eb'}>
                       <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>🚀 Next Steps</div>
                       <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>Forward-looking improvement suggestions</div>
                     </button>
-
                   </div>
-
                   {builtSections.length > 0 && (
                     <button onClick={handleAssemble} style={{ ...btnG, width: '100%', padding: '14px', marginTop: '16px', fontSize: '15px' }}>
                       🪄 Generate My Template ({builtSections.length} sections)
@@ -864,14 +835,10 @@ export default function ImportTemplate() {
                   </div>
                   <div style={{ marginBottom: '12px' }}>
                     <label style={lbl}>Instruction for teacher</label>
-                    <input type="text" value={piInstruction} onChange={e => setPiInstruction(e.target.value)}
-                      placeholder="e.g. Enter this pupil's chosen sport" style={inp} />
+                    <input type="text" value={piInstruction} onChange={e => setPiInstruction(e.target.value)} placeholder="e.g. Enter this pupil's chosen sport" style={inp} />
                   </div>
-                  <button
-                    disabled={!accumulatedText || !piName.trim()}
-                    onClick={() => handleExtractAndAdd('personalised-comment', 'name', piName.trim() || 'Personal Information')}
-                    style={{ ...btnP, width: '100%', opacity: (accumulatedText && piName.trim()) ? 1 : 0.4, cursor: (accumulatedText && piName.trim()) ? 'pointer' : 'not-allowed', padding: '12px' }}
-                  >
+                  <button disabled={!accumulatedText || !piName.trim()} onClick={() => handleExtractAndAdd('personalised-comment', 'name', piName.trim() || 'Personal Information')}
+                    style={{ ...btnP, width: '100%', opacity: (accumulatedText && piName.trim()) ? 1 : 0.4, cursor: (accumulatedText && piName.trim()) ? 'pointer' : 'not-allowed', padding: '12px' }}>
                     {accumulatedText ? '✓ Extract all sentences of this type from reports' : '← Highlight & add text from reports first'}
                   </button>
                 </div>
@@ -948,24 +915,18 @@ export default function ImportTemplate() {
                     <input type="text" value={assessSectionName} onChange={e => setAssessSectionName(e.target.value)} placeholder="Assessment" style={inp} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <button disabled={!accumulatedText} onClick={() => {
-                      handleBuildSameAssessment(assessSectionName.trim() || 'Assessment');
-                      setAssessSectionName('');
-                    }} style={{ ...btnP, textAlign: 'left', padding: '12px', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed' }}>
+                    <button disabled={!accumulatedText} onClick={() => { handleBuildSameAssessment(assessSectionName.trim() || 'Assessment'); setAssessSectionName(''); }}
+                      style={{ ...btnP, textAlign: 'left', padding: '12px', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed' }}>
                       <div style={{ fontWeight: '700' }}>A) Same sentence — only score changes per pupil</div>
                       <div style={{ fontSize: '12px', opacity: 0.9 }}>e.g. "[Name] scored [Score] in the assessment"</div>
                     </button>
-                    <button disabled={!accumulatedText} onClick={() => {
-                      handleExtractAndAdd('assessment-comment', 'name', assessSectionName.trim() || 'Assessment');
-                      setAssessSectionName('');
-                    }} style={{ ...btnV, textAlign: 'left', padding: '12px', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed' }}>
+                    <button disabled={!accumulatedText} onClick={() => { handleExtractAndAdd('assessment-comment', 'name', assessSectionName.trim() || 'Assessment'); setAssessSectionName(''); }}
+                      style={{ ...btnV, textAlign: 'left', padding: '12px', opacity: accumulatedText ? 1 : 0.4, cursor: accumulatedText ? 'pointer' : 'not-allowed' }}>
                       <div style={{ fontWeight: '700' }}>B) Different sentences by performance level</div>
                       <div style={{ fontSize: '12px', opacity: 0.9 }}>Claude groups them by strong/good/satisfactory/struggling</div>
                     </button>
                   </div>
-                  {!accumulatedText && (
-                    <p style={{ margin: '10px 0 0 0', fontSize: '12px', color: '#9ca3af', textAlign: 'center' }}>← Highlight assessment text from your reports first</p>
-                  )}
+                  {!accumulatedText && <p style={{ margin: '10px 0 0 0', fontSize: '12px', color: '#9ca3af', textAlign: 'center' }}>← Highlight assessment text from your reports first</p>}
                 </div>
               )}
 
@@ -1072,8 +1033,7 @@ export default function ImportTemplate() {
               <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: '600', color: '#111827' }}>Select sections to add variety to:</h3>
               {sectionsForVariety.map((item, i) => (
                 <div key={item.section.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 0', borderBottom: i < sectionsForVariety.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
-                  <input type="checkbox" checked={item.selected} onChange={() => setSectionsForVariety(prev => prev.map((s, idx) => idx === i ? { ...s, selected: !s.selected } : s))}
-                    style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
+                  <input type="checkbox" checked={item.selected} onChange={() => setSectionsForVariety(prev => prev.map((s, idx) => idx === i ? { ...s, selected: !s.selected } : s))} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
                   <div style={{ flex: 1 }}>
                     <span style={{ backgroundColor: getSectionTypeColor(item.section.type), color: 'white', fontSize: '10px', padding: '1px 6px', borderRadius: '3px', marginRight: '6px' }}>{getBuiltSectionTypeLabel(item.section.type)}</span>
                     <span style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>{item.section.name}</span>
@@ -1098,8 +1058,7 @@ export default function ImportTemplate() {
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={() => navigate('/template-review', { state: { template: { name: generatedTemplate?.name, sections: generatedTemplate?.sections } } })}
               style={{ ...btnS, flex: 1, padding: '14px', fontSize: '15px' }}>Skip — Go to Review</button>
-            <button onClick={handleGenerateVariety}
-              disabled={!sectionsForVariety.some(s => s.selected)}
+            <button onClick={handleGenerateVariety} disabled={!sectionsForVariety.some(s => s.selected)}
               style={{ ...btnV, flex: 1, padding: '14px', fontSize: '15px', opacity: sectionsForVariety.some(s => s.selected) ? 1 : 0.4, cursor: sectionsForVariety.some(s => s.selected) ? 'pointer' : 'not-allowed' }}>
               ✨ Generate Variety & Review
             </button>
