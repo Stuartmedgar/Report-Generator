@@ -784,4 +784,62 @@ export default function ImportTemplate() {
       <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
         <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
           <button onClick={() => setMainStep('builder')} style={btnS}>← Back</button>
-          <div style={{ flex: 1 }}></div>
+          <div style={{ flex: 1 }}>
+            <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#111827' }}>✨ Add Variety Options?</h1>
+            <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Your template contains your exact sentences. Claude can add extra options in your voice.</p>
+          </div>
+          <button onClick={() => { if (generatedTemplate) { addTemplate({ name: generatedTemplate.name, sections: generatedTemplate.sections }); alert(`"${generatedTemplate.name}" saved. You can continue to add variety or close.`); } }} style={{ ...btnG, padding: '10px 16px', fontSize: '14px' }}>💾 Save Now</button>
+        </header>
+        <main style={{ maxWidth: '700px', margin: '0 auto', padding: '32px 24px' }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '10px', border: '2px solid #8b5cf6', padding: '16px', marginBottom: '24px' }}>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '15px', fontWeight: '700', color: '#111827' }}>What happens next?</h3>
+            <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#6b7280', lineHeight: '1.6' }}>Your template currently contains <strong>only your exact sentences</strong> from the reports — nothing AI-generated. If you want more variety (so teachers have more options to choose from per heading), select the sections below and Claude will add 1-2 additional options per heading, written to match your voice and style.</p>
+            <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Or skip this and go straight to the review page.</p>
+          </div>
+          {sectionsForVariety.length > 0 ? (
+            <div style={{ backgroundColor: 'white', borderRadius: '10px', border: '1px solid #e5e7eb', padding: '16px', marginBottom: '12px' }}>
+              <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: '600', color: '#111827' }}>Select sections to add variety to:</h3>
+              {sectionsForVariety.map((item, i) => (
+                <div key={item.section.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 0', borderBottom: i < sectionsForVariety.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                  <input type="checkbox" checked={item.selected} onChange={() => setSectionsForVariety(prev => prev.map((s, idx) => idx === i ? { ...s, selected: !s.selected } : s))} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
+                  <div style={{ flex: 1 }}>
+                    <span style={{ backgroundColor: getSectionTypeColor(item.section.type), color: 'white', fontSize: '10px', padding: '1px 6px', borderRadius: '3px', marginRight: '6px' }}>{getBuiltSectionTypeLabel(item.section.type)}</span>
+                    <span style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>{item.section.name}</span>
+                    <span style={{ fontSize: '12px', color: '#9ca3af', marginLeft: '8px' }}>{item.section.type === 'next-steps' ? `${Object.keys(item.section.data?.focusAreas || {}).length} focus areas` : `${Object.keys(item.section.data?.comments || {}).length} headings`}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ backgroundColor: 'white', borderRadius: '10px', border: '1px solid #e5e7eb', padding: '16px', marginBottom: '12px' }}>
+              <p style={{ margin: 0, fontSize: '14px', color: '#6b7280', textAlign: 'center' }}>No sections eligible for variety generation.</p>
+            </div>
+          )}
+          <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px 14px', marginBottom: '10px', fontSize: '13px', color: '#166534' }}>💡 Tip: Use <strong>Save Now</strong> in the top bar to save the exact-sentences version before adding variety.</div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={() => navigate('/template-review', { state: { template: { name: generatedTemplate?.name, sections: generatedTemplate?.sections } } })} style={{ ...btnS, flex: 1, padding: '14px', fontSize: '15px' }}>Skip — Go to Review</button>
+            <button onClick={handleGenerateVariety} disabled={!sectionsForVariety.some(s => s.selected)} style={{ ...btnV, flex: 1, padding: '14px', fontSize: '15px', opacity: sectionsForVariety.some(s => s.selected) ? 1 : 0.4, cursor: sectionsForVariety.some(s => s.selected) ? 'pointer' : 'not-allowed' }}>✨ Generate Variety & Review</button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // ─── STEP: GENERATING ────────────────────────────────────────────────────
+
+  if (mainStep === 'generating') return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '48px 40px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: '400px' }}>
+        <div style={{ fontSize: '48px', marginBottom: '20px' }}>🪄</div>
+        <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#111827' }}>Assembling Your Template</h2>
+        <p style={{ margin: '0 0 24px 0', color: '#6b7280', fontSize: '14px' }}>{loadingMessage}</p>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+          {[0,1,2].map(i => <div key={i} style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#3b82f6', animation: 'pulse 1.2s ease-in-out infinite', animationDelay: `${i*0.2}s` }} />)}
+        </div>
+        <style>{`@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}`}</style>
+      </div>
+    </div>
+  );
+
+  return null;
+}
