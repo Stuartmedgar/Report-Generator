@@ -21,12 +21,7 @@ import Signup from './pages/Signup';
 import AdminDashboard from './pages/AdminDashboard';
 import ImportTemplate from './pages/ImportTemplate';
 import TemplateReview from './pages/TemplateReview';
-import SelectTemplate from './pages/SelectTemplate';
 import StartReports from './pages/StartReports';
-import SelectClass from './pages/SelectClass';
-import Step2Template from './pages/Step2Template';
-import PickTemplate from './pages/PickTemplate';
-import GetTemplate from './pages/GetTemplate';
 
 // Import subscription components
 import { PricingPage, SubscriptionSuccess } from './components/subscription';
@@ -82,107 +77,36 @@ function Home() {
     }
   };
 
-  // ─── FIXED: Find the most recently updated report across ALL classes,
+  // ─── Find the most recently updated report across ALL classes,
   //     set sessionStorage the same way ClassManagement's orange button does,
-  //     then navigate straight into the report writer. ─────────────────────
+  //     then navigate straight into the report writer.
   const handleContinueWriting = () => {
-    if (!state.reports || state.reports.length === 0) {
+    if (state.reports.length === 0) {
       navigate('/no-reports');
       return;
     }
 
-    // Find the single most recently updated report across all classes
+    // Find most recent report
     const mostRecentReport = state.reports.reduce((latest, current) =>
-      new Date(current.updatedAt) > new Date(latest.updatedAt) ? current : latest
+      new Date(current.updatedAt || current.createdAt) > new Date(latest.updatedAt || latest.createdAt)
+        ? current : latest
     );
 
-    const classData = state.classes.find(c => c.id === mostRecentReport.classId);
-    if (!classData) {
-      navigate('/no-reports');
-      return;
-    }
+    const classId = mostRecentReport.classId;
+    const classData = state.classes.find(c => c.id === classId);
+    if (!classData) { navigate('/no-reports'); return; }
 
-    const studentIndex = classData.students.findIndex(
-      s => s.id === mostRecentReport.studentId
-    );
-
+    const studentIndex = classData.students.findIndex(s => s.id === mostRecentReport.studentId);
     sessionStorage.setItem('continueEditing', JSON.stringify({
-      classId: classData.id,
+      classId,
       templateId: mostRecentReport.templateId,
       studentIndex: studentIndex >= 0 ? studentIndex : 0
     }));
-
     navigate('/write-reports');
   };
 
   return (
     <>
-      {/* Hamburger Menu */}
-      <div style={{
-        position: isMobile ? 'fixed' : 'absolute',
-        top: isMobile ? '16px' : '20px',
-        right: isMobile ? '16px' : '20px',
-        zIndex: 1000
-      }}>
-        <button
-          onClick={() => setShowMenu(!showMenu)}
-          style={{
-            width: '40px', height: '40px',
-            border: '2px solid #e5e7eb', borderRadius: '8px',
-            backgroundColor: 'white', cursor: 'pointer',
-            fontSize: '20px', display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.backgroundColor = '#f9fafb';
-            e.currentTarget.style.borderColor = '#d1d5db';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.backgroundColor = 'white';
-            e.currentTarget.style.borderColor = '#e5e7eb';
-          }}
-        >
-          ☰
-        </button>
-
-        {showMenu && (
-          <div style={{
-            position: 'absolute', top: '45px', right: '0',
-            backgroundColor: 'white', border: '2px solid #e5e7eb',
-            borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-            minWidth: '150px', overflow: 'hidden'
-          }}>
-            <button
-              onClick={() => { alert('Account details coming soon!'); setShowMenu(false); }}
-              style={{ width: '100%', padding: '12px 16px', border: 'none', backgroundColor: 'transparent', textAlign: 'left', cursor: 'pointer', fontSize: '14px', borderBottom: '1px solid #f3f4f6' }}
-              onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f9fafb'; }}
-              onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-            >
-              👤 Account
-            </button>
-            <button
-              onClick={() => { alert('Settings coming soon!'); setShowMenu(false); }}
-              style={{ width: '100%', padding: '12px 16px', border: 'none', backgroundColor: 'transparent', textAlign: 'left', cursor: 'pointer', fontSize: '14px', borderBottom: '1px solid #f3f4f6' }}
-              onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f9fafb'; }}
-              onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-            >
-              ⚙️ Settings
-            </button>
-            <button
-              onClick={() => { handleLogout(); setShowMenu(false); }}
-              style={{ width: '100%', padding: '12px 16px', border: 'none', backgroundColor: 'transparent', textAlign: 'left', cursor: 'pointer', fontSize: '14px', color: '#ef4444' }}
-              onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fef2f2'; }}
-              onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-            >
-              🚪 Logout
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Main content */}
       <div style={{
         minHeight: '100vh',
         backgroundColor: '#f8fafc',
@@ -190,25 +114,54 @@ function Home() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: isMobile ? '60px 16px 40px 16px' : '60px 20px 40px 20px'
+        padding: isMobile ? '40px 20px' : '60px 40px',
+        position: 'relative',
       }}>
 
-        {/* Title block */}
-        <div style={{
-          textAlign: 'center',
-          marginBottom: isMobile ? '40px' : '56px',
-          maxWidth: '640px',
-          width: '100%'
-        }}>
-          <p style={{
-            fontSize: isMobile ? '14px' : '16px',
-            fontWeight: '500',
-            color: '#64748b',
-            margin: '0 0 8px 0',
-            letterSpacing: '0.01em'
-          }}>
-            Welcome to
-          </p>
+        {/* Menu button */}
+        <div style={{ position: 'absolute', top: isMobile ? '16px' : '24px', right: isMobile ? '16px' : '24px' }}>
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            style={{
+              background: 'none', border: '1px solid #e2e8f0', borderRadius: '8px',
+              padding: '8px 12px', cursor: 'pointer', fontSize: '20px',
+              color: '#64748b', backgroundColor: 'white'
+            }}
+          >
+            ☰
+          </button>
+          {showMenu && (
+            <div style={{
+              position: 'absolute', top: '44px', right: 0,
+              backgroundColor: 'white', border: '1px solid #e2e8f0',
+              borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+              padding: '8px', minWidth: '180px', zIndex: 100
+            }}>
+              <Link to="/manage-templates" style={{ display: 'block', padding: '10px 14px', color: '#374151', textDecoration: 'none', fontSize: '14px', borderRadius: '6px' }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              >📝 Manage Templates</Link>
+              <Link to="/class-management" style={{ display: 'block', padding: '10px 14px', color: '#374151', textDecoration: 'none', fontSize: '14px', borderRadius: '6px' }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              >👥 Your Classes</Link>
+              <Link to="/view-reports" style={{ display: 'block', padding: '10px 14px', color: '#374151', textDecoration: 'none', fontSize: '14px', borderRadius: '6px' }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              >📋 View Reports</Link>
+              <div style={{ borderTop: '1px solid #f1f5f9', margin: '6px 0' }} />
+              <button
+                onClick={handleLogout}
+                style={{ display: 'block', width: '100%', padding: '10px 14px', color: '#ef4444', background: 'none', border: 'none', textAlign: 'left', fontSize: '14px', cursor: 'pointer', borderRadius: '6px' }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fff5f5'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              >Sign Out</button>
+            </div>
+          )}
+        </div>
+
+        {/* Logo / Title */}
+        <div style={{ textAlign: 'center', marginBottom: isMobile ? '40px' : '52px' }}>
           <h1 style={{
             fontSize: isMobile ? '38px' : '58px',
             fontWeight: '800',
@@ -304,8 +257,7 @@ function Home() {
               justifyContent: 'center',
               gap: '8px',
               width: '100%',
-              boxSizing: 'border-box',
-              fontFamily: 'inherit'
+              boxSizing: 'border-box'
             }}
             onMouseEnter={e => {
               if (!isMobile) {
@@ -327,14 +279,13 @@ function Home() {
               Pick up where you left off
             </span>
           </button>
-
         </div>
 
-        {/* Subtle footer links */}
+        {/* Secondary nav links */}
         <div style={{
-          marginTop: isMobile ? '36px' : '48px',
           display: 'flex',
           gap: isMobile ? '20px' : '32px',
+          marginTop: isMobile ? '32px' : '44px',
           flexWrap: 'wrap',
           justifyContent: 'center'
         }}>
@@ -364,16 +315,6 @@ function Home() {
             onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; }}
           >
             Your Classes
-          </Link>
-
-          <Link to="/get-template" style={{
-            color: '#94a3b8', textDecoration: 'none',
-            fontSize: isMobile ? '13px' : '14px', fontWeight: '500'
-          }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#64748b'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; }}
-          >
-            Create a Template
           </Link>
         </div>
 
@@ -481,44 +422,20 @@ function App() {
                   </ProtectedRoute>
                 } />
 
-                {/* Onboarding flow */}
+                {/* Single onboarding entry point — replaces /select-class, /step2, /get-template, /select-template, /pick-template */}
                 <Route path="/start" element={
                   <ProtectedRoute>
                     <StartReports />
                   </ProtectedRoute>
                 } />
-                <Route path="/select-class" element={
-                  <ProtectedRoute>
-                    <SelectClass />
-                  </ProtectedRoute>
-                } />
-                <Route path="/step2" element={
-                  <ProtectedRoute>
-                    <Step2Template />
-                  </ProtectedRoute>
-                } />
-                <Route path="/get-template" element={
-                  <ProtectedRoute>
-                    <GetTemplate />
-                  </ProtectedRoute>
-                } />
-                <Route path="/select-template" element={
-                  <ProtectedRoute>
-                    <SelectTemplate />
-                  </ProtectedRoute>
-                } />
-                <Route path="/pick-template" element={
-                  <ProtectedRoute>
-                    <PickTemplate />
-                  </ProtectedRoute>
-                } />
+
                 <Route path="/no-reports" element={
                   <ProtectedRoute>
                     <NoReports />
                   </ProtectedRoute>
                 } />
 
-                {/* Existing routes — unchanged */}
+                {/* Core app routes */}
                 <Route path="/write-reports" element={
                   <ProtectedRoute>
                     <WriteReports />
