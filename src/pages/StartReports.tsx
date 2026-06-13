@@ -149,13 +149,25 @@ function StartReports() {
 
   const renderClassStep = () => (
     <div>
-      <div style={{ marginBottom: '28px' }}>
-        <h1 style={{ fontSize: isMobile ? '26px' : '32px', fontWeight: '800', color: '#1e293b', margin: '0 0 8px 0' }}>
-          Choose a Class
-        </h1>
-        <p style={{ fontSize: '15px', color: '#64748b', margin: 0 }}>
-          Select the class you want to write reports for.
-        </p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px', gap: '12px' }}>
+        <div>
+          <h1 style={{ fontSize: isMobile ? '26px' : '32px', fontWeight: '800', color: '#1e293b', margin: '0 0 6px 0' }}>
+            Choose a Class
+          </h1>
+          <p style={{ fontSize: '15px', color: '#64748b', margin: 0 }}>
+            Select the class you want to write reports for.
+          </p>
+        </div>
+        <Link to="/class-management?create=true" style={{ textDecoration: 'none', flexShrink: 0 }}>
+          <button style={{
+            backgroundColor: '#8b5cf6', color: 'white',
+            padding: '10px 16px', border: 'none', borderRadius: '8px',
+            fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}>
+            + New Class
+          </button>
+        </Link>
       </div>
 
       {state.classes.length === 0 ? (
@@ -172,40 +184,31 @@ function StartReports() {
           </Link>
         </div>
       ) : (
-        <>
-          <div>
-            {state.classes.map((cls) => (
-              <div
-                key={cls.id}
-                onClick={() => handleClassSelect(cls)}
-                style={cardStyle}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLDivElement).style.borderColor = '#8b5cf6';
-                  (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 0 3px rgba(139,92,246,0.1)';
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLDivElement).style.borderColor = '#e5e7eb';
-                  (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{cls.name}</div>
-                  <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '2px' }}>
-                    {cls.students.length} student{cls.students.length !== 1 ? 's' : ''}
-                  </div>
+        <div>
+          {state.classes.map((cls) => (
+            <div
+              key={cls.id}
+              onClick={() => handleClassSelect(cls)}
+              style={cardStyle}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLDivElement).style.borderColor = '#8b5cf6';
+                (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 0 3px rgba(139,92,246,0.1)';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLDivElement).style.borderColor = '#e5e7eb';
+                (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
+              }}
+            >
+              <div>
+                <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{cls.name}</div>
+                <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '2px' }}>
+                  {cls.students.length} student{cls.students.length !== 1 ? 's' : ''}
                 </div>
-                <span style={{ color: '#cbd5e1', fontSize: '20px' }}>›</span>
               </div>
-            ))}
-          </div>
-          <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
-            <Link to="/class-management?create=true" style={{ textDecoration: 'none' }}>
-              <button style={{ background: 'none', border: '1px dashed #d1d5db', color: '#6b7280', padding: '12px 20px', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', width: '100%' }}>
-                + Add a new class
-              </button>
-            </Link>
-          </div>
-        </>
+              <span style={{ color: '#cbd5e1', fontSize: '20px' }}>›</span>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -230,29 +233,47 @@ function StartReports() {
           <p style={{ fontSize: '13px', fontWeight: '600', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 10px 0' }}>
             Your Templates
           </p>
-          {state.templates.map((template) => (
-            <div
-              key={template.id}
-              onClick={() => handleTemplateSelect(template)}
-              style={cardStyle}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLDivElement).style.borderColor = '#10b981';
-                (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 0 3px rgba(16,185,129,0.1)';
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLDivElement).style.borderColor = '#e5e7eb';
-                (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
-              }}
-            >
-              <div>
-                <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{template.name}</div>
-                <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '2px' }}>
-                  {template.sections.filter(s => s.type !== 'new-line').length} sections · {new Date(template.createdAt).toLocaleDateString()}
+          {/* Scrollable list — capped at ~4 templates so create options stay visible */}
+          <div style={{
+            maxHeight: '260px',
+            overflowY: state.templates.length > 3 ? 'auto' : 'visible',
+            borderRadius: '12px',
+            border: state.templates.length > 3 ? '1px solid #e5e7eb' : 'none',
+            paddingRight: state.templates.length > 3 ? '2px' : 0,
+          }}>
+            {state.templates.map((template) => (
+              <div
+                key={template.id}
+                onClick={() => handleTemplateSelect(template)}
+                style={{
+                  ...cardStyle,
+                  borderRadius: '10px',
+                  marginBottom: '6px',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLDivElement).style.borderColor = '#10b981';
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 0 3px rgba(16,185,129,0.1)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLDivElement).style.borderColor = '#e5e7eb';
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{template.name}</div>
+                  <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '2px' }}>
+                    {template.sections.filter(s => s.type !== 'new-line').length} sections · {new Date(template.createdAt).toLocaleDateString()}
+                  </div>
                 </div>
+                <span style={{ color: '#cbd5e1', fontSize: '20px' }}>›</span>
               </div>
-              <span style={{ color: '#cbd5e1', fontSize: '20px' }}>›</span>
-            </div>
-          ))}
+            ))}
+          </div>
+          {state.templates.length > 3 && (
+            <p style={{ fontSize: '12px', color: '#94a3b8', margin: '6px 0 0 0', textAlign: 'center' }}>
+              Scroll to see all {state.templates.length} templates
+            </p>
+          )}
         </div>
       )}
 
