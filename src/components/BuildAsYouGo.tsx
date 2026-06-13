@@ -7,7 +7,7 @@ const SUPABASE_URL = 'https://wozbrojwuzktwrzngllh.supabase.co/functions/v1/gene
 interface BuildAsYouGoProps {
   templateName: string;
   classId?: string;
-  onComplete: (sections: TemplateSection[]) => void;
+  onComplete: (sections: TemplateSection[], name?: string) => void;
   onCancel: () => void;
 }
 
@@ -17,21 +17,6 @@ interface AddedSection {
   id: string; type: SectionType; name: string;
   buttons: StatementButton[]; content: string; instruction: string; showHeader?: boolean;
 }
-
-interface Question {
-  id: string; question: string; description: string; sectionType: SectionType;
-  namePlaceholder: string; defaultName: string; allowMultiple: boolean;
-  hasButtons: boolean; isRatedFixed?: boolean; examples?: string[]; positionType: string;
-}
-
-const QUESTIONS: Question[] = [
-  { id: 'qualities', question: 'Do your reports comment on pupil qualities or strengths?', description: 'Comments picked from a set of options — for example effort, attitude, teamwork.', sectionType: 'qualities', namePlaceholder: 'e.g. Character Qualities, Strengths', defaultName: 'Character Qualities', allowMultiple: true, hasButtons: true, positionType: 'qualities', examples: ['[Name] consistently demonstrates excellent effort and a positive attitude towards learning.', '[Name] is a natural leader who supports and encourages classmates.', '[Name] shows great resilience and perseverance when faced with challenges.'] },
-  { id: 'rated-comment', question: 'Do your reports rate pupils on their performance?', description: "Comments tied to a rating — Excellent, Good, Satisfactory, Needs Improvement.", sectionType: 'rated-comment', namePlaceholder: 'e.g. Progress, Effort Rating', defaultName: 'Progress', allowMultiple: true, hasButtons: true, isRatedFixed: true, positionType: 'rating', examples: ['[Name] has made excellent progress this term and consistently produces work of the highest standard.', '[Name] needs to focus on consolidating their understanding of the core topics covered this term.'] },
-  { id: 'assessment-comment', question: 'Do your reports include assessment results with a score?', description: 'Comments linked to a score or percentage.', sectionType: 'assessment-comment', namePlaceholder: 'e.g. Assessment Result, Test Score', defaultName: 'Assessment', allowMultiple: true, hasButtons: true, isRatedFixed: false, positionType: 'assessment-comment', examples: ['[Name] achieved [Score] in the recent assessment, which reflects their hard work throughout the unit.'] },
-  { id: 'personalised-comment', question: 'Do your reports mention specific pupil achievements or activities?', description: 'Comments that include personalised information — for example a sport, instrument, or club.', sectionType: 'personalised-comment', namePlaceholder: 'e.g. Personal Achievement, Activity', defaultName: 'Personal Achievement', allowMultiple: true, hasButtons: true, positionType: 'personalised-comment', examples: ['[Name] has shown particular enthusiasm for [Info 1] this term and has made impressive progress.'] },
-  { id: 'next-steps', question: 'Do your reports include targets or next steps for the pupil?', description: 'Suggestions for what the pupil should focus on to improve.', sectionType: 'next-steps', namePlaceholder: 'e.g. Next Steps, Targets, Areas for Development', defaultName: 'Next Steps', allowMultiple: true, hasButtons: true, positionType: 'next-steps', examples: ['[Name] should focus on developing their extended writing skills to reach the next level.'] },
-  { id: 'other-comments', question: 'Do your reports contain any other types of comments?', description: 'Any other categories not covered above.', sectionType: 'qualities', namePlaceholder: 'e.g. Behaviour, Homework, Wider Achievement', defaultName: 'Other Comments', allowMultiple: true, hasButtons: true, positionType: 'qualities', examples: ['[Name] consistently demonstrates excellent behaviour and is a pleasure to have in class.', '[Name] completes homework to a high standard and always meets deadlines.'] },
-];
 
 const SECTION_COLORS: Record<string, string> = { 'standard-comment': '#10b981', 'qualities': '#8b5cf6', 'rated-comment': '#3b82f6', 'assessment-comment': '#8b5cf6', 'personalised-comment': '#f59e0b', 'next-steps': '#06b6d4', 'optional-additional-comment': '#ef4444', 'new-line': '#9ca3af' };
 const SECTION_LABELS: Record<string, string> = { 'standard-comment': 'Fixed Statement', 'qualities': 'Qualities / Strengths', 'rated-comment': 'Rated Comment', 'assessment-comment': 'Assessment Score', 'personalised-comment': 'Personalised Comment', 'next-steps': 'Next Steps / Targets', 'optional-additional-comment': 'Optional Notes Box', 'new-line': 'Line Break' };
@@ -59,6 +44,7 @@ function generateTestReport(sections: AddedSection[]): string {
 function buildSectionsFromSelection(selectedIds: string[], subject: string, standardStatements: string[]): AddedSection[] {
   const universal = buildUniversalSections();
   const result: AddedSection[] = [];
+  // Standard (fixed) statements go first
   for (const stmt of standardStatements) {
     if (stmt.trim()) result.push({ id: makeId(), type: 'standard-comment', name: 'Fixed Statement', buttons: [], content: stmt.trim(), instruction: '', showHeader: false });
   }
@@ -89,7 +75,8 @@ function buildSectionsFromSelection(selectedIds: string[], subject: string, stan
   return result;
 }
 
-type Screen = 'subject' | 'ready-made-choice' | 'standard-comment' | 'section-picker' | 'section-editor' | 'wizard' | 'review';
+// ─── Screen type: ready-made-choice and wizard removed ────────────────────────
+type Screen = 'subject' | 'section-picker' | 'section-editor' | 'review';
 
 const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onComplete, onCancel }) => {
   const reportsPanelScrollRef = useRef<number>(0);
@@ -99,15 +86,20 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
 
   const [screen, setScreen] = useState<Screen>('subject');
   const [subject, setSubject] = useState('');
-  const [useReadyMade, setUseReadyMade] = useState<boolean | null>(null);
+
+  // Standard/fixed statement state (used in section-editor step 0)
   const [standardStatements, setStandardStatements] = useState<string[]>([]);
   const [hasStandardComment, setHasStandardComment] = useState<boolean | string | null>(null);
   const [standardContent, setStandardContent] = useState('');
   const [aiCandidates, setAiCandidates] = useState<string[]>([]);
   const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
+
   const [selectedSectionIds, setSelectedSectionIds] = useState<string[]>([]);
   const [addedSections, setAddedSections] = useState<AddedSection[]>([]);
-  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
+
+  // currentSectionIndex: -1 = standard comment step, 0+ = actual sections
+  const [currentSectionIndex, setCurrentSectionIndex] = useState(-1);
+
   const [reportsPanelOpen, setReportsPanelOpen] = useState(true);
   const [pastedReports, setPastedReports] = useState('');
   const hasReports = pastedReports.trim().length > 50;
@@ -127,9 +119,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const [movingStatementKey, setMovingStatementKey] = useState<{ buttonIdx: number; stmtIdx: number } | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [phase, setPhase] = useState<'ask' | 'name' | 'instruction' | 'statements' | 'added'>('ask');
-  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [reviewViewMode, setReviewViewMode] = useState<'reports' | 'test-report'>('reports');
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const dragSourceIndex = useRef<number | null>(null);
@@ -145,10 +134,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   }, [screen, subject]);
   useEffect(() => { if (editingSectionName && sectionNameInputRef.current) sectionNameInputRef.current.focus(); }, [editingSectionName]);
 
-  const question = QUESTIONS[currentStep];
-  const isLastQuestion = currentStep === QUESTIONS.length - 1;
-  const currentSection = addedSections[currentSectionIndex];
-  const accentColor = screen === 'wizard' ? (SECTION_COLORS[question?.sectionType] || '#3b82f6') : (currentSection ? (SECTION_COLORS[currentSection.type] || '#3b82f6') : '#3b82f6');
+  const currentSection = currentSectionIndex >= 0 ? addedSections[currentSectionIndex] : null;
+  const accentColor = currentSection ? (SECTION_COLORS[currentSection.type] || '#3b82f6') : '#3b82f6';
 
   const primaryBtn: React.CSSProperties = { backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', padding: '11px 24px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' };
   const secondaryBtn: React.CSSProperties = { backgroundColor: '#f3f4f6', color: '#374151', border: 'none', borderRadius: '8px', padding: '11px 24px', fontSize: '15px', fontWeight: '500', cursor: 'pointer' };
@@ -190,8 +177,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const handleAiFindInReports = async (sName?: string, sType?: string) => {
     if (!hasReports) return;
     setAiLoading(true); setAiError(null);
-    const activeName = sName || (screen === 'wizard' ? sectionName : currentSection?.name) || '';
-    const activeType = sType || (screen === 'wizard' ? question?.sectionType : currentSection?.type) || 'qualities';
+    const activeName = sName || currentSection?.name || '';
+    const activeType = sType || currentSection?.type || 'qualities';
     try {
       const exampleLines: string[] = [];
       buttons.forEach(b => { if (b.name && b.statements.length > 0) exampleLines.push(...b.statements.slice(0, 2)); });
@@ -230,42 +217,44 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     finally { setAiLoading(false); }
   };
 
+  // Navigate forward through section editor (index -1 = standard comment step)
   const handleSectionNext = () => {
-    const updated = [...addedSections]; updated[currentSectionIndex] = { ...updated[currentSectionIndex], buttons, name: sectionName }; setAddedSections(updated);
-    if (currentSectionIndex < addedSections.length - 1) { const next = updated[currentSectionIndex + 1]; setCurrentSectionIndex(i => i + 1); loadSectionIntoEditor(next); }
-    else setScreen('review');
-  };
-  const handleSectionBack = () => {
-    const updated = [...addedSections]; updated[currentSectionIndex] = { ...updated[currentSectionIndex], buttons, name: sectionName }; setAddedSections(updated);
-    if (currentSectionIndex > 0) { const prev = updated[currentSectionIndex - 1]; setCurrentSectionIndex(i => i - 1); loadSectionIntoEditor(prev); }
-    else setScreen('section-picker');
+    if (currentSectionIndex === -1) {
+      // Moving from standard comment step into first real section
+      setCurrentSectionIndex(0);
+      if (addedSections.length > 0) loadSectionIntoEditor(addedSections[0]);
+      return;
+    }
+    const updated = [...addedSections];
+    updated[currentSectionIndex] = { ...updated[currentSectionIndex], buttons, name: sectionName };
+    setAddedSections(updated);
+    if (currentSectionIndex < addedSections.length - 1) {
+      const next = updated[currentSectionIndex + 1];
+      setCurrentSectionIndex(i => i + 1);
+      loadSectionIntoEditor(next);
+    } else {
+      setScreen('review');
+    }
   };
 
-  const resetWizardQuestion = () => {
-    setPhase('ask'); setSectionName(''); setSectionInstruction(''); setButtons([]); setActiveButtonIndex(0);
-    setNewStatement(''); setNewButtonName(''); setAddingNewButton(false); setNamingButtonIndex(null); setNamingButtonValue('');
-    setStandardContent(''); setShowExamples(false); setAiError(null); setEditingStatementKey(null); setMovingStatementKey(null);
-  };
-  const advanceQuestion = () => { if (isLastQuestion) setScreen('review'); else { setCurrentStep(s => s + 1); resetWizardQuestion(); } };
-  const handleWizardYes = () => { setSectionName(question.defaultName); setPhase('name'); };
-  const handleWizardNo = () => advanceQuestion();
-  const handleNameConfirmed = () => {
-    if (!sectionName.trim()) return;
-    if (question.sectionType === 'assessment-comment') { setSectionInstruction(''); setPhase('instruction'); return; }
-    if (question.hasButtons) { if (question.isRatedFixed) setButtons(DEFAULT_RATED_BUTTONS.map(n => ({ name: n, statements: [] }))); else { setButtons([{ name: '', statements: [] }]); setNamingButtonIndex(0); setNamingButtonValue(''); } setActiveButtonIndex(0); }
-    setPhase('statements');
-  };
-  const handleInstructionConfirmed = () => { setButtons([{ name: '', statements: [] }]); setNamingButtonIndex(0); setNamingButtonValue(''); setActiveButtonIndex(0); setPhase('statements'); };
-  const handleWizardAddSection = () => {
-    const name = sectionName.trim() || question.defaultName;
-    const newSection: AddedSection = { id: editingSectionId || makeId(), type: question.sectionType, name, buttons: question.hasButtons ? buttons : [], content: standardContent, instruction: sectionInstruction, showHeader: false };
-    if (editingSectionId) { setAddedSections(prev => prev.map(s => s.id === editingSectionId ? { ...newSection, showHeader: s.showHeader } : s)); setEditingSectionId(null); setScreen('review'); }
-    else { setAddedSections(prev => [...prev, newSection]); setPhase('added'); }
-  };
-  const handleAddAnother = () => {
-    setSectionName(question.defaultName); setSectionInstruction(''); setPhase('name'); setButtons([]); setActiveButtonIndex(0);
-    setNewStatement(''); setNewButtonName(''); setAddingNewButton(false); setNamingButtonIndex(null); setNamingButtonValue('');
-    setStandardContent(''); setShowExamples(false); setAiError(null); setEditingStatementKey(null); setMovingStatementKey(null);
+  // Navigate back through section editor
+  const handleSectionBack = () => {
+    if (currentSectionIndex === 0) {
+      // Go back to standard comment step
+      setCurrentSectionIndex(-1);
+      return;
+    }
+    if (currentSectionIndex === -1) {
+      // Go back to section picker
+      setScreen('section-picker');
+      return;
+    }
+    const updated = [...addedSections];
+    updated[currentSectionIndex] = { ...updated[currentSectionIndex], buttons, name: sectionName };
+    setAddedSections(updated);
+    const prev = updated[currentSectionIndex - 1];
+    setCurrentSectionIndex(i => i - 1);
+    loadSectionIntoEditor(prev);
   };
 
   const handleDragStart = (i: number) => { dragSourceIndex.current = i; };
@@ -279,7 +268,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     setAddedSections(prev => { const u = [...prev]; u.splice(afterIndex + 1, 0, ns); return u; });
   };
 
-  const handleCancel = () => { if (addedSections.length > 0 || screen === 'section-editor' || screen === 'wizard') { if (!window.confirm('Are you sure? Your progress will be lost.')) return; } onCancel(); };
+  const handleCancel = () => { if (addedSections.length > 0 || screen === 'section-editor') { if (!window.confirm('Are you sure? Your progress will be lost.')) return; } onCancel(); };
+
   const handleComplete = () => {
     if (addedSections.filter(s => s.type !== 'new-line' && s.type !== 'optional-additional-comment').length === 0) { alert('Please add at least one section.'); return; }
     const sections: TemplateSection[] = addedSections.map(s => {
@@ -292,17 +282,24 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
       else if (s.type === 'next-steps') { const f: Record<string, string[]> = {}; s.buttons.forEach(b => { if (b.name) f[b.name] = b.statements; }); data = { focusAreas: f }; }
       return { id: s.id, type: s.type, name: s.name, showHeader: s.showHeader || false, data };
     });
-    clearDraft(); onComplete(sections);
+    clearDraft(); onComplete(sections, localTemplateName.trim() || undefined);
   };
+
+  // ─── Shared UI components ─────────────────────────────────────────────────
 
   const TopBar = ({ title }: { title?: string }) => (
     <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
       <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151' }}>{title || templateName}</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-        {(screen === 'section-editor' || screen === 'wizard') && (
+        {screen === 'section-editor' && (
           <>
-            {screen === 'section-editor' && <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '120px', height: '4px', backgroundColor: '#e5e7eb', borderRadius: '2px' }}><div style={{ width: `${((currentSectionIndex + 1) / addedSections.length) * 100}%`, height: '100%', backgroundColor: '#3b82f6', borderRadius: '2px', transition: 'width 0.3s ease' }} /></div><span style={{ fontSize: '12px', color: '#6b7280' }}>{currentSectionIndex + 1}/{addedSections.length}</span></div>}
-            {screen === 'wizard' && <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '120px', height: '4px', backgroundColor: '#e5e7eb', borderRadius: '2px' }}><div style={{ width: `${((currentStep + 1) / QUESTIONS.length) * 100}%`, height: '100%', backgroundColor: '#3b82f6', borderRadius: '2px', transition: 'width 0.3s ease' }} /></div><span style={{ fontSize: '12px', color: '#6b7280' }}>{currentStep + 1}/{QUESTIONS.length}</span></div>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '120px', height: '4px', backgroundColor: '#e5e7eb', borderRadius: '2px' }}>
+                {/* Progress includes the standard comment step (index -1 = step 0) */}
+                <div style={{ width: `${((currentSectionIndex + 2) / (addedSections.length + 1)) * 100}%`, height: '100%', backgroundColor: '#3b82f6', borderRadius: '2px', transition: 'width 0.3s ease' }} />
+              </div>
+              <span style={{ fontSize: '12px', color: '#6b7280' }}>{currentSectionIndex + 2}/{addedSections.length + 1}</span>
+            </div>
             <button onClick={() => setReportsPanelOpen(o => !o)} style={{ backgroundColor: '#f3f4f6', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: '6px', padding: '6px 14px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>{reportsPanelOpen ? 'Hide reports' : '📄 Show reports'}</button>
           </>
         )}
@@ -323,7 +320,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     </div>
   );
 
-  // Shared statement editor used by both section-editor and wizard
+  // Shared statement editor used by section-editor
   const renderStatementEditor = (sType: string, sName: string) => {
     const isRated = sType === 'rated-comment';
     const isStrengths = sName === 'Strengths'; const isNextSteps = sName === 'Next Steps'; const isDevelopment = sName === 'Areas for Development';
@@ -454,14 +451,14 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   // ─── SUBJECT PICKER ───────────────────────────────────────────────────────
   if (screen === 'subject') return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column' }}>
-      <TopBar title="Build as You Go" />
+      <TopBar title="Template Wizard" />
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px' }}>
         <div style={{ maxWidth: '560px', width: '100%', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07)', padding: '40px 44px' }}>
           <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>What subject are you teaching?</h2>
           <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '28px', lineHeight: '1.6' }}>This unlocks subject-specific sections and buttons alongside the universal ones.</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
             {SUBJECTS.map(s => (
-              <button key={s} onClick={() => { setSubject(s); setScreen('ready-made-choice'); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', backgroundColor: 'white', border: '2px solid #e5e7eb', borderRadius: '10px', cursor: 'pointer', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#111827' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#eff6ff'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.backgroundColor = 'white'; }}>
+              <button key={s} onClick={() => { setSubject(s); setScreen('section-picker'); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', backgroundColor: 'white', border: '2px solid #e5e7eb', borderRadius: '10px', cursor: 'pointer', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#111827' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#eff6ff'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.backgroundColor = 'white'; }}>
                 <span style={{ fontSize: '22px' }}>{SUBJECT_ICONS[s]}</span><span>{s}</span>
               </button>
             ))}
@@ -471,135 +468,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     </div>
   );
 
-  // ─── READY-MADE CHOICE ────────────────────────────────────────────────────
-  if (screen === 'ready-made-choice') return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column' }}>
-      <TopBar title="Build as You Go" />
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px' }}>
-        <div style={{ maxWidth: '560px', width: '100%', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07)', padding: '40px 44px' }}>
-          <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>Would you like to use ready-made sections?</h2>
-          <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '8px', lineHeight: '1.6' }}>Ready-made sections come pre-populated with generic statements covering Progress, Effort, Behaviour, Strengths, Next Steps and more. You can edit every section, button and statement to match your own voice.</p>
-          <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#166534', marginBottom: '28px', lineHeight: '1.5' }}>✓ Everything is fully editable — the ready-made content is a starting point, not a fixed template</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-            <button onClick={() => { setUseReadyMade(true); setScreen('standard-comment'); }} style={{ textAlign: 'left', padding: '18px 20px', backgroundColor: '#eff6ff', border: '2px solid #3b82f6', borderRadius: '10px', cursor: 'pointer' }} onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#dbeafe'; }} onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#eff6ff'; }}>
-              <div style={{ fontSize: '15px', fontWeight: '700', color: '#1e40af', marginBottom: '4px' }}>🚀 Yes — use ready-made sections</div>
-              <div style={{ fontSize: '13px', color: '#3b82f6' }}>Pick which sections to include, then edit each one. Fastest way to get started.</div>
-            </button>
-            <button onClick={() => { setUseReadyMade(false); setCurrentStep(0); resetWizardQuestion(); setScreen('standard-comment'); }} style={{ textAlign: 'left', padding: '18px 20px', backgroundColor: 'white', border: '2px solid #e5e7eb', borderRadius: '10px', cursor: 'pointer' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#6b7280'; e.currentTarget.style.backgroundColor = '#f9fafb'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.backgroundColor = 'white'; }}>
-              <div style={{ fontSize: '15px', fontWeight: '700', color: '#374151', marginBottom: '4px' }}>🧱 No — build from scratch</div>
-              <div style={{ fontSize: '13px', color: '#6b7280' }}>Answer questions about your reports and build each section yourself with complete freedom.</div>
-            </button>
-          </div>
-          <button onClick={() => setScreen('subject')} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>← Change subject</button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // ─── STANDARD COMMENT ─────────────────────────────────────────────────────
-  if (screen === 'standard-comment') {
-    const addStandardStatement = () => { if (!standardContent.trim()) return; setStandardStatements(prev => [...prev, standardContent.trim()]); setStandardContent(''); };
-    const handleFindFixed = async () => {
-      setAiLoading(true); setAiError(null);
-      try {
-        const response = await fetch(SUPABASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'find-fixed', reportText: pastedReports, subject: subject || '' }) });
-        if (!response.ok) throw new Error('failed');
-        const data = await response.json();
-        const candidates: string[] = data.statements || [];
-        if (candidates.length === 0) { setAiError('No repeated fixed statements found. You can add them manually below.'); }
-        else { setAiCandidates(candidates); setSelectedCandidates(new Set(candidates)); setHasStandardComment('candidates'); }
-      } catch { setAiError('AI scan failed. Please try again or add statements manually.'); }
-      finally { setAiLoading(false); }
-    };
-    const confirmCandidates = () => {
-      const chosen = aiCandidates.filter(c => selectedCandidates.has(c));
-      setStandardStatements(prev => { const ex = new Set(prev); return [...prev, ...chosen.filter(c => !ex.has(c))]; });
-      setAiCandidates([]); setSelectedCandidates(new Set()); setHasStandardComment('manual');
-    };
-    const goNext = () => { if (useReadyMade) setScreen('section-picker'); else { setCurrentStep(0); resetWizardQuestion(); setScreen('wizard'); } };
-
-    return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <TopBar title="Build as You Go" />
-        <div style={{ flex: 1, display: 'flex', width: '100%', overflow: 'hidden', minHeight: 0 }}>
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '32px 24px' }}>
-            <div style={{ maxWidth: '560px', width: '100%', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07)', padding: '40px 44px' }}>
-              <div style={{ display: 'inline-block', backgroundColor: '#d1fae520', color: '#10b981', border: '1px solid #10b98140', borderRadius: '20px', padding: '4px 12px', fontSize: '12px', fontWeight: '600', marginBottom: '16px' }}>Fixed Statement</div>
-              <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#111827', marginBottom: '10px' }}>Do your reports contain fixed statements?</h2>
-              <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '24px', lineHeight: '1.6' }}>Fixed statements appear in most or all reports unchanged — for example an introduction sentence or closing remark. These are excluded from the template so you don't have to keep adding them when writing reports.</p>
-
-              {hasStandardComment === null && (
-                <div>
-                  <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-                    <button onClick={() => setHasStandardComment('choose')} style={{ ...primaryBtn, flex: 1 }}>Yes</button>
-                    <button onClick={goNext} style={{ ...secondaryBtn, flex: 1 }}>No</button>
-                  </div>
-                  <button onClick={() => setScreen('ready-made-choice')} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>← Back</button>
-                </div>
-              )}
-
-              {hasStandardComment === 'choose' && (
-                <div>
-                  <button onClick={hasReports ? handleFindFixed : undefined} disabled={!hasReports || aiLoading} style={{ width: '100%', textAlign: 'left', padding: '16px', backgroundColor: hasReports ? '#faf5ff' : '#f9fafb', border: `2px solid ${hasReports ? '#8b5cf6' : '#e5e7eb'}`, borderRadius: '10px', cursor: hasReports ? 'pointer' : 'not-allowed', marginBottom: '10px', opacity: hasReports ? 1 : 0.6 }} onMouseEnter={e => { if (hasReports) e.currentTarget.style.backgroundColor = '#f3e8ff'; }} onMouseLeave={e => { if (hasReports) e.currentTarget.style.backgroundColor = '#faf5ff'; }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontSize: '22px' }}>🔍</span><div><div style={{ fontSize: '14px', fontWeight: '700', color: '#7c3aed' }}>Find them for me</div><div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>{hasReports ? 'AI scans your pasted reports and identifies repeated sentences' : 'Paste your reports in the right panel to use this option'}</div></div></div>
-                  </button>
-                  <button onClick={() => setHasStandardComment('manual')} style={{ width: '100%', textAlign: 'left', padding: '16px', backgroundColor: 'white', border: '2px solid #e5e7eb', borderRadius: '10px', cursor: 'pointer', marginBottom: '16px' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#10b981'; e.currentTarget.style.backgroundColor = '#f0fdf4'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.backgroundColor = 'white'; }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontSize: '22px' }}>✏️</span><div><div style={{ fontSize: '14px', fontWeight: '700', color: '#374151' }}>I'll add them manually</div><div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Paste or type each fixed statement yourself</div></div></div>
-                  </button>
-                  {aiLoading && <div style={{ padding: '14px 16px', backgroundColor: '#faf5ff', border: '2px solid #8b5cf6', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}><div style={{ display: 'flex', gap: '4px' }}>{[0,1,2].map(i => <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#8b5cf6', animation: 'pulse 1.2s ease-in-out infinite', animationDelay: `${i * 0.2}s` }} />)}</div><div style={{ fontSize: '13px', color: '#7c3aed' }}>Scanning your reports...</div><style>{`@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}`}</style></div>}
-                  {aiError && <div style={{ padding: '10px 14px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '13px', color: '#b91c1c', marginBottom: '16px' }}>⚠️ {aiError}</div>}
-                  <button onClick={() => setHasStandardComment(null)} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>← Back</button>
-                </div>
-              )}
-
-              {hasStandardComment === 'candidates' && (
-                <div>
-                  <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#1e40af', marginBottom: '16px', lineHeight: '1.5' }}>✨ Found {aiCandidates.length} repeated statement{aiCandidates.length !== 1 ? 's' : ''}. Untick any you don't want.</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
-                    {aiCandidates.map((stmt, i) => { const checked = selectedCandidates.has(stmt); return (
-                      <button key={i} onClick={() => setSelectedCandidates(prev => { const next = new Set(prev); if (next.has(stmt)) next.delete(stmt); else next.add(stmt); return next; })} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px 14px', backgroundColor: checked ? '#f0fdf4' : 'white', border: `2px solid ${checked ? '#10b981' : '#e5e7eb'}`, borderRadius: '8px', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
-                        <div style={{ width: '18px', height: '18px', borderRadius: '4px', backgroundColor: checked ? '#10b981' : 'white', border: `2px solid ${checked ? '#10b981' : '#d1d5db'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px', fontSize: '11px', color: 'white', fontWeight: '700' }}>{checked ? '✓' : ''}</div>
-                        <span style={{ fontSize: '13px', color: '#374151', lineHeight: '1.5' }}>{stmt}</span>
-                      </button>
-                    ); })}
-                  </div>
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <button onClick={() => { setHasStandardComment('choose'); setAiCandidates([]); setSelectedCandidates(new Set()); setAiError(null); }} style={secondaryBtn}>← Back</button>
-                    <button onClick={confirmCandidates} style={{ ...primaryBtn, backgroundColor: '#10b981' }}>Confirm {selectedCandidates.size} →</button>
-                  </div>
-                </div>
-              )}
-
-              {hasStandardComment === 'manual' && (
-                <div>
-                  {standardStatements.length > 0 && (
-                    <div style={{ marginBottom: '16px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: '700', color: '#6b7280', letterSpacing: '0.04em', marginBottom: '8px' }}>ADDED ({standardStatements.length})</div>
-                      {standardStatements.map((stmt, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '10px 12px', marginBottom: '6px' }}>
-                          <span style={{ flex: 1, fontSize: '13px', color: '#166534', lineHeight: '1.5' }}>{stmt}</span>
-                          <button onClick={() => setStandardStatements(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '14px', flexShrink: 0, padding: '0 2px' }}>✕</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>{standardStatements.length === 0 ? 'Paste your statement here:' : 'Add another:'}</label>
-                  <textarea value={standardContent} onChange={e => setStandardContent(e.target.value)} placeholder="e.g. It has been a pleasure teaching [Name] this term..." style={{ ...txa, minHeight: '90px', borderColor: '#10b981', marginBottom: '10px' }} />
-                  {standardContent.trim() && <button onClick={addStandardStatement} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '16px' }}>+ Add statement</button>}
-                  <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                    <button onClick={() => setHasStandardComment('choose')} style={secondaryBtn}>← Back</button>
-                    <button onClick={goNext} style={primaryBtn}>{standardStatements.length > 0 ? `Continue with ${standardStatements.length} →` : 'Skip →'}</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-          <ReportsPanel />
-        </div>
-      </div>
-    );
-  }
-
   // ─── SECTION PICKER ───────────────────────────────────────────────────────
   if (screen === 'section-picker') {
     const universal = buildUniversalSections().filter(s => s.name && s.type !== 'new-line' && s.type !== 'optional-additional-comment');
@@ -608,7 +476,12 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     const handleConfirmSections = () => {
       if (selectedSectionIds.length === 0) { alert('Please select at least one section.'); return; }
       const sections = buildSectionsFromSelection(selectedSectionIds, subject, standardStatements);
-      setAddedSections(sections); setCurrentSectionIndex(0); loadSectionIntoEditor(sections[0]); setScreen('section-editor');
+      setAddedSections(sections);
+      setCurrentSectionIndex(-1); // Start at standard comment step
+      setHasStandardComment(null); // Reset standard comment state
+      setStandardStatements([]);
+      setStandardContent('');
+      setScreen('section-editor');
     };
     const typeDescs: Record<string, string> = { 'rated-comment': 'Excellent / Good / Satisfactory / Needs Improvement', 'qualities': 'Teacher picks from named comment buttons', 'next-steps': 'Target / focus area buttons' };
     const SCard = ({ id, label, description, type, checked }: { id: string; label: string; description: string; type: SectionType; checked: boolean }) => (
@@ -620,7 +493,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     );
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column' }}>
-        <TopBar title="Build as You Go" />
+        <TopBar title="Template Wizard" />
         <div style={{ flex: 1, overflowY: 'auto', padding: '32px 24px' }}>
           <div style={{ maxWidth: '640px', margin: '0 auto' }}>
             <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>Choose your sections</h2>
@@ -632,8 +505,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}><SCard id="areas-for-development" label="Areas for Development" description="Focus areas and targets for pupils who need to improve" type={'next-steps' as SectionType} checked={selectedSectionIds.includes('areas-for-development')} /></div>
             {subjectExtras.length > 0 && (<><div style={{ fontSize: '12px', fontWeight: '700', color: '#6b7280', letterSpacing: '0.05em', marginBottom: '10px' }}>{subject.toUpperCase()} — SUBJECT-SPECIFIC</div><div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '28px' }}>{subjectExtras.map(e => <SCard key={e.id} id={e.id} label={e.label} description={typeDescs[e.section.type] || SECTION_LABELS[e.section.type]} type={e.section.type as SectionType} checked={selectedSectionIds.includes(e.id)} />)}</div></>)}
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setScreen('standard-comment')} style={secondaryBtn}>← Back</button>
-              <button onClick={handleConfirmSections} style={primaryBtn}>Review {selectedSectionIds.length} section{selectedSectionIds.length !== 1 ? 's' : ''} →</button>
+              <button onClick={() => setScreen('subject')} style={secondaryBtn}>← Back</button>
+              <button onClick={handleConfirmSections} style={primaryBtn}>Continue with {selectedSectionIds.length} section{selectedSectionIds.length !== 1 ? 's' : ''} →</button>
             </div>
           </div>
         </div>
@@ -641,8 +514,115 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     );
   }
 
-  // ─── SECTION EDITOR (pre-built path) ──────────────────────────────────────
-  if (screen === 'section-editor' && currentSection) {
+  // ─── SECTION EDITOR ───────────────────────────────────────────────────────
+  // currentSectionIndex === -1 means we're on the standard comment step (first)
+  if (screen === 'section-editor') {
+
+    // ── Step 0: Standard comment question ────────────────────────────────────
+    if (currentSectionIndex === -1) {
+      const addStandardStatement = () => { if (!standardContent.trim()) return; setStandardStatements(prev => [...prev, standardContent.trim()]); setStandardContent(''); };
+      const handleFindFixed = async () => {
+        setAiLoading(true); setAiError(null);
+        try {
+          const response = await fetch(SUPABASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'find-fixed', reportText: pastedReports, subject: subject || '' }) });
+          if (!response.ok) throw new Error('failed');
+          const data = await response.json();
+          const candidates: string[] = data.statements || [];
+          if (candidates.length === 0) { setAiError('No repeated fixed statements found. You can add them manually below.'); }
+          else { setAiCandidates(candidates); setSelectedCandidates(new Set(candidates)); setHasStandardComment('candidates'); }
+        } catch { setAiError('AI scan failed. Please try again or add statements manually.'); }
+        finally { setAiLoading(false); }
+      };
+      const confirmCandidates = () => {
+        const chosen = aiCandidates.filter(c => selectedCandidates.has(c));
+        setStandardStatements(prev => { const ex = new Set(prev); return [...prev, ...chosen.filter(c => !ex.has(c))]; });
+        setAiCandidates([]); setSelectedCandidates(new Set()); setHasStandardComment('manual');
+      };
+
+      return (
+        <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <TopBar title="Template Wizard" />
+          <div style={{ flex: 1, display: 'flex', width: '100%', overflow: 'hidden', minHeight: 0 }}>
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '32px 24px' }}>
+              <div style={{ maxWidth: '560px', width: '100%', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07)', padding: '40px 44px' }}>
+                <div style={{ display: 'inline-block', backgroundColor: '#d1fae520', color: '#10b981', border: '1px solid #10b98140', borderRadius: '20px', padding: '4px 12px', fontSize: '12px', fontWeight: '600', marginBottom: '16px' }}>Step 1 of {addedSections.length + 1}</div>
+                <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#111827', marginBottom: '10px' }}>Do your reports contain fixed statements?</h2>
+                <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '24px', lineHeight: '1.6' }}>Fixed statements appear in most or all reports unchanged — for example an introduction sentence or closing remark. These are added to the template automatically so you don't have to retype them.</p>
+
+                {hasStandardComment === null && (
+                  <div>
+                    <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                      <button onClick={() => setHasStandardComment('choose')} style={{ ...primaryBtn, flex: 1 }}>Yes</button>
+                      <button onClick={handleSectionNext} style={{ ...secondaryBtn, flex: 1 }}>No</button>
+                    </div>
+                    <button onClick={handleSectionBack} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>← Back</button>
+                  </div>
+                )}
+
+                {hasStandardComment === 'choose' && (
+                  <div>
+                    <button onClick={hasReports ? handleFindFixed : undefined} disabled={!hasReports || aiLoading} style={{ width: '100%', textAlign: 'left', padding: '16px', backgroundColor: hasReports ? '#faf5ff' : '#f9fafb', border: `2px solid ${hasReports ? '#8b5cf6' : '#e5e7eb'}`, borderRadius: '10px', cursor: hasReports ? 'pointer' : 'not-allowed', marginBottom: '10px', opacity: hasReports ? 1 : 0.6 }} onMouseEnter={e => { if (hasReports) e.currentTarget.style.backgroundColor = '#f3e8ff'; }} onMouseLeave={e => { if (hasReports) e.currentTarget.style.backgroundColor = '#faf5ff'; }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontSize: '22px' }}>🔍</span><div><div style={{ fontSize: '14px', fontWeight: '700', color: '#7c3aed' }}>Find them for me</div><div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>{hasReports ? 'AI scans your pasted reports and identifies repeated sentences' : 'Paste your reports in the right panel to use this option'}</div></div></div>
+                    </button>
+                    <button onClick={() => setHasStandardComment('manual')} style={{ width: '100%', textAlign: 'left', padding: '16px', backgroundColor: 'white', border: '2px solid #e5e7eb', borderRadius: '10px', cursor: 'pointer', marginBottom: '16px' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#10b981'; e.currentTarget.style.backgroundColor = '#f0fdf4'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.backgroundColor = 'white'; }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontSize: '22px' }}>✏️</span><div><div style={{ fontSize: '14px', fontWeight: '700', color: '#374151' }}>I'll add them manually</div><div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Paste or type each fixed statement yourself</div></div></div>
+                    </button>
+                    {aiLoading && <div style={{ padding: '14px 16px', backgroundColor: '#faf5ff', border: '2px solid #8b5cf6', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}><div style={{ display: 'flex', gap: '4px' }}>{[0,1,2].map(i => <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#8b5cf6', animation: 'pulse 1.2s ease-in-out infinite', animationDelay: `${i * 0.2}s` }} />)}</div><div style={{ fontSize: '13px', color: '#7c3aed' }}>Scanning your reports...</div><style>{`@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}`}</style></div>}
+                    {aiError && <div style={{ padding: '10px 14px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '13px', color: '#b91c1c', marginBottom: '16px' }}>⚠️ {aiError}</div>}
+                    <button onClick={() => setHasStandardComment(null)} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>← Back</button>
+                  </div>
+                )}
+
+                {hasStandardComment === 'candidates' && (
+                  <div>
+                    <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#1e40af', marginBottom: '16px', lineHeight: '1.5' }}>✨ Found {aiCandidates.length} repeated statement{aiCandidates.length !== 1 ? 's' : ''}. Untick any you don't want.</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+                      {aiCandidates.map((stmt, i) => { const checked = selectedCandidates.has(stmt); return (
+                        <button key={i} onClick={() => setSelectedCandidates(prev => { const next = new Set(prev); if (next.has(stmt)) next.delete(stmt); else next.add(stmt); return next; })} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px 14px', backgroundColor: checked ? '#f0fdf4' : 'white', border: `2px solid ${checked ? '#10b981' : '#e5e7eb'}`, borderRadius: '8px', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                          <div style={{ width: '18px', height: '18px', borderRadius: '4px', backgroundColor: checked ? '#10b981' : 'white', border: `2px solid ${checked ? '#10b981' : '#d1d5db'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px', fontSize: '11px', color: 'white', fontWeight: '700' }}>{checked ? '✓' : ''}</div>
+                          <span style={{ fontSize: '13px', color: '#374151', lineHeight: '1.5' }}>{stmt}</span>
+                        </button>
+                      ); })}
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <button onClick={() => { setHasStandardComment('choose'); setAiCandidates([]); setSelectedCandidates(new Set()); setAiError(null); }} style={secondaryBtn}>← Back</button>
+                      <button onClick={confirmCandidates} style={{ ...primaryBtn, backgroundColor: '#10b981' }}>Confirm {selectedCandidates.size} →</button>
+                    </div>
+                  </div>
+                )}
+
+                {hasStandardComment === 'manual' && (
+                  <div>
+                    {standardStatements.length > 0 && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <div style={{ fontSize: '12px', fontWeight: '700', color: '#6b7280', letterSpacing: '0.04em', marginBottom: '8px' }}>ADDED ({standardStatements.length})</div>
+                        {standardStatements.map((stmt, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '10px 12px', marginBottom: '6px' }}>
+                            <span style={{ flex: 1, fontSize: '13px', color: '#166534', lineHeight: '1.5' }}>{stmt}</span>
+                            <button onClick={() => setStandardStatements(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '14px', flexShrink: 0, padding: '0 2px' }}>✕</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>{standardStatements.length === 0 ? 'Paste your statement here:' : 'Add another:'}</label>
+                    <textarea value={standardContent} onChange={e => setStandardContent(e.target.value)} placeholder="e.g. It has been a pleasure teaching [Name] this term..." style={{ ...txa, minHeight: '90px', borderColor: '#10b981', marginBottom: '10px' }} />
+                    {standardContent.trim() && <button onClick={addStandardStatement} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '16px' }}>+ Add statement</button>}
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                      <button onClick={() => setHasStandardComment('choose')} style={secondaryBtn}>← Back</button>
+                      <button onClick={handleSectionNext} style={primaryBtn}>{standardStatements.length > 0 ? `Continue with ${standardStatements.length} →` : 'Skip →'}</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <ReportsPanel />
+          </div>
+        </div>
+      );
+    }
+
+    // ── Steps 1+: Real section editors ────────────────────────────────────────
+    if (!currentSection) return null;
     const totalStmts = buttons.reduce((n, b) => n + b.statements.length, 0);
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -651,7 +631,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
           <div style={{ flex: 1, overflowY: 'auto', padding: '32px 40px', minWidth: 0 }}>
             <div style={{ maxWidth: '560px', width: '100%', margin: '0 auto' }}>
               <div style={{ display: 'inline-block', backgroundColor: accentColor + '20', color: accentColor, border: `1px solid ${accentColor}40`, borderRadius: '20px', padding: '4px 12px', fontSize: '12px', fontWeight: '600', marginBottom: '16px' }}>{SECTION_LABELS[currentSection.type]}</div>
-              {/* Editable section heading */}
               <div style={{ marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {editingSectionName ? (
                   <input ref={sectionNameInputRef} type="text" value={sectionName} onChange={e => setSectionName(e.target.value)} onBlur={() => setEditingSectionName(false)} onKeyDown={e => { if (e.key === 'Enter') setEditingSectionName(false); }} style={{ fontSize: '22px', fontWeight: '700', color: '#111827', border: 'none', borderBottom: '2px solid #3b82f6', outline: 'none', background: 'transparent', width: '100%', padding: '0 0 2px 0', fontFamily: 'inherit' }} />
@@ -688,10 +667,17 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
               )}
               <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
                 <button onClick={handleSectionBack} style={secondaryBtn}>← Back</button>
-                <button onClick={handleSectionNext} style={primaryBtn}>{currentSectionIndex < addedSections.length - 1 ? `Next: ${addedSections[currentSectionIndex + 1]?.name} →` : 'Review template →'}</button>
+                <button onClick={handleSectionNext} style={primaryBtn}>
+                  {currentSectionIndex < addedSections.length - 1 ? `Next: ${addedSections[currentSectionIndex + 1]?.name} →` : 'Review template →'}
+                </button>
               </div>
               <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #f3f4f6' }}>
                 <div style={{ fontSize: '12px', fontWeight: '600', color: '#9ca3af', marginBottom: '8px' }}>ALL SECTIONS</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', opacity: currentSectionIndex === -1 ? 1 : 0.5 }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: currentSectionIndex > -1 ? '#10b981' : '#10b981', flexShrink: 0 }} />
+                  <span style={{ fontSize: '13px', color: currentSectionIndex === -1 ? '#111827' : '#6b7280', fontWeight: currentSectionIndex === -1 ? '600' : '400' }}>Fixed Statements</span>
+                  {currentSectionIndex > -1 && <span style={{ fontSize: '11px', color: '#10b981' }}>✓</span>}
+                </div>
                 {addedSections.map((s, i) => (
                   <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', opacity: i === currentSectionIndex ? 1 : 0.5 }}>
                     <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: i < currentSectionIndex ? '#10b981' : i === currentSectionIndex ? accentColor : '#d1d5db', flexShrink: 0 }} />
@@ -700,114 +686,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-          {reportsPanelOpen && <ReportsPanel />}
-        </div>
-      </div>
-    );
-  }
-
-  // ─── WIZARD (build from scratch + add custom section from review) ─────────
-  if (screen === 'wizard') {
-    const wAccent = SECTION_COLORS[question?.sectionType] || '#3b82f6';
-    const wIsAssessment = question?.sectionType === 'assessment-comment';
-    return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <TopBar />
-        <div style={{ flex: 1, display: 'flex', width: '100%', overflow: 'hidden', minHeight: 0 }}>
-          <div style={{ flex: 1, overflowY: 'auto', padding: '32px 40px', minWidth: 0 }}>
-            <div style={{ maxWidth: '560px', width: '100%', margin: '0 auto' }}>
-              <div style={{ display: 'inline-block', backgroundColor: wAccent + '20', color: wAccent, border: `1px solid ${wAccent}40`, borderRadius: '20px', padding: '4px 12px', fontSize: '12px', fontWeight: '600', marginBottom: '16px' }}>{SECTION_LABELS[question?.sectionType] || question?.id}</div>
-              <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#111827', marginBottom: '10px', lineHeight: '1.3' }}>{question?.question}</h2>
-              <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '20px', lineHeight: '1.6' }}>{question?.description}</p>
-
-              {question?.examples && phase !== 'ask' && (
-                <div style={{ marginBottom: '20px' }}>
-                  <button onClick={() => setShowExamples(o => !o)} style={{ background: 'none', border: 'none', color: wAccent, fontSize: '13px', cursor: 'pointer', padding: 0, fontWeight: '500', textDecoration: 'underline' }}>{showExamples ? '▲ Hide examples' : '▼ See example statements'}</button>
-                  {showExamples && (
-                    <div style={{ marginTop: '10px', backgroundColor: 'white', border: `1px solid ${wAccent}40`, borderRadius: '8px', padding: '12px' }}>
-                      {question.examples.map((ex, i) => (
-                        <div key={i} onClick={() => { setNewStatement(ex); setShowExamples(false); statementInputRef.current?.focus(); }} style={{ fontSize: '13px', color: '#374151', padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', marginBottom: '4px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = wAccent + '15'} onMouseLeave={e => e.currentTarget.style.backgroundColor = '#f9fafb'}>{ex}</div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {phase === 'ask' && (
-                <div>
-                  <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-                    <button onClick={handleWizardYes} style={{ ...primaryBtn, flex: 1 }}>Yes</button>
-                    <button onClick={handleWizardNo} style={{ ...secondaryBtn, flex: 1 }}>No</button>
-                  </div>
-                  {currentStep > 0 ? <button onClick={() => { setCurrentStep(s => s - 1); resetWizardQuestion(); }} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>← Previous question</button>
-                    : <button onClick={() => setScreen(useReadyMade ? 'review' : 'standard-comment')} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>← Back</button>}
-                </div>
-              )}
-
-              {phase === 'name' && (
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>What would you like to call this section?</label>
-                  <input type="text" value={sectionName} onChange={e => setSectionName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleNameConfirmed(); }} placeholder={question.namePlaceholder} autoFocus style={{ ...inp, borderColor: wAccent, marginBottom: '16px' }} />
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <button onClick={() => setPhase('ask')} style={secondaryBtn}>← Back</button>
-                    <button onClick={handleNameConfirmed} disabled={!sectionName.trim()} style={{ ...primaryBtn, opacity: !sectionName.trim() ? 0.4 : 1 }}>Continue →</button>
-                  </div>
-                </div>
-              )}
-
-              {phase === 'instruction' && (
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>What does the score represent? (optional)</label>
-                  <input type="text" value={sectionInstruction} onChange={e => setSectionInstruction(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleInstructionConfirmed(); }} placeholder="e.g. Black Death test score, Reading assessment percentage..." autoFocus style={{ ...inp, marginBottom: '8px' }} />
-                  <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '16px', fontStyle: 'italic' }}>This will appear in the report writer as a reminder.</div>
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <button onClick={() => setPhase('name')} style={secondaryBtn}>← Back</button>
-                    <button onClick={handleInstructionConfirmed} style={primaryBtn}>Continue →</button>
-                  </div>
-                </div>
-              )}
-
-              {phase === 'statements' && (
-                <div>
-                  {question?.hasButtons && <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#166534', marginBottom: '20px', lineHeight: '1.5' }}>💡 Add 1–2 statements to get started. Use the AI button to find more from your reports.</div>}
-                  {!question?.hasButtons ? (
-                    <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>Paste your statement here:</label>
-                      <textarea value={standardContent} onChange={e => setStandardContent(e.target.value)} placeholder="Paste or type the statement... Use [Name] for pupil name." style={{ ...txa, minHeight: '140px', borderColor: wAccent, marginBottom: '16px' }} />
-                      <div style={{ display: 'flex', gap: '12px' }}>
-                        <button onClick={() => setPhase('name')} style={secondaryBtn}>← Back</button>
-                        <button onClick={handleWizardAddSection} style={primaryBtn}>{standardContent.trim() ? 'Save section →' : 'Skip →'}</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      {renderStatementEditor(question.sectionType, sectionName)}
-                      {wIsAssessment && <div style={{ backgroundColor: '#f3e8ff', border: '1px solid #d8b4fe', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#7c3aed', marginBottom: '16px', lineHeight: '1.5' }}><strong>Score placeholders:</strong> use <code>[Score]</code> or <code>[Score 1]</code> <code>[Score 2]</code>.{sectionInstruction && <div style={{ marginTop: '6px' }}><strong>Reminder:</strong> {sectionInstruction}</div>}</div>}
-                      <div style={{ display: 'flex', gap: '12px' }}>
-                        <button onClick={() => editingSectionId ? setScreen('review') : setPhase('name')} style={secondaryBtn}>← Back</button>
-                        <button onClick={handleWizardAddSection} style={primaryBtn}>{editingSectionId ? 'Save changes →' : 'Save section →'}</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {phase === 'added' && (
-                <div>
-                  <div style={{ backgroundColor: '#d1fae5', color: '#065f46', borderRadius: '8px', padding: '12px 16px', fontSize: '13px', fontWeight: '600', marginBottom: '20px' }}>✓ Section added</div>
-                  {question?.allowMultiple && (<><p style={{ fontSize: '14px', color: '#374151', marginBottom: '16px' }}>Would you like to add another {SECTION_LABELS[question.sectionType]?.toLowerCase()}?</p><div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}><button onClick={advanceQuestion} style={secondaryBtn}>No, continue →</button><button onClick={handleAddAnother} style={primaryBtn}>Yes, add another</button></div></>)}
-                  {!question?.allowMultiple && <button onClick={advanceQuestion} style={primaryBtn}>Continue →</button>}
-                </div>
-              )}
-
-              {addedSections.length > 0 && phase !== 'added' && (
-                <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #f3f4f6' }}>
-                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#9ca3af', marginBottom: '8px' }}>SECTIONS ADDED SO FAR</div>
-                  {addedSections.map(s => (<div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}><div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: SECTION_COLORS[s.type] || '#9ca3af', flexShrink: 0 }} /><span style={{ fontSize: '13px', color: '#374151' }}>{s.name}</span></div>))}
-                </div>
-              )}
             </div>
           </div>
           {reportsPanelOpen && <ReportsPanel />}
@@ -862,12 +740,12 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
               );
             })}
 
-            <button onClick={() => { setCurrentStep(0); resetWizardQuestion(); setEditingSectionId(null); setScreen('wizard'); }} style={{ width: '100%', padding: '12px', backgroundColor: 'white', border: '2px dashed #d1d5db', borderRadius: '8px', color: '#6b7280', fontSize: '14px', fontWeight: '500', cursor: 'pointer', marginTop: '8px', marginBottom: '24px' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.color = '#3b82f6'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; }}>
-              ﹢ Add a custom section
+            <button onClick={() => setScreen('section-picker')} style={{ width: '100%', padding: '12px', backgroundColor: 'white', border: '2px dashed #d1d5db', borderRadius: '8px', color: '#6b7280', fontSize: '14px', fontWeight: '500', cursor: 'pointer', marginTop: '8px', marginBottom: '24px' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.color = '#3b82f6'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = '#6b7280'; }}>
+              ﹢ Add a section
             </button>
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button onClick={() => setScreen(useReadyMade ? 'section-picker' : 'wizard')} style={secondaryBtn}>← Back</button>
+              <button onClick={() => setScreen('section-picker')} style={secondaryBtn}>← Back</button>
               <button onClick={handleComplete} style={primaryBtn}>Save template →</button>
             </div>
           </div>

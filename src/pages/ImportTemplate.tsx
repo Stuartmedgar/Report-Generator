@@ -129,6 +129,7 @@ export default function ImportTemplate() {
   const [mainStep, setMainStep] = useState<MainStep>('paste');
   const [subject, setSubject] = useState('');
   const [yearGroup, setYearGroup] = useState('');
+  const [templateName, setTemplateName] = useState('');
   const [pronounSet, setPronounSet] = useState<PronounSet>('they/their');
   const [rawReportText, setRawReportText] = useState('');
   const [builtSections, setBuiltSections] = useState<BuiltSection[]>([]);
@@ -317,7 +318,7 @@ export default function ImportTemplate() {
 
       const normalisedSections = normaliseTemplateSections(sections, pronounSet);
       const splitResult = splitSections(normalisedSections, typicalCountMap);
-      setGeneratedTemplate({ name: result.templateName || `${subject} ${yearGroup} Report Template`, sections: splitResult });
+      setGeneratedTemplate({ name: templateName.trim() || result.templateName || `${subject} ${yearGroup} Report Template`,
 
       // Set up variety for eligible sections
       const builtForVariety = splitResult
@@ -525,7 +526,7 @@ export default function ImportTemplate() {
       .then(data => {
         if (!data.templateName || !data.sections) throw new Error('Invalid template');
         const normalisedSections = normaliseTemplateSections(data.sections, pronounSet);
-        setGeneratedTemplate({ name: data.templateName, sections: normalisedSections });
+        setGeneratedTemplate({ name: templateName.trim() || data.templateName, sections: normalisedSections });
         const varietyEligible = builtSections.filter(s => s.type === 'qualities' || s.type === 'next-steps');
         setSectionsForVariety(varietyEligible.map(s => ({ section: s, selected: true })));
         setMainStep('variety');
@@ -585,6 +586,16 @@ export default function ImportTemplate() {
       <main style={{ maxWidth: '800px', margin: '0 auto', padding: '32px 24px' }}>
         <div style={card}>
           <h2 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Template Details</h2>
+          <div style={{ marginBottom: '12px' }}>
+  <label style={lbl}>Template Name</label>
+  <input
+    type="text"
+    value={templateName}
+    onChange={e => setTemplateName(e.target.value)}
+    placeholder="e.g. S3 History Reports"
+    style={inp}
+  />
+</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div><label style={lbl}>Subject *</label><input type="text" value={subject} onChange={e => setSubject(e.target.value)} placeholder="e.g. History" style={inp} /></div>
             <div><label style={lbl}>Year Group</label><select value={yearGroup} onChange={e => setYearGroup(e.target.value)} style={inp}><option value="">Select...</option>{['S1','S2','S3','S4','S5','S6','Mixed'].map(y => <option key={y}>{y}</option>)}</select></div>

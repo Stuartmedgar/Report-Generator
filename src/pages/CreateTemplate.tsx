@@ -20,7 +20,7 @@ const CreateTemplate: React.FC = () => {
   const editTemplate = location.state?.editTemplate;
   const isEditing = !!editTemplate;
 
-  // If a method was passed in from GetTemplate, use it to skip the method screen after naming
+  // Method passed in via navigation state — determines which flow to start
   const preselectedMethod = location.state?.method as 'build-as-you-go' | 'building' | 'quick-start' | undefined;
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -28,9 +28,11 @@ const CreateTemplate: React.FC = () => {
   const [sections, setSections] = useState<TemplateSection[]>(editTemplate?.sections || []);
   const [sectionData, setSectionData] = useState<Record<string, any>>(editTemplate?.sectionData || {});
 
-  // Step flow: 'naming' → 'method' → 'building' | 'build-as-you-go' | 'quick-start'
-  const [step, setStep] = useState<'naming' | 'method' | 'building' | 'build-as-you-go' | 'quick-start'>(
-    !isEditing ? 'naming' : 'building'
+  // When editing, go straight to manual builder.
+  // When creating with a preselected method, go to that method.
+  // When creating without a method (e.g. direct /create-template nav), go to quick-start as default.
+  const [step, setStep] = useState<'building' | 'build-as-you-go' | 'quick-start'>(
+    isEditing ? 'building' : (preselectedMethod === 'building' ? 'building' : preselectedMethod === 'build-as-you-go' ? 'build-as-you-go' : 'quick-start')
   );
 
   const [showSectionSelector, setShowSectionSelector] = useState(false);
@@ -90,47 +92,31 @@ const CreateTemplate: React.FC = () => {
   };
 
   const handleEditSection = (section: TemplateSection, index: number) => {
-    // For qualities, editingSection is set after shaping data (below)
     if (section.type !== 'qualities') setEditingSection({ section, index });
     if (section.type === 'rated-comment') setShowRatedCommentBuilder(true);
     else if (section.type === 'assessment-comment') setShowAssessmentCommentBuilder(true);
     else if (section.type === 'personalised-comment') setShowPersonalisedCommentBuilder(true);
     else if (section.type === 'next-steps') setShowNextStepsCommentBuilder(true);
-    else if (section.type === 'qualities') {
-      const commentsObj = section.data?.comments || {};
-      setEditingSection({
-        section: {
-          ...section,
-          data: {
-            name: section.name || '',
-            headings: Object.keys(commentsObj),
-            comments: commentsObj,
-          },
-        },
-        index,
-      });
-      setShowQualitiesCommentBuilder(true);
-    }
     else if (section.type === 'standard-comment') {
-      setStandardCommentName(section.name || '');
-      setStandardCommentContent(section.data?.content || section.data?.comment || '');
+      setStandardCommentName(section.name);
+      setStandardCommentContent(section.data?.comment || '');
       setShowStandardCommentEditor(true);
+    } else if (section.type === 'qualities') {
+      const shapedData = {
+        ...section.data,
+        comments: section.data?.comments || {}
+      };
+      setEditingSection({ section: { ...section, data: shapedData }, index });
+      setShowQualitiesCommentBuilder(true);
     }
   };
 
-  const handleSectionUpdated = (updatedData: any) => {
+  const handleSaveSection = (updatedData: any) => {
     if (!editingSection) return;
     const updatedSections = [...sections];
-    const originalType = editingSection.section.type;
-    let newData: any;
-    if (originalType === 'qualities') {
-      newData = { comments: updatedData.comments };
-    } else if (originalType === 'next-steps') {
-      newData = { focusAreas: updatedData.comments };
-    } else if (originalType === 'personalised-comment') {
-      newData = { instruction: updatedData.instruction, categories: updatedData.comments };
-    } else {
-      newData = updatedData.name ? updatedData.data : updatedData;
+    let newData = updatedData;
+    if (editingSection.section.type === 'qualities') {
+      newData = updatedData.data ? updatedData.data : updatedData;
     }
     const _newData = newData;
     updatedSections[editingSection.index] = {
@@ -202,166 +188,13 @@ const CreateTemplate: React.FC = () => {
     navigate('/manage-templates');
   };
 
-  // ─── NAMING STEP ──────────────────────────────────────────────────────────
-
-  if (step === 'naming') {
-    // After naming, go straight to the preselected method if one was passed in,
-    // otherwise show the method choice screen as normal
-    const handleContinue = () => {
-      if (preselectedMethod) {
-        setStep(preselectedMethod);
-      } else {
-        setStep('method');
-      }
-    };
-
-    return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ maxWidth: '600px', width: '100%', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', padding: '48px' }}>
-          <h1 style={{ fontSize: '32px', fontWeight: '700', color: '#111827', marginBottom: '12px', textAlign: 'center' }}>
-            Name Your Template
-          </h1>
-          <p style={{ color: '#6b7280', marginBottom: '32px', fontSize: '16px', textAlign: 'center' }}>
-            Choose a descriptive name for your report template
-          </p>
-          <div style={{ marginBottom: '32px' }}>
-            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
-              Template Name
-            </label>
-            <input
-              type="text"
-              value={templateName}
-              onChange={(e) => setTemplateName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' && templateName.trim()) handleContinue(); }}
-              placeholder="e.g., S3 PE Report, Primary Mathematics"
-              style={{ width: '100%', padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
-              autoFocus
-            />
-          </div>
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-            <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
-              <button style={{ backgroundColor: '#f3f4f6', color: '#374151', padding: '12px 24px', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '500', cursor: 'pointer' }}>
-                Cancel
-              </button>
-            </Link>
-            <button
-              onClick={handleContinue}
-              disabled={!templateName.trim()}
-              style={{ backgroundColor: templateName.trim() ? '#3b82f6' : '#e5e7eb', color: templateName.trim() ? 'white' : '#9ca3af', padding: '12px 24px', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '500', cursor: templateName.trim() ? 'pointer' : 'not-allowed' }}
-            >
-              Continue →
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ─── METHOD CHOICE STEP ───────────────────────────────────────────────────
-
-  if (step === 'method') {
-    const optionCard = (
-      title: string,
-      description: string,
-      icon: string,
-      onClick: () => void,
-      highlight?: boolean,
-      badgeText?: string,
-      badgeColor?: string
-    ) => (
-      <button
-        onClick={onClick}
-        style={{
-          width: '100%',
-          textAlign: 'left',
-          backgroundColor: highlight ? '#eff6ff' : 'white',
-          border: highlight ? '2px solid #3b82f6' : '2px solid #e5e7eb',
-          borderRadius: '12px',
-          padding: '24px',
-          cursor: 'pointer',
-          marginBottom: '12px',
-          transition: 'all 0.15s ease',
-        }}
-        onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#eff6ff'; }}
-        onMouseLeave={e => { e.currentTarget.style.borderColor = highlight ? '#3b82f6' : '#e5e7eb'; e.currentTarget.style.backgroundColor = highlight ? '#eff6ff' : 'white'; }}
-      >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-          <div style={{ fontSize: '32px', flexShrink: 0 }}>{icon}</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '17px', fontWeight: '700', color: '#111827', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {title}
-              {highlight && <span style={{ fontSize: '11px', backgroundColor: '#3b82f6', color: 'white', padding: '2px 8px', borderRadius: '10px', fontWeight: '600' }}>Recommended</span>}
-              {badgeText && <span style={{ fontSize: '11px', backgroundColor: badgeColor || '#10b981', color: 'white', padding: '2px 8px', borderRadius: '10px', fontWeight: '600' }}>{badgeText}</span>}
-            </div>
-            <div style={{ fontSize: '14px', color: '#6b7280', lineHeight: '1.5' }}>{description}</div>
-          </div>
-        </div>
-      </button>
-    );
-
-    return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-        <div style={{ maxWidth: '600px', width: '100%', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', padding: '48px' }}>
-          <h1 style={{ fontSize: '26px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>
-            How would you like to build "{templateName}"?
-          </h1>
-          <p style={{ color: '#6b7280', marginBottom: '32px', fontSize: '15px' }}>
-            Choose the approach that suits you best.
-          </p>
-
-          {optionCard(
-            'Quick Start Template',
-            'Pick your subject and we\'ll instantly build a ready-to-use template pre-populated with generic comments. Fully editable.',
-            '🚀',
-            () => setStep('quick-start'),
-            false,
-            'New',
-            '#10b981'
-          )}
-
-          {optionCard(
-            'Build as you go',
-            'Answer a few questions about your reports and we\'ll set up the structure. Then write reports and build up your comment bank as you go — perfect for starting fresh.',
-            '🧱',
-            () => setStep('build-as-you-go'),
-            true
-          )}
-
-          {optionCard(
-            'Import from existing reports',
-            'Paste reports you\'ve already written and we\'ll extract comments to build your template automatically.',
-            '📥',
-            () => navigate('/import-template'),
-          )}
-
-          {optionCard(
-            'Build manually',
-            'Add and configure sections yourself using the full template builder. Best if you know exactly what you want.',
-            '⚙️',
-            () => setStep('building'),
-          )}
-
-          <div style={{ marginTop: '16px' }}>
-            <button onClick={() => setStep('naming')}
-              style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>
-              ← Change template name
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ─── QUICK START ─────────────────────────────────────────────────────────
+  // ─── QUICK START ──────────────────────────────────────────────────────────
 
   if (step === 'quick-start') {
     return (
       <QuickStartWizard
         templateName={templateName}
         onComplete={(builtTemplate) => {
-          // Navigate to TemplateReview so teacher can see and edit everything
           navigate('/template-review', {
             state: {
               template: builtTemplate,
@@ -369,12 +202,12 @@ const CreateTemplate: React.FC = () => {
             },
           });
         }}
-        onCancel={() => setStep('method')}
+        onCancel={() => navigate(-1)}
       />
     );
   }
 
-  // ─── BUILD AS YOU GO ──────────────────────────────────────────────────────
+  // ─── BUILD AS YOU GO (Template Wizard) ────────────────────────────────────
 
   if (step === 'build-as-you-go') {
     return (
@@ -392,7 +225,7 @@ const CreateTemplate: React.FC = () => {
             state: { preselectedClassId: location.state?.classId }
           });
         }}
-        onCancel={() => setStep('method')}
+        onCancel={() => navigate(-1)}
       />
     );
   }
@@ -441,155 +274,155 @@ const CreateTemplate: React.FC = () => {
               </div>
 
               {sections.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '48px', color: '#9ca3af' }}>
-                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>📝</div>
-                  <h3 style={{ fontSize: '16px', fontWeight: '600', margin: '0 0 8px 0' }}>No Sections Added Yet</h3>
-                  <p style={{ margin: '0 0 24px 0', fontSize: '14px' }}>Start building your template by adding sections.</p>
-                  <button
-                    onClick={() => setShowSectionSelector(true)}
-                    style={{ backgroundColor: '#3b82f6', color: 'white', padding: '12px 24px', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}
-                  >
-                    Add Your First Section
-                  </button>
+                <div style={{ border: '2px dashed #d1d5db', borderRadius: '8px', padding: '48px', textAlign: 'center', color: '#9ca3af' }}>
+                  <p style={{ margin: 0 }}>No sections yet. Add your first section to get started.</p>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {sections.map((section, index) => (
-                    <div key={section.id} style={{ backgroundColor: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          <span style={{ fontSize: '12px', fontWeight: '600', color: 'white', backgroundColor: '#6b7280', padding: '2px 8px', borderRadius: '4px' }}>
-                            {section.type}
-                          </span>
-                          {section.name && (
-                            <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#374151', margin: '6px 0 0 0' }}>{section.name}</h4>
-                          )}
+                    <div
+                      key={section.id}
+                      style={{
+                        backgroundColor: '#f9fafb',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                        padding: '16px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: '500', color: '#111827', fontSize: '14px' }}>
+                          {section.type === 'new-line' ? '— Line Break —' :
+                           section.type === 'optional-additional-comment' ? '[ Optional Comment Box ]' :
+                           section.name}
                         </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button onClick={() => handleMoveSection(index, 'up')} disabled={index === 0}
-                            style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '4px', padding: '4px 8px', cursor: index === 0 ? 'not-allowed' : 'pointer', color: '#6b7280', fontSize: '12px' }}>↑</button>
-                          <button onClick={() => handleMoveSection(index, 'down')} disabled={index === sections.length - 1}
-                            style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '4px', padding: '4px 8px', cursor: index === sections.length - 1 ? 'not-allowed' : 'pointer', color: '#6b7280', fontSize: '12px' }}>↓</button>
-                          {isSectionEditable(section.type) && (
-                            <button onClick={() => handleEditSection(section, index)}
-                              style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 12px', cursor: 'pointer', fontSize: '12px' }}>Edit</button>
-                          )}
-                          <button onClick={() => handleDeleteSection(index)}
-                            style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 12px', cursor: 'pointer', fontSize: '12px' }}>Delete</button>
-                        </div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{section.type}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => handleMoveSection(index, 'up')}
+                          disabled={index === 0}
+                          style={{ backgroundColor: '#f3f4f6', color: '#374151', padding: '4px 8px', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: index === 0 ? 'not-allowed' : 'pointer', opacity: index === 0 ? 0.4 : 1 }}
+                        >↑</button>
+                        <button
+                          onClick={() => handleMoveSection(index, 'down')}
+                          disabled={index === sections.length - 1}
+                          style={{ backgroundColor: '#f3f4f6', color: '#374151', padding: '4px 8px', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: index === sections.length - 1 ? 'not-allowed' : 'pointer', opacity: index === sections.length - 1 ? 0.4 : 1 }}
+                        >↓</button>
+                        {isSectionEditable(section.type) && (
+                          <button
+                            onClick={() => handleEditSection(section, index)}
+                            style={{ backgroundColor: '#eff6ff', color: '#3b82f6', padding: '4px 8px', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
+                          >Edit</button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteSection(index)}
+                          style={{ backgroundColor: '#fef2f2', color: '#ef4444', padding: '4px 8px', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
+                        >✕</button>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
 
-              {sections.length > 0 && (
-                <div style={{ display: 'flex', gap: '12px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e5e7eb' }}>
-                  <button onClick={handleAddNewLine}
-                    style={{ flex: 1, backgroundColor: '#f3f4f6', color: '#374151', padding: '8px', border: '1px dashed #d1d5db', borderRadius: '6px', fontSize: '13px', cursor: 'pointer' }}>
-                    + New Line
-                  </button>
-                  <button onClick={handleAddOptionalComment}
-                    style={{ flex: 1, backgroundColor: '#f3f4f6', color: '#374151', padding: '8px', border: '1px dashed #d1d5db', borderRadius: '6px', fontSize: '13px', cursor: 'pointer' }}>
-                    + Optional Comments Box
-                  </button>
-                </div>
-              )}
+              <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={handleAddNewLine}
+                  style={{ backgroundColor: '#f9fafb', color: '#6b7280', padding: '8px 16px', border: '1px dashed #d1d5db', borderRadius: '6px', fontSize: '13px', cursor: 'pointer' }}
+                >
+                  + Line Break
+                </button>
+                <button
+                  onClick={handleAddOptionalComment}
+                  style={{ backgroundColor: '#f9fafb', color: '#6b7280', padding: '8px 16px', border: '1px dashed #d1d5db', borderRadius: '6px', fontSize: '13px', cursor: 'pointer' }}
+                >
+                  + Optional Comment Box
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Info panel */}
-          <div style={{ backgroundColor: 'white', border: '2px solid #e5e7eb', borderRadius: '12px', padding: '24px', position: 'sticky', top: '80px' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '12px' }}>About Section Types</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>
-              <div><strong style={{ color: '#374151' }}>Rated Comment</strong> — teacher picks Excellent / Good / Satisfactory / Needs Improvement</div>
-              <div><strong style={{ color: '#374151' }}>Qualities / Strengths</strong> — teacher picks from named comment buttons</div>
-              <div><strong style={{ color: '#374151' }}>Next Steps</strong> — teacher picks from target/focus area buttons</div>
-              <div><strong style={{ color: '#374151' }}>Standard Comment</strong> — fixed text included in every report</div>
-              <div><strong style={{ color: '#374151' }}>Assessment Score</strong> — includes a score/grade with performance comments</div>
-              <div><strong style={{ color: '#374151' }}>Personalised Comment</strong> — AI generates a unique sentence per pupil</div>
+          {/* Template Settings Panel */}
+          <div style={{ position: 'sticky', top: '100px' }}>
+            <div style={{ backgroundColor: 'white', border: '2px solid #e5e7eb', borderRadius: '12px', padding: '24px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: '0 0 20px 0' }}>Template Settings</h2>
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                  Template Name
+                </label>
+                <input
+                  type="text"
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  placeholder="Enter template name..."
+                  style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                <p style={{ margin: '0 0 8px 0' }}>Sections: {sections.filter(s => s.type !== 'new-line' && s.type !== 'optional-additional-comment').length}</p>
+              </div>
             </div>
           </div>
+
         </div>
       </main>
 
       {/* Section Selector Modal */}
       {showSectionSelector && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'white', zIndex: 1000, overflow: 'auto' }}>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <SectionSelector
-            onSelectSection={(type: string, data: any) => {
-              const newSection: any = {
-                id: `${Date.now()}-${Math.random()}`,
-                type,
-                name: data?.name || type,
-                data: data || {},
-              };
-              setSections((prev: any) => [...prev, newSection]);
-              setShowSectionSelector(false);
+            onSelectSection={(type, data) => {
+              const newSection: TemplateSection = { id: Date.now().toString(), type: type as SectionType, name: data?.name || type, data: data || {} };
+              handleSectionAdded(newSection);
             }}
-            onBack={() => setShowSectionSelector(false)}
+            onCancel={() => setShowSectionSelector(false)}
           />
         </div>
       )}
 
-      {/* Edit modals */}
+      {/* Section Edit Modals */}
       {showRatedCommentBuilder && editingSection && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
-          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', maxWidth: '700px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
-            <RatedCommentBuilder existingComment={editingSection.section.data} onSave={handleSectionUpdated} onCancel={handleCancelEdit} />
-          </div>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'white', zIndex: 1000, overflow: 'auto' }}>
+          <RatedCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveSection} onCancel={handleCancelEdit} />
         </div>
       )}
-
       {showAssessmentCommentBuilder && editingSection && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
-          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', maxWidth: '700px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
-            <AssessmentCommentBuilder existingComment={editingSection.section.data} onSave={handleSectionUpdated} onCancel={handleCancelEdit} />
-          </div>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'white', zIndex: 1000, overflow: 'auto' }}>
+          <AssessmentCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveSection} onCancel={handleCancelEdit} />
         </div>
       )}
-
       {showPersonalisedCommentBuilder && editingSection && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
-          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', maxWidth: '700px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
-            <PersonalisedCommentBuilder existingComment={editingSection.section.data} onSave={handleSectionUpdated} onCancel={handleCancelEdit} />
-          </div>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'white', zIndex: 1000, overflow: 'auto' }}>
+          <PersonalisedCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveSection} onCancel={handleCancelEdit} />
         </div>
       )}
-
       {showNextStepsCommentBuilder && editingSection && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
-          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', maxWidth: '700px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
-            <NextStepsCommentBuilder existingComment={editingSection.section.data} onSave={handleSectionUpdated} onCancel={handleCancelEdit} />
-          </div>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'white', zIndex: 1000, overflow: 'auto' }}>
+          <NextStepsCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveSection} onCancel={handleCancelEdit} />
         </div>
       )}
-
       {showQualitiesCommentBuilder && editingSection && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
-          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', maxWidth: '700px', width: '100%', maxHeight: '80vh', overflow: 'auto' }}>
-            <QualitiesCommentBuilder existingComment={editingSection.section.data} onSave={handleSectionUpdated} onCancel={handleCancelEdit} />
-          </div>
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'white', zIndex: 1000, overflow: 'auto' }}>
+          <QualitiesCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveSection} onCancel={handleCancelEdit} />
         </div>
       )}
-
-      {showStandardCommentEditor && editingSection && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '24px' }}>
-          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', maxWidth: '600px', width: '100%' }}>
-            <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px' }}>Edit Standard Comment</h3>
+      {showStandardCommentEditor && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '32px', maxWidth: '500px', width: '100%' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: '0 0 20px 0' }}>Edit Standard Comment</h3>
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '6px' }}>Section Name</label>
-              <input value={standardCommentName} onChange={e => setStandardCommentName(e.target.value)}
-                style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Section Name</label>
+              <input type="text" value={standardCommentName} onChange={e => setStandardCommentName(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
             </div>
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '6px' }}>Comment Text</label>
-              <textarea value={standardCommentContent} onChange={e => setStandardCommentContent(e.target.value)} rows={4}
-                style={{ width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '14px', resize: 'vertical', boxSizing: 'border-box' }} />
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Content</label>
+              <textarea value={standardCommentContent} onChange={e => setStandardCommentContent(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px', minHeight: '120px', resize: 'vertical', boxSizing: 'border-box' }} />
             </div>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button onClick={handleCancelEdit} style={{ backgroundColor: '#f3f4f6', color: '#374151', padding: '10px 20px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleSaveStandardCommentEdit} style={{ backgroundColor: '#3b82f6', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>Save</button>
+              <button onClick={handleCancelEdit} style={{ backgroundColor: '#f3f4f6', color: '#374151', padding: '8px 16px', border: 'none', borderRadius: '6px', fontSize: '14px', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={handleSaveStandardCommentEdit} style={{ backgroundColor: '#3b82f6', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '6px', fontSize: '14px', cursor: 'pointer' }}>Save</button>
             </div>
           </div>
         </div>
