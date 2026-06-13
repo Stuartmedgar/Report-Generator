@@ -282,7 +282,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
       else if (s.type === 'next-steps') { const f: Record<string, string[]> = {}; s.buttons.forEach(b => { if (b.name) f[b.name] = b.statements; }); data = { focusAreas: f }; }
       return { id: s.id, type: s.type, name: s.name, showHeader: s.showHeader || false, data };
     });
-    clearDraft(); onComplete(sections, localTemplateName.trim() || undefined);
+    clearDraft(); onComplete(sections);
   };
 
   // ─── Shared UI components ─────────────────────────────────────────────────
