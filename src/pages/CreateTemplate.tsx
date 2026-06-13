@@ -373,12 +373,12 @@ const CreateTemplate: React.FC = () => {
       {showSectionSelector && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <SectionSelector
-            onSelectSection={(type, data) => {
-              const newSection: TemplateSection = { id: Date.now().toString(), type: type as SectionType, name: data?.name || type, data: data || {} };
-              handleSectionAdded(newSection);
-            }}
-            onCancel={() => setShowSectionSelector(false)}
-          />
+  onSelectSection={(type, data) => {
+    const newSection: TemplateSection = { id: Date.now().toString(), type: type as SectionType, name: data?.name || type, data: data || {} };
+    handleSectionAdded(newSection);
+  }}
+  onBack={() => setShowSectionSelector(false)}
+/>
         </div>
       )}
 
