@@ -4,14 +4,10 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { TemplateSection } from '../types';
 
-// ─── TYPES ────────────────────────────────────────────────────────────────────
-
 interface ReviewTemplate {
   name: string;
   sections: TemplateSection[];
 }
-
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
 
 const SECTION_COLORS: Record<string, string> = {
   'standard-comment': '#10b981', 'qualities': '#8b5cf6', 'rated-comment': '#3b82f6',
@@ -40,7 +36,7 @@ function generatePreview(sections: TemplateSection[]): string {
   const parts: string[] = [];
   for (const s of sections) {
     if (s.type === 'new-line') { parts.push('\n\n'); continue; }
-    if (s.showHeader && s.name) parts.push(`${s.name.toUpperCase()}\n`);
+    if (s.data?.showHeader && s.name) parts.push(`${s.name.toUpperCase()}\n`);
     if (s.type === 'standard-comment') { if (s.data?.content) parts.push(s.data.content.replace(/\[Name\]/g, 'Alex')); }
     else if (s.type === 'optional-additional-comment') { parts.push('[Optional comment — teacher types here]'); }
     else if (s.type === 'qualities') { const first = Object.values(s.data?.comments || {})[0] as string[] | undefined; if (first?.[0]) parts.push(first[0].replace(/\[Name\]/g, 'Alex')); }
@@ -53,8 +49,6 @@ function generatePreview(sections: TemplateSection[]): string {
 }
 
 function makeId() { return `s_${Date.now()}_${Math.random().toString(36).slice(2)}`; }
-
-// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function TemplateReview() {
   const location = useLocation();
@@ -91,7 +85,10 @@ export default function TemplateReview() {
   const handleDragEnd = () => { dragSourceIndex.current = null; setDragOverIndex(null); };
 
   const handleToggleHeader = (id: string) => {
-    updateSections(prev => prev.map(s => s.id === id ? { ...s, showHeader: !s.showHeader } : s));
+    updateSections(prev => prev.map(s => s.id === id
+      ? { ...s, data: { ...s.data, showHeader: !s.data?.showHeader } }
+      : s
+    ));
   };
 
   const handleRemoveSection = (id: string) => {
@@ -103,7 +100,7 @@ export default function TemplateReview() {
       const u = [...prev];
       u.splice(afterIndex + 1, 0, {
         id: makeId(), type, name: type === 'new-line' ? '' : 'Additional Comments',
-        showHeader: false, data: {}
+        data: { showHeader: false }
       });
       return u;
     });
@@ -149,7 +146,6 @@ export default function TemplateReview() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
 
-      {/* Header */}
       <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '12px 24px', position: 'sticky', top: 0, zIndex: 10, flexShrink: 0 }}>
         <div style={{ maxWidth: '860px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
@@ -184,7 +180,6 @@ export default function TemplateReview() {
         </div>
       )}
 
-      {/* View toggle */}
       <div style={{ maxWidth: '860px', margin: '16px auto 0', padding: '0 24px', width: '100%', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden', width: 'fit-content' }}>
           {(['sections', 'preview'] as const).map(mode => (
@@ -195,12 +190,11 @@ export default function TemplateReview() {
         </div>
       </div>
 
-      {/* Main content */}
       <main style={{ flex: 1, maxWidth: '860px', margin: '16px auto', padding: '0 24px 40px', width: '100%', boxSizing: 'border-box' }}>
 
         {reviewViewMode === 'preview' ? (
           <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '28px 32px' }}>
-            <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '16px', margin: '0 0 16px 0' }}>
+            <p style={{ fontSize: '12px', color: '#9ca3af', margin: '0 0 16px 0' }}>
               Sample report using the first statement from each section. Pupil shown as "Alex".
             </p>
             <div style={{ fontSize: '14px', color: '#374151', lineHeight: '1.9', whiteSpace: 'pre-wrap', textAlign: 'left' }}>
@@ -224,10 +218,10 @@ export default function TemplateReview() {
               const isSpecial = s.type === 'new-line' || s.type === 'optional-additional-comment';
               const isDragOver = dragOverIndex === index;
               const stmtCount = countStatements(s);
+              const showHeader = s.data?.showHeader;
 
               return (
                 <div key={s.id}>
-                  {/* Drop zone */}
                   <div
                     style={{ height: isDragOver ? '36px' : '4px', backgroundColor: isDragOver ? '#dbeafe' : 'transparent', border: isDragOver ? '2px dashed #3b82f6' : 'none', borderRadius: '6px', transition: 'all 0.15s', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     onDragOver={e => handleDragOver(e, index)}
@@ -236,7 +230,6 @@ export default function TemplateReview() {
                     {isDragOver && <span style={{ fontSize: '12px', color: '#3b82f6' }}>Drop here</span>}
                   </div>
 
-                  {/* Section row */}
                   <div
                     draggable
                     onDragStart={() => handleDragStart(index)}
@@ -270,9 +263,9 @@ export default function TemplateReview() {
                         <span style={{ fontSize: '11px', color: '#9ca3af' }}>Heading</span>
                         <button
                           onClick={() => handleToggleHeader(s.id)}
-                          style={{ width: '36px', height: '20px', borderRadius: '10px', border: 'none', cursor: 'pointer', backgroundColor: s.showHeader ? '#3b82f6' : '#d1d5db', position: 'relative', transition: 'background-color 0.2s', flexShrink: 0 }}
+                          style={{ width: '36px', height: '20px', borderRadius: '10px', border: 'none', cursor: 'pointer', backgroundColor: showHeader ? '#3b82f6' : '#d1d5db', position: 'relative', transition: 'background-color 0.2s', flexShrink: 0 }}
                         >
-                          <div style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: '2px', left: s.showHeader ? '18px' : '2px', transition: 'left 0.2s' }} />
+                          <div style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: '2px', left: showHeader ? '18px' : '2px', transition: 'left 0.2s' }} />
                         </button>
                       </div>
                     )}
@@ -283,7 +276,6 @@ export default function TemplateReview() {
                     >✕</button>
                   </div>
 
-                  {/* Insert buttons */}
                   <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', paddingLeft: '28px' }}>
                     <button onClick={() => handleAddSpecialSection('new-line', index)} style={{ background: 'none', border: '1px dashed #d1d5db', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', color: '#9ca3af', cursor: 'pointer' }}>+ line break</button>
                     <button onClick={() => handleAddSpecialSection('optional-additional-comment', index)} style={{ background: 'none', border: '1px dashed #d1d5db', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', color: '#9ca3af', cursor: 'pointer' }}>+ optional comment box</button>
