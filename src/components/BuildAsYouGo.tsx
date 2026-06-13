@@ -7,7 +7,7 @@ const SUPABASE_URL = 'https://wozbrojwuzktwrzngllh.supabase.co/functions/v1/gene
 interface BuildAsYouGoProps {
   templateName: string;
   classId?: string;
-  onComplete: (sections: TemplateSection[]) => void;
+  onComplete: (sections: TemplateSection[], name?: string) => void;
   onCancel: () => void;
 }
 
@@ -66,10 +66,13 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
 
   const [screen, setScreen] = useState<Screen>('subject');
   const [subject, setSubject] = useState('');
+  const [localTemplateName, setLocalTemplateName] = useState(templateName || '');
+  const [templateNameError, setTemplateNameError] = useState('');
 
-  const [standardStatements, setStandardStatements] = useState<string[]>([]);
+  const [standardStatements, setStandardStatements] = useState<{name: string; content: string}[]>([]);
   const [hasStandardComment, setHasStandardComment] = useState<boolean | string | null>(null);
   const [standardContent, setStandardContent] = useState('');
+  const [standardSectionName, setStandardSectionName] = useState('');
   const [aiCandidates, setAiCandidates] = useState<string[]>([]);
   const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
 
@@ -226,7 +229,11 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
 
   const handleComplete = () => {
     if (addedSections.filter(s => s.type !== 'new-line' && s.type !== 'optional-additional-comment').length === 0) { alert('Please add at least one section.'); return; }
-    const standardSections: TemplateSection[] = standardStatements.map(stmt => ({ id: makeId(), type: 'standard-comment' as SectionType, name: 'Fixed Statement', showHeader: false, data: { content: stmt } }));
+    const standardSections: TemplateSection[] = standardStatements.map(stmt => ({
+      id: makeId(), type: 'standard-comment' as SectionType,
+      name: stmt.name || 'Fixed Statement',
+      showHeader: false, data: { content: stmt.content }
+    }));
     const builtSections: TemplateSection[] = addedSections.map(s => {
       let data: any = {};
       if (s.type === 'standard-comment') data = { content: s.content || '' };
@@ -237,7 +244,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
       else if (s.type === 'next-steps') { const f: Record<string, string[]> = {}; s.buttons.forEach(b => { if (b.name) f[b.name] = b.statements; }); data = { focusAreas: f }; }
       return { id: s.id, type: s.type, name: s.name, showHeader: s.showHeader || false, data };
     });
-    clearDraft(); onComplete([...standardSections, ...builtSections]);
+    clearDraft(); onComplete([...standardSections, ...builtSections], localTemplateName.trim() || undefined);
   };
 
   const TopBar = ({ title }: { title?: string }) => (
@@ -274,12 +281,21 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
 
   const renderStatementEditor = (sType: string, sName: string) => {
     const isRated = sType === 'rated-comment';
-    const isStrengths = sName === 'Strengths'; const isNextSteps = sName === 'Next Steps'; const isDevelopment = sName === 'Areas for Development';
-    const universalPool: AddableButton[] = isStrengths ? STRENGTHS_ADDABLE_UNIVERSAL : isNextSteps ? NEXT_STEPS_ADDABLE_UNIVERSAL : isDevelopment ? DEVELOPMENT_ADDABLE_UNIVERSAL : [];
-    const subjectPool: AddableButton[] = isStrengths ? (STRENGTHS_ADDABLE_BY_SUBJECT[subject] || []) : isNextSteps ? (NEXT_STEPS_ADDABLE_BY_SUBJECT[subject] || []) : isDevelopment ? (DEVELOPMENT_ADDABLE_BY_SUBJECT[subject] || []) : [];
+    // Determine which pool to show based on section type AND question context
+    const isStrengthsType = sType === 'qualities';
+    const isNextStepsType = sType === 'next-steps';
+    // Use question id to distinguish qualities (strengths) from other-comments
+    const currentQuestionId = question?.id;
+    const showStrengthsPool = isStrengthsType && currentQuestionId !== 'other-comments';
+    const showNextStepsPool = isNextStepsType;
+    const showOtherPool = isStrengthsType && currentQuestionId === 'other-comments';
+
+    const universalPool: AddableButton[] = showStrengthsPool ? STRENGTHS_ADDABLE_UNIVERSAL : showNextStepsPool ? NEXT_STEPS_ADDABLE_UNIVERSAL : showOtherPool ? DEVELOPMENT_ADDABLE_UNIVERSAL : [];
+    const subjectPool: AddableButton[] = showStrengthsPool ? (STRENGTHS_ADDABLE_BY_SUBJECT[subject] || []) : showNextStepsPool ? (NEXT_STEPS_ADDABLE_BY_SUBJECT[subject] || []) : showOtherPool ? (DEVELOPMENT_ADDABLE_BY_SUBJECT[subject] || []) : [];
     const activeNames = buttons.map(b => b.name);
     const availableUniversal = universalPool.filter(b => !activeNames.includes(b.name));
     const availableSubject = subjectPool.filter(b => !activeNames.includes(b.name));
+    const hasPool = availableUniversal.length > 0 || availableSubject.length > 0;
     return (
       <div>
         {isRated && (
@@ -327,7 +343,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
             )}
           </div>
         )}
-        {(isStrengths || isNextSteps || isDevelopment) && (availableUniversal.length > 0 || availableSubject.length > 0) && (
+        {hasPool && (
           <div style={{ marginBottom: '20px' }}>
             <div style={{ height: '1px', backgroundColor: '#f3f4f6', margin: '8px 0 14px' }} />
             <div style={{ fontSize: '12px', fontWeight: '700', color: '#9ca3af', letterSpacing: '0.04em', marginBottom: '10px' }}>ADD MORE BUTTONS</div>
@@ -404,11 +420,30 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
       <TopBar title="Template Wizard" />
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px' }}>
         <div style={{ maxWidth: '560px', width: '100%', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07)', padding: '40px 44px' }}>
-          <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>What subject are you teaching?</h2>
-          <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '28px', lineHeight: '1.6' }}>This helps unlock subject-specific ready-made buttons you can add to your sections as you build.</p>
+          <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>Template Wizard</h2>
+          <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '28px', lineHeight: '1.6' }}>Name your template, choose your subject, then answer a few questions to build it section by section.</p>
+
+          {/* Template name */}
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Template Name *</label>
+            <input
+              type="text"
+              value={localTemplateName}
+              onChange={e => { setLocalTemplateName(e.target.value); if (templateNameError) setTemplateNameError(''); }}
+              placeholder="e.g. S3 PE Reports, Year 9 English"
+              style={{ width: '100%', padding: '10px 14px', border: `2px solid ${templateNameError ? '#ef4444' : '#e5e7eb'}`, borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+              autoFocus
+            />
+            {templateNameError && <p style={{ fontSize: '13px', color: '#ef4444', margin: '6px 0 0 0' }}>{templateNameError}</p>}
+          </div>
+
+          <p style={{ fontSize: '13px', fontWeight: '600', color: '#374151', margin: '0 0 12px 0' }}>Select your subject:</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
             {SUBJECTS.map(s => (
-              <button key={s} onClick={() => { setSubject(s); setScreen('standard-comment'); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', backgroundColor: 'white', border: '2px solid #e5e7eb', borderRadius: '10px', cursor: 'pointer', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#111827' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#eff6ff'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.backgroundColor = 'white'; }}>
+              <button key={s} onClick={() => {
+                if (!localTemplateName.trim()) { setTemplateNameError('Please enter a template name first.'); return; }
+                setSubject(s); setScreen('standard-comment');
+              }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', backgroundColor: 'white', border: '2px solid #e5e7eb', borderRadius: '10px', cursor: 'pointer', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#111827' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#eff6ff'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.backgroundColor = 'white'; }}>
                 <span style={{ fontSize: '22px' }}>{SUBJECT_ICONS[s]}</span><span>{s}</span>
               </button>
             ))}
@@ -433,8 +468,9 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
       finally { setAiLoading(false); }
     };
     const confirmCandidates = () => {
-      const chosen = aiCandidates.filter(c => selectedCandidates.has(c));
-      setStandardStatements(prev => { const ex = new Set(prev); return [...prev, ...chosen.filter(c => !ex.has(c))]; });
+      const existingContents = new Set(standardStatements.map(s => s.content));
+      const chosen = aiCandidates.filter(c => selectedCandidates.has(c) && !existingContents.has(c));
+      setStandardStatements(prev => [...prev, ...chosen.map(c => ({ name: '', content: c }))]);
       setAiCandidates([]); setSelectedCandidates(new Set()); setHasStandardComment('manual');
     };
     const goNext = () => { setCurrentStep(0); resetWizardQuestion(); setScreen('wizard'); };
@@ -498,15 +534,28 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
                       <div style={{ fontSize: '12px', fontWeight: '700', color: '#6b7280', letterSpacing: '0.04em', marginBottom: '8px' }}>ADDED ({standardStatements.length})</div>
                       {standardStatements.map((stmt, i) => (
                         <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '10px 12px', marginBottom: '6px' }}>
-                          <span style={{ flex: 1, fontSize: '13px', color: '#166534', lineHeight: '1.5' }}>{stmt}</span>
+                          <div style={{ flex: 1 }}>
+                            {stmt.name && <div style={{ fontSize: '11px', fontWeight: '700', color: '#065f46', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{stmt.name}</div>}
+                            <span style={{ fontSize: '13px', color: '#166534', lineHeight: '1.5' }}>{stmt.content}</span>
+                          </div>
                           <button onClick={() => setStandardStatements(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '14px', flexShrink: 0, padding: '0 2px' }}>✕</button>
                         </div>
                       ))}
                     </div>
                   )}
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Section name (optional)</label>
+                  <input
+                    value={standardSectionName}
+                    onChange={e => setStandardSectionName(e.target.value)}
+                    placeholder="e.g. Introduction, Coursework Covered"
+                    style={{ ...txa, minHeight: 'unset', resize: 'none', marginBottom: '10px', padding: '10px 14px' }}
+                  />
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>{standardStatements.length === 0 ? 'Paste your statement here:' : 'Add another:'}</label>
                   <textarea value={standardContent} onChange={e => setStandardContent(e.target.value)} placeholder="e.g. It has been a pleasure teaching [Name] this term..." style={{ ...txa, minHeight: '90px', borderColor: '#10b981', marginBottom: '10px' }} />
-                  {standardContent.trim() && <button onClick={addStandardStatement} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '16px' }}>+ Add statement</button>}
+                  {standardContent.trim() && <button onClick={() => {
+                    setStandardStatements(prev => [...prev, { name: standardSectionName.trim(), content: standardContent.trim() }]);
+                    setStandardContent(''); setStandardSectionName('');
+                  }} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '16px' }}>+ Add statement</button>}
                   <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
                     <button onClick={() => setHasStandardComment('choose')} style={secondaryBtn}>← Back</button>
                     <button onClick={goNext} style={primaryBtn}>{standardStatements.length > 0 ? `Continue with ${standardStatements.length} →` : 'Skip →'}</button>

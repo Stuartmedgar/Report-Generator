@@ -214,12 +214,12 @@ const CreateTemplate: React.FC = () => {
       <BuildAsYouGo
         templateName={templateName}
         classId={location.state?.classId}
-        onComplete={(completedSections) => {
-          const template = {
-            name: templateName,
-            sections: completedSections,
-            sectionData: {},
-          };
+        onComplete={(completedSections, wizardName) => {
+  const template = {
+    name: wizardName || templateName || 'My Template',
+    sections: completedSections,
+    sectionData: {},
+  };
           addTemplate(template);
           navigate('/write-reports', {
             state: { preselectedClassId: location.state?.classId }
