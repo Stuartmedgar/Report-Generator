@@ -98,7 +98,7 @@ const CreateTemplate: React.FC = () => {
     else if (section.type === 'personalised-comment') setShowPersonalisedCommentBuilder(true);
     else if (section.type === 'next-steps') setShowNextStepsCommentBuilder(true);
     else if (section.type === 'standard-comment') {
-      setStandardCommentName(section.name);
+      setStandardCommentName(section.name || '');
       setStandardCommentContent(section.data?.comment || '');
       setShowStandardCommentEditor(true);
     } else if (section.type === 'qualities') {
