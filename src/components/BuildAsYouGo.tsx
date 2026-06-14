@@ -281,15 +281,12 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
 
   const renderStatementEditor = (sType: string, sName: string) => {
     const isRated = sType === 'rated-comment';
-    // Determine which pool to show based on section type AND question context
+    const currentQuestionId = question?.id;
     const isStrengthsType = sType === 'qualities';
     const isNextStepsType = sType === 'next-steps';
-    // Use question id to distinguish qualities (strengths) from other-comments
-    const currentQuestionId = question?.id;
     const showStrengthsPool = isStrengthsType && currentQuestionId !== 'other-comments';
     const showNextStepsPool = isNextStepsType;
     const showOtherPool = isStrengthsType && currentQuestionId === 'other-comments';
-
     const universalPool: AddableButton[] = showStrengthsPool ? STRENGTHS_ADDABLE_UNIVERSAL : showNextStepsPool ? NEXT_STEPS_ADDABLE_UNIVERSAL : showOtherPool ? DEVELOPMENT_ADDABLE_UNIVERSAL : [];
     const subjectPool: AddableButton[] = showStrengthsPool ? (STRENGTHS_ADDABLE_BY_SUBJECT[subject] || []) : showNextStepsPool ? (NEXT_STEPS_ADDABLE_BY_SUBJECT[subject] || []) : showOtherPool ? (DEVELOPMENT_ADDABLE_BY_SUBJECT[subject] || []) : [];
     const activeNames = buttons.map(b => b.name);
@@ -422,28 +419,15 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
         <div style={{ maxWidth: '560px', width: '100%', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07)', padding: '40px 44px' }}>
           <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>Template Wizard</h2>
           <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '28px', lineHeight: '1.6' }}>Name your template, choose your subject, then answer a few questions to build it section by section.</p>
-
-          {/* Template name */}
           <div style={{ marginBottom: '24px' }}>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Template Name *</label>
-            <input
-              type="text"
-              value={localTemplateName}
-              onChange={e => { setLocalTemplateName(e.target.value); if (templateNameError) setTemplateNameError(''); }}
-              placeholder="e.g. S3 PE Reports, Year 9 English"
-              style={{ width: '100%', padding: '10px 14px', border: `2px solid ${templateNameError ? '#ef4444' : '#e5e7eb'}`, borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
-              autoFocus
-            />
+            <input type="text" value={localTemplateName} onChange={e => { setLocalTemplateName(e.target.value); if (templateNameError) setTemplateNameError(''); }} placeholder="e.g. S3 PE Reports, Year 9 English" style={{ width: '100%', padding: '10px 14px', border: `2px solid ${templateNameError ? '#ef4444' : '#e5e7eb'}`, borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} autoFocus />
             {templateNameError && <p style={{ fontSize: '13px', color: '#ef4444', margin: '6px 0 0 0' }}>{templateNameError}</p>}
           </div>
-
           <p style={{ fontSize: '13px', fontWeight: '600', color: '#374151', margin: '0 0 12px 0' }}>Select your subject:</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
             {SUBJECTS.map(s => (
-              <button key={s} onClick={() => {
-                if (!localTemplateName.trim()) { setTemplateNameError('Please enter a template name first.'); return; }
-                setSubject(s); setScreen('standard-comment');
-              }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', backgroundColor: 'white', border: '2px solid #e5e7eb', borderRadius: '10px', cursor: 'pointer', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#111827' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#eff6ff'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.backgroundColor = 'white'; }}>
+              <button key={s} onClick={() => { if (!localTemplateName.trim()) { setTemplateNameError('Please enter a template name first.'); return; } setSubject(s); setScreen('standard-comment'); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', backgroundColor: 'white', border: '2px solid #e5e7eb', borderRadius: '10px', cursor: 'pointer', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#111827' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#eff6ff'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.backgroundColor = 'white'; }}>
                 <span style={{ fontSize: '22px' }}>{SUBJECT_ICONS[s]}</span><span>{s}</span>
               </button>
             ))}
@@ -454,7 +438,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   );
 
   if (screen === 'standard-comment') {
-    const addStandardStatement = () => { if (!standardContent.trim()) return; setStandardStatements(prev => [...prev, standardContent.trim()]); setStandardContent(''); };
     const handleFindFixed = async () => {
       setAiLoading(true); setAiError(null);
       try {
@@ -544,18 +527,15 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
                     </div>
                   )}
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Section name (optional)</label>
-                  <input
-                    value={standardSectionName}
-                    onChange={e => setStandardSectionName(e.target.value)}
-                    placeholder="e.g. Introduction, Coursework Covered"
-                    style={{ ...txa, minHeight: 'unset', resize: 'none', marginBottom: '10px', padding: '10px 14px' }}
-                  />
+                  <input value={standardSectionName} onChange={e => setStandardSectionName(e.target.value)} placeholder="e.g. Introduction, Coursework Covered" style={{ ...inp, marginBottom: '10px' }} />
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>{standardStatements.length === 0 ? 'Paste your statement here:' : 'Add another:'}</label>
                   <textarea value={standardContent} onChange={e => setStandardContent(e.target.value)} placeholder="e.g. It has been a pleasure teaching [Name] this term..." style={{ ...txa, minHeight: '90px', borderColor: '#10b981', marginBottom: '10px' }} />
-                  {standardContent.trim() && <button onClick={() => {
-                    setStandardStatements(prev => [...prev, { name: standardSectionName.trim(), content: standardContent.trim() }]);
-                    setStandardContent(''); setStandardSectionName('');
-                  }} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '16px' }}>+ Add statement</button>}
+                  {standardContent.trim() && (
+                    <button onClick={() => {
+                      setStandardStatements(prev => [...prev, { name: standardSectionName.trim(), content: standardContent.trim() }]);
+                      setStandardContent(''); setStandardSectionName('');
+                    }} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '16px' }}>+ Add statement</button>
+                  )}
                   <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
                     <button onClick={() => setHasStandardComment('choose')} style={secondaryBtn}>← Back</button>
                     <button onClick={goNext} style={primaryBtn}>{standardStatements.length > 0 ? `Continue with ${standardStatements.length} →` : 'Skip →'}</button>
