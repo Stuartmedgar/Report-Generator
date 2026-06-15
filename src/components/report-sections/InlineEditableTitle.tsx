@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 interface InlineEditableTitleProps {
-  name: string;
+  name: string | undefined;
   defaultName: string;
   color: string;
   onRename?: (newName: string) => void;
