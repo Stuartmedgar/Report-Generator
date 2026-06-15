@@ -20,7 +20,7 @@ interface DataState {
 
 interface DataContextType {
   state: DataState;
-  addTemplate: (template: Omit<Template, 'id' | 'createdAt'>) => void;
+  addTemplate: (template: Omit<Template, 'id' | 'createdAt'>) => string;
   updateTemplate: (template: Template) => void;
   deleteTemplate: (id: string) => void;
   addClass: (cls: Omit<Class, 'id' | 'createdAt'>) => void;
@@ -489,7 +489,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   // ─── CRUD OPERATIONS ──────────────────────────────────────────────────────
 
-  const addTemplate = (template: Omit<Template, 'id' | 'createdAt'>) => {
+  const addTemplate = (template: Omit<Template, 'id' | 'createdAt'>): string => {
     const newTemplate: Template = {
       ...template,
       id: `template-${Date.now()}`,
@@ -497,6 +497,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     };
     console.log('Adding template:', newTemplate.name);
     dispatch({ type: 'ADD_TEMPLATE', payload: newTemplate });
+    return newTemplate.id;
   };
 
   const updateTemplate = (template: Template) => {

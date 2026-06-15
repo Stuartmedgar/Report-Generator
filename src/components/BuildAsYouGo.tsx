@@ -248,10 +248,11 @@ const handleSaveAndWrite = () => {
     if (addedSections.filter(s => s.type !== 'new-line' && s.type !== 'optional-additional-comment').length === 0) { alert('Please add at least one section.'); return; }
     const sections = buildFinalSections();
     const name = localTemplateName.trim() || 'My Template';
-    addTemplate({ name, sections });
+    const newTemplateId = addTemplate({ name, sections });
     clearDraft();
     if (classId) {
-      navigate('/write-reports', { state: { preselectedClassId: classId } });
+      sessionStorage.setItem('continueEditing', JSON.stringify({ classId, templateId: newTemplateId, studentIndex: 0 }));
+      navigate('/write-reports');
     } else {
       navigate('/start');
     }
