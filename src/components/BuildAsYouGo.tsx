@@ -71,12 +71,8 @@ const AUTOSAVE_KEY = 'buildAsYouGo_draft';
 function saveDraft(n: string, s: AddedSection[]) { try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ templateName: n, sections: s, savedAt: Date.now() })); } catch (_) {} }
 function clearDraft() { try { localStorage.removeItem(AUTOSAVE_KEY); } catch (_) {} }
 
-function generateTestReport(standardStmts: {name: string; content: string}[], sections: AddedSection[]): string {
+function generateTestReport(sections: AddedSection[]): string {
   const parts: string[] = [];
-  // Include standard statements first
-  for (const s of standardStmts) {
-    if (s.content) parts.push(s.content.replace(/\[Name\]/g, 'Alex'));
-  }
   for (const s of sections) {
     if (s.type === 'new-line') { parts.push('\n\n'); continue; }
     if (s.showHeader && s.name) parts.push(`${s.name.toUpperCase()}\n`);
@@ -103,10 +99,12 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const [localTemplateName, setLocalTemplateName] = useState(templateName || '');
   const [templateNameError, setTemplateNameError] = useState('');
 
-  const [standardStatements, setStandardStatements] = useState<{name: string; content: string}[]>([]);
   const [hasStandardComment, setHasStandardComment] = useState<boolean | string | null>(null);
   const [standardContent, setStandardContent] = useState('');
   const [standardSectionName, setStandardSectionName] = useState('');
+  const [editingStandardId, setEditingStandardId] = useState<string | null>(null);
+  const [editingStandardContent, setEditingStandardContent] = useState('');
+  const [editingStandardName, setEditingStandardName] = useState('');
   const [aiCandidates, setAiCandidates] = useState<string[]>([]);
   const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
 
@@ -260,10 +258,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const handleCancel = () => { if (addedSections.length > 0 || screen === 'wizard') { if (!window.confirm('Are you sure? Your progress will be lost.')) return; } onCancel(); };
 
   const buildFinalSections = (): TemplateSection[] => {
-    const standardSections: TemplateSection[] = standardStatements.map(stmt => ({
-      id: makeId(), type: 'standard-comment' as SectionType,
-      name: stmt.name || 'Fixed Statement', showHeader: false, data: { content: stmt.content }
-    }));
     const builtSections: TemplateSection[] = addedSections.map(s => {
       let data: any = {};
       if (s.type === 'standard-comment') data = { content: s.content || '' };
@@ -274,7 +268,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
       else if (s.type === 'next-steps') { const f: Record<string, string[]> = {}; s.buttons.forEach(b => { if (b.name) f[b.name] = b.statements; }); data = { focusAreas: f }; }
       return { id: s.id, type: s.type, name: s.name, showHeader: s.showHeader || false, data };
     });
-    return [...standardSections, ...builtSections];
+    return builtSections;
   };
 
   const handleComplete = () => {
@@ -510,9 +504,9 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
       finally { setAiLoading(false); }
     };
     const confirmCandidates = () => {
-      const existingContents = new Set(standardStatements.map(s => s.content));
+      const existingContents = new Set(addedSections.filter(s => s.type === 'standard-comment').map(s => s.content));
       const chosen = aiCandidates.filter(c => selectedCandidates.has(c) && !existingContents.has(c));
-      setStandardStatements(prev => [...prev, ...chosen.map(c => ({ name: '', content: c }))]);
+      setAddedSections(prev => [...prev, ...chosen.map(c => ({ id: makeId(), type: 'standard-comment' as SectionType, name: '', buttons: [], content: c, instruction: '', showHeader: false }))]);
       setAiCandidates([]); setSelectedCandidates(new Set()); setHasStandardComment('manual');
     };
     const goNext = () => { setCurrentStep(0); resetWizardQuestion(); setScreen('wizard'); };
@@ -571,30 +565,30 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
 
               {hasStandardComment === 'manual' && (
                 <div>
-                  {standardStatements.length > 0 && (
+                  {(() => { const stmts = addedSections.filter(s => s.type === 'standard-comment'); return stmts.length > 0 && (
                     <div style={{ marginBottom: '16px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: '700', color: '#6b7280', letterSpacing: '0.04em', marginBottom: '8px' }}>ADDED ({standardStatements.length})</div>
-                      {standardStatements.map((stmt, i) => (
-                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '10px 12px', marginBottom: '6px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '700', color: '#6b7280', letterSpacing: '0.04em', marginBottom: '8px' }}>ADDED ({stmts.length})</div>
+                      {stmts.map(stmt => (
+                        <div key={stmt.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', padding: '10px 12px', marginBottom: '6px' }}>
                           <div style={{ flex: 1 }}>
                             {stmt.name && <div style={{ fontSize: '11px', fontWeight: '700', color: '#065f46', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{stmt.name}</div>}
                             <span style={{ fontSize: '13px', color: '#166534', lineHeight: '1.5' }}>{stmt.content}</span>
                           </div>
-                          <button onClick={() => setStandardStatements(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '14px', flexShrink: 0, padding: '0 2px' }}>✕</button>
+                          <button onClick={() => setAddedSections(prev => prev.filter(s => s.id !== stmt.id))} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '14px', flexShrink: 0, padding: '0 2px' }}>✕</button>
                         </div>
                       ))}
                     </div>
-                  )}
+                  ); })()}
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Section name (optional)</label>
                   <input value={standardSectionName} onChange={e => setStandardSectionName(e.target.value)} placeholder="e.g. Introduction, Coursework Covered" style={{ ...inp, marginBottom: '10px' }} />
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>{standardStatements.length === 0 ? 'Paste your statement here:' : 'Add another:'}</label>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>{addedSections.filter(s => s.type === 'standard-comment').length === 0 ? 'Paste your statement here:' : 'Add another:'}</label>
                   <textarea value={standardContent} onChange={e => setStandardContent(e.target.value)} placeholder="e.g. It has been a pleasure teaching [Name] this term..." style={{ ...txa, minHeight: '90px', borderColor: '#10b981', marginBottom: '10px' }} />
                   {standardContent.trim() && (
-                    <button onClick={() => { setStandardStatements(prev => [...prev, { name: standardSectionName.trim(), content: standardContent.trim() }]); setStandardContent(''); setStandardSectionName(''); }} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '16px' }}>+ Add statement</button>
+                    <button onClick={() => { setAddedSections(prev => [...prev, { id: makeId(), type: 'standard-comment' as SectionType, name: standardSectionName.trim(), buttons: [], content: standardContent.trim(), instruction: '', showHeader: false }]); setStandardContent(''); setStandardSectionName(''); }} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '16px' }}>+ Add statement</button>
                   )}
                   <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
                     <button onClick={() => setHasStandardComment('choose')} style={secondaryBtn}>← Back</button>
-                    <button onClick={goNext} style={primaryBtn}>{standardStatements.length > 0 ? `Continue with ${standardStatements.length} →` : 'Skip →'}</button>
+                    <button onClick={goNext} style={primaryBtn}>{addedSections.filter(s => s.type === 'standard-comment').length > 0 ? `Continue with ${addedSections.filter(s => s.type === 'standard-comment').length} →` : 'Skip →'}</button>
                   </div>
                 </div>
               )}
@@ -704,7 +698,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
 
   // ─── REVIEW SCREEN ────────────────────────────────────────────────────────
 
-  const testReport = generateTestReport(standardStatements, addedSections);
+  const testReport = generateTestReport(addedSections);
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <TopBar />
@@ -717,19 +711,33 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
 
             {addedSections.map((s, index) => {
               const isSpecial = s.type === 'new-line' || s.type === 'optional-additional-comment';
+              const isStandard = s.type === 'standard-comment';
+              const isEditingThis = editingStandardId === s.id;
               const isDragOver = dragOverIndex === index;
               const totalStmts = s.buttons.reduce((a, b) => a + b.statements.length, 0) + (s.content ? 1 : 0);
               return (
                 <div key={s.id}>
                   <div style={{ height: isDragOver ? '36px' : '4px', backgroundColor: isDragOver ? '#dbeafe' : 'transparent', border: isDragOver ? '2px dashed #3b82f6' : 'none', borderRadius: '6px', transition: 'all 0.15s', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onDragOver={e => handleDragOver(e, index)} onDrop={e => handleDrop(e, index)}>{isDragOver && <span style={{ fontSize: '12px', color: '#3b82f6' }}>Drop here</span>}</div>
+                  {isEditingThis ? (
+                    <div style={{ backgroundColor: 'white', border: '2px solid #10b981', borderRadius: '8px', padding: '14px', marginBottom: '4px' }}>
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Section name (optional)</label>
+                      <input value={editingStandardName} onChange={e => setEditingStandardName(e.target.value)} placeholder="e.g. Introduction" style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', marginBottom: '10px', boxSizing: 'border-box' as const, fontFamily: 'inherit' }} />
+                      <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Statement</label>
+                      <textarea value={editingStandardContent} onChange={e => setEditingStandardContent(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', minHeight: '80px', resize: 'vertical', boxSizing: 'border-box' as const, fontFamily: 'inherit', marginBottom: '10px' }} />
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button onClick={() => setEditingStandardId(null)} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '6px 14px', fontSize: '13px', cursor: 'pointer', color: '#6b7280' }}>Cancel</button>
+                        <button onClick={() => { setAddedSections(prev => prev.map(sec => sec.id === s.id ? { ...sec, name: editingStandardName, content: editingStandardContent } : sec)); setEditingStandardId(null); }} disabled={!editingStandardContent.trim()} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', padding: '6px 14px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', opacity: editingStandardContent.trim() ? 1 : 0.4 }}>Save</button>
+                      </div>
+                    </div>
+                  ) : (
                   <div draggable onDragStart={() => handleDragStart(index)} onDragEnd={handleDragEnd} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: isSpecial ? '8px 14px' : '12px 14px', backgroundColor: isSpecial ? '#f9fafb' : 'white', border: `1px solid ${isSpecial ? '#f3f4f6' : '#e5e7eb'}`, borderRadius: '8px', marginBottom: '4px', cursor: 'grab' }}>
                     <div style={{ fontSize: '16px', color: '#d1d5db', cursor: 'grab' }}>⠿</div>
                     {!isSpecial && <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: SECTION_COLORS[s.type] || '#9ca3af', flexShrink: 0 }} />}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       {isSpecial ? <div style={{ fontSize: '12px', color: '#9ca3af', fontStyle: 'italic' }}>{s.type === 'new-line' ? '— Line break —' : '[ Optional comment box ]'}</div>
-                        : <><div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>{s.name}</div><div style={{ fontSize: '11px', color: '#9ca3af' }}>{SECTION_LABELS[s.type]}{totalStmts > 0 && ` · ${totalStmts} statement${totalStmts !== 1 ? 's' : ''}`}</div></>}
+                        : <><div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>{s.name || (isStandard ? 'Fixed Statement' : '')}</div><div style={{ fontSize: '11px', color: '#9ca3af' }}>{SECTION_LABELS[s.type]}{isStandard ? (s.content ? ' · 1 statement' : '') : (totalStmts > 0 ? ` · ${totalStmts} statement${totalStmts !== 1 ? 's' : ''}` : '')}</div>{isStandard && s.content && <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.content}</div>}</>}
                     </div>
-                    {!isSpecial && (
+                    {!isSpecial && !isStandard && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                         <span style={{ fontSize: '11px', color: '#9ca3af' }}>Heading</span>
                         <button onClick={() => handleToggleHeader(s.id)} style={{ width: '36px', height: '20px', borderRadius: '10px', border: 'none', cursor: 'pointer', backgroundColor: s.showHeader ? '#3b82f6' : '#d1d5db', position: 'relative', transition: 'background-color 0.2s', flexShrink: 0 }}>
@@ -737,8 +745,12 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
                         </button>
                       </div>
                     )}
+                    {isStandard && (
+                      <button onClick={() => { setEditingStandardId(s.id); setEditingStandardContent(s.content); setEditingStandardName(s.name); }} style={{ backgroundColor: '#eff6ff', color: '#3b82f6', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '12px', cursor: 'pointer', flexShrink: 0 }}>Edit</button>
+                    )}
                     <button onClick={() => handleRemoveSection(s.id)} style={{ backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '12px', cursor: 'pointer', flexShrink: 0 }}>✕</button>
                   </div>
+                  )}
                   <div style={{ display: 'flex', gap: '6px', marginBottom: '6px', paddingLeft: '28px' }}>
                     <button onClick={() => handleAddSpecialSection('new-line', index)} style={{ background: 'none', border: '1px dashed #d1d5db', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', color: '#9ca3af', cursor: 'pointer' }}>+ line break</button>
                     <button onClick={() => handleAddSpecialSection('optional-additional-comment', index)} style={{ background: 'none', border: '1px dashed #d1d5db', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', color: '#9ca3af', cursor: 'pointer' }}>+ optional comment box</button>
