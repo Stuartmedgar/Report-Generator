@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TemplateSection, SectionType } from '../types';
-import { buildUniversalSections, buildDevelopmentSection, SUBJECT_EXTRAS, SUBJECTS, STRENGTHS_ADDABLE_UNIVERSAL, STRENGTHS_ADDABLE_BY_SUBJECT, NEXT_STEPS_ADDABLE_UNIVERSAL, NEXT_STEPS_ADDABLE_BY_SUBJECT, DEVELOPMENT_ADDABLE_UNIVERSAL, DEVELOPMENT_ADDABLE_BY_SUBJECT, AddableButton } from '../data/starterComments';
+import { useData } from '../contexts/DataContext';
+import { SUBJECT_EXTRAS, SUBJECTS, STRENGTHS_ADDABLE_UNIVERSAL, STRENGTHS_ADDABLE_BY_SUBJECT, NEXT_STEPS_ADDABLE_UNIVERSAL, NEXT_STEPS_ADDABLE_BY_SUBJECT, DEVELOPMENT_ADDABLE_UNIVERSAL, DEVELOPMENT_ADDABLE_BY_SUBJECT, AddableButton } from '../data/starterComments';
 
 const SUPABASE_URL = 'https://wozbrojwuzktwrzngllh.supabase.co/functions/v1/generate-template';
 
@@ -24,13 +26,38 @@ interface Question {
   hasButtons: boolean; isRatedFixed?: boolean; examples?: string[]; positionType: string;
 }
 
+// Generic assessment button pool (score-linked comments)
+const ASSESSMENT_ADDABLE_UNIVERSAL: AddableButton[] = [
+  { name: 'Excellent', statements: ['[Name] achieved an excellent score of [Score], reflecting consistent hard work and strong understanding throughout the unit.', '[Name] performed exceptionally well, scoring [Score] and demonstrating a thorough grasp of the material.', '[Name] achieved [Score] — an excellent result that reflects their commitment and ability.'] },
+  { name: 'Good', statements: ['[Name] achieved a good score of [Score], demonstrating solid understanding of the key topics covered.', '[Name] performed well in the assessment, scoring [Score] and showing a good grasp of the material.', '[Name] scored [Score], which is a pleasing result that reflects their effort and engagement.'] },
+  { name: 'Satisfactory', statements: ['[Name] achieved a score of [Score], which demonstrates a satisfactory understanding of the material covered.', '[Name] scored [Score] in the assessment, showing a reasonable grasp of the core topics.', '[Name] achieved [Score] — a satisfactory result, with room to improve through further review and practice.'] },
+  { name: 'Needs Improvement', statements: ['[Name] scored [Score] in the assessment, indicating that further revision of the key topics is needed.', '[Name] achieved [Score], which suggests some gaps in understanding that should be addressed going forward.', '[Name] scored [Score] — with focused revision and practice, [Name] has the ability to improve significantly.'] },
+  { name: 'Not Completed', statements: ['[Name] has not yet completed this assessment and will need to do so at the earliest opportunity.', '[Name] was absent for this assessment and arrangements will be made for it to be completed.', 'This assessment has not yet been completed by [Name].'] },
+];
+
+// Generic personalised-comment button pool (targets / specific info per pupil)
+const PERSONALISED_ADDABLE_UNIVERSAL: AddableButton[] = [
+  { name: 'Focus target', statements: ['[Name] should focus on [Info 1] as a key area for development going forward.', 'A key target for [Name] is to work on [Info 1] to continue making progress.', '[Name] has identified [Info 1] as an area to develop and is encouraged to focus on this.'] },
+  { name: 'Achievement', statements: ['[Name] has shown particular enthusiasm for [Info 1] this session and has made impressive progress.', 'A highlight for [Name] this term has been [Info 1], where real progress has been made.', '[Name] has excelled in [Info 1], demonstrating real ability and commitment.'] },
+  { name: 'Target grade', statements: ['[Name] is working towards a target grade of [Info 1] and is encouraged to keep this in mind.', 'With continued effort, [Name] is on track to achieve their target of [Info 1].', '[Name]\'s target grade of [Info 1] is achievable with sustained effort and focus.'] },
+  { name: 'Personal goal', statements: ['[Name] has set a personal goal of [Info 1] and is working hard to achieve it.', 'A personal goal for [Name] is [Info 1] and they are making good progress towards this.', '[Name] is working towards [Info 1] and is encouraged to keep this goal in mind.'] },
+];
+
+// Areas for development buttons that can be added to next-steps or personalised sections
+const DEVELOPMENT_BUTTONS_FOR_WIZARD: AddableButton[] = [
+  { name: 'Written work', statements: ['[Name] should focus on developing their extended writing skills to improve the quality of their written work.', 'Improving the structure and detail of written responses is a key target for [Name] going forward.', '[Name] is encouraged to spend time developing their written communication skills.'] },
+  { name: 'Exam technique', statements: ['[Name] should focus on developing their exam technique, particularly in managing time effectively.', 'Practising past paper questions will help [Name] improve their exam technique and confidence.', '[Name] would benefit from focusing on exam technique to ensure their knowledge is fully rewarded.'] },
+  { name: 'Class participation', statements: ['[Name] should look to increase their participation in class discussions and activities.', 'Contributing more regularly to class discussions will help [Name] consolidate their understanding.', '[Name] is encouraged to share their ideas more confidently in class.'] },
+  { name: 'Attention to detail', statements: ['[Name] should pay closer attention to detail in their work to avoid losing marks unnecessarily.', 'Taking more time to check work carefully will help [Name] improve accuracy and presentation.', '[Name] would benefit from developing greater attention to detail across all areas of their work.'] },
+];
+
 const QUESTIONS: Question[] = [
   { id: 'qualities', question: 'Do your reports comment on pupil qualities or strengths?', description: 'Comments picked from a set of options — for example effort, attitude, teamwork.', sectionType: 'qualities', namePlaceholder: 'e.g. Character Qualities, Strengths', defaultName: 'Character Qualities', allowMultiple: true, hasButtons: true, positionType: 'qualities', examples: ['[Name] consistently demonstrates excellent effort and a positive attitude towards learning.', '[Name] is a natural leader who supports and encourages classmates.', '[Name] shows great resilience and perseverance when faced with challenges.'] },
   { id: 'rated-comment', question: 'Do your reports rate pupils on their performance?', description: 'Comments tied to a rating — Excellent, Good, Satisfactory, Needs Improvement.', sectionType: 'rated-comment', namePlaceholder: 'e.g. Progress, Effort Rating', defaultName: 'Progress', allowMultiple: true, hasButtons: true, isRatedFixed: true, positionType: 'rating', examples: ['[Name] has made excellent progress this term and consistently produces work of the highest standard.', '[Name] needs to focus on consolidating their understanding of the core topics covered this term.'] },
-  { id: 'assessment-comment', question: 'Do your reports include assessment results with a score?', description: 'Comments linked to a score or percentage.', sectionType: 'assessment-comment', namePlaceholder: 'e.g. Assessment Result, Test Score', defaultName: 'Assessment', allowMultiple: true, hasButtons: true, isRatedFixed: false, positionType: 'assessment-comment', examples: ['[Name] achieved [Score] in the recent assessment, which reflects their hard work throughout the unit.'] },
-  { id: 'personalised-comment', question: 'Do your reports mention specific pupil achievements or activities?', description: 'Comments that include personalised information — for example a sport, instrument, or club.', sectionType: 'personalised-comment', namePlaceholder: 'e.g. Personal Achievement, Activity', defaultName: 'Personal Achievement', allowMultiple: true, hasButtons: true, positionType: 'personalised-comment', examples: ['[Name] has shown particular enthusiasm for [Info 1] this term and has made impressive progress.'] },
-  { id: 'next-steps', question: 'Do your reports include targets or next steps for the pupil?', description: 'Suggestions for what the pupil should focus on to improve.', sectionType: 'next-steps', namePlaceholder: 'e.g. Next Steps, Targets, Areas for Development', defaultName: 'Next Steps', allowMultiple: true, hasButtons: true, positionType: 'next-steps', examples: ['[Name] should focus on developing their extended writing skills to reach the next level.'] },
-  { id: 'other-comments', question: 'Do your reports contain any other types of comments?', description: 'Any other categories not covered above.', sectionType: 'qualities', namePlaceholder: 'e.g. Behaviour, Homework, Wider Achievement', defaultName: 'Other Comments', allowMultiple: true, hasButtons: true, positionType: 'qualities', examples: ['[Name] consistently demonstrates excellent behaviour and is a pleasure to have in class.', '[Name] completes homework to a high standard and always meets deadlines.'] },
+  { id: 'assessment-comment', question: 'Do your reports include assessment results with a score?', description: 'Comments linked to a score or percentage — use [Score] as the placeholder.', sectionType: 'assessment-comment', namePlaceholder: 'e.g. Assessment Result, Test Score', defaultName: 'Assessment', allowMultiple: true, hasButtons: true, isRatedFixed: false, positionType: 'assessment-comment', examples: ['[Name] achieved [Score] in the recent assessment, which reflects their hard work throughout the unit.'] },
+  { id: 'personalised-comment', question: 'Do your reports include targets or specific information per pupil?', description: 'Comments where a detail unique to each pupil is typed in — for example a target, sport, instrument, or achievement.', sectionType: 'personalised-comment', namePlaceholder: 'e.g. Personal Target, Focus Area, Activity', defaultName: 'Personal Target', allowMultiple: true, hasButtons: true, positionType: 'personalised-comment', examples: ['[Name] should focus on [Info 1] as a key area for development going forward.', '[Name] has shown particular enthusiasm for [Info 1] this term and has made impressive progress.'] },
+  { id: 'next-steps', question: 'Do your reports include general next steps or areas for development?', description: 'Suggestions for what the pupil should focus on — chosen from a set of options rather than typed per pupil.', sectionType: 'next-steps', namePlaceholder: 'e.g. Next Steps, Areas for Development', defaultName: 'Next Steps', allowMultiple: true, hasButtons: true, positionType: 'next-steps', examples: ['[Name] should focus on developing their extended writing skills to reach the next level.', '[Name] should aim to consolidate the key topics covered this session through regular review.'] },
+  { id: 'other-comments', question: 'Do your reports contain any other types of comments?', description: 'Any other categories not covered above — for example behaviour, homework, or wider achievement.', sectionType: 'qualities', namePlaceholder: 'e.g. Behaviour, Homework, Wider Achievement', defaultName: 'Other Comments', allowMultiple: true, hasButtons: true, positionType: 'qualities', examples: ['[Name] consistently demonstrates excellent behaviour and is a pleasure to have in class.', '[Name] completes homework to a high standard and always meets deadlines.'] },
 ];
 
 const SECTION_COLORS: Record<string, string> = { 'standard-comment': '#10b981', 'qualities': '#8b5cf6', 'rated-comment': '#3b82f6', 'assessment-comment': '#8b5cf6', 'personalised-comment': '#f59e0b', 'next-steps': '#06b6d4', 'optional-additional-comment': '#ef4444', 'new-line': '#9ca3af' };
@@ -44,14 +71,18 @@ const AUTOSAVE_KEY = 'buildAsYouGo_draft';
 function saveDraft(n: string, s: AddedSection[]) { try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ templateName: n, sections: s, savedAt: Date.now() })); } catch (_) {} }
 function clearDraft() { try { localStorage.removeItem(AUTOSAVE_KEY); } catch (_) {} }
 
-function generateTestReport(sections: AddedSection[]): string {
+function generateTestReport(standardStmts: {name: string; content: string}[], sections: AddedSection[]): string {
   const parts: string[] = [];
+  // Include standard statements first
+  for (const s of standardStmts) {
+    if (s.content) parts.push(s.content.replace(/\[Name\]/g, 'Alex'));
+  }
   for (const s of sections) {
     if (s.type === 'new-line') { parts.push('\n\n'); continue; }
     if (s.showHeader && s.name) parts.push(`${s.name.toUpperCase()}\n`);
     if (s.type === 'standard-comment') { if (s.content) parts.push(s.content.replace(/\[Name\]/g, 'Alex')); }
     else if (s.type === 'optional-additional-comment') { parts.push('[Optional comment — teacher types here]'); }
-    else { const btn = s.buttons.find(b => b.name && b.statements.length > 0); if (btn) parts.push(btn.statements[0].replace(/\[Name\]/g, 'Alex').replace(/\[Score\]/g, '78%').replace(/\[Info 1\]/g, 'football')); }
+    else { const btn = s.buttons.find(b => b.name && b.statements.length > 0); if (btn) parts.push(btn.statements[0].replace(/\[Name\]/g, 'Alex').replace(/\[Score\]/g, '78%').replace(/\[Info 1\]/g, 'improving written work')); }
   }
   return parts.join(' ').replace(/ {2,}/g, ' ').replace(/\n /g, '\n').trim();
 }
@@ -59,6 +90,9 @@ function generateTestReport(sections: AddedSection[]): string {
 type Screen = 'subject' | 'standard-comment' | 'wizard' | 'review';
 
 const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onComplete, onCancel }) => {
+  const navigate = useNavigate();
+  const { addTemplate } = useData();
+
   const reportsPanelScrollRef = useRef<number>(0);
   const reportsPanelRef = useRef<HTMLTextAreaElement>(null);
   const handleReportsPanelScroll = useCallback((e: React.UIEvent<HTMLTextAreaElement>) => { reportsPanelScrollRef.current = e.currentTarget.scrollTop; }, []);
@@ -77,7 +111,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
 
   const [currentStep, setCurrentStep] = useState(0);
-  const [phase, setPhase] = useState<'ask' | 'name' | 'instruction' | 'statements' | 'added'>('ask');
+  const [phase, setPhase] = useState<'ask' | 'name' | 'statements' | 'added'>('ask');
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
 
   const [addedSections, setAddedSections] = useState<AddedSection[]>([]);
@@ -92,7 +126,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const [namingButtonIndex, setNamingButtonIndex] = useState<number | null>(null);
   const [namingButtonValue, setNamingButtonValue] = useState('');
   const [sectionName, setSectionName] = useState('');
-  const [sectionInstruction, setSectionInstruction] = useState('');
   const [showExamples, setShowExamples] = useState(false);
   const [editingStatementKey, setEditingStatementKey] = useState<{ buttonIdx: number; stmtIdx: number } | null>(null);
   const [editingStatementValue, setEditingStatementValue] = useState('');
@@ -104,7 +137,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const dragSourceIndex = useRef<number | null>(null);
   const statementInputRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => { if (addedSections.length > 0) saveDraft(templateName, addedSections); }, [addedSections, templateName]);
+  useEffect(() => { if (addedSections.length > 0) saveDraft(localTemplateName, addedSections); }, [addedSections, localTemplateName]);
 
   const question = QUESTIONS[currentStep];
   const isLastQuestion = currentStep === QUESTIONS.length - 1;
@@ -141,7 +174,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const handleRatedButtonRename = (idx: number, val: string) => { setButtons(prev => { const u = [...prev]; u[idx] = { ...u[idx], name: val }; return u; }); };
 
   const resetWizardQuestion = () => {
-    setPhase('ask'); setSectionName(''); setSectionInstruction(''); setButtons([]); setActiveButtonIndex(0);
+    setPhase('ask'); setSectionName(''); setButtons([]); setActiveButtonIndex(0);
     setNewStatement(''); setNewButtonName(''); setAddingNewButton(false); setNamingButtonIndex(null); setNamingButtonValue('');
     setStandardContent(''); setShowExamples(false); setAiError(null); setEditingStatementKey(null); setMovingStatementKey(null);
   };
@@ -150,23 +183,22 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const handleWizardNo = () => advanceQuestion();
   const handleNameConfirmed = () => {
     if (!sectionName.trim()) return;
-    if (question.sectionType === 'assessment-comment') { setSectionInstruction(''); setPhase('instruction'); return; }
     if (question.hasButtons) {
       if (question.isRatedFixed) setButtons(DEFAULT_RATED_BUTTONS.map(n => ({ name: n, statements: [] })));
+      else if (question.id === 'assessment-comment') setButtons(ASSESSMENT_ADDABLE_UNIVERSAL.map(b => ({ name: b.name, statements: [] })));
       else { setButtons([{ name: '', statements: [] }]); setNamingButtonIndex(0); setNamingButtonValue(''); }
       setActiveButtonIndex(0);
     }
     setPhase('statements');
   };
-  const handleInstructionConfirmed = () => { setButtons([{ name: '', statements: [] }]); setNamingButtonIndex(0); setNamingButtonValue(''); setActiveButtonIndex(0); setPhase('statements'); };
   const handleWizardAddSection = () => {
     const name = sectionName.trim() || question.defaultName;
-    const newSection: AddedSection = { id: editingSectionId || makeId(), type: question.sectionType, name, buttons: question.hasButtons ? buttons : [], content: standardContent, instruction: sectionInstruction, showHeader: false };
+    const newSection: AddedSection = { id: editingSectionId || makeId(), type: question.sectionType, name, buttons: question.hasButtons ? buttons : [], content: '', instruction: '', showHeader: false };
     if (editingSectionId) { setAddedSections(prev => prev.map(s => s.id === editingSectionId ? { ...newSection, showHeader: s.showHeader } : s)); setEditingSectionId(null); setScreen('review'); }
     else { setAddedSections(prev => [...prev, newSection]); setPhase('added'); }
   };
   const handleAddAnother = () => {
-    setSectionName(question.defaultName); setSectionInstruction(''); setPhase('name'); setButtons([]); setActiveButtonIndex(0);
+    setSectionName(question.defaultName); setPhase('name'); setButtons([]); setActiveButtonIndex(0);
     setNewStatement(''); setNewButtonName(''); setAddingNewButton(false); setNamingButtonIndex(null); setNamingButtonValue('');
     setStandardContent(''); setShowExamples(false); setAiError(null); setEditingStatementKey(null); setMovingStatementKey(null);
   };
@@ -186,7 +218,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
       const data = await response.json();
       const headings: { name: string; comments: string[] }[] = data.headings || [];
       if (headings.length === 0) { setAiError('No matching sentences found in your reports for this section.'); setAiLoading(false); return; }
-      if (activeType === 'rated-comment') {
+      if (activeType === 'rated-comment' || activeType === 'assessment-comment') {
         setButtons(prev => {
           const u = [...prev];
           headings.forEach(h => {
@@ -227,12 +259,10 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
 
   const handleCancel = () => { if (addedSections.length > 0 || screen === 'wizard') { if (!window.confirm('Are you sure? Your progress will be lost.')) return; } onCancel(); };
 
-  const handleComplete = () => {
-    if (addedSections.filter(s => s.type !== 'new-line' && s.type !== 'optional-additional-comment').length === 0) { alert('Please add at least one section.'); return; }
+  const buildFinalSections = (): TemplateSection[] => {
     const standardSections: TemplateSection[] = standardStatements.map(stmt => ({
       id: makeId(), type: 'standard-comment' as SectionType,
-      name: stmt.name || 'Fixed Statement',
-      showHeader: false, data: { content: stmt.content }
+      name: stmt.name || 'Fixed Statement', showHeader: false, data: { content: stmt.content }
     }));
     const builtSections: TemplateSection[] = addedSections.map(s => {
       let data: any = {};
@@ -244,12 +274,30 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
       else if (s.type === 'next-steps') { const f: Record<string, string[]> = {}; s.buttons.forEach(b => { if (b.name) f[b.name] = b.statements; }); data = { focusAreas: f }; }
       return { id: s.id, type: s.type, name: s.name, showHeader: s.showHeader || false, data };
     });
-    clearDraft(); onComplete([...standardSections, ...builtSections], localTemplateName.trim() || undefined);
+    return [...standardSections, ...builtSections];
+  };
+
+  const handleComplete = () => {
+    if (addedSections.filter(s => s.type !== 'new-line' && s.type !== 'optional-additional-comment').length === 0) { alert('Please add at least one section.'); return; }
+    clearDraft(); onComplete(buildFinalSections(), localTemplateName.trim() || undefined);
+  };
+
+  const handleSaveAndWrite = () => {
+    if (addedSections.filter(s => s.type !== 'new-line' && s.type !== 'optional-additional-comment').length === 0) { alert('Please add at least one section.'); return; }
+    const sections = buildFinalSections();
+    const name = localTemplateName.trim() || 'My Template';
+    addTemplate({ name, sections });
+    clearDraft();
+    if (classId) {
+      navigate('/write-reports', { state: { preselectedClassId: classId } });
+    } else {
+      navigate('/start');
+    }
   };
 
   const TopBar = ({ title }: { title?: string }) => (
     <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-      <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151' }}>{title || templateName}</div>
+      <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151' }}>{title || localTemplateName || templateName}</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         {screen === 'wizard' && (
           <>
@@ -279,20 +327,27 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     </div>
   );
 
+  // Determine which ready-made pools to show based on current question
+  const getPoolsForQuestion = (): { universal: AddableButton[]; subject: AddableButton[] } => {
+    if (!question) return { universal: [], subject: [] };
+    const qid = question.id;
+    const stype = question.sectionType;
+    if (qid === 'qualities') return { universal: STRENGTHS_ADDABLE_UNIVERSAL, subject: STRENGTHS_ADDABLE_BY_SUBJECT[subject] || [] };
+    if (qid === 'next-steps') return { universal: [...NEXT_STEPS_ADDABLE_UNIVERSAL, ...DEVELOPMENT_BUTTONS_FOR_WIZARD], subject: NEXT_STEPS_ADDABLE_BY_SUBJECT[subject] || [] };
+    if (qid === 'assessment-comment') return { universal: ASSESSMENT_ADDABLE_UNIVERSAL, subject: [] };
+    if (qid === 'personalised-comment') return { universal: [...PERSONALISED_ADDABLE_UNIVERSAL, ...DEVELOPMENT_BUTTONS_FOR_WIZARD], subject: [] };
+    if (qid === 'other-comments') return { universal: DEVELOPMENT_ADDABLE_UNIVERSAL, subject: DEVELOPMENT_ADDABLE_BY_SUBJECT[subject] || [] };
+    return { universal: [], subject: [] };
+  };
+
   const renderStatementEditor = (sType: string, sName: string) => {
-    const isRated = sType === 'rated-comment';
-    const currentQuestionId = question?.id;
-    const isStrengthsType = sType === 'qualities';
-    const isNextStepsType = sType === 'next-steps';
-    const showStrengthsPool = isStrengthsType && currentQuestionId !== 'other-comments';
-    const showNextStepsPool = isNextStepsType;
-    const showOtherPool = isStrengthsType && currentQuestionId === 'other-comments';
-    const universalPool: AddableButton[] = showStrengthsPool ? STRENGTHS_ADDABLE_UNIVERSAL : showNextStepsPool ? NEXT_STEPS_ADDABLE_UNIVERSAL : showOtherPool ? DEVELOPMENT_ADDABLE_UNIVERSAL : [];
-    const subjectPool: AddableButton[] = showStrengthsPool ? (STRENGTHS_ADDABLE_BY_SUBJECT[subject] || []) : showNextStepsPool ? (NEXT_STEPS_ADDABLE_BY_SUBJECT[subject] || []) : showOtherPool ? (DEVELOPMENT_ADDABLE_BY_SUBJECT[subject] || []) : [];
+    const isRated = sType === 'rated-comment' || sType === 'assessment-comment';
+    const { universal: universalPool, subject: subjectPool } = getPoolsForQuestion();
     const activeNames = buttons.map(b => b.name);
     const availableUniversal = universalPool.filter(b => !activeNames.includes(b.name));
     const availableSubject = subjectPool.filter(b => !activeNames.includes(b.name));
     const hasPool = availableUniversal.length > 0 || availableSubject.length > 0;
+
     return (
       <div>
         {isRated && (
@@ -390,7 +445,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
               <div style={{ fontSize: '12px', color: '#6b7280', backgroundColor: '#f3f4f6', borderRadius: '6px', padding: '8px 12px', marginBottom: '20px' }}>Maximum {MAX_STATEMENTS} statements per button reached.</div>
             ) : (
               <>
-                <textarea ref={statementInputRef} value={newStatement} onChange={e => setNewStatement(e.target.value)} placeholder="Type or paste a statement... Use [Name] for pupil name." style={{ ...txa, minHeight: '70px', borderColor: accentColor, marginBottom: '8px' }} />
+                <textarea ref={statementInputRef} value={newStatement} onChange={e => setNewStatement(e.target.value)} placeholder="Type or paste a statement... Use [Name] for pupil name, [Score] for scores, [Info 1] for personalised info." style={{ ...txa, minHeight: '70px', borderColor: accentColor, marginBottom: '8px' }} />
                 <button onClick={handleAddStatement} disabled={!newStatement.trim()} style={{ ...smallBtn(accentColor), opacity: !newStatement.trim() ? 0.4 : 1, marginBottom: '20px' }}>+ Add statement</button>
               </>
             )}
@@ -411,6 +466,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
       </div>
     );
   };
+
+  // ─── SUBJECT SCREEN ───────────────────────────────────────────────────────
 
   if (screen === 'subject') return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column' }}>
@@ -436,6 +493,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
       </div>
     </div>
   );
+
+  // ─── STANDARD COMMENT SCREEN ──────────────────────────────────────────────
 
   if (screen === 'standard-comment') {
     const handleFindFixed = async () => {
@@ -531,10 +590,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>{standardStatements.length === 0 ? 'Paste your statement here:' : 'Add another:'}</label>
                   <textarea value={standardContent} onChange={e => setStandardContent(e.target.value)} placeholder="e.g. It has been a pleasure teaching [Name] this term..." style={{ ...txa, minHeight: '90px', borderColor: '#10b981', marginBottom: '10px' }} />
                   {standardContent.trim() && (
-                    <button onClick={() => {
-                      setStandardStatements(prev => [...prev, { name: standardSectionName.trim(), content: standardContent.trim() }]);
-                      setStandardContent(''); setStandardSectionName('');
-                    }} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '16px' }}>+ Add statement</button>
+                    <button onClick={() => { setStandardStatements(prev => [...prev, { name: standardSectionName.trim(), content: standardContent.trim() }]); setStandardContent(''); setStandardSectionName(''); }} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '16px' }}>+ Add statement</button>
                   )}
                   <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
                     <button onClick={() => setHasStandardComment('choose')} style={secondaryBtn}>← Back</button>
@@ -550,9 +606,10 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     );
   }
 
+  // ─── WIZARD SCREEN ────────────────────────────────────────────────────────
+
   if (screen === 'wizard') {
     const wAccent = SECTION_COLORS[question?.sectionType] || '#3b82f6';
-    const wIsAssessment = question?.sectionType === 'assessment-comment';
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <TopBar />
@@ -599,40 +656,14 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
                 </div>
               )}
 
-              {phase === 'instruction' && (
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>What does the score represent? (optional)</label>
-                  <input type="text" value={sectionInstruction} onChange={e => setSectionInstruction(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleInstructionConfirmed(); }} placeholder="e.g. Black Death test score, Reading assessment percentage..." autoFocus style={{ ...inp, marginBottom: '8px' }} />
-                  <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '16px', fontStyle: 'italic' }}>This will appear in the report writer as a reminder.</div>
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <button onClick={() => setPhase('name')} style={secondaryBtn}>← Back</button>
-                    <button onClick={handleInstructionConfirmed} style={primaryBtn}>Continue →</button>
-                  </div>
-                </div>
-              )}
-
               {phase === 'statements' && (
                 <div>
-                  {question?.hasButtons && <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#166534', marginBottom: '20px', lineHeight: '1.5' }}>💡 Add your own statements below, or paste existing reports in the right panel and use AI to find matching sentences. Ready-made buttons are available below too.</div>}
-                  {!question?.hasButtons ? (
-                    <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>Paste your statement here:</label>
-                      <textarea value={standardContent} onChange={e => setStandardContent(e.target.value)} placeholder="Paste or type the statement... Use [Name] for pupil name." style={{ ...txa, minHeight: '140px', borderColor: wAccent, marginBottom: '16px' }} />
-                      <div style={{ display: 'flex', gap: '12px' }}>
-                        <button onClick={() => setPhase('name')} style={secondaryBtn}>← Back</button>
-                        <button onClick={handleWizardAddSection} style={primaryBtn}>{standardContent.trim() ? 'Save section →' : 'Skip →'}</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      {renderStatementEditor(question.sectionType, sectionName)}
-                      {wIsAssessment && <div style={{ backgroundColor: '#f3e8ff', border: '1px solid #d8b4fe', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#7c3aed', marginBottom: '16px', lineHeight: '1.5' }}><strong>Score placeholders:</strong> use <code>[Score]</code> or <code>[Score 1]</code> <code>[Score 2]</code>.{sectionInstruction && <div style={{ marginTop: '6px' }}><strong>Reminder:</strong> {sectionInstruction}</div>}</div>}
-                      <div style={{ display: 'flex', gap: '12px' }}>
-                        <button onClick={() => editingSectionId ? setScreen('review') : setPhase('name')} style={secondaryBtn}>← Back</button>
-                        <button onClick={handleWizardAddSection} style={primaryBtn}>{editingSectionId ? 'Save changes →' : 'Save section →'}</button>
-                      </div>
-                    </div>
-                  )}
+                  <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#166534', marginBottom: '20px', lineHeight: '1.5' }}>💡 Add your own statements below, or use the ready-made buttons from the pool below. Paste existing reports on the right and use AI to find more.</div>
+                  {renderStatementEditor(question.sectionType, sectionName)}
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button onClick={() => editingSectionId ? setScreen('review') : setPhase('name')} style={secondaryBtn}>← Back</button>
+                    <button onClick={handleWizardAddSection} style={primaryBtn}>{editingSectionId ? 'Save changes →' : 'Save section →'}</button>
+                  </div>
                 </div>
               )}
 
@@ -671,7 +702,9 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     );
   }
 
-  const testReport = generateTestReport(addedSections);
+  // ─── REVIEW SCREEN ────────────────────────────────────────────────────────
+
+  const testReport = generateTestReport(standardStatements, addedSections);
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <TopBar />
@@ -704,9 +737,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
                         </button>
                       </div>
                     )}
-                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                      <button onClick={() => handleRemoveSection(s.id)} style={{ backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '12px', cursor: 'pointer' }}>✕</button>
-                    </div>
+                    <button onClick={() => handleRemoveSection(s.id)} style={{ backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '12px', cursor: 'pointer', flexShrink: 0 }}>✕</button>
                   </div>
                   <div style={{ display: 'flex', gap: '6px', marginBottom: '6px', paddingLeft: '28px' }}>
                     <button onClick={() => handleAddSpecialSection('new-line', index)} style={{ background: 'none', border: '1px dashed #d1d5db', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', color: '#9ca3af', cursor: 'pointer' }}>+ line break</button>
@@ -718,7 +749,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
 
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '16px' }}>
               <button onClick={() => { setCurrentStep(0); resetWizardQuestion(); setScreen('wizard'); }} style={secondaryBtn}>← Back to questions</button>
-              <button onClick={handleComplete} style={primaryBtn}>Save template →</button>
+              <button onClick={handleComplete} style={{ ...primaryBtn, backgroundColor: '#10b981' }}>💾 Save template</button>
+              <button onClick={handleSaveAndWrite} style={primaryBtn}>✏️ Save & Start Writing →</button>
             </div>
           </div>
         </div>
