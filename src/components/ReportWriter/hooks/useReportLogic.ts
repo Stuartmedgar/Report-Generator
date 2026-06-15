@@ -327,6 +327,14 @@ export const useReportLogic = ({
 
   // ─── INSERT SECTION ───────────────────────────────────────────────────────
 
+  const handleRenameSection = useCallback((sectionId: string, newName: string) => {
+    setWorkingTemplate((prev: any) => ({
+      ...prev,
+      sections: prev.sections.map((s: any) => s.id === sectionId ? { ...s, name: newName } : s),
+    }));
+    setHasTemplateChanges(true);
+  }, []);
+
   const handleInsertSection = useCallback((newSection: any, afterIndex: number) => {
     setWorkingTemplate((prev: any) => {
       const sections = [...prev.sections];
@@ -673,5 +681,6 @@ export const useReportLogic = ({
     handleReorderSection,
     handleSaveWorkingTemplate,
     handleInsertSection,
+    handleRenameSection,
   };
 };

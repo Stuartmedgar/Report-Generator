@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import InlineEditableTitle from './InlineEditableTitle';
 
 interface NextStepsSectionProps {
   section: any;
@@ -9,6 +10,7 @@ interface NextStepsSectionProps {
   onDuplicateSection?: (sectionId: string) => void;
   onMergeSections?: (sourceId: string, targetId: string) => void;
   workingTemplateSections?: any[];
+  onRenameSection?: (sectionId: string, newName: string) => void;
 }
 
 const NextStepsSection: React.FC<NextStepsSectionProps> = ({
@@ -20,6 +22,7 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
   onDuplicateSection,
   onMergeSections,
   workingTemplateSections,
+  onRenameSection,
 }) => {
   const [showEditSuggestion, setShowEditSuggestion] = useState(false);
   const [editableSuggestion, setEditableSuggestion] = useState('');
@@ -100,9 +103,7 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
     <div style={{ border: '2px solid #06b6d4', borderRadius: '8px', padding: '16px', marginBottom: '16px', backgroundColor: '#ecfeff' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#0891b2', margin: 0 }}>
-          {section.name || 'Next Steps'}
-        </h3>
+        <InlineEditableTitle name={section.name} defaultName="Next Steps" color="#0891b2" onRename={onRenameSection ? (n) => onRenameSection(section.id, n) : undefined} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           {onDuplicateSection && (
             <button onClick={() => onDuplicateSection(section.id)} title="Duplicate this section"

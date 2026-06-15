@@ -262,6 +262,17 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
   };
 
   const handleAddTemplateSection = (sectionType: string, afterIndex: number) => {
+    // new-line and optional-additional-comment need no builder — insert directly
+    if (sectionType === 'new-line' || sectionType === 'optional-additional-comment') {
+      const newSection = {
+        id: `section-${Date.now()}`,
+        type: sectionType,
+        name: sectionType === 'new-line' ? 'Line Break' : 'Optional Comment',
+        data: {},
+      };
+      reportLogic.handleInsertSection(newSection, afterIndex);
+      return;
+    }
     setAddingSectionAfterIndex(afterIndex);
     setAddingSectionType(sectionType);
     if (sectionType === 'rated-comment') setShowRatedCommentBuilder(true);
@@ -430,6 +441,7 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
                     onDuplicateSection={reportLogic.handleDuplicateSection}
                     onMergeSections={reportLogic.handleMergeSections}
                     workingTemplateSections={reportLogic.workingTemplate.sections}
+                    onRenameSection={reportLogic.handleRenameSection}
                   />
                 </div>
               );

@@ -26,6 +26,7 @@ interface SectionRendererProps {
   onDuplicateSection?: (sectionId: string) => void;
   onMergeSections?: (sourceId: string, targetId: string) => void;
   workingTemplateSections?: any[];
+  onRenameSection?: (sectionId: string, newName: string) => void;
 }
 
 const SectionRenderer: React.FC<SectionRendererProps> = ({
@@ -37,6 +38,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
   onDuplicateSection,
   onMergeSections,
   workingTemplateSections,
+  onRenameSection,
 }) => {
   const data = sectionData[section.id] || {};
 
@@ -55,6 +57,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
           section={section} data={data}
           updateSectionData={enhancedUpdateSectionData}
           onTemplateAction={onTemplateAction}
+          onRenameSection={onRenameSection}
         />
       );
 
@@ -64,6 +67,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
           section={section} data={data}
           updateSectionData={enhancedUpdateSectionData}
           onTemplateAction={onTemplateAction}
+          onRenameSection={onRenameSection}
         />
       );
 
@@ -81,6 +85,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
           section={section} data={data}
           updateSectionData={enhancedUpdateSectionData}
           onTemplateAction={onTemplateAction}
+          onRenameSection={onRenameSection}
         />
       );
 
@@ -94,6 +99,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
           onDuplicateSection={onDuplicateSection}
           onMergeSections={onMergeSections}
           workingTemplateSections={workingTemplateSections}
+          onRenameSection={onRenameSection}
         />
       );
 
@@ -107,6 +113,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
           onDuplicateSection={onDuplicateSection}
           onMergeSections={onMergeSections}
           workingTemplateSections={workingTemplateSections}
+          onRenameSection={onRenameSection}
         />
       );
 
@@ -120,6 +127,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
           onDuplicateSection={onDuplicateSection}
           onMergeSections={onMergeSections}
           workingTemplateSections={workingTemplateSections}
+          onRenameSection={onRenameSection}
         />
       );
 

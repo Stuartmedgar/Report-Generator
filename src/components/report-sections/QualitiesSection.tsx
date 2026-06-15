@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import InlineEditableTitle from './InlineEditableTitle';
 
 interface QualitiesSectionProps {
   section: any;
@@ -9,6 +10,7 @@ interface QualitiesSectionProps {
   onDuplicateSection?: (sectionId: string) => void;
   onMergeSections?: (sourceId: string, targetId: string) => void;
   workingTemplateSections?: any[];
+  onRenameSection?: (sectionId: string, newName: string) => void;
 }
 
 const QualitiesSection: React.FC<QualitiesSectionProps> = ({
@@ -20,6 +22,7 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
   onDuplicateSection,
   onMergeSections,
   workingTemplateSections,
+  onRenameSection,
 }) => {
   const [showEditQuality, setShowEditQuality] = useState(false);
   const [editableQuality, setEditableQuality] = useState('');
@@ -101,9 +104,7 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
     <div style={{ border: '2px solid #8b5cf6', borderRadius: '8px', padding: '16px', marginBottom: '16px', backgroundColor: '#f3e8ff' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#7c3aed', margin: 0 }}>
-          {section.name || 'Qualities'}
-        </h3>
+        <InlineEditableTitle name={section.name} defaultName="Qualities" color="#7c3aed" onRename={onRenameSection ? (n) => onRenameSection(section.id, n) : undefined} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           {onDuplicateSection && (
             <button onClick={() => onDuplicateSection(section.id)} title="Duplicate this section"

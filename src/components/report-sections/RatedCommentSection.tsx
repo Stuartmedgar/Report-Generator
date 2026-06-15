@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import InlineEditableTitle from './InlineEditableTitle';
 
 interface RatedCommentSectionProps {
   section: any;
   data: any;
   updateSectionData: (sectionId: string, data: any) => void;
   onTemplateAction?: (action: any) => void;
+  onRenameSection?: (sectionId: string, newName: string) => void;
 }
 
 const RatedCommentSection: React.FC<RatedCommentSectionProps> = ({
@@ -12,6 +14,7 @@ const RatedCommentSection: React.FC<RatedCommentSectionProps> = ({
   data,
   updateSectionData,
   onTemplateAction,
+  onRenameSection,
 }) => {
   const [showEditComment, setShowEditComment] = useState(false);
   const [editableComment, setEditableComment] = useState('');
@@ -94,9 +97,7 @@ const RatedCommentSection: React.FC<RatedCommentSectionProps> = ({
     }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1e40af', margin: 0 }}>
-          {section.name || 'Rated Comment'}
-        </h3>
+        <InlineEditableTitle name={section.name} defaultName="Rated Comment" color="#1e40af" onRename={onRenameSection ? (n) => onRenameSection(section.id, n) : undefined} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <input type="checkbox" checked={data.showHeader !== false}

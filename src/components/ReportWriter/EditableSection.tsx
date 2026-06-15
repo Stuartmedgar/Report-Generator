@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import SectionRenderer from '../report-sections/SectionRenderer';
 
 interface EditableSectionProps {
@@ -18,6 +18,7 @@ interface EditableSectionProps {
   onDuplicateSection?: (sectionId: string) => void;
   onMergeSections?: (sourceId: string, targetId: string) => void;
   workingTemplateSections?: any[];
+  onRenameSection?: (sectionId: string, newName: string) => void;
 }
 
 export const EditableSection: React.FC<EditableSectionProps> = ({
@@ -35,13 +36,28 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
   onDuplicateSection,
   onMergeSections,
   workingTemplateSections,
+  onRenameSection,
 }) => {
+  const plusButtonRef = useRef<HTMLButtonElement>(null);
+  const [menuAbove, setMenuAbove] = useState(true);
+
   const isSectionEditable = (type: string) =>
     ['rated-comment', 'assessment-comment', 'personalised-comment', 'next-steps', 'qualities'].includes(type);
 
   const handleAddSection = (sectionType: string) => {
     onAddDynamicSection(sectionType, sectionIndex);
     setShowSectionOptions(null);
+  };
+
+  const handleToggleMenu = () => {
+    if (showSectionOptions === sectionIndex) {
+      setShowSectionOptions(null);
+    } else {
+      // Determine if menu should open above or below based on viewport position
+      const rect = plusButtonRef.current?.getBoundingClientRect();
+      setMenuAbove(!rect || rect.top > 300);
+      setShowSectionOptions(sectionIndex);
+    }
   };
 
   return (
@@ -56,6 +72,7 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
           onDuplicateSection={onDuplicateSection}
           onMergeSections={onMergeSections}
           workingTemplateSections={workingTemplateSections}
+          onRenameSection={onRenameSection}
         />
       </div>
 
@@ -76,7 +93,8 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
         )}
 
         <button
-          onClick={() => setShowSectionOptions(showSectionOptions === sectionIndex ? null : sectionIndex)}
+          ref={plusButtonRef}
+          onClick={handleToggleMenu}
           style={{
             backgroundColor: showSectionOptions === sectionIndex ? '#ef4444' : '#e5e7eb',
             color: showSectionOptions === sectionIndex ? 'white' : '#6b7280',
@@ -92,7 +110,11 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
 
         {showSectionOptions === sectionIndex && (
           <div style={{
-            position: 'absolute', bottom: '35px', right: '36px',
+            position: 'absolute',
+            ...(menuAbove
+              ? { bottom: '35px' }
+              : { top: '35px' }),
+            right: '36px',
             backgroundColor: 'white', border: '1px solid #d1d5db',
             borderRadius: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
             padding: '8px', minWidth: '220px', zIndex: 20
@@ -107,6 +129,8 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
               { type: 'assessment-comment', label: '📊 Assessment Score' },
               { type: 'personalised-comment', label: '💬 Personalised Comment' },
               { type: 'standard-comment', label: '📌 Standard Comment (fixed text)' },
+              { type: 'new-line', label: '⏎ Line Break' },
+              { type: 'optional-additional-comment', label: '📝 Optional Comment Box' },
             ].map(opt => (
               <button key={opt.type} onClick={() => { onAddTemplateSection(opt.type, sectionIndex); setShowSectionOptions(null); }}
                 style={{ width: '100%', textAlign: 'left', padding: '6px 8px', border: 'none', backgroundColor: 'transparent', borderRadius: '4px', fontSize: '12px', cursor: 'pointer', marginBottom: '2px' }}

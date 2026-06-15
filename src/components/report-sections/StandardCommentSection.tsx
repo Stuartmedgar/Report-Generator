@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { TemplateSection } from '../../types';
+import InlineEditableTitle from './InlineEditableTitle';
 
 interface StandardCommentSectionProps {
   section: TemplateSection;
   data: any;
   updateSectionData: (sectionId: string, data: any) => void;
   onTemplateAction?: (action: any) => void;
+  onRenameSection?: (sectionId: string, newName: string) => void;
 }
 
 const StandardCommentSection: React.FC<StandardCommentSectionProps> = ({
@@ -13,6 +15,7 @@ const StandardCommentSection: React.FC<StandardCommentSectionProps> = ({
   data,
   updateSectionData,
   onTemplateAction,
+  onRenameSection,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [replaceConfirmed, setReplaceConfirmed] = useState(false);
@@ -52,9 +55,7 @@ const StandardCommentSection: React.FC<StandardCommentSectionProps> = ({
             alignItems: 'center',
             marginBottom: '4px'
           }}>
-            <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#047857', margin: 0 }}>
-              {section.name || 'Standard Comment'}
-            </h3>
+            <InlineEditableTitle name={section.name} defaultName="Standard Comment" color="#047857" onRename={onRenameSection ? (n) => onRenameSection(section.id, n) : undefined} />
 
             {/* Header Options */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

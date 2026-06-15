@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import InlineEditableTitle from './InlineEditableTitle';
 
 interface PersonalisedCommentSectionProps {
   section: any;
@@ -9,6 +10,7 @@ interface PersonalisedCommentSectionProps {
   onDuplicateSection?: (sectionId: string) => void;
   onMergeSections?: (sourceId: string, targetId: string) => void;
   workingTemplateSections?: any[];
+  onRenameSection?: (sectionId: string, newName: string) => void;
 }
 
 function getInfoPlaceholders(comment: string): string[] {
@@ -35,6 +37,7 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
   onDuplicateSection,
   onMergeSections,
   workingTemplateSections,
+  onRenameSection,
 }) => {
   const [showEditComment, setShowEditComment] = useState(false);
   const [editableComment, setEditableComment] = useState('');
@@ -133,7 +136,7 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
     <div style={{ border: '2px solid #f59e0b', borderRadius: '8px', padding: '16px', marginBottom: '16px', backgroundColor: '#fffbeb' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#d97706', margin: 0 }}>{section.name}</h3>
+        <InlineEditableTitle name={section.name} defaultName="Personalised Comment" color="#d97706" onRename={onRenameSection ? (n) => onRenameSection(section.id, n) : undefined} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           {onDuplicateSection && (
             <button onClick={() => onDuplicateSection(section.id)} title="Duplicate this section"
