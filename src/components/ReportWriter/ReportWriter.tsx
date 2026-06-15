@@ -442,7 +442,6 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
                     onMergeSections={reportLogic.handleMergeSections}
                     workingTemplateSections={reportLogic.workingTemplate.sections}
                     onRenameSection={reportLogic.handleRenameSection}
-                    onUpdateSectionTemplate={reportLogic.handleUpdateSectionTemplateData}
                   />
                 </div>
               );

@@ -327,16 +327,6 @@ export const useReportLogic = ({
 
   // ─── INSERT SECTION ───────────────────────────────────────────────────────
 
-  const handleUpdateSectionTemplateData = useCallback((sectionId: string, data: any) => {
-    setWorkingTemplate((prev: any) => ({
-      ...prev,
-      sections: prev.sections.map((s: any) =>
-        s.id === sectionId ? { ...s, data: { ...s.data, ...data } } : s
-      ),
-    }));
-    setHasTemplateChanges(true);
-  }, []);
-
   const handleRenameSection = useCallback((sectionId: string, newName: string) => {
     setWorkingTemplate((prev: any) => ({
       ...prev,
@@ -465,6 +455,21 @@ export const useReportLogic = ({
       return newData;
     });
     setHasUnsavedChanges(true);
+    // Persist header settings to template when explicitly changed
+    if ('showHeader' in data || 'headerStyle' in data) {
+      setWorkingTemplate((prev: any) => ({
+        ...prev,
+        sections: prev.sections.map((s: any) => s.id === sectionId ? {
+          ...s,
+          data: {
+            ...s.data,
+            ...('showHeader' in data ? { showHeader: data.showHeader } : {}),
+            ...('headerStyle' in data ? { headerStyle: data.headerStyle } : {}),
+          },
+        } : s),
+      }));
+      setHasTemplateChanges(true);
+    }
   }, [workingTemplate.sections, dynamicSections]);
 
   // ─── GET ALL SECTIONS ─────────────────────────────────────────────────────
@@ -701,6 +706,5 @@ export const useReportLogic = ({
     handleSaveWorkingTemplate,
     handleInsertSection,
     handleRenameSection,
-    handleUpdateSectionTemplateData,
   };
 };
