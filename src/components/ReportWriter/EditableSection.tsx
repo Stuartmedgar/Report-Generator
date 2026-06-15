@@ -10,6 +10,7 @@ interface EditableSectionProps {
   showSectionOptions: number | null;
   setShowSectionOptions: (index: number | null) => void;
   onAddDynamicSection: (sectionType: string, afterIndex: number) => void;
+  onAddTemplateSection: (sectionType: string, afterIndex: number) => void;
   dynamicSections: any[];
   onRemoveDynamicSection: (sectionId: string) => void;
   onTemplateAction?: (action: any) => void;
@@ -28,6 +29,7 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
   showSectionOptions,
   setShowSectionOptions,
   onAddDynamicSection,
+  onAddTemplateSection,
   onTemplateAction,
   onAddButton,
   onDuplicateSection,
@@ -93,14 +95,31 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
             position: 'absolute', bottom: '35px', right: '36px',
             backgroundColor: 'white', border: '1px solid #d1d5db',
             borderRadius: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            padding: '8px', minWidth: '200px', zIndex: 20
+            padding: '8px', minWidth: '220px', zIndex: 20
           }}>
-            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '6px', fontWeight: '600' }}>
-              Add section after "{section.name}"
+            <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Add to template (permanent)
             </div>
             {[
-              { type: 'optional-additional-comment', label: '📝 Additional Comment' },
-              { type: 'standard-comment', label: '💬 Standard Comment' },
+              { type: 'rated-comment', label: '🏆 Rated Comment' },
+              { type: 'qualities', label: '⭐ Qualities / Strengths' },
+              { type: 'next-steps', label: '🎯 Next Steps' },
+              { type: 'assessment-comment', label: '📊 Assessment Score' },
+              { type: 'personalised-comment', label: '💬 Personalised Comment' },
+              { type: 'standard-comment', label: '📌 Standard Comment (fixed text)' },
+            ].map(opt => (
+              <button key={opt.type} onClick={() => { onAddTemplateSection(opt.type, sectionIndex); setShowSectionOptions(null); }}
+                style={{ width: '100%', textAlign: 'left', padding: '6px 8px', border: 'none', backgroundColor: 'transparent', borderRadius: '4px', fontSize: '12px', cursor: 'pointer', marginBottom: '2px' }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+              >{opt.label}</button>
+            ))}
+            <div style={{ borderTop: '1px solid #e5e7eb', margin: '6px 0' }} />
+            <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '4px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Add for this student only
+            </div>
+            {[
+              { type: 'optional-additional-comment', label: '📝 Additional Comment Box' },
               { type: 'new-line', label: '⏎ Line Break' },
             ].map(opt => (
               <button key={opt.type} onClick={() => handleAddSection(opt.type)}

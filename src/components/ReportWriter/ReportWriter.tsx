@@ -12,6 +12,7 @@ import AssessmentCommentBuilder from '../AssessmentCommentBuilder';
 import PersonalisedCommentBuilder from '../PersonalisedCommentBuilder';
 import NextStepsCommentBuilder from '../NextStepsCommentBuilder';
 import QualitiesCommentBuilder from '../QualitiesCommentBuilder';
+import StandardCommentBuilder from '../StandardCommentBuilder';
 
 interface ReportWriterProps {
   template: Template;
@@ -105,6 +106,9 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
   const [showPersonalisedCommentBuilder, setShowPersonalisedCommentBuilder] = useState(false);
   const [showNextStepsCommentBuilder, setShowNextStepsCommentBuilder] = useState(false);
   const [showQualitiesCommentBuilder, setShowQualitiesCommentBuilder] = useState(false);
+  const [showStandardCommentBuilder, setShowStandardCommentBuilder] = useState(false);
+  const [addingSectionAfterIndex, setAddingSectionAfterIndex] = useState<number | null>(null);
+  const [addingSectionType, setAddingSectionType] = useState<string | null>(null);
   const [dynamicSections, setDynamicSections] = useState<any[]>([]);
 
   const currentStudent = students[currentStudentIndex];
@@ -228,11 +232,14 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
 
   const closeAllBuilders = () => {
     setEditingSection(null);
+    setAddingSectionAfterIndex(null);
+    setAddingSectionType(null);
     setShowRatedCommentBuilder(false);
     setShowAssessmentCommentBuilder(false);
     setShowPersonalisedCommentBuilder(false);
     setShowNextStepsCommentBuilder(false);
     setShowQualitiesCommentBuilder(false);
+    setShowStandardCommentBuilder(false);
   };
 
   const handleSaveEditedSection = (editedData: any) => {
@@ -251,6 +258,37 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
         i === editingSection.index ? { ...s, name: editedData.name || s.name, data: newData } : s
       )});
     }
+    closeAllBuilders();
+  };
+
+  const handleAddTemplateSection = (sectionType: string, afterIndex: number) => {
+    setAddingSectionAfterIndex(afterIndex);
+    setAddingSectionType(sectionType);
+    if (sectionType === 'rated-comment') setShowRatedCommentBuilder(true);
+    else if (sectionType === 'assessment-comment') setShowAssessmentCommentBuilder(true);
+    else if (sectionType === 'personalised-comment') setShowPersonalisedCommentBuilder(true);
+    else if (sectionType === 'next-steps') setShowNextStepsCommentBuilder(true);
+    else if (sectionType === 'qualities') setShowQualitiesCommentBuilder(true);
+    else if (sectionType === 'standard-comment') setShowStandardCommentBuilder(true);
+  };
+
+  const handleSaveNewSection = (editedData: any) => {
+    if (addingSectionAfterIndex === null || !addingSectionType) return;
+    let data: any;
+    if (addingSectionType === 'rated-comment') data = { comments: editedData.comments };
+    else if (addingSectionType === 'assessment-comment') data = { comments: editedData.comments, scoreType: editedData.scoreType, maxScore: editedData.maxScore };
+    else if (addingSectionType === 'next-steps') data = { focusAreas: editedData.comments };
+    else if (addingSectionType === 'personalised-comment') data = { instruction: editedData.instruction, categories: editedData.comments };
+    else if (addingSectionType === 'qualities') data = { comments: editedData.comments };
+    else if (addingSectionType === 'standard-comment') data = editedData.data;
+    else data = editedData;
+    const newSection = {
+      id: `section-${Date.now()}`,
+      type: addingSectionType,
+      name: editedData.name || addingSectionType,
+      data,
+    };
+    reportLogic.handleInsertSection(newSection, addingSectionAfterIndex);
     closeAllBuilders();
   };
 
@@ -384,6 +422,7 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
                     showSectionOptions={showSectionOptions}
                     setShowSectionOptions={setShowSectionOptions}
                     onAddDynamicSection={dynamicSectionHandlers.handleAddDynamicSection}
+                    onAddTemplateSection={handleAddTemplateSection}
                     dynamicSections={dynamicSections}
                     onRemoveDynamicSection={dynamicSectionHandlers.handleRemoveDynamicSection}
                     onTemplateAction={reportLogic.handleTemplateAction}
@@ -425,29 +464,34 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
       </div>
 
       {/* Comment Builders */}
-      {showRatedCommentBuilder && editingSection && (
+      {showRatedCommentBuilder && (editingSection || addingSectionType === 'rated-comment') && (
         <BuilderOverlay>
-          <RatedCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection} onCancel={closeAllBuilders} />
+          <RatedCommentBuilder existingComment={editingSection ? editingSection.section.data : { name: '', comments: { excellent: [], good: [], satisfactory: [], needsImprovement: [] } }} onSave={addingSectionType ? handleSaveNewSection : handleSaveEditedSection} onCancel={closeAllBuilders} />
         </BuilderOverlay>
       )}
-      {showAssessmentCommentBuilder && editingSection && (
+      {showAssessmentCommentBuilder && (editingSection || addingSectionType === 'assessment-comment') && (
         <BuilderOverlay>
-          <AssessmentCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection} onCancel={closeAllBuilders} />
+          <AssessmentCommentBuilder existingComment={editingSection ? editingSection.section.data : { name: '', scoreType: 'outOf', comments: { excellent: [], good: [], satisfactory: [], needsImprovement: [], notCompleted: [] } }} onSave={addingSectionType ? handleSaveNewSection : handleSaveEditedSection} onCancel={closeAllBuilders} />
         </BuilderOverlay>
       )}
-      {showPersonalisedCommentBuilder && editingSection && (
+      {showPersonalisedCommentBuilder && (editingSection || addingSectionType === 'personalised-comment') && (
         <BuilderOverlay>
-          <PersonalisedCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection} onCancel={closeAllBuilders} />
+          <PersonalisedCommentBuilder existingComment={editingSection ? editingSection.section.data : { name: '', instruction: '', headings: [], comments: {} }} onSave={addingSectionType ? handleSaveNewSection : handleSaveEditedSection} onCancel={closeAllBuilders} />
         </BuilderOverlay>
       )}
-      {showNextStepsCommentBuilder && editingSection && (
+      {showNextStepsCommentBuilder && (editingSection || addingSectionType === 'next-steps') && (
         <BuilderOverlay>
-          <NextStepsCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection} onCancel={closeAllBuilders} />
+          <NextStepsCommentBuilder existingComment={editingSection ? editingSection.section.data : { name: '', headings: [], comments: {} }} onSave={addingSectionType ? handleSaveNewSection : handleSaveEditedSection} onCancel={closeAllBuilders} />
         </BuilderOverlay>
       )}
-      {showQualitiesCommentBuilder && editingSection && (
+      {showQualitiesCommentBuilder && (editingSection || addingSectionType === 'qualities') && (
         <BuilderOverlay>
-          <QualitiesCommentBuilder existingComment={editingSection.section.data} onSave={handleSaveEditedSection} onCancel={closeAllBuilders} />
+          <QualitiesCommentBuilder existingComment={editingSection ? editingSection.section.data : { name: '', headings: [], comments: {} }} onSave={addingSectionType ? handleSaveNewSection : handleSaveEditedSection} onCancel={closeAllBuilders} />
+        </BuilderOverlay>
+      )}
+      {showStandardCommentBuilder && addingSectionType === 'standard-comment' && (
+        <BuilderOverlay>
+          <StandardCommentBuilder existingComment={{ name: '', content: '' }} onSave={handleSaveNewSection} onCancel={closeAllBuilders} />
         </BuilderOverlay>
       )}
     </div>

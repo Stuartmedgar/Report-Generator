@@ -325,6 +325,21 @@ export const useReportLogic = ({
     setHasTemplateChanges(true);
   }, []);
 
+  // ─── INSERT SECTION ───────────────────────────────────────────────────────
+
+  const handleInsertSection = useCallback((newSection: any, afterIndex: number) => {
+    setWorkingTemplate((prev: any) => {
+      const sections = [...prev.sections];
+      sections.splice(afterIndex + 1, 0, newSection);
+      return { ...prev, sections };
+    });
+    setSectionData((prev: any) => ({
+      ...prev,
+      [newSection.id]: { showHeader: newSection.data?.showHeader || false, ...newSection.data },
+    }));
+    setHasTemplateChanges(true);
+  }, []);
+
   // ─── SAVE WORKING TEMPLATE ────────────────────────────────────────────────
 
   const handleSaveWorkingTemplate = useCallback(async () => {
@@ -657,5 +672,6 @@ export const useReportLogic = ({
     handleMergeSections,
     handleReorderSection,
     handleSaveWorkingTemplate,
+    handleInsertSection,
   };
 };
