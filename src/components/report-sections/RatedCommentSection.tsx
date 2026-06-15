@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import InlineEditableTitle from './InlineEditableTitle';
+import HeaderStylePicker from './HeaderStylePicker';
 
 interface RatedCommentSectionProps {
   section: any;
@@ -99,12 +100,7 @@ const RatedCommentSection: React.FC<RatedCommentSectionProps> = ({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <InlineEditableTitle name={section.name} defaultName="Rated Comment" color="#1e40af" onRename={onRenameSection ? (n) => onRenameSection(section.id, n) : undefined} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <input type="checkbox" checked={data.showHeader !== false}
-              onChange={(e) => updateSectionData(section.id, { showHeader: e.target.checked })}
-              style={{ width: '14px', height: '14px', cursor: 'pointer' }} />
-            <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Header</span>
-          </div>
+          <HeaderStylePicker showHeader={data.showHeader !== false} headerStyle={data.headerStyle || section.data?.headerStyle || 'inline'} onChange={(show, style) => updateSectionData(section.id, { showHeader: show, headerStyle: style })} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <input type="checkbox" checked={data.exclude || false}
               onChange={(e) => updateSectionData(section.id, { exclude: e.target.checked })}

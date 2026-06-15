@@ -19,6 +19,7 @@ interface EditableSectionProps {
   onMergeSections?: (sourceId: string, targetId: string) => void;
   workingTemplateSections?: any[];
   onRenameSection?: (sectionId: string, newName: string) => void;
+  onUpdateSectionTemplate?: (sectionId: string, data: any) => void;
 }
 
 export const EditableSection: React.FC<EditableSectionProps> = ({
@@ -37,6 +38,7 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
   onMergeSections,
   workingTemplateSections,
   onRenameSection,
+  onUpdateSectionTemplate,
 }) => {
   const plusButtonRef = useRef<HTMLButtonElement>(null);
   const [menuAbove, setMenuAbove] = useState(true);
@@ -73,6 +75,7 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
           onMergeSections={onMergeSections}
           workingTemplateSections={workingTemplateSections}
           onRenameSection={onRenameSection}
+          onUpdateTemplateData={onUpdateSectionTemplate}
         />
       </div>
 

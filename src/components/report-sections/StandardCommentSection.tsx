@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TemplateSection } from '../../types';
 import InlineEditableTitle from './InlineEditableTitle';
+import HeaderStylePicker from './HeaderStylePicker';
 
 interface StandardCommentSectionProps {
   section: TemplateSection;
@@ -59,15 +60,7 @@ const StandardCommentSection: React.FC<StandardCommentSectionProps> = ({
 
             {/* Header Options */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <input
-                  type="checkbox"
-                  checked={data.showHeader !== false}
-                  onChange={(e) => updateSectionData(section.id, { showHeader: e.target.checked })}
-                  style={{ width: '14px', height: '14px', cursor: 'pointer' }}
-                />
-                <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Header</span>
-              </div>
+              <HeaderStylePicker showHeader={data.showHeader !== false} headerStyle={data.headerStyle || section.data?.headerStyle || 'inline'} onChange={(show, style) => updateSectionData(section.id, { showHeader: show, headerStyle: style })} />
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <input

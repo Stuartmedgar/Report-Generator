@@ -327,6 +327,16 @@ export const useReportLogic = ({
 
   // ─── INSERT SECTION ───────────────────────────────────────────────────────
 
+  const handleUpdateSectionTemplateData = useCallback((sectionId: string, data: any) => {
+    setWorkingTemplate((prev: any) => ({
+      ...prev,
+      sections: prev.sections.map((s: any) =>
+        s.id === sectionId ? { ...s, data: { ...s.data, ...data } } : s
+      ),
+    }));
+    setHasTemplateChanges(true);
+  }, []);
+
   const handleRenameSection = useCallback((sectionId: string, newName: string) => {
     setWorkingTemplate((prev: any) => ({
       ...prev,
@@ -494,13 +504,22 @@ export const useReportLogic = ({
 
       const showHeader = data.showHeader !== undefined ? data.showHeader :
         section.data?.showHeader !== undefined ? section.data.showHeader : false;
+      const headerStyle = data.headerStyle || section.data?.headerStyle || 'inline';
+
+      const applyHeader = (name: string) => {
+        if (!showHeader || !name) return;
+        if (headerStyle === 'newline') content += `${name}\n`;
+        else if (headerStyle === 'caps') content += `${name.toUpperCase()}: `;
+        else if (headerStyle === 'caps-newline') content += `${name.toUpperCase()}\n`;
+        else content += `${name}: `;
+      };
 
       const nameToken = getNameOrPronoun(section.id);
 
       switch (section.type) {
         case 'rated-comment':
           if (data.rating && data.rating !== 'no-comment') {
-            if (showHeader && section.name) content += `${section.name}: `;
+            applyHeader(section.name);
             const comment = data.customEditedComment || data.selectedComment || '[No comment selected]';
             content += replaceNameWithCapital(comment, nameToken) + ' ';
           }
@@ -508,7 +527,7 @@ export const useReportLogic = ({
 
         case 'assessment-comment':
           if (data.performance && data.performance !== 'no-comment') {
-            if (showHeader && section.name) content += `${section.name}: `;
+            applyHeader(section.name);
             const comment = data.customEditedComment || data.selectedComment || '[No comment selected]';
             let processed = replaceNameWithCapital(comment, nameToken);
             const scoreValues: Record<string, string> = data.scoreValues || {};
@@ -527,7 +546,7 @@ export const useReportLogic = ({
 
         case 'personalised-comment':
           if (data.category) {
-            if (showHeader && section.name) content += `${section.name}: `;
+            applyHeader(section.name);
             const comment = data.customEditedComment || data.selectedComment || '[No comment selected]';
             let processed = replaceNameWithCapital(comment, nameToken);
             const infoValues: Record<string, string> = data.infoValues || {};
@@ -545,7 +564,7 @@ export const useReportLogic = ({
 
         case 'next-steps':
           if (data.focusArea) {
-            if (showHeader && section.name) content += `${section.name}: `;
+            applyHeader(section.name);
             const suggestion = data.customEditedSuggestion || data.selectedSuggestion || '[No suggestion selected]';
             content += replaceNameWithCapital(suggestion, nameToken) + ' ';
           }
@@ -553,7 +572,7 @@ export const useReportLogic = ({
 
         case 'qualities':
           if (data.qualityArea) {
-            if (showHeader && section.name) content += `${section.name}: `;
+            applyHeader(section.name);
             const quality = data.customEditedQuality || data.selectedQuality || '[No quality selected]';
             content += replaceNameWithCapital(quality, nameToken) + ' ';
           }
@@ -561,7 +580,7 @@ export const useReportLogic = ({
 
         case 'optional-additional-comment':
           if (data.comment && data.comment.trim()) {
-            if (showHeader && section.name) content += `${section.name}: `;
+            applyHeader(section.name);
             content += replaceNameWithCapital(data.comment, nameToken) + ' ';
           }
           break;
@@ -569,7 +588,7 @@ export const useReportLogic = ({
         case 'standard-comment':
           const standardContent = data.comment || section.data?.content;
           if (standardContent && standardContent.trim()) {
-            if (showHeader && section.name) content += `${section.name}: `;
+            applyHeader(section.name);
             content += replaceNameWithCapital(standardContent, nameToken) + ' ';
           }
           break;
@@ -682,5 +701,6 @@ export const useReportLogic = ({
     handleSaveWorkingTemplate,
     handleInsertSection,
     handleRenameSection,
+    handleUpdateSectionTemplateData,
   };
 };

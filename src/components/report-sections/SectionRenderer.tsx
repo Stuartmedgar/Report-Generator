@@ -27,6 +27,7 @@ interface SectionRendererProps {
   onMergeSections?: (sourceId: string, targetId: string) => void;
   workingTemplateSections?: any[];
   onRenameSection?: (sectionId: string, newName: string) => void;
+  onUpdateTemplateData?: (sectionId: string, data: any) => void;
 }
 
 const SectionRenderer: React.FC<SectionRendererProps> = ({
@@ -39,15 +40,23 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
   onMergeSections,
   workingTemplateSections,
   onRenameSection,
+  onUpdateTemplateData,
 }) => {
   const data = sectionData[section.id] || {};
 
   const enhancedUpdateSectionData = (sectionId: string, newData: any) => {
+    const hasExplicitHeader = 'showHeader' in newData || 'headerStyle' in newData;
     if (newData.showHeader === undefined) {
       const headerDefault = section.data?.showHeader !== undefined ? section.data.showHeader : false;
       newData.showHeader = headerDefault;
     }
     updateSectionData(sectionId, newData);
+    if (hasExplicitHeader && onUpdateTemplateData) {
+      const templateUpdate: any = {};
+      if ('showHeader' in newData) templateUpdate.showHeader = newData.showHeader;
+      if ('headerStyle' in newData) templateUpdate.headerStyle = newData.headerStyle;
+      onUpdateTemplateData(sectionId, templateUpdate);
+    }
   };
 
   switch (section.type) {
