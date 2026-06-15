@@ -71,19 +71,8 @@ const AUTOSAVE_KEY = 'buildAsYouGo_draft';
 function saveDraft(n: string, s: AddedSection[]) { try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ templateName: n, sections: s, savedAt: Date.now() })); } catch (_) {} }
 function clearDraft() { try { localStorage.removeItem(AUTOSAVE_KEY); } catch (_) {} }
 
-function generateTestReport(sections: AddedSection[]): string {
-  const parts: string[] = [];
-  for (const s of sections) {
-    if (s.type === 'new-line') { parts.push('\n\n'); continue; }
-    if (s.showHeader && s.name) parts.push(`${s.name.toUpperCase()}\n`);
-    if (s.type === 'standard-comment') { if (s.content) parts.push(s.content.replace(/\[Name\]/g, 'Alex')); }
-    else if (s.type === 'optional-additional-comment') { parts.push('[Optional comment — teacher types here]'); }
-    else { const btn = s.buttons.find(b => b.name && b.statements.length > 0); if (btn) parts.push(btn.statements[0].replace(/\[Name\]/g, 'Alex').replace(/\[Score\]/g, '78%').replace(/\[Info 1\]/g, 'improving written work')); }
-  }
-  return parts.join(' ').replace(/ {2,}/g, ' ').replace(/\n /g, '\n').trim();
-}
 
-type Screen = 'subject' | 'standard-comment' | 'wizard' | 'review';
+type Screen = 'subject' | 'standard-comment' | 'wizard';
 
 const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onComplete, onCancel }) => {
   const navigate = useNavigate();
@@ -102,9 +91,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const [hasStandardComment, setHasStandardComment] = useState<boolean | string | null>(null);
   const [standardContent, setStandardContent] = useState('');
   const [standardSectionName, setStandardSectionName] = useState('');
-  const [editingStandardId, setEditingStandardId] = useState<string | null>(null);
-  const [editingStandardContent, setEditingStandardContent] = useState('');
-  const [editingStandardName, setEditingStandardName] = useState('');
   const [aiCandidates, setAiCandidates] = useState<string[]>([]);
   const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set());
 
@@ -130,9 +116,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const [movingStatementKey, setMovingStatementKey] = useState<{ buttonIdx: number; stmtIdx: number } | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
-  const [reviewViewMode, setReviewViewMode] = useState<'reports' | 'test-report'>('reports');
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const dragSourceIndex = useRef<number | null>(null);
   const statementInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { if (addedSections.length > 0) saveDraft(localTemplateName, addedSections); }, [addedSections, localTemplateName]);
@@ -176,7 +159,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     setNewStatement(''); setNewButtonName(''); setAddingNewButton(false); setNamingButtonIndex(null); setNamingButtonValue('');
     setStandardContent(''); setShowExamples(false); setAiError(null); setEditingStatementKey(null); setMovingStatementKey(null);
   };
-  const advanceQuestion = () => { if (isLastQuestion) setScreen('review'); else { setCurrentStep(s => s + 1); resetWizardQuestion(); } };
+  const advanceQuestion = () => { if (isLastQuestion) handleSaveAndWrite(); else { setCurrentStep(s => s + 1); resetWizardQuestion(); } };
   const handleWizardYes = () => { setSectionName(question.defaultName); setPhase('name'); };
   const handleWizardNo = () => advanceQuestion();
   const handleNameConfirmed = () => {
@@ -192,7 +175,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const handleWizardAddSection = () => {
     const name = sectionName.trim() || question.defaultName;
     const newSection: AddedSection = { id: editingSectionId || makeId(), type: question.sectionType, name, buttons: question.hasButtons ? buttons : [], content: '', instruction: '', showHeader: false };
-    if (editingSectionId) { setAddedSections(prev => prev.map(s => s.id === editingSectionId ? { ...newSection, showHeader: s.showHeader } : s)); setEditingSectionId(null); setScreen('review'); }
+    if (editingSectionId) { setAddedSections(prev => prev.map(s => s.id === editingSectionId ? { ...newSection, showHeader: s.showHeader } : s)); setEditingSectionId(null); setPhase('added'); }
     else { setAddedSections(prev => [...prev, newSection]); setPhase('added'); }
   };
   const handleAddAnother = () => {
@@ -244,16 +227,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     finally { setAiLoading(false); }
   };
 
-  const handleDragStart = (i: number) => { dragSourceIndex.current = i; };
-  const handleDragOver = (e: React.DragEvent, i: number) => { e.preventDefault(); setDragOverIndex(i); };
-  const handleDrop = (e: React.DragEvent, ti: number) => { e.preventDefault(); const src = dragSourceIndex.current; if (src === null || src === ti) { setDragOverIndex(null); return; } setAddedSections(prev => { const u = [...prev]; const [m] = u.splice(src, 1); u.splice(ti, 0, m); return u; }); dragSourceIndex.current = null; setDragOverIndex(null); };
-  const handleDragEnd = () => { dragSourceIndex.current = null; setDragOverIndex(null); };
-  const handleRemoveSection = (id: string) => setAddedSections(prev => prev.filter(s => s.id !== id));
-  const handleToggleHeader = (id: string) => setAddedSections(prev => prev.map(s => s.id === id ? { ...s, showHeader: !s.showHeader } : s));
-  const handleAddSpecialSection = (type: 'new-line' | 'optional-additional-comment', afterIndex: number) => {
-    const ns: AddedSection = { id: makeId(), type: type as SectionType, name: type === 'new-line' ? '' : 'Additional Comments', buttons: [], content: '', instruction: '', showHeader: false };
-    setAddedSections(prev => { const u = [...prev]; u.splice(afterIndex + 1, 0, ns); return u; });
-  };
 
   const handleCancel = () => { if (addedSections.length > 0 || screen === 'wizard') { if (!window.confirm('Are you sure? Your progress will be lost.')) return; } onCancel(); };
 
@@ -271,12 +244,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     return builtSections;
   };
 
-  const handleComplete = () => {
-    if (addedSections.filter(s => s.type !== 'new-line' && s.type !== 'optional-additional-comment').length === 0) { alert('Please add at least one section.'); return; }
-    clearDraft(); onComplete(buildFinalSections(), localTemplateName.trim() || undefined);
-  };
-
-  const handleSaveAndWrite = () => {
+const handleSaveAndWrite = () => {
     if (addedSections.filter(s => s.type !== 'new-line' && s.type !== 'optional-additional-comment').length === 0) { alert('Please add at least one section.'); return; }
     const sections = buildFinalSections();
     const name = localTemplateName.trim() || 'My Template';
@@ -655,7 +623,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
                   <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#166534', marginBottom: '20px', lineHeight: '1.5' }}>💡 Add your own statements below, or use the ready-made buttons from the pool below. Paste existing reports on the right and use AI to find more.</div>
                   {renderStatementEditor(question.sectionType, sectionName)}
                   <div style={{ display: 'flex', gap: '12px' }}>
-                    <button onClick={() => editingSectionId ? setScreen('review') : setPhase('name')} style={secondaryBtn}>← Back</button>
+                    <button onClick={() => setPhase('name')} style={secondaryBtn}>← Back</button>
                     <button onClick={handleWizardAddSection} style={primaryBtn}>{editingSectionId ? 'Save changes →' : 'Save section →'}</button>
                   </div>
                 </div>
@@ -696,99 +664,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     );
   }
 
-  // ─── REVIEW SCREEN ────────────────────────────────────────────────────────
-
-  const testReport = generateTestReport(addedSections);
-  return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <TopBar />
-      <div style={{ flex: 1, display: 'flex', width: '100%', overflow: 'hidden', minHeight: 0 }}>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px', minWidth: 0 }}>
-          <div style={{ maxWidth: '680px', margin: '0 auto' }}>
-            <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#111827', marginBottom: '6px' }}>Review your template</h1>
-            <p style={{ fontSize: '13px', color: '#6b7280', marginBottom: '16px', lineHeight: '1.6' }}>Drag sections to reorder. Toggle headings. Add line breaks or optional comment boxes.</p>
-            <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 14px', marginBottom: '18px', fontSize: '12px', color: '#78350f', lineHeight: '1.6' }}><strong>Line break</strong> — adds a paragraph gap. <strong>Optional comment box</strong> — lets you type a free note per pupil.</div>
-
-            {addedSections.map((s, index) => {
-              const isSpecial = s.type === 'new-line' || s.type === 'optional-additional-comment';
-              const isStandard = s.type === 'standard-comment';
-              const isEditingThis = editingStandardId === s.id;
-              const isDragOver = dragOverIndex === index;
-              const totalStmts = s.buttons.reduce((a, b) => a + b.statements.length, 0) + (s.content ? 1 : 0);
-              return (
-                <div key={s.id}>
-                  <div style={{ height: isDragOver ? '36px' : '4px', backgroundColor: isDragOver ? '#dbeafe' : 'transparent', border: isDragOver ? '2px dashed #3b82f6' : 'none', borderRadius: '6px', transition: 'all 0.15s', marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onDragOver={e => handleDragOver(e, index)} onDrop={e => handleDrop(e, index)}>{isDragOver && <span style={{ fontSize: '12px', color: '#3b82f6' }}>Drop here</span>}</div>
-                  {isEditingThis ? (
-                    <div style={{ backgroundColor: 'white', border: '2px solid #10b981', borderRadius: '8px', padding: '14px', marginBottom: '4px' }}>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Section name (optional)</label>
-                      <input value={editingStandardName} onChange={e => setEditingStandardName(e.target.value)} placeholder="e.g. Introduction" style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', marginBottom: '10px', boxSizing: 'border-box' as const, fontFamily: 'inherit' }} />
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Statement</label>
-                      <textarea value={editingStandardContent} onChange={e => setEditingStandardContent(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', minHeight: '80px', resize: 'vertical', boxSizing: 'border-box' as const, fontFamily: 'inherit', marginBottom: '10px' }} />
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                        <button onClick={() => setEditingStandardId(null)} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '6px 14px', fontSize: '13px', cursor: 'pointer', color: '#6b7280' }}>Cancel</button>
-                        <button onClick={() => { setAddedSections(prev => prev.map(sec => sec.id === s.id ? { ...sec, name: editingStandardName, content: editingStandardContent } : sec)); setEditingStandardId(null); }} disabled={!editingStandardContent.trim()} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', padding: '6px 14px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', opacity: editingStandardContent.trim() ? 1 : 0.4 }}>Save</button>
-                      </div>
-                    </div>
-                  ) : (
-                  <div draggable onDragStart={() => handleDragStart(index)} onDragEnd={handleDragEnd} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: isSpecial ? '8px 14px' : '12px 14px', backgroundColor: isSpecial ? '#f9fafb' : 'white', border: `1px solid ${isSpecial ? '#f3f4f6' : '#e5e7eb'}`, borderRadius: '8px', marginBottom: '4px', cursor: 'grab' }}>
-                    <div style={{ fontSize: '16px', color: '#d1d5db', cursor: 'grab' }}>⠿</div>
-                    {!isSpecial && <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: SECTION_COLORS[s.type] || '#9ca3af', flexShrink: 0 }} />}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      {isSpecial ? <div style={{ fontSize: '12px', color: '#9ca3af', fontStyle: 'italic' }}>{s.type === 'new-line' ? '— Line break —' : '[ Optional comment box ]'}</div>
-                        : <><div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>{s.name || (isStandard ? 'Fixed Statement' : '')}</div><div style={{ fontSize: '11px', color: '#9ca3af' }}>{SECTION_LABELS[s.type]}{isStandard ? (s.content ? ' · 1 statement' : '') : (totalStmts > 0 ? ` · ${totalStmts} statement${totalStmts !== 1 ? 's' : ''}` : '')}</div>{isStandard && s.content && <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.content}</div>}</>}
-                    </div>
-                    {!isSpecial && !isStandard && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                        <span style={{ fontSize: '11px', color: '#9ca3af' }}>Heading</span>
-                        <button onClick={() => handleToggleHeader(s.id)} style={{ width: '36px', height: '20px', borderRadius: '10px', border: 'none', cursor: 'pointer', backgroundColor: s.showHeader ? '#3b82f6' : '#d1d5db', position: 'relative', transition: 'background-color 0.2s', flexShrink: 0 }}>
-                          <div style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: 'white', position: 'absolute', top: '2px', left: s.showHeader ? '18px' : '2px', transition: 'left 0.2s' }} />
-                        </button>
-                      </div>
-                    )}
-                    {isStandard && (
-                      <button onClick={() => { setEditingStandardId(s.id); setEditingStandardContent(s.content); setEditingStandardName(s.name); }} style={{ backgroundColor: '#eff6ff', color: '#3b82f6', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '12px', cursor: 'pointer', flexShrink: 0 }}>Edit</button>
-                    )}
-                    <button onClick={() => handleRemoveSection(s.id)} style={{ backgroundColor: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '12px', cursor: 'pointer', flexShrink: 0 }}>✕</button>
-                  </div>
-                  )}
-                  <div style={{ display: 'flex', gap: '6px', marginBottom: '6px', paddingLeft: '28px' }}>
-                    <button onClick={() => handleAddSpecialSection('new-line', index)} style={{ background: 'none', border: '1px dashed #d1d5db', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', color: '#9ca3af', cursor: 'pointer' }}>+ line break</button>
-                    <button onClick={() => handleAddSpecialSection('optional-additional-comment', index)} style={{ background: 'none', border: '1px dashed #d1d5db', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', color: '#9ca3af', cursor: 'pointer' }}>+ optional comment box</button>
-                  </div>
-                </div>
-              );
-            })}
-
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '16px' }}>
-              <button onClick={() => { setCurrentStep(0); resetWizardQuestion(); setScreen('wizard'); }} style={secondaryBtn}>← Back to questions</button>
-              <button onClick={handleComplete} style={{ ...primaryBtn, backgroundColor: '#10b981' }}>💾 Save template</button>
-              <button onClick={handleSaveAndWrite} style={primaryBtn}>✏️ Save & Start Writing →</button>
-            </div>
-          </div>
-        </div>
-
-        {reportsPanelOpen && (
-          <div style={{ flex: '0 0 48%', borderLeft: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
-              {(['reports', 'test-report'] as const).map(mode => (
-                <button key={mode} onClick={() => setReviewViewMode(mode)} style={{ flex: 1, padding: '10px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: reviewViewMode === mode ? '600' : '400', color: reviewViewMode === mode ? '#111827' : '#9ca3af', backgroundColor: reviewViewMode === mode ? 'white' : '#f9fafb', borderBottom: reviewViewMode === mode ? '2px solid #3b82f6' : '2px solid transparent' }}>
-                  {mode === 'reports' ? '📄 Your reports' : '👁 Test report'}
-                </button>
-              ))}
-            </div>
-            {reviewViewMode === 'reports' ? <ReportsPanel /> : (
-              <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-                <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '10px' }}>Sample using first statement from each section. Pupil shown as "Alex".</div>
-                <div style={{ fontSize: '14px', color: '#374151', lineHeight: '1.9', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px', whiteSpace: 'pre-wrap', textAlign: 'left' as const }}>
-                  {testReport || <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Add sections with statements to see a preview here.</span>}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  return null;
 };
 
 export default BuildAsYouGo;
