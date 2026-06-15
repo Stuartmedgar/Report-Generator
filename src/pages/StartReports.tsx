@@ -325,7 +325,7 @@ function StartReports() {
           </button>
 
           <button
-            onClick={() => navigate('/create-template', { state: { method: 'build-as-you-go' } })}
+            onClick={() => navigate('/create-template', { state: { method: 'build-as-you-go', classId: selectedClass?.id } })}
             style={{ ...optionBtnStyle('#f59e0b'), marginBottom: 0 }}
           >
             <span style={{ fontSize: '22px', flexShrink: 0 }}>🧱</span>
