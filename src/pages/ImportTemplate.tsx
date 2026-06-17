@@ -136,6 +136,7 @@ export default function ImportTemplate() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [restructuredReports, setRestructuredReports] = useState<string | null>(null);
 
   // Selection state
   const [selectedText, setSelectedText] = useState('');
@@ -213,6 +214,8 @@ export default function ImportTemplate() {
     return () => document.removeEventListener('mouseup', handler);
   }, [handleTextSelection]);
 
+  useEffect(() => { setRestructuredReports(null); }, [rawReportText]);
+
   const clearSelection = () => {
     setSelectedText('');
     setAccumulatedText('');
@@ -232,6 +235,18 @@ export default function ImportTemplate() {
   };
 
   // ─── API CALLS ─────────────────────────────────────────────────────────────
+
+  const ensureRestructured = async (): Promise<string> => {
+    if (restructuredReports) return restructuredReports;
+    try {
+      const res = await fetch(SUPABASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'restructure', reportText: rawReportText, subject: subject || '' }) });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.restructuredText) { setRestructuredReports(data.restructuredText); return data.restructuredText; }
+      }
+    } catch { /* fall back to raw */ }
+    return rawReportText;
+  };
 
   const callApi = async (body: any) => {
     const response = await fetch(SUPABASE_URL, {
@@ -284,13 +299,15 @@ export default function ImportTemplate() {
     if (!rawReportText.trim()) { setError('Please paste your reports.'); return; }
     setError(null);
     setIsLoading(true);
-    setLoadingMessage('Reading your reports and identifying sections...');
+    setLoadingMessage(restructuredReports ? 'Reading your reports and identifying sections...' : 'Structuring your reports...');
     try {
-      const identified = await callApi({ mode: 'identify-sections', subject, yearGroup, reportText: rawReportText });
+      const reportTextForAI = await ensureRestructured();
+      setLoadingMessage('Reading your reports and identifying sections...');
+      const identified = await callApi({ mode: 'identify-sections', subject, yearGroup, reportText: reportTextForAI });
       const identifiedSections = (identified.sections || []).filter((s: any) => s.type !== 'new-line');
       if (identifiedSections.length === 0) throw new Error('Could not identify sections');
       setLoadingMessage('Building your template automatically...');
-      const result = await callApi({ mode: 'auto-build', subject, yearGroup, pronounSet, reportText: rawReportText, builtSections: identifiedSections });
+      const result = await callApi({ mode: 'auto-build', subject, yearGroup, pronounSet, reportText: reportTextForAI, builtSections: identifiedSections });
       const typicalCountMap: Record<string, number> = {};
       identifiedSections.forEach((s: any) => { typicalCountMap[s.name] = s.typicalCount || 1; });
       if (!result.sections || result.sections.length === 0) throw new Error('No sections returned');
@@ -328,9 +345,11 @@ export default function ImportTemplate() {
     if (!selectedText) { setError('Please highlight some text from your reports first.'); return; }
     setError(null);
     setIsLoading(true);
-    setLoadingMessage(`Reading all reports to extract ${sectionName} sentences...`);
+    setLoadingMessage(restructuredReports ? `Reading all reports to extract ${sectionName} sentences...` : 'Structuring your reports (once only)...');
     try {
-      const result = await callApi({ mode: 'extract-only', subject, yearGroup, reportText: rawReportText, pronounSet, openerType, sectionName, positionType, scaleType: scaleType || 'own', selectedText, piInstruction });
+      const reportTextForAI = await ensureRestructured();
+      setLoadingMessage(`Reading all reports to extract ${sectionName} sentences...`);
+      const result = await callApi({ mode: 'extract-only', subject, yearGroup, reportText: reportTextForAI, pronounSet, openerType, sectionName, positionType, scaleType: scaleType || 'own', selectedText, piInstruction });
       const isNextSteps = positionType === 'next-steps' || positionType === 'development';
       const isAssessment = positionType === 'assessment-comment';
       const isPersonalisedComment = positionType === 'personalised-comment';
