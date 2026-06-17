@@ -102,6 +102,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const [reportsPanelOpen, setReportsPanelOpen] = useState(true);
   const [pastedReports, setPastedReports] = useState('');
   const hasReports = pastedReports.trim().length > 50;
+  const [highlightedExamples, setHighlightedExamples] = useState<string[]>([]);
+  const [reportsEditMode, setReportsEditMode] = useState(false);
   const [buttons, setButtons] = useState<StatementButton[]>([]);
   const [activeButtonIndex, setActiveButtonIndex] = useState(0);
   const [newStatement, setNewStatement] = useState('');
@@ -189,19 +191,24 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     setAiLoading(true); setAiError(null);
     const activeName = sName || sectionName || '';
     const activeType = sType || question?.sectionType || 'qualities';
+    const isRated = activeType === 'rated-comment' || activeType === 'assessment-comment';
     try {
-      const exampleLines: string[] = [];
-      buttons.forEach(b => { if (b.name && b.statements.length > 0) exampleLines.push(...b.statements.slice(0, 2)); });
-      if (!exampleLines.length) { setAiError('No statements to use as examples yet.'); setAiLoading(false); return; }
+      let selectedTextForAI = highlightedExamples.join('\n');
+      if (!selectedTextForAI) {
+        const exampleLines: string[] = [];
+        buttons.forEach(b => { if (b.name && b.statements.length > 0) exampleLines.push(...b.statements.slice(0, 2)); });
+        if (!exampleLines.length) { setAiError('Select example sentences in the reports panel, or add some statements first.'); setAiLoading(false); return; }
+        selectedTextForAI = exampleLines.join('\n');
+      }
       const positionType = activeType === 'next-steps' ? 'next-steps' : activeType === 'rated-comment' ? 'rating' : activeType === 'assessment-comment' ? 'assessment-comment' : activeName === 'Areas for Development' ? 'next-steps' : 'qualities';
-      const response = await fetch(SUPABASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'extract-only', subject: subject || activeName, yearGroup: '', reportText: pastedReports, pronounSet: 'they/their', openerType: 'name', sectionName: activeName, positionType, selectedText: exampleLines.join('\n'), scaleType: activeType === 'rated-comment' ? 'four-level' : 'own' }) });
+      const response = await fetch(SUPABASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'extract-only', subject: subject || activeName, yearGroup: '', reportText: pastedReports, pronounSet: 'they/their', openerType: 'name', sectionName: activeName, positionType, selectedText: selectedTextForAI, scaleType: activeType === 'rated-comment' ? 'four-level' : 'own' }) });
       if (!response.ok) throw new Error('failed');
       const data = await response.json();
       const headings: { name: string; comments: string[] }[] = data.headings || [];
       if (headings.length === 0) { setAiError('No matching sentences found in your reports for this section.'); setAiLoading(false); return; }
-      if (activeType === 'rated-comment' || activeType === 'assessment-comment') {
-        setButtons(prev => {
-          const u = [...prev];
+      setButtons(prev => {
+        const u = [...prev];
+        if (isRated) {
           headings.forEach(h => {
             const n = h.name.toLowerCase(); let ti = 1;
             if (n.includes('excellent') || n.includes('outstanding') || n.includes('strong')) ti = 0;
@@ -210,19 +217,24 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
             else if (n.includes('improvement') || n.includes('needs') || n.includes('limited') || n.includes('poor')) ti = 3;
             if (ti < u.length) { const newStmts = h.comments.filter(c => !u[ti].statements.includes(c)); u[ti] = { ...u[ti], statements: [...u[ti].statements, ...newStmts].slice(0, MAX_STATEMENTS) }; }
           });
-          return u;
-        });
-      } else {
-        setButtons(prev => {
-          const merged = [...prev];
+        } else {
           headings.forEach(h => {
-            const ei = merged.findIndex(b => b.name.toLowerCase() === h.name.toLowerCase() || h.name.toLowerCase().includes(b.name.toLowerCase()) || b.name.toLowerCase().includes(h.name.toLowerCase()));
-            if (ei >= 0) { const newStmts = h.comments.filter(c => !merged[ei].statements.includes(c)); merged[ei] = { ...merged[ei], statements: [...merged[ei].statements, ...newStmts].slice(0, MAX_STATEMENTS) }; }
-            else if (h.name && h.comments.length > 0) merged.push({ name: h.name, statements: h.comments });
+            const ei = u.findIndex(b => b.name.toLowerCase() === h.name.toLowerCase() || h.name.toLowerCase().includes(b.name.toLowerCase()) || b.name.toLowerCase().includes(h.name.toLowerCase()));
+            if (ei >= 0) { const newStmts = h.comments.filter(c => !u[ei].statements.includes(c)); u[ei] = { ...u[ei], statements: [...u[ei].statements, ...newStmts].slice(0, MAX_STATEMENTS) }; }
+            else if (h.name && h.comments.length > 0) u.push({ name: h.name, statements: h.comments });
           });
-          return merged.filter(b => b.name);
-        });
-      }
+          // Also add any highlighted examples not already captured
+          if (highlightedExamples.length > 0) {
+            const allStmts = new Set(u.flatMap(b => b.statements));
+            const toAdd = highlightedExamples.filter(ex => !allStmts.has(ex));
+            if (toAdd.length > 0) {
+              const targetIdx = u.findIndex(b => b.name && b.statements.length < MAX_STATEMENTS);
+              if (targetIdx >= 0) u[targetIdx] = { ...u[targetIdx], statements: [...u[targetIdx].statements, ...toAdd].slice(0, MAX_STATEMENTS) };
+            }
+          }
+        }
+        return u.filter(b => b.name);
+      });
     } catch { setAiError('AI extraction failed. Please try again.'); }
     finally { setAiLoading(false); }
   };
@@ -278,17 +290,53 @@ const handleSaveAndWrite = () => {
     </div>
   );
 
-  const ReportsPanel = () => (
-    <div style={{ flex: '0 0 44%', borderLeft: '1px solid #e5e7eb', backgroundColor: 'white', display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6', flexShrink: 0 }}>
-        <div style={{ fontSize: '13px', fontWeight: '600', color: '#374151' }}>Your existing reports{hasReports && <span style={{ color: '#10b981', fontWeight: '500', marginLeft: '8px' }}>✓ Ready for AI</span>}</div>
-        <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>Paste here — AI uses these when you click "Find in my reports"</div>
+  const ReportsPanel = () => {
+    const handleMouseUp = () => {
+      const sel = window.getSelection();
+      const text = sel?.toString().trim() || '';
+      if (text.length > 15 && !highlightedExamples.includes(text)) {
+        setHighlightedExamples(prev => [...prev, text]);
+      }
+    };
+    const paragraphs = pastedReports.split(/\n{2,}|---+/).map(p => p.trim()).filter(Boolean);
+    const showReadingView = hasReports && !reportsEditMode;
+    return (
+      <div style={{ flex: '0 0 44%', borderLeft: '1px solid #e5e7eb', backgroundColor: 'white', display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#374151' }}>Your existing reports{hasReports && <span style={{ color: '#10b981', fontWeight: '500', marginLeft: '8px' }}>✓ Ready</span>}</div>
+            {hasReports && <button onClick={() => setReportsEditMode(m => !m)} style={{ background: 'none', border: '1px solid #d1d5db', borderRadius: '5px', color: '#6b7280', fontSize: '12px', cursor: 'pointer', padding: '3px 8px' }}>{reportsEditMode ? 'Done' : 'Edit'}</button>}
+          </div>
+          <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
+            {showReadingView ? 'Select sentences as examples — each selection is added to the list below' : 'Paste here — separate reports with a blank line or ---'}
+          </div>
+        </div>
+        {highlightedExamples.length > 0 && (
+          <div style={{ padding: '8px 12px', backgroundColor: '#fefce8', borderBottom: '1px solid #fef08a', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: '#713f12' }}>EXAMPLES ({highlightedExamples.length})</span>
+              <button onClick={() => setHighlightedExamples([])} style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '11px', fontWeight: '500', padding: 0 }}>Clear all</button>
+            </div>
+            {highlightedExamples.map((ex, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', marginBottom: '4px' }}>
+                <span style={{ fontSize: '11px', color: '#92400e', flex: 1, lineHeight: '1.4' }}>"{ex.length > 90 ? ex.slice(0, 90) + '…' : ex}"</span>
+                <button onClick={() => setHighlightedExamples(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '13px', flexShrink: 0, lineHeight: 1, paddingTop: '1px' }}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ flex: 1, padding: '12px 16px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          {showReadingView ? (
+            <div onMouseUp={handleMouseUp} style={{ flex: 1, overflowY: 'auto', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '12px', lineHeight: '1.8', color: '#374151', cursor: 'text', userSelect: 'text' }}>
+              {paragraphs.map((para, i) => <p key={i} style={{ margin: '0 0 14px 0', padding: 0 }}>{para}</p>)}
+            </div>
+          ) : (
+            <textarea ref={reportsPanelRef} value={pastedReports} onChange={e => setPastedReports(e.target.value)} onScroll={handleReportsPanelScroll} placeholder="Paste your existing reports here. Separate each with a blank line or ---." style={{ flex: 1, width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '12px', lineHeight: '1.7', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'inherit', color: '#374151' }} />
+          )}
+        </div>
       </div>
-      <div style={{ flex: 1, padding: '12px 16px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <textarea ref={reportsPanelRef} value={pastedReports} onChange={e => setPastedReports(e.target.value)} onScroll={handleReportsPanelScroll} placeholder="Paste your existing reports here. Separate each with a blank line or ---." style={{ flex: 1, width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '12px', lineHeight: '1.7', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'inherit', color: '#374151' }} />
-      </div>
-    </div>
-  );
+    );
+  };
 
   // Determine which ready-made pools to show based on current question
   const getPoolsForQuestion = (): { universal: AddableButton[]; subject: AddableButton[] } => {
@@ -417,15 +465,18 @@ const handleSaveAndWrite = () => {
         {hasReports && !aiLoading && sType !== 'standard-comment' && (
           <div style={{ marginBottom: '16px' }}>
             <div style={{ height: '1px', backgroundColor: '#f3f4f6', margin: '4px 0 14px' }} />
-            <button onClick={() => handleAiFindInReports(sName, sType)} style={{ width: '100%', padding: '12px 16px', backgroundColor: '#faf5ff', border: '2px solid #8b5cf6', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }} onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f3e8ff'; }} onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#faf5ff'; }}>
+            <button onClick={() => handleAiFindInReports(sName, sType)} style={{ width: '100%', padding: '12px 16px', backgroundColor: highlightedExamples.length > 0 ? '#fffbeb' : '#faf5ff', border: `2px solid ${highlightedExamples.length > 0 ? '#f59e0b' : '#8b5cf6'}`, borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }} onMouseEnter={e => { e.currentTarget.style.backgroundColor = highlightedExamples.length > 0 ? '#fef3c7' : '#f3e8ff'; }} onMouseLeave={e => { e.currentTarget.style.backgroundColor = highlightedExamples.length > 0 ? '#fffbeb' : '#faf5ff'; }}>
               <span style={{ fontSize: '20px' }}>🔍</span>
-              <div style={{ textAlign: 'left' }}><div style={{ fontSize: '14px', fontWeight: '700', color: '#7c3aed' }}>Find in my reports</div><div style={{ fontSize: '12px', color: '#9ca3af' }}>Uses statements as examples to find matching sentences in your reports</div></div>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: '14px', fontWeight: '700', color: highlightedExamples.length > 0 ? '#b45309' : '#7c3aed' }}>Find in my reports</div>
+                <div style={{ fontSize: '12px', color: '#9ca3af' }}>{highlightedExamples.length > 0 ? `Using ${highlightedExamples.length} selected example${highlightedExamples.length > 1 ? 's' : ''} →` : 'Uses statements as examples to find matching sentences'}</div>
+              </div>
             </button>
           </div>
         )}
         {aiLoading && <div style={{ marginBottom: '16px', padding: '14px 16px', backgroundColor: '#faf5ff', border: '2px solid #8b5cf6', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}><div style={{ display: 'flex', gap: '4px' }}>{[0,1,2].map(i => <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#8b5cf6', animation: 'pulse 1.2s ease-in-out infinite', animationDelay: `${i * 0.2}s` }} />)}</div><div style={{ fontSize: '13px', color: '#7c3aed' }}>Searching your reports...</div><style>{`@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}`}</style></div>}
         {aiError && <div style={{ marginBottom: '16px', padding: '10px 14px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '13px', color: '#b91c1c' }}>⚠️ {aiError}</div>}
-        {!hasReports && sType !== 'standard-comment' && <div style={{ marginBottom: '16px', padding: '12px 16px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', fontSize: '13px', color: '#78350f', lineHeight: '1.5' }}>💡 <strong>Have existing reports?</strong> Paste them in the right panel and click "Find in my reports" to auto-populate statements.</div>}
+        {!hasReports && sType !== 'standard-comment' && <div style={{ marginBottom: '16px', padding: '12px 16px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', fontSize: '13px', color: '#78350f', lineHeight: '1.5' }}>💡 <strong>Have existing reports?</strong> Paste them in the right panel, select an example sentence, then click "Find in my reports" to auto-populate statements.</div>}
       </div>
     );
   };
