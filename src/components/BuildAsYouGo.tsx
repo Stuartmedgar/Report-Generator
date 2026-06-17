@@ -227,7 +227,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
           });
         } else {
           headings.forEach(h => {
-            const ei = u.findIndex(b => b.name.toLowerCase() === h.name.toLowerCase() || h.name.toLowerCase().includes(b.name.toLowerCase()) || b.name.toLowerCase().includes(h.name.toLowerCase()));
+            const ei = u.findIndex(b => b.name && (b.name.toLowerCase() === h.name.toLowerCase() || h.name.toLowerCase().includes(b.name.toLowerCase()) || b.name.toLowerCase().includes(h.name.toLowerCase())));
             if (ei >= 0) { const newStmts = h.comments.filter(c => !u[ei].statements.includes(c)); u[ei] = { ...u[ei], statements: [...u[ei].statements, ...newStmts].slice(0, MAX_STATEMENTS) }; }
             else if (h.name && h.comments.length > 0) u.push({ name: h.name, statements: h.comments });
           });
