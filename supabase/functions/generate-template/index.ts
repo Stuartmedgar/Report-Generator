@@ -578,7 +578,7 @@ serve(async (req) => {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-4-6",
           max_tokens: 3000,
           temperature: 0,
           system: IDENTIFY_SECTIONS_SYSTEM,
@@ -622,7 +622,7 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-4-6",
           max_tokens: 8000,
           temperature: 0,
           system: AUTO_BUILD_SYSTEM,
@@ -691,7 +691,7 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514", max_tokens: 4000,
+          model: "claude-sonnet-4-6", max_tokens: 4000,
           system: REWRITE_SYSTEM,
           messages: [{ role: "user", content: `${openerInstruction}\n\nSECTION:\n${JSON.stringify(sourceSection, null, 2)}` }],
         }),
@@ -714,7 +714,7 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
           method: "POST",
           headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
           body: JSON.stringify({
-            model: "claude-sonnet-4-20250514",
+            model: "claude-sonnet-4-6",
             max_tokens: 6000,
             system: PERSONALISED_EXTRACT_SYSTEM,
             messages: [{
@@ -820,7 +820,7 @@ Group complete options by topic. ${openerInstruction}`,
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-4-6",
           max_tokens: 6000,
           system: EXTRACT_ONLY_SYSTEM,
           messages: [{
@@ -862,7 +862,7 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514", max_tokens: 4000,
+          model: "claude-sonnet-4-6", max_tokens: 4000,
           system: VARIETY_SYSTEM,
           messages: [{
             role: "user",
@@ -906,7 +906,7 @@ Generate additional options only. Do not change or repeat the existing options.`
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514", max_tokens: 16000,
+          model: "claude-sonnet-4-6", max_tokens: 16000,
           system: `${KNOWLEDGE_BASE}\n\nImprove an existing report template using additional reports. Return ONLY valid JSON. Replace ALL student names with [Name]. Replace ALL scores with [Score]. Keep same template name. Apply PRONOUN TO [Name] CONVERSION throughout — fix verb agreement. Apply POSSESSIVE PRONOUNS rule — never write "him work" or "them confidence". Apply NO SENTENCE FRAGMENTS. Apply NO DUPLICATES.`,
           messages: [{
             role: "user",
@@ -920,6 +920,103 @@ Generate additional options only. Do not change or repeat the existing options.`
       return new Response(JSON.stringify(parsed), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } catch {
       return new Response(JSON.stringify({ error: "Refinement failed." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+  }
+
+  // ─── MODE: FIND-FIXED ────────────────────────────────────────────────────
+  if (mode === "find-fixed") {
+    if (!reportText) return new Response(JSON.stringify({ error: "reportText is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 2000,
+          temperature: 0,
+          system: `You are analysing teacher-written school reports to find fixed statements — sentences or short phrases that the teacher copies (verbatim or near-verbatim) into most or all reports unchanged, regardless of which pupil it is about.
+
+Examples of fixed statements: closing sentences like "Thank you for your continued support", opening lines like "It has been a pleasure teaching [Name] this year", or standard phrases like "[Name] is always well presented and ready to learn."
+
+Return ONLY a JSON object in this exact format:
+{"statements": ["statement 1", "statement 2", ...]}
+
+Rules:
+- Only include sentences that appear in at least 2 reports in the same or near-identical form.
+- Replace all student names with [Name].
+- Replace possessive pronouns (his/her/their) appropriately; keep them as-is unless a name appears.
+- Do NOT include sentences that vary significantly between reports.
+- Do NOT include sentences where the main content changes per pupil.
+- Return 0–10 statements maximum. If none found, return {"statements": []}.
+- Return ONLY valid JSON, no markdown fences.`,
+          messages: [{
+            role: "user",
+            content: `Subject: ${subject || "Not specified"}
+
+REPORTS:
+${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
+          }],
+        }),
+      });
+
+      if (!response.ok) return new Response(JSON.stringify({ error: "API call failed" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+      const data = await response.json();
+      const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
+      const parsed = JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
+      return new Response(JSON.stringify(parsed), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    } catch {
+      return new Response(JSON.stringify({ error: "Find-fixed scan failed." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+  }
+
+  // ─── MODE: RESTRUCTURE ───────────────────────────────────────────────────
+  if (mode === "restructure") {
+    if (!reportText) return new Response(JSON.stringify({ error: "reportText is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 8000,
+          temperature: 0,
+          system: `You are reorganising teacher-written school reports into clearly labelled sections to make them easier to analyse. Your job is ONLY to sort sentences into sections — do NOT rewrite, paraphrase, improve, or generate any new sentences.
+
+Use these section labels exactly as shown:
+[QUALITIES/CHARACTER] — effort, attitude, behaviour, personality, working style, classroom conduct
+[PROGRESS/PERFORMANCE] — overall progress, ability level, how well the pupil is doing generally
+[ASSESSMENT] — specific test or exam results that mention a score, grade, or percentage
+[NEXT STEPS/TARGETS] — what the pupil should improve, develop, or focus on going forward
+[FIXED/OPENING] — a standard phrase that appears to open most reports identically
+[FIXED/CLOSING] — a standard phrase that appears to close most reports identically
+
+Rules:
+1. Copy every sentence EXACTLY as written — do not change a single word, punctuation mark, or capitalisation
+2. Sort each sentence into the single most appropriate section
+3. If a sentence blends two purposes (e.g. progress + qualities), place it in whichever section is its primary purpose
+4. Omit a section heading entirely if no sentences belong to it for that report
+5. Keep all reports separated by ---
+6. Output ONLY the restructured reports — no commentary, notes, or explanation`,
+          messages: [{
+            role: "user",
+            content: `Subject: ${subject || "Not specified"}
+
+Reorganise each report below into labelled sections. Copy sentences exactly — do not rewrite anything.
+
+REPORTS:
+${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
+          }],
+        }),
+      });
+
+      if (!response.ok) return new Response(JSON.stringify({ error: "API call failed" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+      const data = await response.json();
+      const restructuredText = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("").trim();
+      return new Response(JSON.stringify({ restructuredText }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    } catch {
+      return new Response(JSON.stringify({ error: "Restructure failed." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
   }
 

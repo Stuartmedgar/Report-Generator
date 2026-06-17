@@ -104,6 +104,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const hasReports = pastedReports.trim().length > 50;
   const [highlightedExamples, setHighlightedExamples] = useState<string[]>([]);
   const [reportsEditMode, setReportsEditMode] = useState(false);
+  const [restructuredReports, setRestructuredReports] = useState<string | null>(null);
+  const [isRestructuring, setIsRestructuring] = useState(false);
   const [buttons, setButtons] = useState<StatementButton[]>([]);
   const [activeButtonIndex, setActiveButtonIndex] = useState(0);
   const [newStatement, setNewStatement] = useState('');
@@ -121,6 +123,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const statementInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { if (addedSections.length > 0) saveDraft(localTemplateName, addedSections); }, [addedSections, localTemplateName]);
+  useEffect(() => { setRestructuredReports(null); }, [pastedReports]);
 
   const question = QUESTIONS[currentStep];
   const isLastQuestion = currentStep === QUESTIONS.length - 1;
@@ -207,8 +210,25 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
           else { setAiError('Select example sentences in the reports panel first.'); setAiLoading(false); return; }
         }
       }
+
+      // Restructure reports on first use, then cache
+      let reportTextForAI = pastedReports;
+      if (!restructuredReports) {
+        setIsRestructuring(true);
+        try {
+          const rRes = await fetch(SUPABASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'restructure', reportText: pastedReports, subject: subject || '' }) });
+          if (rRes.ok) {
+            const rData = await rRes.json();
+            if (rData.restructuredText) { setRestructuredReports(rData.restructuredText); reportTextForAI = rData.restructuredText; }
+          }
+        } catch { /* fail silently — use original */ }
+        finally { setIsRestructuring(false); }
+      } else {
+        reportTextForAI = restructuredReports;
+      }
+
       const positionType = activeType === 'next-steps' ? 'next-steps' : activeType === 'rated-comment' ? 'rating' : activeType === 'assessment-comment' ? 'assessment-comment' : activeType === 'personalised-comment' ? 'personalised-comment' : activeName === 'Areas for Development' ? 'next-steps' : 'qualities';
-      const response = await fetch(SUPABASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'extract-only', subject: subject || activeName, yearGroup: '', reportText: pastedReports, pronounSet: 'they/their', openerType: 'name', sectionName: activeName, positionType, selectedText: selectedTextForAI, scaleType: activeType === 'rated-comment' ? 'four-level' : 'own' }) });
+      const response = await fetch(SUPABASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'extract-only', subject: subject || activeName, yearGroup: '', reportText: reportTextForAI, pronounSet: 'they/their', openerType: 'name', sectionName: activeName, positionType, selectedText: selectedTextForAI, scaleType: activeType === 'rated-comment' ? 'four-level' : 'own' }) });
       if (!response.ok) throw new Error('failed');
       const data = await response.json();
       const headings: { name: string; comments: string[] }[] = data.headings || [];
@@ -312,7 +332,7 @@ const handleSaveAndWrite = () => {
       <div style={{ flex: '0 0 44%', borderLeft: '1px solid #e5e7eb', backgroundColor: 'white', display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ fontSize: '13px', fontWeight: '600', color: '#374151' }}>Your existing reports{hasReports && <span style={{ color: '#10b981', fontWeight: '500', marginLeft: '8px' }}>✓ Ready</span>}</div>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#374151' }}>Your existing reports{hasReports && <span style={{ color: '#10b981', fontWeight: '500', marginLeft: '8px' }}>{restructuredReports ? '✓ Structured' : '✓ Ready'}</span>}</div>
             {hasReports && <button onClick={() => setReportsEditMode(m => !m)} style={{ background: 'none', border: '1px solid #d1d5db', borderRadius: '5px', color: '#6b7280', fontSize: '12px', cursor: 'pointer', padding: '3px 8px' }}>{reportsEditMode ? 'Done editing' : 'Edit'}</button>}
           </div>
           <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
@@ -486,7 +506,7 @@ const handleSaveAndWrite = () => {
             </button>
           </div>
         )}
-        {aiLoading && <div style={{ marginBottom: '16px', padding: '14px 16px', backgroundColor: '#faf5ff', border: '2px solid #8b5cf6', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}><div style={{ display: 'flex', gap: '4px' }}>{[0,1,2].map(i => <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#8b5cf6', animation: 'pulse 1.2s ease-in-out infinite', animationDelay: `${i * 0.2}s` }} />)}</div><div style={{ fontSize: '13px', color: '#7c3aed' }}>Searching your reports...</div><style>{`@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}`}</style></div>}
+        {aiLoading && <div style={{ marginBottom: '16px', padding: '14px 16px', backgroundColor: '#faf5ff', border: '2px solid #8b5cf6', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}><div style={{ display: 'flex', gap: '4px' }}>{[0,1,2].map(i => <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#8b5cf6', animation: 'pulse 1.2s ease-in-out infinite', animationDelay: `${i * 0.2}s` }} />)}</div><div style={{ fontSize: '13px', color: '#7c3aed' }}>{isRestructuring ? 'Structuring your reports first (once only)...' : 'Searching your reports...'}</div><style>{`@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}`}</style></div>}
         {aiError && <div style={{ marginBottom: '16px', padding: '10px 14px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '13px', color: '#b91c1c' }}>⚠️ {aiError}</div>}
         {!hasReports && sType !== 'standard-comment' && <div style={{ marginBottom: '16px', padding: '12px 16px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', fontSize: '13px', color: '#78350f', lineHeight: '1.5' }}>💡 <strong>Have existing reports?</strong> Paste them in the right panel, select an example sentence, then click "Find in my reports" to auto-populate statements.</div>}
       </div>
