@@ -543,7 +543,7 @@ serve(async (req) => {
   let mode, subject, yearGroup, reportText, pronounSet, openerType,
       sectionName, builtSections, existingTemplate, refineText,
       sourceSection, scaleType, positionType, selectedText, existingHeadings,
-      piInstruction;
+      piInstruction, reportStructure: string;
 
   try {
     const body = await req.json();
@@ -563,6 +563,7 @@ serve(async (req) => {
     selectedText = body.selectedText || "";
     existingHeadings = body.existingHeadings || [];
     piInstruction = body.piInstruction || "";
+    reportStructure = body.reportStructure || "";
   } catch {
     return new Response(JSON.stringify({ error: "Invalid request body" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
@@ -586,7 +587,7 @@ serve(async (req) => {
             role: "user",
             content: `Subject: ${subject}
 Year Group: ${yearGroup || "Not specified"}
-
+${reportStructure ? `\nTEACHER'S REPORT STRUCTURE:\nThe teacher has told you what their reports contain:\n${reportStructure}\nUse this to identify sections accurately — the teacher knows their own structure.\n` : ""}
 Read ALL of these reports carefully and identify what sections a template built from them should contain. Return them in the order they naturally appear.
 
 Remember: if a paragraph appears in every report but varies based on how well the pupil is doing, classify it as "rated-comment" not "standard-comment". Capture every sentence type that appears consistently — do not skip short, bridging, or closing sentences.
@@ -649,7 +650,7 @@ CRITICAL REMINDERS:
 For each section, extract the actual sentences from the reports. Do NOT generate new sentences.
 For personalised-comment sections, set needsRefinement: true.
 Template name should be: ${subject}${yearGroup ? ' ' + yearGroup : ''} Report Template
-
+${reportStructure ? `\nTEACHER'S REPORT STRUCTURE:\nThe teacher has described what their reports contain:\n${reportStructure}\nUse this to correctly assign sentences to sections — the teacher knows their own report structure.\n` : ""}
 FULL REPORTS:
 ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
           }],
@@ -1001,7 +1002,7 @@ Rules:
           messages: [{
             role: "user",
             content: `Subject: ${subject || "Not specified"}
-
+${reportStructure ? `\nTEACHER'S REPORT STRUCTURE:\nThe teacher has described their reports as follows — use this to guide your classification:\n${reportStructure}\n` : ""}
 Reorganise each report below into labelled sections. Copy sentences exactly — do not rewrite anything.
 
 REPORTS:

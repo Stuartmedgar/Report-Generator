@@ -137,6 +137,8 @@ export default function ImportTemplate() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [restructuredReports, setRestructuredReports] = useState<string | null>(null);
+  const [reportStructureSections, setReportStructureSections] = useState<{name: string; contents: string}[]>([{ name: '', contents: '' }]);
+  const [showStructureForm, setShowStructureForm] = useState(false);
 
   // Selection state
   const [selectedText, setSelectedText] = useState('');
@@ -236,10 +238,13 @@ export default function ImportTemplate() {
 
   // ─── API CALLS ─────────────────────────────────────────────────────────────
 
+  const getReportStructureText = () =>
+    reportStructureSections.filter(s => s.name.trim() || s.contents.trim()).map(s => `${s.name.trim()}: ${s.contents.trim()}`).join('\n');
+
   const ensureRestructured = async (): Promise<string> => {
     if (restructuredReports) return restructuredReports;
     try {
-      const res = await fetch(SUPABASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'restructure', reportText: rawReportText, subject: subject || '' }) });
+      const res = await fetch(SUPABASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'restructure', reportText: rawReportText, subject: subject || '', reportStructure: getReportStructureText() }) });
       if (res.ok) {
         const data = await res.json();
         if (data.restructuredText) { setRestructuredReports(data.restructuredText); return data.restructuredText; }
@@ -303,11 +308,12 @@ export default function ImportTemplate() {
     try {
       const reportTextForAI = await ensureRestructured();
       setLoadingMessage('Reading your reports and identifying sections...');
-      const identified = await callApi({ mode: 'identify-sections', subject, yearGroup, reportText: reportTextForAI });
+      const structureText = getReportStructureText();
+      const identified = await callApi({ mode: 'identify-sections', subject, yearGroup, reportText: reportTextForAI, reportStructure: structureText });
       const identifiedSections = (identified.sections || []).filter((s: any) => s.type !== 'new-line');
       if (identifiedSections.length === 0) throw new Error('Could not identify sections');
       setLoadingMessage('Building your template automatically...');
-      const result = await callApi({ mode: 'auto-build', subject, yearGroup, pronounSet, reportText: reportTextForAI, builtSections: identifiedSections });
+      const result = await callApi({ mode: 'auto-build', subject, yearGroup, pronounSet, reportText: reportTextForAI, builtSections: identifiedSections, reportStructure: structureText });
       const typicalCountMap: Record<string, number> = {};
       identifiedSections.forEach((s: any) => { typicalCountMap[s.name] = s.typicalCount || 1; });
       if (!result.sections || result.sections.length === 0) throw new Error('No sections returned');
@@ -571,6 +577,40 @@ export default function ImportTemplate() {
             <span style={{ fontSize: '12px', color: rawReportText.length > 55000 ? '#ef4444' : '#6b7280' }}>{rawReportText.length.toLocaleString()} / 60,000</span>
           </div>
           <textarea value={rawReportText} onChange={e => setRawReportText(e.target.value)} placeholder="Paste all your reports here..." style={{ ...txa, minHeight: '300px' }} />
+        </div>
+        <div style={card}>
+          <button onClick={() => setShowStructureForm(o => !o)} style={{ background: 'none', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <h2 style={{ margin: '0 0 2px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Describe your report structure <span style={{ fontSize: '13px', fontWeight: '400', color: '#6b7280' }}>— recommended</span></h2>
+              <p style={{ margin: 0, fontSize: '13px', color: '#6b7280' }}>Tell the AI what each part of your report contains — this greatly improves accuracy for unstructured reports</p>
+            </div>
+            <span style={{ fontSize: '18px', color: '#9ca3af', flexShrink: 0, marginLeft: '12px' }}>{showStructureForm ? '▲' : '▼'}</span>
+          </button>
+          {showStructureForm && (
+            <div style={{ marginTop: '16px' }}>
+              <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: '#374151', lineHeight: '1.6' }}>
+                Add a row for each part of your report, in order. Describe what content it contains — the AI will use this to correctly classify every sentence.
+              </p>
+              {reportStructureSections.map((sec, i) => (
+                <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'flex-start' }}>
+                  <input
+                    type="text" value={sec.name} placeholder={`Section ${i + 1} name`}
+                    onChange={e => setReportStructureSections(prev => prev.map((s, j) => j === i ? { ...s, name: e.target.value } : s))}
+                    style={{ ...inp, flex: '0 0 160px', fontSize: '13px' }}
+                  />
+                  <input
+                    type="text" value={sec.contents} placeholder="What this section contains, e.g. Progress statement. Strengths. Target grade."
+                    onChange={e => setReportStructureSections(prev => prev.map((s, j) => j === i ? { ...s, contents: e.target.value } : s))}
+                    style={{ ...inp, flex: 1, fontSize: '13px' }}
+                  />
+                  {reportStructureSections.length > 1 && (
+                    <button onClick={() => setReportStructureSections(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '18px', padding: '6px', flexShrink: 0 }}>✕</button>
+                  )}
+                </div>
+              ))}
+              <button onClick={() => setReportStructureSections(prev => [...prev, { name: '', contents: '' }])} style={{ background: 'none', border: '1px dashed #d1d5db', borderRadius: '6px', color: '#6b7280', cursor: 'pointer', fontSize: '13px', padding: '6px 14px', marginTop: '4px' }}>+ Add section</button>
+            </div>
+          )}
         </div>
         {error && <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px', marginBottom: '12px', color: '#b91c1c', fontSize: '14px' }}>⚠️ {error}</div>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
