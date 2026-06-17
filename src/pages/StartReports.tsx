@@ -330,9 +330,9 @@ function StartReports() {
           >
             <span style={{ fontSize: '22px', flexShrink: 0 }}>🧱</span>
             <div>
-              <div style={{ fontWeight: '700' }}>Build as You Go</div>
+              <div style={{ fontWeight: '700' }}>Template Wizard</div>
               <div style={{ fontSize: '12px', opacity: 0.9, fontWeight: '400', marginTop: '2px' }}>
-                Build your comment bank as you write
+                Build your template section by section
               </div>
             </div>
           </button>
