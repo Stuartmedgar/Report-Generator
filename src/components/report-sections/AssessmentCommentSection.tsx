@@ -20,8 +20,9 @@ function getScorePlaceholders(comment: string): string[] {
     const key = `Score ${match[1]}`;
     if (!seen.has(key)) { seen.add(key); found.push(key); }
   }
+  // Treat bare [Score] as [Score 1] for backward compatibility
   if (found.length === 0 && /\[Score\]/i.test(comment)) {
-    found.push('Score');
+    found.push('Score 1');
   }
   return found;
 }
@@ -214,9 +215,9 @@ const AssessmentCommentSection: React.FC<AssessmentCommentSectionProps> = ({
         </>
       )}
 
-      {/* Fix 5: score placeholder hint always visible */}
+      {/* Score placeholder hint */}
       <div style={{ fontSize: '11px', color: '#7c3aed', marginBottom: '12px', fontStyle: 'italic', textAlign: 'left' }}>
-        Use <strong>[Score]</strong> in comments for a single score, or <strong>[Score 1]</strong> <strong>[Score 2]</strong> for multiple scores.
+        Use <strong>[Score 1]</strong> in comments for a single score, or <strong>[Score 1]</strong> <strong>[Score 2]</strong> for multiple scores.
       </div>
 
       {/* Performance buttons — now teacher's own names */}

@@ -580,11 +580,16 @@ export const useReportLogic = ({
             processed = processed.replace(/\[Score (\d+)\]/gi, (_m: string, num: string) => {
               return scoreValues[`Score ${num}`] || `[Score ${num}]`;
             });
-            if (data.score !== undefined && data.score !== null) {
-              const scoreType = data.scoreType || section.data?.scoreType || 'outOf';
-              const maxScore = data.maxScore || section.data?.maxScore || 100;
-              const scoreText = scoreType === 'percentage' ? `${data.score}%` : `${data.score} out of ${maxScore}`;
-              processed = processed.replace(/\[Score\]/g, scoreText);
+            // Backward compat: bare [Score] — use free-text Score 1 if available, else numeric
+            if (/\[Score\]/i.test(processed)) {
+              if (scoreValues['Score 1']) {
+                processed = processed.replace(/\[Score\]/gi, scoreValues['Score 1']);
+              } else if (data.score !== undefined && data.score !== null) {
+                const scoreType = data.scoreType || section.data?.scoreType || 'outOf';
+                const maxScore = data.maxScore || section.data?.maxScore || 100;
+                const scoreText = scoreType === 'percentage' ? `${data.score}%` : `${data.score} out of ${maxScore}`;
+                processed = processed.replace(/\[Score\]/gi, scoreText);
+              }
             }
             content += processed + ' ';
           }

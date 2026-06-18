@@ -309,7 +309,7 @@ function AssessmentCommentBuilder({ onSave, onCancel, existingComment }: Assessm
               fontSize: '14px',
               margin: 0
             }}>
-              • Use [Score] to insert their assessment result (e.g. "15 out of 20" or "75%")
+              • Use [Score 1] to insert their assessment result (e.g. "15 out of 20" or "75%")
             </p>
           </div>
 
@@ -434,14 +434,14 @@ function AssessmentCommentBuilder({ onSave, onCancel, existingComment }: Assessm
                   <textarea
                     placeholder={
                       separator === 'double-line' ? 
-                        `[Name] achieved an excellent score of [Score] and demonstrated outstanding understanding of the topic.\n\n[Name] scored [Score] which reflects exceptional performance and mastery of the subject matter.\n\n[Name] attained [Score] showing excellent progress and comprehensive knowledge.` :
+                        `[Name] achieved an excellent score of [Score 1] and demonstrated outstanding understanding of the topic.\n\n[Name] scored [Score 1] which reflects exceptional performance and mastery of the subject matter.\n\n[Name] attained [Score 1] showing excellent progress and comprehensive knowledge.` :
                       separator === 'single-line' ?
-                        `[Name] achieved an excellent score of [Score]\n[Name] scored [Score] showing outstanding performance\n[Name] attained [Score] reflecting excellent understanding` :
+                        `[Name] achieved an excellent score of [Score 1]\n[Name] scored [Score 1] showing outstanding performance\n[Name] attained [Score 1] reflecting excellent understanding` :
                       separator === 'semicolon' ?
-                        `[Name] achieved an excellent score of [Score]; [Name] scored [Score] showing outstanding performance; [Name] attained [Score] reflecting excellent understanding` :
+                        `[Name] achieved an excellent score of [Score 1]; [Name] scored [Score 1] showing outstanding performance; [Name] attained [Score 1] reflecting excellent understanding` :
                       separator === 'pipe' ?
-                        `[Name] achieved an excellent score of [Score] | [Name] scored [Score] showing outstanding performance | [Name] attained [Score] reflecting excellent understanding` :
-                        `[Name] achieved an excellent score of [Score] --- [Name] scored [Score] showing outstanding performance --- [Name] attained [Score] reflecting excellent understanding`
+                        `[Name] achieved an excellent score of [Score 1] | [Name] scored [Score 1] showing outstanding performance | [Name] attained [Score 1] reflecting excellent understanding` :
+                        `[Name] achieved an excellent score of [Score 1] --- [Name] scored [Score 1] showing outstanding performance --- [Name] attained [Score 1] reflecting excellent understanding`
                     }
                     value={batchText}
                     onChange={(e) => setBatchText(e.target.value)}
@@ -503,7 +503,7 @@ function AssessmentCommentBuilder({ onSave, onCancel, existingComment }: Assessm
                     marginBottom: '12px'
                   }}>
                     <textarea
-                      placeholder={`Enter comment option ${index + 1} for ${rating.label.toLowerCase()}... Use [Name] for student name and [Score] for assessment result.`}
+                      placeholder={`Enter comment option ${index + 1} for ${rating.label.toLowerCase()}... Use [Name] for student name and [Score 1] for assessment result.`}
                       value={comment}
                       onChange={(e) => updateCommentOption(rating.key, index, e.target.value)}
                       style={{

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 
 interface ReportPreviewProps {
   generateReportContent: () => string;
@@ -29,6 +29,10 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
   // Detect mobile screen
   const isMobile = window.innerWidth <= 768;
 
+  // Track previous content to highlight newly added text
+  const prevContentRef = useRef<string>('');
+  const highlightRangeRef = useRef<{ start: number; end: number } | null>(null);
+
   // Always show current generated content when not editing
   const getDisplayContent = () => {
     if (isPreviewEditing) {
@@ -37,6 +41,33 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
       return generateReportContent();
     }
   };
+
+  const currentContent = getDisplayContent();
+
+  if (currentContent !== prevContentRef.current) {
+    const prev = prevContentRef.current;
+    if (prev && currentContent.length > prev.length) {
+      let prefixLen = 0;
+      const minLen = Math.min(prev.length, currentContent.length);
+      while (prefixLen < minLen && prev[prefixLen] === currentContent[prefixLen]) prefixLen++;
+      let suffixLen = 0;
+      while (
+        suffixLen < prev.length - prefixLen &&
+        suffixLen < currentContent.length - prefixLen &&
+        prev[prev.length - 1 - suffixLen] === currentContent[currentContent.length - 1 - suffixLen]
+      ) suffixLen++;
+      const changedEnd = currentContent.length - suffixLen;
+      const changedLen = changedEnd - prefixLen;
+      highlightRangeRef.current = (changedLen > 0 && changedLen < 500)
+        ? { start: prefixLen, end: changedEnd }
+        : null;
+    } else {
+      highlightRangeRef.current = null;
+    }
+    prevContentRef.current = currentContent;
+  }
+
+  const highlightRange = isPreviewEditing ? null : highlightRangeRef.current;
 
   // Mobile Tab Layout
   if (isMobile) {
@@ -238,7 +269,18 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
             whiteSpace: 'pre-wrap',
             textAlign: 'left'
           }}>
-            {getDisplayContent() || 'Complete the sections to see the report preview...'}
+            {!currentContent
+              ? 'Complete the sections to see the report preview...'
+              : !highlightRange
+                ? currentContent
+                : <>
+                    {currentContent.slice(0, highlightRange.start)}
+                    <span style={{ color: '#1d4ed8', fontWeight: '500' }}>
+                      {currentContent.slice(highlightRange.start, highlightRange.end)}
+                    </span>
+                    {currentContent.slice(highlightRange.end)}
+                  </>
+            }
           </div>
         )}
       </div>

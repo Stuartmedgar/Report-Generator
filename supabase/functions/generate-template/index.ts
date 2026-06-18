@@ -10,7 +10,7 @@ PRINCIPLE 1: The teacher should be able to use the finished template to recreate
 
 PRINCIPLE 2: The teacher should be able to use the finished template to write a new set of reports that they would recognise as their own — same voice, same vocabulary, same sentence structure, same tone.
 
-CRITICAL — NAME REPLACEMENT: Every sentence you output must have ALL student names replaced with [Name]. Replace ALL numeric scores and percentages with [Score] — remove any % symbol. Keep pronoun pattern consistent within each section.
+CRITICAL — NAME REPLACEMENT: Every sentence you output must have ALL student names replaced with [Name]. Replace ALL numeric scores and percentages with [Score 1] — remove any % symbol. Keep pronoun pattern consistent within each section.
 
 CRITICAL — PRONOUN TO [Name] CONVERSION:
 When a sentence begins with He, She, or They and that pronoun is standing in for the pupil's name (i.e. no [Name] appears earlier in the same sentence), you MUST:
@@ -74,7 +74,7 @@ Rules:
 4. Group similar sentences under short, clear heading names derived from the sentences themselves
 5. Where sentences reflect a performance judgement, heading names must make that judgement immediately obvious
 6. Copy sentences EXACTLY as written — do not paraphrase, improve, or rewrite them
-7. Replace ALL student names with [Name] and all scores/percentages with [Score]
+7. Replace ALL student names with [Name] and all scores/percentages with [Score 1]
 8. Apply the PRONOUN TO [Name] CONVERSION rules above — fix verb agreement when replacing pronoun openers
 9. Apply the POSSESSIVE PRONOUNS rules above — never convert possessives to object pronouns
 10. Apply the NO SENTENCE FRAGMENTS rules above — join continuation sentences to their preceding [Name] sentence
@@ -436,7 +436,7 @@ Rules:
 4. If the teacher writes short plain sentences, write short plain sentences
 5. If the teacher writes longer flowing sentences, match that style
 6. Never write anything that sounds formal, corporate, or AI-generated
-7. Keep [Name] and [Score] placeholders — never substitute real names
+7. Keep [Name] and [Score 1] placeholders — never substitute real names
 8. Keep the same opener style (all [Name] or all pronoun) as the existing options
 9. Apply PRONOUN TO [Name] CONVERSION — all options must start with [Name] with correct verb agreement
 10. Apply POSSESSIVE PRONOUNS rule — never write "him work" or "them confidence"
@@ -511,13 +511,13 @@ function mechanicalAssemble(params: { subject: string; yearGroup: string; builtS
 
 function stripPercent(text: string): string {
   return text
-    .replace(/\[Score\]%/g, '[Score]')
-    .replace(/\b(\d{1,3})%/g, '[Score]')
+    .replace(/\[Score 1\]%/g, '[Score 1]')
+    .replace(/\b(\d{1,3})%/g, '[Score 1]')
     .replace(/\b(\d{1,2}\/\d{1,2})\b/g, (match, p1) => {
       const parts = p1.split('/');
       const a = parseInt(parts[0]), b = parseInt(parts[1]);
       if (b - a <= 2 && a >= 1 && b <= 6) return match;
-      return '[Score]';
+      return '[Score 1]';
     });
 }
 
@@ -855,8 +855,8 @@ Apply NO DUPLICATES.
 Preserve any fixed opening phrase exactly (e.g. "Moving forward," must stay at the start of every option in its heading).
 Group complete options by topic. ${openerInstruction}`,
 
-      assessment: `ASSESSMENT sentences — ONLY extract sentences specifically about a named formal test or exam result. DO NOT INCLUDE general progress sentences or character sentences. Group by performance level with judgement-clear headings. Replace actual scores with [Score]. Apply NO DUPLICATES. ${openerInstruction}`,
-      "assessment-comment": `ASSESSMENT COMMENT sentences — ONLY extract sentences specifically about a named formal test or exam result where the teacher uses different sentences by performance level. DO NOT INCLUDE general progress or quality sentences. Group into: excellent, good, satisfactory, needsImprovement. Replace names with [Name] and scores with [Score]. Apply PRONOUN TO [Name] CONVERSION with verb agreement fixes. Apply POSSESSIVE PRONOUNS rule. Apply NO DUPLICATES. ${openerInstruction}`,
+      assessment: `ASSESSMENT sentences — ONLY extract sentences specifically about a named formal test or exam result. DO NOT INCLUDE general progress sentences or character sentences. Group by performance level with judgement-clear headings. Replace actual scores with [Score 1]. Apply NO DUPLICATES. ${openerInstruction}`,
+      "assessment-comment": `ASSESSMENT COMMENT sentences — ONLY extract sentences specifically about a named formal test or exam result where the teacher uses different sentences by performance level. DO NOT INCLUDE general progress or quality sentences. Group into: excellent, good, satisfactory, needsImprovement. Replace names with [Name] and scores with [Score 1]. Apply PRONOUN TO [Name] CONVERSION with verb agreement fixes. Apply POSSESSIVE PRONOUNS rule. Apply NO DUPLICATES. ${openerInstruction}`,
       rating: `RATING/JUDGEMENT sentences. Find every sentence at this position. ${scaleType === 'four-level' ? 'Map to: excellent, good, satisfactory, needsImprovement.' : 'Derive the teacher\'s own groupings from their language.'} Apply NO DUPLICATES. ${openerInstruction}`,
     };
 
@@ -954,7 +954,7 @@ Generate additional options only. Do not change or repeat the existing options.`
         headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({
           model: "claude-sonnet-4-6", max_tokens: 16000,
-          system: `${KNOWLEDGE_BASE}\n\nImprove an existing report template using additional reports. Return ONLY valid JSON. Replace ALL student names with [Name]. Replace ALL scores with [Score]. Keep same template name. Apply PRONOUN TO [Name] CONVERSION throughout — fix verb agreement. Apply POSSESSIVE PRONOUNS rule — never write "him work" or "them confidence". Apply NO SENTENCE FRAGMENTS. Apply NO DUPLICATES.`,
+          system: `${KNOWLEDGE_BASE}\n\nImprove an existing report template using additional reports. Return ONLY valid JSON. Replace ALL student names with [Name]. Replace ALL scores with [Score 1]. Keep same template name. Apply PRONOUN TO [Name] CONVERSION throughout — fix verb agreement. Apply POSSESSIVE PRONOUNS rule — never write "him work" or "them confidence". Apply NO SENTENCE FRAGMENTS. Apply NO DUPLICATES.`,
           messages: [{
             role: "user",
             content: `Subject: ${subject}\nYear Group: ${yearGroup || "Not specified"}\n\nEXISTING TEMPLATE:\n${JSON.stringify(existingTemplate, null, 2)}\n\nADDITIONAL REPORTS:\n${refineText.substring(0, GENERATION_CHAR_LIMIT)}\n\nAdd new options where new sentences appear. Add new sections if new positions are found. Keep same template name.`,

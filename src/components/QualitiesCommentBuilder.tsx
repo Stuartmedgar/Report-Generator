@@ -114,6 +114,16 @@ function QualitiesCommentBuilder({ onSave, onCancel, existingComment }: Qualitie
     }));
   };
 
+  const moveCommentToHeading = (fromHeading: string, fromIndex: number, toHeading: string) => {
+    const statement = (comments[fromHeading] || [])[fromIndex];
+    if (!statement) return;
+    setComments(prev => ({
+      ...prev,
+      [fromHeading]: (prev[fromHeading] || []).filter((_, i) => i !== fromIndex),
+      [toHeading]: [...(prev[toHeading] || []), statement],
+    }));
+  };
+
   const handleSave = () => {
     if (!commentName.trim()) {
       alert('Please enter a name for this qualities comment');
@@ -426,43 +436,36 @@ function QualitiesCommentBuilder({ onSave, onCancel, existingComment }: Qualitie
 
               <div>
                 {(comments[heading] || ['']).map((comment, index) => (
-                  <div key={index} style={{ 
-                    display: 'flex', 
-                    gap: '8px',
-                    marginBottom: '12px'
-                  }}>
+                  <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                     <textarea
                       placeholder={`Enter quality statement ${index + 1}... Use [Name] for student name.`}
                       value={comment}
                       onChange={(e) => updateCommentOption(heading, index, e.target.value)}
                       style={{
-                        flex: 1,
-                        padding: '12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        minHeight: '60px',
-                        resize: 'vertical',
-                        fontFamily: 'inherit'
+                        flex: 1, padding: '12px', border: '1px solid #d1d5db',
+                        borderRadius: '6px', fontSize: '14px', minHeight: '60px',
+                        resize: 'vertical', fontFamily: 'inherit'
                       }}
                     />
-                    {(comments[heading] || []).length > 1 && (
-                      <button
-                        onClick={() => removeCommentOption(heading, index)}
-                        style={{
-                          backgroundColor: '#ef4444',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          padding: '8px 12px',
-                          fontSize: '12px',
-                          cursor: 'pointer',
-                          height: 'fit-content'
-                        }}
-                      >
-                        Remove
-                      </button>
-                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {(comments[heading] || []).length > 1 && (
+                        <button
+                          onClick={() => removeCommentOption(heading, index)}
+                          style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 12px', fontSize: '12px', cursor: 'pointer' }}
+                        >
+                          Remove
+                        </button>
+                      )}
+                      {headings.length > 1 && (
+                        <select
+                          onChange={e => { if (e.target.value) { moveCommentToHeading(heading, index, e.target.value); (e.target as HTMLSelectElement).value = ''; } }}
+                          style={{ fontSize: '11px', padding: '4px 6px', borderRadius: '4px', border: '1px solid #8b5cf6', cursor: 'pointer', color: '#7c3aed', backgroundColor: 'white' }}
+                        >
+                          <option value="">Move to →</option>
+                          {headings.filter(h => h !== heading).map(h => <option key={h} value={h}>{h}</option>)}
+                        </select>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
