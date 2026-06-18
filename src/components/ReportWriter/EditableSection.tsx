@@ -19,6 +19,8 @@ interface EditableSectionProps {
   onMergeSections?: (sourceId: string, targetId: string) => void;
   workingTemplateSections?: any[];
   onRenameSection?: (sectionId: string, newName: string) => void;
+  onDeleteSection?: (sectionId: string) => void;
+  globalPronoun?: string;
 }
 
 export const EditableSection: React.FC<EditableSectionProps> = ({
@@ -37,6 +39,8 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
   onMergeSections,
   workingTemplateSections,
   onRenameSection,
+  onDeleteSection,
+  globalPronoun,
 }) => {
   const plusButtonRef = useRef<HTMLButtonElement>(null);
   const [menuAbove, setMenuAbove] = useState(true);
@@ -73,11 +77,24 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
           onMergeSections={onMergeSections}
           workingTemplateSections={workingTemplateSections}
           onRenameSection={onRenameSection}
+          globalPronoun={globalPronoun}
         />
       </div>
 
       {/* Bottom Right Corner - Plus Button and Edit Button */}
       <div style={{ position: 'absolute', bottom: '8px', right: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+        {onDeleteSection && (
+          <button
+            onClick={() => onDeleteSection(section.id)}
+            style={{
+              backgroundColor: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5',
+              borderRadius: '50%', width: '28px', height: '28px', fontSize: '13px',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)', transition: 'all 0.2s ease'
+            }}
+            title="Delete this section from template"
+          >🗑</button>
+        )}
         {isSectionEditable(section.type) && (
           <button
             onClick={() => onEditSection(section, sectionIndex)}

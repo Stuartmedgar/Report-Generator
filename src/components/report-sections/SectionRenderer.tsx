@@ -27,6 +27,7 @@ interface SectionRendererProps {
   onMergeSections?: (sourceId: string, targetId: string) => void;
   workingTemplateSections?: any[];
   onRenameSection?: (sectionId: string, newName: string) => void;
+  globalPronoun?: string;
 }
 
 const SectionRenderer: React.FC<SectionRendererProps> = ({
@@ -39,6 +40,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
   onMergeSections,
   workingTemplateSections,
   onRenameSection,
+  globalPronoun,
 }) => {
   const data = sectionData[section.id] || {};
 
@@ -110,6 +112,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
           onMergeSections={onMergeSections}
           workingTemplateSections={workingTemplateSections}
           onRenameSection={onRenameSection}
+          globalPronoun={globalPronoun}
         />
       );
 
@@ -124,6 +127,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
           onMergeSections={onMergeSections}
           workingTemplateSections={workingTemplateSections}
           onRenameSection={onRenameSection}
+          globalPronoun={globalPronoun}
         />
       );
 

@@ -244,21 +244,24 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
 
   const handleSaveEditedSection = (editedData: any) => {
     if (editingSection) {
-      const updatedSections = [...reportLogic.workingTemplate.sections];
-      const original = updatedSections[editingSection.index];
+      const original = reportLogic.workingTemplate.sections[editingSection.index];
       let newData: any;
-      if (original.type === 'rated-comment') newData = { comments: editedData.comments };
-      else if (original.type === 'assessment-comment') newData = { comments: editedData.comments, scoreType: editedData.scoreType, maxScore: editedData.maxScore, instruction: original.data?.instruction || '' };
-      else if (original.type === 'next-steps') newData = { focusAreas: editedData.comments };
-      else if (original.type === 'personalised-comment') newData = { instruction: editedData.instruction, categories: editedData.comments };
-      else if (original.type === 'qualities') newData = { comments: editedData.comments };
+      if (original.type === 'rated-comment') newData = { ...original.data, comments: editedData.comments };
+      else if (original.type === 'assessment-comment') newData = { ...original.data, comments: editedData.comments, scoreType: editedData.scoreType, maxScore: editedData.maxScore };
+      else if (original.type === 'next-steps') newData = { ...original.data, focusAreas: editedData.comments };
+      else if (original.type === 'personalised-comment') newData = { ...original.data, instruction: editedData.instruction, categories: editedData.comments };
+      else if (original.type === 'qualities') newData = { ...original.data, comments: editedData.comments };
       else newData = { ...original.data, ...editedData };
-
-      updateTemplate({ ...reportLogic.workingTemplate, sections: updatedSections.map((s, i) =>
-        i === editingSection.index ? { ...s, name: editedData.name || s.name, data: newData } : s
-      )});
+      const updatedSection = { ...original, name: editedData.name || original.name, data: newData };
+      reportLogic.handleUpdateWorkingSection(editingSection.index, updatedSection);
     }
     closeAllBuilders();
+  };
+
+  const handleDeleteSection = (sectionId: string) => {
+    if (window.confirm('Remove this section from the template?')) {
+      reportLogic.handleDeleteSection(sectionId);
+    }
   };
 
   const handleAddTemplateSection = (sectionType: string, afterIndex: number) => {
@@ -382,6 +385,18 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
 
         {/* Left Column - Sections */}
         <div style={{ flex: 1 }}>
+          {/* Global pronoun selector above first section */}
+          <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '13px', fontWeight: '600', color: '#374151' }}>Pronoun for this student:</span>
+            {[{ value: 'he', label: 'He / His' }, { value: 'she', label: 'She / Her' }, { value: 'they', label: 'They / Them' }].map(opt => (
+              <button key={opt.value} onClick={() => handlePronounChange(opt.value)}
+                style={{ padding: '5px 14px', border: '2px solid #3b82f6', borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', backgroundColor: currentPronoun === opt.value ? '#3b82f6' : 'white', color: currentPronoun === opt.value ? 'white' : '#3b82f6', transition: 'all 0.15s' }}>
+                {opt.label}
+              </button>
+            ))}
+            {currentPronoun === 'they' && <span style={{ fontSize: '11px', color: '#92400e', backgroundColor: '#fef3c7', padding: '3px 8px', borderRadius: '4px' }}>⚠️ Some verb forms may need manual adjustment</span>}
+          </div>
+
           {(() => {
             let templateIndex = -1;
             return allSections.map((section: any, index: number) => {
@@ -442,6 +457,8 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
                     onMergeSections={reportLogic.handleMergeSections}
                     workingTemplateSections={reportLogic.workingTemplate.sections}
                     onRenameSection={reportLogic.handleRenameSection}
+                    onDeleteSection={isTemplateSec ? handleDeleteSection : undefined}
+                    globalPronoun={currentPronoun}
                   />
                 </div>
               );
@@ -469,8 +486,8 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
             onNextStudent={navigationHandlers.handleNextStudent}
             onFinish={navigationHandlers.handleFinish}
             onViewAllReports={navigationHandlers.handleViewAllReports}
-            pronounOverride={currentPronoun}
-            onPronounChange={handlePronounChange}
+            pronounOverride={undefined}
+            onPronounChange={undefined}
           />
         </div>
       </div>

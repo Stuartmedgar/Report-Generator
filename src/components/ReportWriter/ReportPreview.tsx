@@ -205,15 +205,15 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
         </h3>
       </div>
 
-      {/* Preview Content - Desktop - FIXED: No maxHeight, natural flow */}
+      {/* Preview Content - Desktop */}
       <div style={{
         backgroundColor: 'white',
         border: '1px solid #d1d5db',
         borderRadius: '6px',
         padding: '16px',
-        minHeight: '200px'
-        // REMOVED: maxHeight: '400px' and overflowY: 'auto'
-        // This allows the content to grow naturally and scroll with the page
+        minHeight: '200px',
+        maxHeight: '520px',
+        overflowY: 'auto',
       }}>
         {isPreviewEditing ? (
           <textarea

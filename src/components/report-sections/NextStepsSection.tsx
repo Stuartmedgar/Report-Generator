@@ -12,6 +12,7 @@ interface NextStepsSectionProps {
   onMergeSections?: (sourceId: string, targetId: string) => void;
   workingTemplateSections?: any[];
   onRenameSection?: (sectionId: string, newName: string) => void;
+  globalPronoun?: string;
 }
 
 const NextStepsSection: React.FC<NextStepsSectionProps> = ({
@@ -24,6 +25,7 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
   onMergeSections,
   workingTemplateSections,
   onRenameSection,
+  globalPronoun,
 }) => {
   const [showEditSuggestion, setShowEditSuggestion] = useState(false);
   const [editableSuggestion, setEditableSuggestion] = useState('');
@@ -34,6 +36,9 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
   const [addToNewButtonName, setAddToNewButtonName] = useState('');
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [mergeTargetId, setMergeTargetId] = useState('');
+  const [renamingButton, setRenamingButton] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [moveToArea, setMoveToArea] = useState('');
 
   useEffect(() => {
     if (data.selectedSuggestion) {
@@ -86,6 +91,34 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
     if (!window.confirm(`This will merge all buttons from this section into the target section, then remove this section. Continue?`)) return;
     onMergeSections(section.id, mergeTargetId);
     setShowMergeModal(false);
+  };
+
+  const handleRenameButton = (oldName: string) => {
+    if (!renameValue.trim() || renameValue.trim() === oldName) { setRenamingButton(null); return; }
+    if (!onTemplateAction) return;
+    const areas = { ...(section.data?.focusAreas || section.data?.comments || {}) };
+    const options = areas[oldName] || [];
+    delete areas[oldName];
+    areas[renameValue.trim()] = options;
+    onTemplateAction({ type: 'rename-button', sectionId: section.id, oldButtonName: oldName, newButtonName: renameValue.trim(), updatedComments: areas });
+    if (data.focusArea === oldName) updateSectionData(section.id, { focusArea: renameValue.trim() });
+    setRenamingButton(null);
+  };
+
+  const handleDeleteButton = (buttonName: string) => {
+    if (!window.confirm(`Delete the "${buttonName}" button and all its statements?`)) return;
+    const areas = { ...(section.data?.focusAreas || section.data?.comments || {}) };
+    delete areas[buttonName];
+    onTemplateAction?.({ type: 'delete-button', sectionId: section.id, buttonName, updatedComments: areas });
+    if (data.focusArea === buttonName) updateSectionData(section.id, { focusArea: undefined, selectedSuggestion: undefined });
+  };
+
+  const handleMoveStatement = () => {
+    if (!moveToArea || !data.focusArea || !editableSuggestion || !onTemplateAction) return;
+    onTemplateAction({ type: 'move-statement', sectionId: section.id, fromButton: data.focusArea, toButton: moveToArea, statement: editableSuggestion });
+    updateSectionData(section.id, { focusArea: moveToArea, selectedSuggestion: editableSuggestion, customEditedSuggestion: editableSuggestion });
+    setMoveToArea('');
+    setShowEditSuggestion(false);
   };
 
   const mergeTargets = (workingTemplateSections || []).filter(
@@ -152,10 +185,10 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
         </div>
       )}
 
-      {/* Pronoun selector */}
+      {/* Pronoun selector — Name or global pronoun */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
         <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: '500' }}>Use:</span>
-        {[{ value: '', label: 'Name' }, { value: 'he', label: 'He' }, { value: 'she', label: 'She' }, { value: 'they', label: 'They' }].map(opt => (
+        {[{ value: '', label: 'Name' }, { value: globalPronoun || 'he', label: globalPronoun === 'she' ? 'She / Her' : globalPronoun === 'they' ? 'They / Them' : 'He / His' }].map(opt => (
           <button key={opt.value} onClick={() => updateSectionData(section.id, { pronounOverride: opt.value })}
             style={{
               padding: '2px 8px', border: '1px solid #06b6d4', borderRadius: '4px',
@@ -171,15 +204,31 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
       {/* Focus area buttons + add new */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px', alignItems: 'center' }}>
         {focusAreas.map((focusArea: string) => (
-          <button key={focusArea} onClick={() => handleFocusAreaChange(focusArea)}
-            style={{
-              backgroundColor: data.focusArea === focusArea ? '#06b6d4' : 'white',
-              color: data.focusArea === focusArea ? 'white' : '#06b6d4',
-              border: '2px solid #06b6d4', borderRadius: '6px', padding: '6px 12px',
-              fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap'
-            }}>
-            {focusArea}
-          </button>
+          renamingButton === focusArea ? (
+            <div key={focusArea} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <input autoFocus value={renameValue} onChange={e => setRenameValue(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleRenameButton(focusArea); if (e.key === 'Escape') setRenamingButton(null); }}
+                style={{ padding: '4px 8px', border: '2px solid #06b6d4', borderRadius: '4px', fontSize: '12px', width: '140px', outline: 'none' }} />
+              <button onClick={() => handleRenameButton(focusArea)} style={{ backgroundColor: '#06b6d4', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}>✓</button>
+              <button onClick={() => setRenamingButton(null)} style={{ backgroundColor: '#9ca3af', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}>✕</button>
+            </div>
+          ) : (
+            <div key={focusArea} style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+              <button onClick={() => handleFocusAreaChange(focusArea)}
+                style={{
+                  backgroundColor: data.focusArea === focusArea ? '#06b6d4' : 'white',
+                  color: data.focusArea === focusArea ? 'white' : '#06b6d4',
+                  border: '2px solid #06b6d4', borderRadius: '6px 0 0 6px', padding: '6px 10px',
+                  fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap'
+                }}>
+                {focusArea}
+              </button>
+              <button onClick={() => { setRenamingButton(focusArea); setRenameValue(focusArea); }} title="Rename button"
+                style={{ backgroundColor: '#cffafe', color: '#0891b2', border: '2px solid #06b6d4', borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: 'pointer' }}>✏</button>
+              <button onClick={() => handleDeleteButton(focusArea)} title="Delete button"
+                style={{ backgroundColor: '#fee2e2', color: '#dc2626', border: '2px solid #06b6d4', borderLeft: 'none', borderRadius: '0 6px 6px 0', padding: '6px 5px', fontSize: '10px', cursor: 'pointer' }}>✕</button>
+            </div>
+          )
         ))}
         {onAddButton && (
           <button onClick={() => setShowNewButtonModal(true)} title="Add a new button"
@@ -239,6 +288,18 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
               </>
             )}
           </div>
+          {onTemplateAction && focusAreas.filter((a: string) => a !== data.focusArea).length > 0 && (
+            <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '11px', color: '#6b7280' }}>Move to:</span>
+              <select value={moveToArea} onChange={e => setMoveToArea(e.target.value)}
+                style={{ padding: '3px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', flex: 1, minWidth: 0 }}>
+                <option value="">— choose button —</option>
+                {focusAreas.filter((a: string) => a !== data.focusArea).map((a: string) => <option key={a} value={a}>{a}</option>)}
+              </select>
+              <button onClick={handleMoveStatement} disabled={!moveToArea}
+                style={{ ...actionBtnStyle('#06b6d4'), opacity: !moveToArea ? 0.4 : 1 }}>Move</button>
+            </div>
+          )}
           {showAddToNewModal && (
             <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#f9fafb', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
               <div style={{ fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>New button name:</div>

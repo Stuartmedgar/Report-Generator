@@ -119,6 +119,7 @@ export const useReportLogic = ({
           const showHeader = section.data.showHeader !== undefined ? section.data.showHeader : false;
           initialData[section.id] = { showHeader, ...section.data };
         });
+        initialData['__student__'] = { pronounOverride: 'he' };
         setSectionData(initialData);
         setEditableReportContent('');
         setIsPreviewEditing(false);
@@ -129,6 +130,22 @@ export const useReportLogic = ({
   }, [currentStudent, template.id, workingTemplate.sections, getReport, setDynamicSections]);
 
   // ─── REORDER SECTIONS ─────────────────────────────────────────────────────
+
+  const handleDeleteSection = useCallback((sectionId: string) => {
+    setWorkingTemplate((prev: any) => ({
+      ...prev,
+      sections: prev.sections.filter((s: any) => s.id !== sectionId),
+    }));
+    setHasTemplateChanges(true);
+  }, []);
+
+  const handleUpdateWorkingSection = useCallback((sectionIndex: number, updatedSection: any) => {
+    setWorkingTemplate((prev: any) => ({
+      ...prev,
+      sections: prev.sections.map((s: any, i: number) => i === sectionIndex ? updatedSection : s),
+    }));
+    setHasTemplateChanges(true);
+  }, []);
 
   const handleReorderSection = useCallback((sectionId: string, direction: 'up' | 'down') => {
     setWorkingTemplate((prev: any) => {
@@ -146,11 +163,16 @@ export const useReportLogic = ({
   // ─── TEMPLATE ACTION HANDLER ──────────────────────────────────────────────
 
   const handleTemplateAction = useCallback((action: {
-    type: 'replace' | 'add-to-button' | 'add-to-new-button';
+    type: 'replace' | 'add-to-button' | 'add-to-new-button' | 'rename-button' | 'delete-button' | 'move-statement';
     sectionId: string;
-    commentText: string;
+    commentText?: string;
     buttonName?: string;
     newButtonName?: string;
+    oldButtonName?: string;
+    updatedComments?: Record<string, string[]>;
+    fromButton?: string;
+    toButton?: string;
+    statement?: string;
   }) => {
     setWorkingTemplate((prev: any) => {
       const updatedSections = prev.sections.map((section: any) => {
@@ -162,32 +184,51 @@ export const useReportLogic = ({
         }
 
         if (section.type === 'qualities') {
-          const comments = { ...newData.comments };
-          if (action.type === 'replace' && action.buttonName) {
-            const options = [...(comments[action.buttonName] || [])];
-            const replaceIdx = options.length > 0 ? 0 : 0;
-            options[replaceIdx] = action.commentText;
-            comments[action.buttonName] = options;
-          } else if (action.type === 'add-to-button' && action.buttonName) {
-            comments[action.buttonName] = [...(comments[action.buttonName] || []), action.commentText];
-          } else if (action.type === 'add-to-new-button' && action.newButtonName) {
-            comments[action.newButtonName] = [action.commentText];
+          if (action.type === 'rename-button' || action.type === 'delete-button') {
+            newData.comments = action.updatedComments || newData.comments;
+          } else if (action.type === 'move-statement' && action.fromButton && action.toButton && action.statement) {
+            const comments = { ...newData.comments };
+            comments[action.fromButton] = (comments[action.fromButton] || []).filter((s: string) => s !== action.statement);
+            if (comments[action.fromButton].length === 0) delete comments[action.fromButton];
+            comments[action.toButton] = [...(comments[action.toButton] || []), action.statement];
+            newData.comments = comments;
+          } else {
+            const comments = { ...newData.comments };
+            if (action.type === 'replace' && action.buttonName) {
+              const options = [...(comments[action.buttonName] || [])];
+              options[0] = action.commentText!;
+              comments[action.buttonName] = options;
+            } else if (action.type === 'add-to-button' && action.buttonName) {
+              comments[action.buttonName] = [...(comments[action.buttonName] || []), action.commentText!];
+            } else if (action.type === 'add-to-new-button' && action.newButtonName) {
+              comments[action.newButtonName] = [action.commentText!];
+            }
+            newData.comments = comments;
           }
-          newData.comments = comments;
         }
 
         if (section.type === 'next-steps') {
-          const focusAreas = { ...newData.focusAreas };
-          if (action.type === 'replace' && action.buttonName) {
-            const options = [...(focusAreas[action.buttonName] || [])];
-            options[0] = action.commentText;
-            focusAreas[action.buttonName] = options;
-          } else if (action.type === 'add-to-button' && action.buttonName) {
-            focusAreas[action.buttonName] = [...(focusAreas[action.buttonName] || []), action.commentText];
-          } else if (action.type === 'add-to-new-button' && action.newButtonName) {
-            focusAreas[action.newButtonName] = [action.commentText];
+          if (action.type === 'rename-button' || action.type === 'delete-button') {
+            newData.focusAreas = action.updatedComments || newData.focusAreas;
+          } else if (action.type === 'move-statement' && action.fromButton && action.toButton && action.statement) {
+            const focusAreas = { ...newData.focusAreas };
+            focusAreas[action.fromButton] = (focusAreas[action.fromButton] || []).filter((s: string) => s !== action.statement);
+            if (focusAreas[action.fromButton].length === 0) delete focusAreas[action.fromButton];
+            focusAreas[action.toButton] = [...(focusAreas[action.toButton] || []), action.statement];
+            newData.focusAreas = focusAreas;
+          } else {
+            const focusAreas = { ...newData.focusAreas };
+            if (action.type === 'replace' && action.buttonName) {
+              const options = [...(focusAreas[action.buttonName] || [])];
+              options[0] = action.commentText!;
+              focusAreas[action.buttonName] = options;
+            } else if (action.type === 'add-to-button' && action.buttonName) {
+              focusAreas[action.buttonName] = [...(focusAreas[action.buttonName] || []), action.commentText!];
+            } else if (action.type === 'add-to-new-button' && action.newButtonName) {
+              focusAreas[action.newButtonName] = [action.commentText!];
+            }
+            newData.focusAreas = focusAreas;
           }
-          newData.focusAreas = focusAreas;
         }
 
         if (section.type === 'personalised-comment') {
@@ -501,7 +542,7 @@ export const useReportLogic = ({
   const generateReportContent = useCallback(() => {
     let content = '';
     const allSections = getAllSections();
-    const globalPronoun = sectionData['__student__']?.pronounOverride || '';
+    const globalPronoun = sectionData['__student__']?.pronounOverride || 'he';
 
     allSections.forEach((section: any) => {
       const data = sectionData[section.id] || {};
@@ -706,5 +747,7 @@ export const useReportLogic = ({
     handleSaveWorkingTemplate,
     handleInsertSection,
     handleRenameSection,
+    handleDeleteSection,
+    handleUpdateWorkingSection,
   };
 };

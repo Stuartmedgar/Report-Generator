@@ -12,6 +12,7 @@ interface QualitiesSectionProps {
   onMergeSections?: (sourceId: string, targetId: string) => void;
   workingTemplateSections?: any[];
   onRenameSection?: (sectionId: string, newName: string) => void;
+  globalPronoun?: string;
 }
 
 const QualitiesSection: React.FC<QualitiesSectionProps> = ({
@@ -24,6 +25,7 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
   onMergeSections,
   workingTemplateSections,
   onRenameSection,
+  globalPronoun,
 }) => {
   const [showEditQuality, setShowEditQuality] = useState(false);
   const [editableQuality, setEditableQuality] = useState('');
@@ -34,6 +36,9 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
   const [addToNewButtonName, setAddToNewButtonName] = useState('');
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [mergeTargetId, setMergeTargetId] = useState('');
+  const [renamingButton, setRenamingButton] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [moveToArea, setMoveToArea] = useState('');
 
   useEffect(() => {
     if (data.selectedQuality) {
@@ -86,6 +91,34 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
     if (!window.confirm(`This will merge all buttons from this section into the target section, then remove this section. Continue?`)) return;
     onMergeSections(section.id, mergeTargetId);
     setShowMergeModal(false);
+  };
+
+  const handleRenameButton = (oldName: string) => {
+    if (!renameValue.trim() || renameValue.trim() === oldName) { setRenamingButton(null); return; }
+    if (!onTemplateAction) return;
+    const comments = { ...(section.data?.comments || {}) };
+    const options = comments[oldName] || [];
+    delete comments[oldName];
+    comments[renameValue.trim()] = options;
+    onTemplateAction({ type: 'rename-button' as any, sectionId: section.id, oldButtonName: oldName, newButtonName: renameValue.trim(), updatedComments: comments });
+    if (data.qualityArea === oldName) updateSectionData(section.id, { qualityArea: renameValue.trim() });
+    setRenamingButton(null);
+  };
+
+  const handleDeleteButton = (buttonName: string) => {
+    if (!window.confirm(`Delete the "${buttonName}" button and all its statements?`)) return;
+    const comments = { ...(section.data?.comments || {}) };
+    delete comments[buttonName];
+    onTemplateAction?.({ type: 'delete-button' as any, sectionId: section.id, buttonName, updatedComments: comments });
+    if (data.qualityArea === buttonName) updateSectionData(section.id, { qualityArea: undefined, selectedQuality: undefined });
+  };
+
+  const handleMoveStatement = () => {
+    if (!moveToArea || !data.qualityArea || !editableQuality || !onTemplateAction) return;
+    onTemplateAction({ type: 'move-statement' as any, sectionId: section.id, fromButton: data.qualityArea, toButton: moveToArea, statement: editableQuality });
+    updateSectionData(section.id, { qualityArea: moveToArea, selectedQuality: editableQuality, customEditedQuality: editableQuality });
+    setMoveToArea('');
+    setShowEditQuality(false);
   };
 
   // Other qualities sections to merge into
@@ -156,10 +189,10 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
         </div>
       )}
 
-      {/* Pronoun selector */}
+      {/* Pronoun selector — Name or global pronoun */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
         <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: '500' }}>Use:</span>
-        {[{ value: '', label: 'Name' }, { value: 'he', label: 'He' }, { value: 'she', label: 'She' }, { value: 'they', label: 'They' }].map(opt => (
+        {[{ value: '', label: 'Name' }, { value: globalPronoun || 'he', label: globalPronoun === 'she' ? 'She / Her' : globalPronoun === 'they' ? 'They / Them' : 'He / His' }].map(opt => (
           <button key={opt.value} onClick={() => updateSectionData(section.id, { pronounOverride: opt.value })}
             style={{
               padding: '2px 8px', border: '1px solid #8b5cf6', borderRadius: '4px',
@@ -175,15 +208,31 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
       {/* Quality buttons + add new */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px', alignItems: 'center' }}>
         {qualityAreas.map((area: string) => (
-          <button key={area} onClick={() => handleQualityAreaChange(area)}
-            style={{
-              backgroundColor: data.qualityArea === area ? '#8b5cf6' : 'white',
-              color: data.qualityArea === area ? 'white' : '#8b5cf6',
-              border: '2px solid #8b5cf6', borderRadius: '6px', padding: '6px 12px',
-              fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap'
-            }}>
-            {area}
-          </button>
+          renamingButton === area ? (
+            <div key={area} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <input autoFocus value={renameValue} onChange={e => setRenameValue(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleRenameButton(area); if (e.key === 'Escape') setRenamingButton(null); }}
+                style={{ padding: '4px 8px', border: '2px solid #8b5cf6', borderRadius: '4px', fontSize: '12px', width: '140px', outline: 'none' }} />
+              <button onClick={() => handleRenameButton(area)} style={{ backgroundColor: '#8b5cf6', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}>✓</button>
+              <button onClick={() => setRenamingButton(null)} style={{ backgroundColor: '#9ca3af', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}>✕</button>
+            </div>
+          ) : (
+            <div key={area} style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+              <button onClick={() => handleQualityAreaChange(area)}
+                style={{
+                  backgroundColor: data.qualityArea === area ? '#8b5cf6' : 'white',
+                  color: data.qualityArea === area ? 'white' : '#8b5cf6',
+                  border: '2px solid #8b5cf6', borderRadius: '6px 0 0 6px', padding: '6px 10px',
+                  fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap'
+                }}>
+                {area}
+              </button>
+              <button onClick={() => { setRenamingButton(area); setRenameValue(area); }} title="Rename button"
+                style={{ backgroundColor: '#ede9fe', color: '#7c3aed', border: '2px solid #8b5cf6', borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: 'pointer' }}>✏</button>
+              <button onClick={() => handleDeleteButton(area)} title="Delete button"
+                style={{ backgroundColor: '#fee2e2', color: '#dc2626', border: '2px solid #8b5cf6', borderLeft: 'none', borderRadius: '0 6px 6px 0', padding: '6px 5px', fontSize: '10px', cursor: 'pointer' }}>✕</button>
+            </div>
+          )
         ))}
         {onAddButton && (
           <button onClick={() => setShowNewButtonModal(true)} title="Add a new button"
@@ -243,6 +292,19 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
               </>
             )}
           </div>
+          {/* Move statement to another button */}
+          {onTemplateAction && qualityAreas.filter((a: string) => a !== data.qualityArea).length > 0 && (
+            <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '11px', color: '#6b7280' }}>Move to:</span>
+              <select value={moveToArea} onChange={e => setMoveToArea(e.target.value)}
+                style={{ padding: '3px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', flex: 1, minWidth: 0 }}>
+                <option value="">— choose button —</option>
+                {qualityAreas.filter((a: string) => a !== data.qualityArea).map((a: string) => <option key={a} value={a}>{a}</option>)}
+              </select>
+              <button onClick={handleMoveStatement} disabled={!moveToArea}
+                style={{ ...actionBtnStyle('#06b6d4'), opacity: !moveToArea ? 0.4 : 1 }}>Move</button>
+            </div>
+          )}
           {showAddToNewModal && (
             <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#f9fafb', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
               <div style={{ fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>New button name:</div>
