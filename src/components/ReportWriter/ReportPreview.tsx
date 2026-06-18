@@ -161,14 +161,13 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
     );
   }
 
-  // Desktop Layout - FIXED: Removed maxHeight to allow natural scrolling
+  // Desktop Layout
   return (
     <div style={{
       backgroundColor: '#f9fafb',
       border: '1px solid #e5e7eb',
       borderRadius: '8px',
       padding: '20px',
-      height: '100%',
       display: 'flex',
       flexDirection: 'column'
     }}>

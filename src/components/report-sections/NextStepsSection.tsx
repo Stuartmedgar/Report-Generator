@@ -39,6 +39,8 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
   const [renamingButton, setRenamingButton] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [moveToArea, setMoveToArea] = useState('');
+  const [editingButtons, setEditingButtons] = useState(false);
+  const [moveAllTarget, setMoveAllTarget] = useState('');
 
   useEffect(() => {
     if (data.selectedSuggestion) {
@@ -47,6 +49,7 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
   }, [data.selectedSuggestion, data.customEditedSuggestion]);
 
   const handleFocusAreaChange = (focusArea: string) => {
+    if (editingButtons) return;
     if (focusArea !== data.focusArea && data.customEditedSuggestion && data.customEditedSuggestion !== data.selectedSuggestion) {
       if (!window.confirm('Changing the focus area will replace your custom edits. Continue?')) return;
     }
@@ -103,6 +106,7 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
     onTemplateAction({ type: 'rename-button', sectionId: section.id, oldButtonName: oldName, newButtonName: renameValue.trim(), updatedComments: areas });
     if (data.focusArea === oldName) updateSectionData(section.id, { focusArea: renameValue.trim() });
     setRenamingButton(null);
+    setMoveAllTarget('');
   };
 
   const handleDeleteButton = (buttonName: string) => {
@@ -119,6 +123,19 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
     updateSectionData(section.id, { focusArea: moveToArea, selectedSuggestion: editableSuggestion, customEditedSuggestion: editableSuggestion });
     setMoveToArea('');
     setShowEditSuggestion(false);
+  };
+
+  const handleMoveAllStatements = (fromButton: string) => {
+    if (!moveAllTarget || !onTemplateAction) return;
+    if (!window.confirm(`Move all statements from "${fromButton}" to "${moveAllTarget}"? "${fromButton}" will be deleted.`)) return;
+    const areas = { ...(section.data?.focusAreas || section.data?.comments || {}) };
+    const fromStatements = areas[fromButton] || [];
+    areas[moveAllTarget] = [...(areas[moveAllTarget] || []), ...fromStatements];
+    delete areas[fromButton];
+    onTemplateAction({ type: 'delete-button', sectionId: section.id, buttonName: fromButton, updatedComments: areas });
+    if (data.focusArea === fromButton) updateSectionData(section.id, { focusArea: moveAllTarget, selectedSuggestion: undefined, customEditedSuggestion: undefined });
+    setRenamingButton(null);
+    setMoveAllTarget('');
   };
 
   const mergeTargets = (workingTemplateSections || []).filter(
@@ -143,6 +160,12 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
             <button onClick={() => onDuplicateSection(section.id)} title="Duplicate this section"
               style={{ backgroundColor: '#e5e7eb', color: '#374151', border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: '500' }}>
               ⧉ Duplicate
+            </button>
+          )}
+          {onAddButton && (
+            <button onClick={() => setEditingButtons(b => !b)}
+              style={{ backgroundColor: editingButtons ? '#06b6d4' : '#e5e7eb', color: editingButtons ? 'white' : '#374151', border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: '500' }}>
+              {editingButtons ? '✓ Done' : '✏ Edit Buttons'}
             </button>
           )}
           {onMergeSections && mergeTargets.length > 0 && (
@@ -205,12 +228,28 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px', alignItems: 'center' }}>
         {focusAreas.map((focusArea: string) => (
           renamingButton === focusArea ? (
-            <div key={focusArea} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <input autoFocus value={renameValue} onChange={e => setRenameValue(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleRenameButton(focusArea); if (e.key === 'Escape') setRenamingButton(null); }}
-                style={{ padding: '4px 8px', border: '2px solid #06b6d4', borderRadius: '4px', fontSize: '12px', width: '140px', outline: 'none' }} />
-              <button onClick={() => handleRenameButton(focusArea)} style={{ backgroundColor: '#06b6d4', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}>✓</button>
-              <button onClick={() => setRenamingButton(null)} style={{ backgroundColor: '#9ca3af', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}>✕</button>
+            <div key={focusArea} style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <input autoFocus value={renameValue} onChange={e => setRenameValue(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleRenameButton(focusArea); if (e.key === 'Escape') { setRenamingButton(null); setMoveAllTarget(''); } }}
+                  style={{ padding: '4px 8px', border: '2px solid #06b6d4', borderRadius: '4px', fontSize: '12px', width: '140px', outline: 'none' }} />
+                <button onClick={() => handleRenameButton(focusArea)} style={{ backgroundColor: '#06b6d4', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}>✓ Rename</button>
+                <button onClick={() => { setRenamingButton(null); setMoveAllTarget(''); }} style={{ backgroundColor: '#9ca3af', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}>✕</button>
+              </div>
+              {focusAreas.filter((a: string) => a !== focusArea).length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', paddingLeft: '2px' }}>
+                  <span style={{ fontSize: '11px', color: '#6b7280' }}>Move all to:</span>
+                  <select value={moveAllTarget} onChange={e => setMoveAllTarget(e.target.value)}
+                    style={{ fontSize: '11px', padding: '2px 4px', borderRadius: '4px', border: '1px solid #d1d5db' }}>
+                    <option value="">— choose —</option>
+                    {focusAreas.filter((a: string) => a !== focusArea).map((a: string) => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                  <button onClick={() => handleMoveAllStatements(focusArea)} disabled={!moveAllTarget}
+                    style={{ backgroundColor: '#8b5cf6', color: 'white', border: 'none', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', cursor: 'pointer', opacity: !moveAllTarget ? 0.4 : 1 }}>
+                    Move
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div key={focusArea} style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
@@ -218,15 +257,21 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
                 style={{
                   backgroundColor: data.focusArea === focusArea ? '#06b6d4' : 'white',
                   color: data.focusArea === focusArea ? 'white' : '#06b6d4',
-                  border: '2px solid #06b6d4', borderRadius: '6px 0 0 6px', padding: '6px 10px',
-                  fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap'
+                  border: '2px solid #06b6d4',
+                  borderRadius: editingButtons ? '6px 0 0 6px' : '6px',
+                  padding: '6px 10px',
+                  fontSize: '12px', fontWeight: '600', cursor: editingButtons ? 'default' : 'pointer', whiteSpace: 'nowrap'
                 }}>
                 {focusArea}
               </button>
-              <button onClick={() => { setRenamingButton(focusArea); setRenameValue(focusArea); }} title="Rename button"
-                style={{ backgroundColor: '#cffafe', color: '#0891b2', border: '2px solid #06b6d4', borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: 'pointer' }}>✏</button>
-              <button onClick={() => handleDeleteButton(focusArea)} title="Delete button"
-                style={{ backgroundColor: '#fee2e2', color: '#dc2626', border: '2px solid #06b6d4', borderLeft: 'none', borderRadius: '0 6px 6px 0', padding: '6px 5px', fontSize: '10px', cursor: 'pointer' }}>✕</button>
+              {editingButtons && (
+                <>
+                  <button onClick={() => { setRenamingButton(focusArea); setRenameValue(focusArea); setMoveAllTarget(''); }} title="Rename button"
+                    style={{ backgroundColor: '#cffafe', color: '#0891b2', border: '2px solid #06b6d4', borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: 'pointer' }}>✏</button>
+                  <button onClick={() => handleDeleteButton(focusArea)} title="Delete button"
+                    style={{ backgroundColor: '#fee2e2', color: '#dc2626', border: '2px solid #06b6d4', borderLeft: 'none', borderRadius: '0 6px 6px 0', padding: '6px 5px', fontSize: '10px', cursor: 'pointer' }}>✕</button>
+                </>
+              )}
             </div>
           )
         ))}
@@ -259,7 +304,7 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
       )}
 
       {/* Edit toggle */}
-      {hasSelectedSuggestion && (
+      {hasSelectedSuggestion && !editingButtons && (
         <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: showEditSuggestion ? '12px' : '0' }}>
           <button onClick={() => setShowEditSuggestion(!showEditSuggestion)}
             style={{ backgroundColor: showEditSuggestion ? '#06b6d4' : '#e5e7eb', color: showEditSuggestion ? 'white' : '#6b7280', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>
@@ -269,7 +314,7 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
       )}
 
       {/* Edit panel */}
-      {showEditSuggestion && hasSelectedSuggestion && (
+      {showEditSuggestion && hasSelectedSuggestion && !editingButtons && (
         <div style={{ backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '6px', padding: '8px' }}>
           <textarea value={editableSuggestion} onChange={(e) => setEditableSuggestion(e.target.value)}
             placeholder="Edit the suggestion to better suit this student..."

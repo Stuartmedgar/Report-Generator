@@ -9,6 +9,7 @@ interface StandardCommentSectionProps {
   updateSectionData: (sectionId: string, data: any) => void;
   onTemplateAction?: (action: any) => void;
   onRenameSection?: (sectionId: string, newName: string) => void;
+  globalPronoun?: string;
 }
 
 const StandardCommentSection: React.FC<StandardCommentSectionProps> = ({
@@ -17,6 +18,7 @@ const StandardCommentSection: React.FC<StandardCommentSectionProps> = ({
   updateSectionData,
   onTemplateAction,
   onRenameSection,
+  globalPronoun,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [replaceConfirmed, setReplaceConfirmed] = useState(false);
@@ -98,6 +100,22 @@ const StandardCommentSection: React.FC<StandardCommentSectionProps> = ({
             </div>
           )}
         </div>
+      </div>
+
+      {/* Pronoun selector */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+        <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: '500' }}>Use:</span>
+        {[{ value: '', label: 'Name' }, { value: globalPronoun || 'he', label: globalPronoun === 'she' ? 'She / Her' : globalPronoun === 'they' ? 'They / Them' : 'He / His' }].map(opt => (
+          <button key={opt.value} onClick={() => updateSectionData(section.id, { pronounOverride: opt.value })}
+            style={{
+              padding: '2px 8px', border: '1px solid #10b981', borderRadius: '4px',
+              fontSize: '11px', fontWeight: '600', cursor: 'pointer',
+              backgroundColor: (data.pronounOverride || '') === opt.value ? '#10b981' : 'white',
+              color: (data.pronounOverride || '') === opt.value ? 'white' : '#10b981',
+            }}>
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       {/* Expandable Edit Area */}

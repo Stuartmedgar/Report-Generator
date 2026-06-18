@@ -8,6 +8,7 @@ interface AssessmentCommentSectionProps {
   updateSectionData: (sectionId: string, data: any) => void;
   onTemplateAction?: (action: any) => void;
   onRenameSection?: (sectionId: string, newName: string) => void;
+  globalPronoun?: string;
 }
 
 function getScorePlaceholders(comment: string): string[] {
@@ -31,6 +32,7 @@ const AssessmentCommentSection: React.FC<AssessmentCommentSectionProps> = ({
   updateSectionData,
   onTemplateAction,
   onRenameSection,
+  globalPronoun,
 }) => {
   const [showEditComment, setShowEditComment] = useState(false);
   const [editableComment, setEditableComment] = useState('');
@@ -136,6 +138,22 @@ const AssessmentCommentSection: React.FC<AssessmentCommentSectionProps> = ({
             <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Exclude</span>
           </div>
         </div>
+      </div>
+
+      {/* Pronoun selector */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+        <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: '500' }}>Use:</span>
+        {[{ value: '', label: 'Name' }, { value: globalPronoun || 'he', label: globalPronoun === 'she' ? 'She / Her' : globalPronoun === 'they' ? 'They / Them' : 'He / His' }].map(opt => (
+          <button key={opt.value} onClick={() => updateSectionData(section.id, { pronounOverride: opt.value })}
+            style={{
+              padding: '2px 8px', border: '1px solid #8b5cf6', borderRadius: '4px',
+              fontSize: '11px', fontWeight: '600', cursor: 'pointer',
+              backgroundColor: (data.pronounOverride || '') === opt.value ? '#8b5cf6' : 'white',
+              color: (data.pronounOverride || '') === opt.value ? 'white' : '#8b5cf6',
+            }}>
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       {/* Fix 7: instruction reminder */}

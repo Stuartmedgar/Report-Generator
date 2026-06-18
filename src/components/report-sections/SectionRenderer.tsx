@@ -56,6 +56,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
           updateSectionData={enhancedUpdateSectionData}
           onTemplateAction={onTemplateAction}
           onRenameSection={onRenameSection}
+          globalPronoun={globalPronoun}
         />
       );
 
@@ -66,6 +67,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
           updateSectionData={enhancedUpdateSectionData}
           onTemplateAction={onTemplateAction}
           onRenameSection={onRenameSection}
+          globalPronoun={globalPronoun}
         />
       );
 
@@ -84,6 +86,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
           updateSectionData={enhancedUpdateSectionData}
           onTemplateAction={onTemplateAction}
           onRenameSection={onRenameSection}
+          globalPronoun={globalPronoun}
         />
       );
 
@@ -98,6 +101,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
           onMergeSections={onMergeSections}
           workingTemplateSections={workingTemplateSections}
           onRenameSection={onRenameSection}
+          globalPronoun={globalPronoun}
         />
       );
 

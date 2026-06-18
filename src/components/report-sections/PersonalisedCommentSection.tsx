@@ -12,6 +12,7 @@ interface PersonalisedCommentSectionProps {
   onMergeSections?: (sourceId: string, targetId: string) => void;
   workingTemplateSections?: any[];
   onRenameSection?: (sectionId: string, newName: string) => void;
+  globalPronoun?: string;
 }
 
 function getInfoPlaceholders(comment: string): string[] {
@@ -39,6 +40,7 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
   onMergeSections,
   workingTemplateSections,
   onRenameSection,
+  globalPronoun,
 }) => {
   const [showEditComment, setShowEditComment] = useState(false);
   const [editableComment, setEditableComment] = useState('');
@@ -188,7 +190,7 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
       {/* Pronoun selector */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
         <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: '500' }}>Use:</span>
-        {[{ value: '', label: 'Name' }, { value: 'he', label: 'He' }, { value: 'she', label: 'She' }, { value: 'they', label: 'They' }].map(opt => (
+        {[{ value: '', label: 'Name' }, { value: globalPronoun || 'he', label: globalPronoun === 'she' ? 'She / Her' : globalPronoun === 'they' ? 'They / Them' : 'He / His' }].map(opt => (
           <button key={opt.value} onClick={() => updateSectionData(section.id, { pronounOverride: opt.value })}
             style={{
               padding: '2px 8px', border: '1px solid #f59e0b', borderRadius: '4px',

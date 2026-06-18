@@ -39,6 +39,8 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
   const [renamingButton, setRenamingButton] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [moveToArea, setMoveToArea] = useState('');
+  const [editingButtons, setEditingButtons] = useState(false);
+  const [moveAllTarget, setMoveAllTarget] = useState('');
 
   useEffect(() => {
     if (data.selectedQuality) {
@@ -47,6 +49,7 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
   }, [data.selectedQuality, data.customEditedQuality]);
 
   const handleQualityAreaChange = (qualityArea: string) => {
+    if (editingButtons) return;
     if (qualityArea !== data.qualityArea && data.customEditedQuality && data.customEditedQuality !== data.selectedQuality) {
       if (!window.confirm('Changing the quality area will replace your custom edits. Continue?')) return;
     }
@@ -103,6 +106,7 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
     onTemplateAction({ type: 'rename-button' as any, sectionId: section.id, oldButtonName: oldName, newButtonName: renameValue.trim(), updatedComments: comments });
     if (data.qualityArea === oldName) updateSectionData(section.id, { qualityArea: renameValue.trim() });
     setRenamingButton(null);
+    setMoveAllTarget('');
   };
 
   const handleDeleteButton = (buttonName: string) => {
@@ -121,7 +125,19 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
     setShowEditQuality(false);
   };
 
-  // Other qualities sections to merge into
+  const handleMoveAllStatements = (fromButton: string) => {
+    if (!moveAllTarget || !onTemplateAction) return;
+    if (!window.confirm(`Move all statements from "${fromButton}" to "${moveAllTarget}"? "${fromButton}" will be deleted.`)) return;
+    const comments = { ...(section.data?.comments || {}) };
+    const fromStatements = comments[fromButton] || [];
+    comments[moveAllTarget] = [...(comments[moveAllTarget] || []), ...fromStatements];
+    delete comments[fromButton];
+    onTemplateAction({ type: 'delete-button' as any, sectionId: section.id, buttonName: fromButton, updatedComments: comments });
+    if (data.qualityArea === fromButton) updateSectionData(section.id, { qualityArea: moveAllTarget, selectedQuality: undefined, customEditedQuality: undefined });
+    setRenamingButton(null);
+    setMoveAllTarget('');
+  };
+
   const mergeTargets = (workingTemplateSections || []).filter(
     (s: any) => s.type === 'qualities' && s.id !== section.id
   );
@@ -146,7 +162,12 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
               ⧉ Duplicate
             </button>
           )}
-          {/* Item 6: Merge button — only show if other qualities sections exist */}
+          {onAddButton && (
+            <button onClick={() => setEditingButtons(b => !b)}
+              style={{ backgroundColor: editingButtons ? '#8b5cf6' : '#e5e7eb', color: editingButtons ? 'white' : '#374151', border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: '500' }}>
+              {editingButtons ? '✓ Done' : '✏ Edit Buttons'}
+            </button>
+          )}
           {onMergeSections && mergeTargets.length > 0 && (
             <button onClick={() => setShowMergeModal(true)} title="Merge buttons from this section into another"
               style={{ backgroundColor: '#ddd6fe', color: '#7c3aed', border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: '500' }}>
@@ -209,12 +230,28 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px', alignItems: 'center' }}>
         {qualityAreas.map((area: string) => (
           renamingButton === area ? (
-            <div key={area} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <input autoFocus value={renameValue} onChange={e => setRenameValue(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleRenameButton(area); if (e.key === 'Escape') setRenamingButton(null); }}
-                style={{ padding: '4px 8px', border: '2px solid #8b5cf6', borderRadius: '4px', fontSize: '12px', width: '140px', outline: 'none' }} />
-              <button onClick={() => handleRenameButton(area)} style={{ backgroundColor: '#8b5cf6', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}>✓</button>
-              <button onClick={() => setRenamingButton(null)} style={{ backgroundColor: '#9ca3af', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}>✕</button>
+            <div key={area} style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <input autoFocus value={renameValue} onChange={e => setRenameValue(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleRenameButton(area); if (e.key === 'Escape') { setRenamingButton(null); setMoveAllTarget(''); } }}
+                  style={{ padding: '4px 8px', border: '2px solid #8b5cf6', borderRadius: '4px', fontSize: '12px', width: '140px', outline: 'none' }} />
+                <button onClick={() => handleRenameButton(area)} style={{ backgroundColor: '#8b5cf6', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}>✓ Rename</button>
+                <button onClick={() => { setRenamingButton(null); setMoveAllTarget(''); }} style={{ backgroundColor: '#9ca3af', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}>✕</button>
+              </div>
+              {qualityAreas.filter((a: string) => a !== area).length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', paddingLeft: '2px' }}>
+                  <span style={{ fontSize: '11px', color: '#6b7280' }}>Move all to:</span>
+                  <select value={moveAllTarget} onChange={e => setMoveAllTarget(e.target.value)}
+                    style={{ fontSize: '11px', padding: '2px 4px', borderRadius: '4px', border: '1px solid #d1d5db' }}>
+                    <option value="">— choose —</option>
+                    {qualityAreas.filter((a: string) => a !== area).map((a: string) => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                  <button onClick={() => handleMoveAllStatements(area)} disabled={!moveAllTarget}
+                    style={{ backgroundColor: '#06b6d4', color: 'white', border: 'none', borderRadius: '4px', padding: '2px 8px', fontSize: '11px', cursor: 'pointer', opacity: !moveAllTarget ? 0.4 : 1 }}>
+                    Move
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div key={area} style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
@@ -222,15 +259,21 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
                 style={{
                   backgroundColor: data.qualityArea === area ? '#8b5cf6' : 'white',
                   color: data.qualityArea === area ? 'white' : '#8b5cf6',
-                  border: '2px solid #8b5cf6', borderRadius: '6px 0 0 6px', padding: '6px 10px',
-                  fontSize: '12px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap'
+                  border: '2px solid #8b5cf6',
+                  borderRadius: editingButtons ? '6px 0 0 6px' : '6px',
+                  padding: '6px 10px',
+                  fontSize: '12px', fontWeight: '600', cursor: editingButtons ? 'default' : 'pointer', whiteSpace: 'nowrap'
                 }}>
                 {area}
               </button>
-              <button onClick={() => { setRenamingButton(area); setRenameValue(area); }} title="Rename button"
-                style={{ backgroundColor: '#ede9fe', color: '#7c3aed', border: '2px solid #8b5cf6', borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: 'pointer' }}>✏</button>
-              <button onClick={() => handleDeleteButton(area)} title="Delete button"
-                style={{ backgroundColor: '#fee2e2', color: '#dc2626', border: '2px solid #8b5cf6', borderLeft: 'none', borderRadius: '0 6px 6px 0', padding: '6px 5px', fontSize: '10px', cursor: 'pointer' }}>✕</button>
+              {editingButtons && (
+                <>
+                  <button onClick={() => { setRenamingButton(area); setRenameValue(area); setMoveAllTarget(''); }} title="Rename button"
+                    style={{ backgroundColor: '#ede9fe', color: '#7c3aed', border: '2px solid #8b5cf6', borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: 'pointer' }}>✏</button>
+                  <button onClick={() => handleDeleteButton(area)} title="Delete button"
+                    style={{ backgroundColor: '#fee2e2', color: '#dc2626', border: '2px solid #8b5cf6', borderLeft: 'none', borderRadius: '0 6px 6px 0', padding: '6px 5px', fontSize: '10px', cursor: 'pointer' }}>✕</button>
+                </>
+              )}
             </div>
           )
         ))}
@@ -263,7 +306,7 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
       )}
 
       {/* Edit toggle */}
-      {hasSelectedQuality && (
+      {hasSelectedQuality && !editingButtons && (
         <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: showEditQuality ? '12px' : '0' }}>
           <button onClick={() => setShowEditQuality(!showEditQuality)}
             style={{ backgroundColor: showEditQuality ? '#8b5cf6' : '#e5e7eb', color: showEditQuality ? 'white' : '#6b7280', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>
@@ -273,7 +316,7 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
       )}
 
       {/* Edit panel */}
-      {showEditQuality && hasSelectedQuality && (
+      {showEditQuality && hasSelectedQuality && !editingButtons && (
         <div style={{ backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '6px', padding: '8px', marginBottom: '12px' }}>
           <textarea value={editableQuality} onChange={(e) => setEditableQuality(e.target.value)}
             placeholder="Edit the quality statement to better suit this student..."
