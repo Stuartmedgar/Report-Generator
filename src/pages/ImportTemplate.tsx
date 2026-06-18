@@ -140,6 +140,8 @@ export default function ImportTemplate() {
   const [restructuredReports, setRestructuredReports] = useState<string | null>(null);
   const [reportStructureSections, setReportStructureSections] = useState<{name: string; contents: string}[]>([{ name: '', contents: '' }]);
   const [showStructureForm, setShowStructureForm] = useState(false);
+  const [previewSections, setPreviewSections] = useState<TemplateSection[]>([]);
+  const [previewFinalName, setPreviewFinalName] = useState('');
 
   // Selection state
   const [selectedText, setSelectedText] = useState('');
@@ -300,6 +302,64 @@ export default function ImportTemplate() {
 
   // ─── QUICK BUILD ──────────────────────────────────────────────────────────
 
+  const mergeDuplicateSectionTypes = (sections: any[]): any[] => {
+    const result: any[] = [];
+    let mergedQualities: any = null;
+    let mergedNextSteps: any = null;
+    for (const sec of sections) {
+      if (sec.type === 'qualities') {
+        if (!mergedQualities) {
+          mergedQualities = { ...sec, data: { ...sec.data, comments: { ...(sec.data?.comments || {}) } } };
+          result.push(mergedQualities);
+        } else {
+          Object.assign(mergedQualities.data.comments, sec.data?.comments || {});
+        }
+      } else if (sec.type === 'next-steps') {
+        if (!mergedNextSteps) {
+          mergedNextSteps = { ...sec, data: { ...sec.data, focusAreas: { ...(sec.data?.focusAreas || {}) } } };
+          result.push(mergedNextSteps);
+        } else {
+          Object.assign(mergedNextSteps.data.focusAreas, sec.data?.focusAreas || {});
+        }
+      } else {
+        result.push(sec);
+      }
+    }
+    return result;
+  };
+
+  const assembleSampleReport = (sections: TemplateSection[]): string => {
+    const parts: string[] = [];
+    for (const sec of sections) {
+      if (sec.type === 'new-line') continue;
+      if (sec.type === 'standard-comment') {
+        const text = sec.data?.content || sec.data?.comment || '';
+        if (text) parts.push(text);
+      } else if (sec.type === 'rated-comment') {
+        const c = sec.data?.comments || {};
+        const opt = c.good?.[0] || c.excellent?.[0] || c.satisfactory?.[0] || c.needsImprovement?.[0] || '';
+        if (opt) parts.push(opt);
+      } else if (sec.type === 'qualities') {
+        const c = sec.data?.comments || {};
+        const firstHeading = Object.keys(c)[0];
+        if (firstHeading && c[firstHeading]?.[0]) parts.push(c[firstHeading][0]);
+      } else if (sec.type === 'next-steps') {
+        const f = sec.data?.focusAreas || {};
+        const firstArea = Object.keys(f)[0];
+        if (firstArea && f[firstArea]?.[0]) parts.push(f[firstArea][0]);
+      } else if (sec.type === 'personalised-comment') {
+        const cats = sec.data?.categories || sec.data?.comments || {};
+        const firstCat = Object.keys(cats)[0];
+        if (firstCat && cats[firstCat]?.[0]) parts.push(cats[firstCat][0]);
+      } else if (sec.type === 'assessment-comment') {
+        const c = sec.data?.comments || {};
+        const opt = c.good?.[0] || c.excellent?.[0] || '';
+        if (opt) parts.push(opt);
+      }
+    }
+    return parts.join(' ').replace(/\[Name\]/g, 'Alex').replace(/\[Score\]/g, '72%').replace(/\[Info \d\]/g, '(personal detail)');
+  };
+
   const handleQuickBuild = async () => {
     if (!subject.trim()) { setError('Please enter the subject.'); return; }
     if (!rawReportText.trim()) { setError('Please paste your reports.'); return; }
@@ -320,10 +380,12 @@ export default function ImportTemplate() {
       if (!result.sections || result.sections.length === 0) throw new Error('No sections returned');
       const sections = result.sections.map((s: any) => ({ ...s, id: makeId(), data: s.data || {} }));
       const normalisedSections = normaliseTemplateSections(sections, pronounSet);
-      const splitResult = splitSections(normalisedSections, typicalCountMap);
+      const mergedSections = mergeDuplicateSectionTypes(normalisedSections);
+      const splitResult = splitSections(mergedSections, typicalCountMap);
       const finalName = templateName.trim() || result.templateName || `${subject}${yearGroup ? ' ' + yearGroup : ''} Report Template`;
-      addTemplate({ name: finalName, sections: splitResult });
-      navigate('/start');
+      setPreviewSections(splitResult);
+      setPreviewFinalName(finalName);
+      setMainStep('preview');
     } catch (err: any) {
       setError('Quick build failed. Please try the guided wizard instead.');
     } finally {
@@ -530,6 +592,61 @@ export default function ImportTemplate() {
       </div>
     </div>
   );
+
+  // ─── STEP: PREVIEW ───────────────────────────────────────────────────────
+
+  if (mainStep === 'preview') {
+    const sampleText = assembleSampleReport(previewSections);
+    const sectionCounts: Record<string, number> = {};
+    previewSections.forEach(s => { if (s.type !== 'new-line') sectionCounts[s.type] = (sectionCounts[s.type] || 0) + 1; });
+    const sectionTypeLabels: Record<string, string> = { 'rated-comment': 'Progress', 'qualities': 'Qualities', 'next-steps': 'Next Steps', 'standard-comment': 'Fixed text', 'personalised-comment': 'Personalised', 'assessment-comment': 'Assessment' };
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+        <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827' }}>{previewFinalName}</div>
+            <div style={{ fontSize: '12px', color: '#6b7280' }}>{subject} · Template preview</div>
+          </div>
+          <button onClick={() => setMainStep('paste')} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>← Try again</button>
+        </div>
+        <div style={{ maxWidth: '760px', margin: '0 auto', padding: '32px 24px' }}>
+          <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #86efac', borderRadius: '10px', padding: '14px 18px', marginBottom: '20px', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            <span style={{ fontSize: '20px', flexShrink: 0 }}>✅</span>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#15803d', marginBottom: '4px' }}>Template built successfully</div>
+              <div style={{ fontSize: '13px', color: '#166534' }}>{previewSections.filter(s => s.type !== 'new-line').length} sections built. Below is a sample report assembled automatically from your template — one option picked from each section.</div>
+            </div>
+          </div>
+
+          <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '20px', marginBottom: '16px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sample Report — Alex</div>
+            <p style={{ margin: 0, fontSize: '14px', color: '#111827', lineHeight: '1.8', whiteSpace: 'pre-wrap' }}>{sampleText || 'No sample could be assembled — check that sections have content.'}</p>
+          </div>
+
+          <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '16px 20px', marginBottom: '20px' }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '10px' }}>Sections built</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {Object.entries(sectionCounts).map(([type, count]) => (
+                <span key={type} style={{ backgroundColor: '#f3f4f6', borderRadius: '20px', padding: '4px 12px', fontSize: '12px', fontWeight: '500', color: '#374151' }}>
+                  {sectionTypeLabels[type] || type} × {count}
+                </span>
+              ))}
+            </div>
+            <p style={{ margin: '10px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>In Report Writer you'll see all options for each section and pick the right one for each pupil.</p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <button onClick={() => { addTemplate({ name: previewFinalName, sections: previewSections }); navigate('/start'); }} style={{ backgroundColor: '#10b981', color: 'white', padding: '16px', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', width: '100%' }}>
+              Save Template and Continue
+            </button>
+            <button onClick={() => setMainStep('paste')} style={{ background: 'none', border: '1px solid #d1d5db', borderRadius: '10px', padding: '12px', fontSize: '14px', color: '#6b7280', cursor: 'pointer', width: '100%' }}>
+              Go back and try again with different reports or settings
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ─── STEP: SETUP ─────────────────────────────────────────────────────────
 

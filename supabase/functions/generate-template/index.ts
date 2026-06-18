@@ -158,6 +158,9 @@ Before identifying the next-steps section, check whether a fixed word or phrase 
 2. The next-steps section should contain only the variable content — the specific topic sentences — WITHOUT the fixed prefix
 This allows the teacher to click the fixed phrase once, then separately pick the specific next step.
 
+FIXED-PHRASE DETECTION — QUALITIES:
+Apply the same check to the qualities/strengths section. If a fixed phrase appears as the opening sentence of the qualities block in the majority of reports (e.g. every report begins with "In class, [Name] is a..."), identify it as a separate standard-comment section immediately before the qualities section. The qualities section then contains only the variable descriptive sentences.
+
 PERSONALISED-COMMENT DETECTION:
 Any sentence that mentions a specific named item that would logically differ per pupil — a sport, instrument, book, topic area, assessment activity, chosen unit, target grade — is a personalised-comment, NOT a qualities sentence. The specific named item should be flagged as the personalisedTopic.
 
@@ -249,11 +252,19 @@ SECTION COUNT RULE — ABSOLUTE:
 - QUALITIES: Output EXACTLY ONE qualities section. Combine ALL qualities/strengths headings — regardless of where they appear in the reports — into that single section. If the section list handed to you contains multiple qualities sections, merge all their headings into the first one and discard the rest. No exceptions.
 - NEXT-STEPS: Output EXACTLY ONE next-steps section. Combine ALL next-steps headings into that single section. If the section list contains multiple next-steps sections, merge all their focus areas into the first one and discard the rest. No exceptions.
 
-FIXED-PHRASE DETECTION — NEXT-STEPS — CRITICAL:
-Before building the next-steps section, check whether a fixed word or phrase appears at the start of the majority of next-steps sentences across the reports. For example, every next-steps sentence might begin "To continue to develop, [Name] should..." or "Going forward, [Name] needs to...". If such a consistent opening prefix exists:
-1. Create a standard-comment section (immediately before the next-steps section) containing ONLY the fixed prefix phrase
-2. Strip that fixed prefix from every sentence before placing them in the next-steps section — the next-steps section should contain only the variable, topic-specific content
-3. This lets the teacher click the fixed phrase once, then separately select the specific development area
+FIXED-PHRASE DETECTION — CRITICAL (applies to both next-steps AND qualities):
+Before building EACH section, check whether a fixed word or phrase appears at the start of the majority of sentences for that section type.
+
+For NEXT-STEPS: if a consistent opening prefix appears on most next-steps sentences (e.g. "To continue to develop, [Name] should..." or "Going forward, [Name] needs to..."):
+1. Create a standard-comment section immediately before the next-steps section, containing ONLY the fixed prefix phrase
+2. Strip that prefix from every sentence before placing them in the next-steps section
+3. The next-steps section then contains only the variable, topic-specific content
+
+For QUALITIES: if a fixed opening sentence appears at the start of the qualities block in most reports (e.g. "In class, [Name] is a..."):
+1. Create a standard-comment section immediately before the qualities section, containing ONLY that fixed opening
+2. The qualities section then contains only the variable descriptive sentences
+
+Result: the teacher clicks the fixed phrase once per report, then separately picks the personalised content.
 
 RATED-COMMENT GATE — CRITICAL:
 Before building any rated-comment section, apply this test: can you genuinely sort the sentences into at least 3 meaningfully different performance levels where the CONTENT is clearly different for excellent pupils vs struggling pupils? If the sentences are all broadly positive (or all broadly neutral), they belong in "qualities" NOT "rated-comment". Only use rated-comment when there is a real spread — some sentences that clearly describe a pupil doing well and others that clearly describe a pupil who is behind or struggling.
