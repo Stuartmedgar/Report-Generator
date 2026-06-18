@@ -140,7 +140,7 @@ const IDENTIFY_SECTIONS_SYSTEM = `You are an expert at analysing teacher-written
 Your task is to read a set of reports and identify what sections a template built from these reports should contain. You are NOT extracting content — only identifying what sections exist, what type each one is, and how many separate sentences a typical pupil gets in each section.
 
 SECTION TYPES:
-- "rated-comment" — sentences where the teacher makes a judgement about how well the pupil is doing. Different pupils get different sentences based on their performance level (excellent, good, satisfactory, needs improvement). Examples: overall progress, effort, attainment, classroom application, quality of written work.
+- "rated-comment" — sentences where the teacher makes a CLEARLY DIFFERENT judgement for different performance levels. STRICT TEST: you must be able to genuinely sort the sentences into at least 3 distinct groups — excellent pupils get meaningfully different sentences from struggling pupils. If the sentences are all broadly similar with only minor word variations (e.g. all pupils get positive sentences), classify as "qualities" instead. Examples of valid rated-comment: overall progress, overall attainment — where top pupils get "outstanding progress" sentences and weak pupils get "needs to catch up" sentences.
 - "qualities" — sentences describing the pupil's personal qualities, character, behaviour, attitude, or working style. Different pupils get different sentences based on their qualities. NOTE: sentences mentioning a specific named activity, sport, instrument, or topic that varies per pupil are NOT qualities — they are personalised-comment.
 - "next-steps" — forward-looking sentences about what the pupil should focus on to improve. Grouped by topic area.
 - "personalised-comment" — sentences where ONE specific detail varies per pupil. This includes: (a) a named activity, sport, instrument, book, topic, or achievement that differs per pupil; (b) a target grade or score that differs per pupil; (c) any sentence where the SAME structure is used for all pupils but one specific detail (the variable) changes. ONLY flag as personalised-comment if this pattern appears in the majority of reports — not just one or two.
@@ -148,8 +148,15 @@ SECTION TYPES:
 - "assessment-comment" — sentences specifically about a formal assessment or test result where the LANGUAGE ITSELF changes based on performance level (excellent sentences vs struggling sentences). STRICT RULE: Every sentence in an assessment-comment section MUST explicitly mention a score, percentage, grade, or named test/exam. A general progress sentence without a specific score is rated-comment, not assessment-comment. If the SAME sentence structure is used for all pupils but only the score changes, use "personalised-comment" instead (the score is [Info 1]).
 
 SECTION COUNT RULES — CRITICAL:
-- QUALITIES: Identify only ONE qualities section across the entire report. Do not split qualities into multiple sections. Exception only if a fundamentally different section type (rated-comment, assessment-comment, personalised-comment) clearly appears between two distinct blocks of qualities sentences AND those blocks cover completely different topics.
-- NEXT-STEPS: Identify only ONE next-steps section. Same exception rule applies.
+- QUALITIES: There must be EXACTLY ONE qualities section in the output. If you find qualities sentences in multiple places, combine them all into one section. Do NOT create "Qualities Part 1", "Personal Qualities", "Character" as separate sections — merge everything into one.
+- NEXT-STEPS: There must be EXACTLY ONE next-steps section in the output. If next-steps sentences appear in multiple places, combine them all into one section.
+- These are absolute rules with no exceptions. If you are tempted to create two qualities sections or two next-steps sections, you MUST instead add all the headings into the single section.
+
+FIXED-PHRASE DETECTION — NEXT-STEPS:
+Before identifying the next-steps section, check whether a fixed word or phrase appears at the start of the majority of next-steps sentences in the reports — e.g. every next-steps sentence begins with "To continue to develop, [Name] should..." or "Going forward, [Name] needs to...". If such a consistent opening phrase exists:
+1. Identify a separate standard-comment section containing ONLY that fixed phrase (immediately before the next-steps section in the list)
+2. The next-steps section should contain only the variable content — the specific topic sentences — WITHOUT the fixed prefix
+This allows the teacher to click the fixed phrase once, then separately pick the specific next step.
 
 PERSONALISED-COMMENT DETECTION:
 Any sentence that mentions a specific named item that would logically differ per pupil — a sport, instrument, book, topic area, assessment activity, chosen unit, target grade — is a personalised-comment, NOT a qualities sentence. The specific named item should be flagged as the personalisedTopic.
@@ -238,9 +245,18 @@ Comments should be grouped so that a teacher can select the right button for a p
 - If a heading contains comments that apply to two clearly different types of pupil (e.g. confident high performers vs pupils struggling with confidence), split into two headings with judgment-signalling names.
 - If comments are minor variations of the same sentiment applying to the same type of pupil, keep them in one heading.
 
-SECTION COUNT RULE — CRITICAL:
-- QUALITIES: Combine ALL qualities/strengths sentences from the entire report into a SINGLE qualities section. Do NOT create multiple separate qualities sections. Exception only if a fundamentally different section type (rated-comment, assessment-comment, personalised-comment) clearly appears between two separate blocks of qualities text AND those blocks cover completely different topics.
-- NEXT-STEPS: Combine ALL next steps/targets/development sentences into a SINGLE next-steps section. Same exception rule applies.
+SECTION COUNT RULE — ABSOLUTE:
+- QUALITIES: Output EXACTLY ONE qualities section. Combine ALL qualities/strengths headings — regardless of where they appear in the reports — into that single section. If the section list handed to you contains multiple qualities sections, merge all their headings into the first one and discard the rest. No exceptions.
+- NEXT-STEPS: Output EXACTLY ONE next-steps section. Combine ALL next-steps headings into that single section. If the section list contains multiple next-steps sections, merge all their focus areas into the first one and discard the rest. No exceptions.
+
+FIXED-PHRASE DETECTION — NEXT-STEPS — CRITICAL:
+Before building the next-steps section, check whether a fixed word or phrase appears at the start of the majority of next-steps sentences across the reports. For example, every next-steps sentence might begin "To continue to develop, [Name] should..." or "Going forward, [Name] needs to...". If such a consistent opening prefix exists:
+1. Create a standard-comment section (immediately before the next-steps section) containing ONLY the fixed prefix phrase
+2. Strip that fixed prefix from every sentence before placing them in the next-steps section — the next-steps section should contain only the variable, topic-specific content
+3. This lets the teacher click the fixed phrase once, then separately select the specific development area
+
+RATED-COMMENT GATE — CRITICAL:
+Before building any rated-comment section, apply this test: can you genuinely sort the sentences into at least 3 meaningfully different performance levels where the CONTENT is clearly different for excellent pupils vs struggling pupils? If the sentences are all broadly positive (or all broadly neutral), they belong in "qualities" NOT "rated-comment". Only use rated-comment when there is a real spread — some sentences that clearly describe a pupil doing well and others that clearly describe a pupil who is behind or struggling.
 
 RULES FOR EACH SECTION TYPE:
 
@@ -248,6 +264,7 @@ SECTION BOUNDARY RULE — CRITICAL:
 Each section type has a strict definition. A sentence belongs to exactly ONE section. When unsure, ask: what is the PRIMARY purpose of this sentence? Assign it to that section only.
 
 For "rated-comment" sections:
+- GATE: If you cannot populate at least 3 of the 4 performance levels (excellent, good, satisfactory, needsImprovement) with genuinely different sentences, do NOT use rated-comment — convert the section to "qualities" instead and put all the sentences there.
 - ONLY extract sentences whose PRIMARY purpose is an overall performance judgement — how well the pupil is doing overall, their level of progress, their attainment
 - Also include bridging/evaluative sentences that appear consistently and comment on the pupil's result or potential (e.g. "is more capable than the result shows", "performed well with many aspects of the exam") — group these under the appropriate performance level
 - DO NOT INCLUDE: character/attitude/effort sentences (qualities); specific test result sentences (assessment-comment); forward-looking improvement sentences (next-steps)
