@@ -141,12 +141,18 @@ Your task is to read a set of reports and identify what sections a template buil
 
 SECTION TYPES:
 - "rated-comment" — sentences where the teacher makes a judgement about how well the pupil is doing. Different pupils get different sentences based on their performance level (excellent, good, satisfactory, needs improvement). Examples: overall progress, effort, attainment, classroom application, quality of written work.
-- "qualities" — sentences describing the pupil's personal qualities, character, behaviour, attitude, or working style. Different pupils get different sentences based on their qualities.
+- "qualities" — sentences describing the pupil's personal qualities, character, behaviour, attitude, or working style. Different pupils get different sentences based on their qualities. NOTE: sentences mentioning a specific named activity, sport, instrument, or topic that varies per pupil are NOT qualities — they are personalised-comment.
 - "next-steps" — forward-looking sentences about what the pupil should focus on to improve. Grouped by topic area.
-- "personalised-comment" — sentences where the SAME topic appears across the majority of reports, but ONE specific detail varies per pupil. The detail could be a sport, a musical instrument, a book, a target grade, a topic area, or any other pupil-specific information. ONLY flag as personalised-comment if this pattern appears in the majority of reports — not just one or two.
+- "personalised-comment" — sentences where ONE specific detail varies per pupil. This includes: (a) a named activity, sport, instrument, book, topic, or achievement that differs per pupil; (b) a target grade or score that differs per pupil; (c) any sentence where the SAME structure is used for all pupils but one specific detail (the variable) changes. ONLY flag as personalised-comment if this pattern appears in the majority of reports — not just one or two.
 - "standard-comment" — text that is identical or near-identical across ALL reports. Every pupil gets exactly the same text. IMPORTANT: if a paragraph appears in every report but its content clearly varies depending on how the pupil is doing (e.g. positive outlook for strong pupils, challenging outlook for weaker pupils), it is a "rated-comment" NOT a "standard-comment".
-- "assessment-comment" — sentences specifically about a formal assessment or test result, where the teacher writes DIFFERENT sentences depending on performance level (excellent, good, satisfactory, struggling). Use this ONLY when the language itself changes based on how well the pupil did.
-- IMPORTANT: If the assessment section uses the SAME sentence structure for every pupil but with a variable score or grade typed in (e.g. "[Name] scored X% in the test"), classify it as "personalised-comment" NOT "assessment-comment". The variable score is the personal detail.
+- "assessment-comment" — sentences specifically about a formal assessment or test result where the LANGUAGE ITSELF changes based on performance level (excellent sentences vs struggling sentences). STRICT RULE: Every sentence in an assessment-comment section MUST explicitly mention a score, percentage, grade, or named test/exam. A general progress sentence without a specific score is rated-comment, not assessment-comment. If the SAME sentence structure is used for all pupils but only the score changes, use "personalised-comment" instead (the score is [Info 1]).
+
+SECTION COUNT RULES — CRITICAL:
+- QUALITIES: Identify only ONE qualities section across the entire report. Do not split qualities into multiple sections. Exception only if a fundamentally different section type (rated-comment, assessment-comment, personalised-comment) clearly appears between two distinct blocks of qualities sentences AND those blocks cover completely different topics.
+- NEXT-STEPS: Identify only ONE next-steps section. Same exception rule applies.
+
+PERSONALISED-COMMENT DETECTION:
+Any sentence that mentions a specific named item that would logically differ per pupil — a sport, instrument, book, topic area, assessment activity, chosen unit, target grade — is a personalised-comment, NOT a qualities sentence. The specific named item should be flagged as the personalisedTopic.
 
 CRITICAL — RATED-COMMENT vs STANDARD-COMMENT:
 Before classifying any repeated paragraph as "standard-comment", ask: does the content of this paragraph change based on how well the pupil is doing? If yes — even slightly — it is a "rated-comment". Only classify as "standard-comment" if the text is truly identical or near-identical for every single pupil regardless of performance.
@@ -225,7 +231,16 @@ BAD heading name examples (too vague, no judgment signal):
 - "Attitude"
 - "Learning new concepts"
 
-GROUPING RULE: Comments should be grouped so that a teacher can select the right button for a particular type of pupil without reading every option. If a heading contains comments that clearly apply to two different types of pupil (e.g. some for confident high performers, some for pupils who struggle with confidence), split into two headings with judgment-signalling names. If comments are minor variations of the same sentiment and could apply to the same type of pupil, keep them together under one heading.
+GROUPING RULE — CRITICAL FOR USABILITY:
+Comments should be grouped so that a teacher can select the right button for a particular type of pupil without reading every option inside it.
+- NEVER mix statements of opposite sentiments in the same heading. If a topic has both positive and negative variants, create TWO separate headings with clear judgment signals. Example: 'Behaviour — excellent conduct' AND 'Behaviour — needs to improve'.
+- NEVER create a heading named after a general category when statements inside it refer to specific named sub-items. Name each heading after the specific item. Example: do NOT create a 'Sports' heading with statements about football, badminton, and swimming inside — create separate 'Football', 'Badminton', 'Swimming' headings instead. The same applies to any subject-specific topic areas, instruments, books, or activities.
+- If a heading contains comments that apply to two clearly different types of pupil (e.g. confident high performers vs pupils struggling with confidence), split into two headings with judgment-signalling names.
+- If comments are minor variations of the same sentiment applying to the same type of pupil, keep them in one heading.
+
+SECTION COUNT RULE — CRITICAL:
+- QUALITIES: Combine ALL qualities/strengths sentences from the entire report into a SINGLE qualities section. Do NOT create multiple separate qualities sections. Exception only if a fundamentally different section type (rated-comment, assessment-comment, personalised-comment) clearly appears between two separate blocks of qualities text AND those blocks cover completely different topics.
+- NEXT-STEPS: Combine ALL next steps/targets/development sentences into a SINGLE next-steps section. Same exception rule applies.
 
 RULES FOR EACH SECTION TYPE:
 
@@ -284,19 +299,22 @@ For "standard-comment" sections:
 - Replace ALL student names with [Name]
 
 For "assessment-comment" sections:
-- ONLY extract sentences whose PRIMARY purpose is to comment on a specific named formal assessment, test, or exam result
-- DO NOT INCLUDE: general progress sentences (rated-comment); character/quality sentences (qualities); next steps sentences (next-steps)
+- STRICT SCORE REQUIREMENT: Every single sentence in an assessment-comment section MUST explicitly mention a specific score, percentage, grade, or named test/exam. A sentence without a score or test name does NOT belong here — put it in rated-comment or qualities instead.
+- ONLY extract sentences whose PRIMARY purpose is to comment on a specific named formal assessment, test, or exam result WHERE THE LANGUAGE CHANGES based on performance level.
+- DO NOT INCLUDE: general progress sentences (rated-comment); character/quality sentences (qualities); next steps sentences (next-steps); any sentence that does not mention a score, percentage, or named test.
+- If the SAME sentence structure is used for all pupils but only the score changes, it belongs in personalised-comment (score = [Info 1]), NOT here.
 - Group by performance level: excellent, good, satisfactory, needsImprovement, notCompleted
 - Replace ALL student names with [Name] and scores/percentages with [Score]
 - Apply PRONOUN TO [Name] CONVERSION — fix verb agreement
 - Apply POSSESSIVE PRONOUNS rule — never convert possessives to object pronouns
 - Apply NO DUPLICATES
-- FINAL CHECK: Remove any sentence that also appears in the rated-comment section — assessment sentences must specifically reference a named test or exam, not general progress
+- FINAL CHECK: Remove any sentence that also appears in the rated-comment section
 
 For "personalised-comment" sections:
-- ONLY extract sentences where one specific personal detail varies per pupil (sport, instrument, target grade etc)
-- Replace the variable detail with [Info 1] (and [Info 2] if two distinct details in same sentence)
-- ALSO capture commentary sentences that consistently appear alongside the personalised sentence — sentences where the teacher endorses the pupil's choice, predicts their performance, or notes a concern about it. These commentary sentences may themselves contain the variable detail and should also use [Info 1] / [Info 2] placeholders, OR they may be generic enough to stand alone as separate options
+- SCORE SENTENCES: Any sentence mentioning a score, percentage, or grade where the same structure is used for all pupils belongs here (score = [Info 1]), NOT in assessment-comment.
+- SPECIFIC DETAIL SENTENCES: Any sentence mentioning a specific named activity, sport, instrument, book, topic, assessment task, or achievement that varies per pupil belongs here (specific item = [Info 1]).
+- Replace the variable detail with [Info 1] (and [Info 2] if two distinct variable details appear in the same sentence)
+- ALSO capture commentary sentences that consistently appear alongside the personalised sentence — teacher endorsing the choice, predicting performance, or noting a concern. These may also use [Info 1] / [Info 2] placeholders.
 - Group by scenario or tone (e.g. "Teacher endorses choice", "Teacher notes concern", "Performance prediction")
 - Mark these sections with needsRefinement: true
 - Copy sentences EXACTLY — do not paraphrase

@@ -4,12 +4,13 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { TemplateSection } from '../types';
 import PageNav from '../components/PageNav';
+import { SUBJECTS } from '../data/starterComments';
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 
 type PronounSet = 'he/his' | 'she/her' | 'they/their';
 type OpenerType = 'name' | 'pronoun';
-type MainStep = 'paste' | 'builder' | 'variety' | 'generating' | 'preview' | 'saved';
+type MainStep = 'setup' | 'paste' | 'builder' | 'variety' | 'generating' | 'preview' | 'saved';
 type SectionType = 'qualities' | 'next-steps' | 'assessment-comment' | 'standard-comment' | 'personalised-comment' | 'rated-comment' | 'optional-additional-comment';
 
 interface BuiltSection {
@@ -125,7 +126,7 @@ export default function ImportTemplate() {
   const { addTemplate } = useData();
 
   // Core state
-  const [mainStep, setMainStep] = useState<MainStep>('paste');
+  const [mainStep, setMainStep] = useState<MainStep>('setup');
   const [subject, setSubject] = useState('');
   const [yearGroup, setYearGroup] = useState('');
   const [templateName, setTemplateName] = useState('');
@@ -320,15 +321,9 @@ export default function ImportTemplate() {
       const sections = result.sections.map((s: any) => ({ ...s, id: makeId(), data: s.data || {} }));
       const normalisedSections = normaliseTemplateSections(sections, pronounSet);
       const splitResult = splitSections(normalisedSections, typicalCountMap);
-      setGeneratedTemplate({
-        name: templateName.trim() || result.templateName || `${subject} ${yearGroup} Report Template`,
-        sections: splitResult,
-      });
-      const builtForVariety = splitResult
-        .filter((s: any) => s.type === 'qualities' || s.type === 'next-steps')
-        .map((s: any) => ({ section: { id: s.id, type: s.type, name: s.name, openerType: 'name' as OpenerType, positionType: s.type, data: s.data }, selected: true }));
-      setSectionsForVariety(builtForVariety);
-      setMainStep('variety');
+      const finalName = templateName.trim() || result.templateName || `${subject}${yearGroup ? ' ' + yearGroup : ''} Report Template`;
+      addTemplate({ name: finalName, sections: splitResult });
+      navigate('/start');
     } catch (err: any) {
       setError('Quick build failed. Please try the guided wizard instead.');
     } finally {
@@ -536,25 +531,53 @@ export default function ImportTemplate() {
     </div>
   );
 
+  // ─── STEP: SETUP ─────────────────────────────────────────────────────────
+
+  const SUBJECT_ICONS: Record<string, string> = { 'PE': '🏃', 'English': '📖', 'Maths': '📐', 'Science': '🔬', 'History': '🏛️', 'Geography': '🌍', 'Modern Languages': '💬', 'Art & Design': '🎨', 'Music': '🎵', 'Generic': '📋' };
+
+  if (mainStep === 'setup') return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151' }}>AI Quick Build</div>
+        <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>← Back</button>
+      </div>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px' }}>
+        <div style={{ maxWidth: '560px', width: '100%', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07)', padding: '40px 44px' }}>
+          <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', margin: '0 0 8px 0' }}>AI Quick Build</h2>
+          <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 28px 0', lineHeight: '1.6' }}>Name your template and choose your subject, then paste your reports and the AI will build your template automatically.</p>
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Template Name *</label>
+            <input type="text" value={templateName} onChange={e => { setTemplateName(e.target.value); if (error) setError(null); }} placeholder="e.g. S3 History Reports" style={{ width: '100%', padding: '10px 14px', border: `2px solid ${error ? '#ef4444' : '#e5e7eb'}`, borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' as const, fontFamily: 'inherit' }} autoFocus onKeyDown={e => { if (e.key === 'Enter' && templateName.trim()) { setError(null); setMainStep('paste'); } }} />
+          </div>
+          <p style={{ fontSize: '13px', fontWeight: '600', color: '#374151', margin: '0 0 12px 0' }}>Select your subject:</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+            {SUBJECTS.map(s => (
+              <button key={s} onClick={() => { if (!templateName.trim()) { setError('Please enter a template name first.'); return; } setError(null); setSubject(s); setMainStep('paste'); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', backgroundColor: 'white', border: `2px solid ${subject === s ? '#8b5cf6' : '#e5e7eb'}`, borderRadius: '10px', cursor: 'pointer', textAlign: 'left' as const, fontSize: '14px', fontWeight: '600', color: '#111827', fontFamily: 'inherit' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#8b5cf6'; e.currentTarget.style.backgroundColor = '#f5f3ff'; }} onMouseLeave={e => { if (subject !== s) { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.backgroundColor = 'white'; } }}>
+                <span style={{ fontSize: '22px' }}>{SUBJECT_ICONS[s]}</span><span>{s}</span>
+              </button>
+            ))}
+          </div>
+          {error && <p style={{ fontSize: '13px', color: '#ef4444', margin: '12px 0 0 0' }}>{error}</p>}
+        </div>
+      </div>
+    </div>
+  );
+
   // ─── STEP: PASTE ──────────────────────────────────────────────────────────
 
   if (mainStep === 'paste') return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
-      <PageNav />
-      <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '16px 24px' }}>
-        <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: '#111827' }}>🪄 Import from Reports</h1>
-        <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280' }}>Build a template from your existing reports</p>
-      </header>
+      <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827' }}>{templateName}</div>
+          <div style={{ fontSize: '12px', color: '#6b7280' }}>{subject} · AI Quick Build</div>
+        </div>
+        <button onClick={() => setMainStep('setup')} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>← Back</button>
+      </div>
       <main style={{ maxWidth: '800px', margin: '0 auto', padding: '32px 24px' }}>
         <div style={card}>
-          <h2 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Template Details</h2>
-          <div style={{ marginBottom: '12px' }}>
-            <label style={lbl}>Template Name</label>
-            <input type="text" value={templateName} onChange={e => setTemplateName(e.target.value)} placeholder="e.g. S3 History Reports" style={inp} />
-          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div><label style={lbl}>Subject *</label><input type="text" value={subject} onChange={e => setSubject(e.target.value)} placeholder="e.g. History" style={inp} /></div>
-            <div><label style={lbl}>Year Group</label><select value={yearGroup} onChange={e => setYearGroup(e.target.value)} style={inp}><option value="">Select...</option>{['S1','S2','S3','S4','S5','S6','Mixed'].map(y => <option key={y}>{y}</option>)}</select></div>
+            <div><label style={lbl}>Year Group (optional)</label><select value={yearGroup} onChange={e => setYearGroup(e.target.value)} style={inp}><option value="">Select...</option>{['S1','S2','S3','S4','S5','S6','Mixed'].map(y => <option key={y}>{y}</option>)}</select></div>
           </div>
         </div>
         <div style={card}>
