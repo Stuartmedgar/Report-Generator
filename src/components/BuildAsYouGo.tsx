@@ -120,7 +120,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const [movingStatementKey, setMovingStatementKey] = useState<{ buttonIdx: number; stmtIdx: number } | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
-  const [nameMode, setNameMode] = useState(false);
+  const [activePlaceholder, setActivePlaceholder] = useState<string | null>(null);
   const statementInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { if (addedSections.length > 0) saveDraft(localTemplateName, addedSections); }, [addedSections, localTemplateName]);
@@ -364,6 +364,49 @@ const handleSaveAndWrite = () => {
   };
 
   // Determine which ready-made pools to show based on current question
+  const getTokenStyle = (token: string): React.CSSProperties => {
+    const base: React.CSSProperties = { cursor: 'pointer', borderRadius: '3px', padding: '1px 3px' };
+    if (activePlaceholder === '[Name]') {
+      return /^[A-Z][a-zA-Z]/.test(token) && !token.startsWith('[')
+        ? { ...base, backgroundColor: '#dbeafe', border: '1px solid #93c5fd', color: '#1d4ed8' }
+        : { ...base, backgroundColor: '#fef9c3', border: '1px solid #fde047', color: '#713f12' };
+    }
+    if (activePlaceholder === '[Score 1]' || activePlaceholder === '[Score 2]') {
+      return /^\d/.test(token)
+        ? { ...base, backgroundColor: '#dcfce7', border: '1px solid #86efac', color: '#166534' }
+        : { ...base, backgroundColor: '#fef9c3', border: '1px solid #fde047', color: '#713f12' };
+    }
+    return { ...base, backgroundColor: '#fef9c3', border: '1px solid #fde047', color: '#713f12' };
+  };
+
+  const placeholderBtn = (p: string) => (
+    <button
+      key={p}
+      onClick={() => setActivePlaceholder(prev => prev === p ? null : p)}
+      style={{ padding: '3px 7px', border: `1px solid ${activePlaceholder === p ? '#f59e0b' : '#fde68a'}`, borderRadius: '5px', backgroundColor: activePlaceholder === p ? '#fef3c7' : 'white', color: '#92400e', fontSize: '11px', fontWeight: '700', cursor: 'pointer', flexShrink: 0 }}
+    >{p}</button>
+  );
+
+  const renderHighlightedTokens = (ex: string, i: number) => {
+    const tokens = ex.split(/(\s+)/);
+    return tokens.map((token, ti) =>
+      /^\s+$/.test(token) ? <span key={ti}>{token}</span> : (
+        <span
+          key={ti}
+          onClick={() => {
+            const updated = [...tokens];
+            updated[ti] = activePlaceholder!;
+            setHighlightedExamples(prev => prev.map((e, j) => j === i ? updated.join('') : e));
+          }}
+          title={`Click to replace with ${activePlaceholder}`}
+          style={getTokenStyle(token)}
+          onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fbbf24'; e.currentTarget.style.color = 'white'; }}
+          onMouseLeave={e => { const s = getTokenStyle(token); e.currentTarget.style.backgroundColor = s.backgroundColor as string; e.currentTarget.style.color = s.color as string; }}
+        >{token}</span>
+      )
+    );
+  };
+
   const getPoolsForQuestion = (): { universal: AddableButton[]; subject: AddableButton[] } => {
     if (!question) return { universal: [], subject: [] };
     const qid = question.id;
@@ -407,58 +450,38 @@ const handleSaveAndWrite = () => {
     return (
       <div>
         {highlightedExamples.length > 0 && sType !== 'standard-comment' && (
-          <div style={{ marginBottom: '20px', backgroundColor: '#fefce8', border: `1px solid ${nameMode ? '#f59e0b' : '#fde68a'}`, borderRadius: '10px', padding: '14px 16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: nameMode ? '6px' : '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ marginBottom: '20px', backgroundColor: '#fefce8', border: `1px solid ${activePlaceholder ? '#f59e0b' : '#fde68a'}`, borderRadius: '10px', padding: '14px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: activePlaceholder ? '6px' : '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '13px', fontWeight: '700', color: '#713f12' }}>Selected Statements ({highlightedExamples.length})</span>
-                <button
-                  onClick={() => setNameMode(m => !m)}
-                  title={nameMode ? 'Exit name mode' : 'Click words to replace with [Name]'}
-                  style={{ padding: '3px 8px', border: `1px solid ${nameMode ? '#f59e0b' : '#fde68a'}`, borderRadius: '5px', backgroundColor: nameMode ? '#fef3c7' : 'white', color: '#92400e', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}
-                >[Name]</button>
+                {placeholderBtn('[Name]')}
+                {sType === 'assessment-comment' && <>{placeholderBtn('[Score 1]')}{placeholderBtn('[Score 2]')}</>}
+                {sType === 'personalised-comment' && <>{placeholderBtn('[Info 1]')}{placeholderBtn('[Info 2]')}</>}
               </div>
-              <button onClick={() => { setHighlightedExamples([]); setNameMode(false); }} style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '12px', fontWeight: '500', padding: 0 }}>Clear all</button>
+              <button onClick={() => { setHighlightedExamples([]); setActivePlaceholder(null); }} style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '12px', fontWeight: '500', padding: 0 }}>Clear all</button>
             </div>
-            {nameMode && <p style={{ fontSize: '11px', color: '#92400e', margin: '0 0 10px 0' }}>Click any word to replace it with [Name]</p>}
-            {highlightedExamples.map((ex, i) => {
-              const tokens = ex.split(/(\s+)/);
-              return (
-                <div key={i} style={{ backgroundColor: 'white', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                  <div style={{ flex: 1, fontSize: '13px', lineHeight: '1.7', wordBreak: 'break-word' }}>
-                    {nameMode ? tokens.map((token, ti) =>
-                      /^\s+$/.test(token) ? <span key={ti}>{token}</span> : (
-                        <span
-                          key={ti}
-                          onClick={() => {
-                            const updated = [...tokens];
-                            updated[ti] = '[Name]';
-                            setHighlightedExamples(prev => prev.map((e, j) => j === i ? updated.join('') : e));
-                          }}
-                          title="Click to replace with [Name]"
-                          style={{ cursor: 'pointer', borderRadius: '3px', padding: '1px 3px', backgroundColor: '#fef9c3', border: '1px solid #fde047', color: '#713f12' }}
-                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fbbf24'; e.currentTarget.style.color = 'white'; }}
-                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fef9c3'; e.currentTarget.style.color = '#713f12'; }}
-                        >{token}</span>
-                      )
-                    ) : <span style={{ color: '#374151' }}>{ex}</span>}
-                  </div>
-                  <select
-                    value=""
-                    onChange={e => handleAssignHighlight(ex, i, e.target.value)}
-                    style={{ width: '155px', flexShrink: 0, fontSize: '12px', padding: '5px 6px', border: '1px solid #fde68a', borderRadius: '6px', backgroundColor: '#fffbeb', color: '#78350f', cursor: 'pointer' }}
-                  >
-                    <option value="">— assign —</option>
-                    {buttons.map((b, bi) => b.name ? (
-                      <option key={bi} value={String(bi)} disabled={b.statements.length >= MAX_STATEMENTS}>
-                        {b.name}{b.statements.length >= MAX_STATEMENTS ? ' (full)' : ''}
-                      </option>
-                    ) : null)}
-                    <option value="new">+ New button</option>
-                  </select>
-                  <button onClick={() => setHighlightedExamples(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '16px', flexShrink: 0, lineHeight: 1, padding: '2px 0' }}>✕</button>
+            {activePlaceholder && <p style={{ fontSize: '11px', color: '#92400e', margin: '0 0 10px 0' }}>Click any word to replace it with {activePlaceholder}</p>}
+            {highlightedExamples.map((ex, i) => (
+              <div key={i} style={{ backgroundColor: 'white', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <div style={{ flex: 1, fontSize: '13px', lineHeight: '1.7', wordBreak: 'break-word' }}>
+                  {activePlaceholder ? renderHighlightedTokens(ex, i) : <span style={{ color: '#374151' }}>{ex}</span>}
                 </div>
-              );
-            })}
+                <select
+                  value=""
+                  onChange={e => handleAssignHighlight(ex, i, e.target.value)}
+                  style={{ width: '155px', flexShrink: 0, fontSize: '12px', padding: '5px 6px', border: '1px solid #fde68a', borderRadius: '6px', backgroundColor: '#fffbeb', color: '#78350f', cursor: 'pointer' }}
+                >
+                  <option value="">— assign —</option>
+                  {buttons.map((b, bi) => b.name ? (
+                    <option key={bi} value={String(bi)} disabled={b.statements.length >= MAX_STATEMENTS}>
+                      {b.name}{b.statements.length >= MAX_STATEMENTS ? ' (full)' : ''}
+                    </option>
+                  ) : null)}
+                  <option value="new">+ New button</option>
+                </select>
+                <button onClick={() => setHighlightedExamples(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '16px', flexShrink: 0, lineHeight: 1, padding: '2px 0' }}>✕</button>
+              </div>
+            ))}
           </div>
         )}
         {isRated && (
@@ -685,6 +708,30 @@ const handleSaveAndWrite = () => {
 
               {hasStandardComment === 'manual' && (
                 <div>
+                  {highlightedExamples.length > 0 && (
+                    <div style={{ marginBottom: '20px', backgroundColor: '#fefce8', border: `1px solid ${activePlaceholder === '[Name]' ? '#f59e0b' : '#fde68a'}`, borderRadius: '10px', padding: '14px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: activePlaceholder === '[Name]' ? '6px' : '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: '700', color: '#713f12' }}>Selected Statements ({highlightedExamples.length})</span>
+                          {placeholderBtn('[Name]')}
+                        </div>
+                        <button onClick={() => { setHighlightedExamples([]); setActivePlaceholder(null); }} style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '12px', fontWeight: '500', padding: 0 }}>Clear all</button>
+                      </div>
+                      {activePlaceholder === '[Name]' && <p style={{ fontSize: '11px', color: '#92400e', margin: '0 0 10px 0' }}>Click any word to replace it with [Name]</p>}
+                      {highlightedExamples.map((ex, i) => (
+                        <div key={i} style={{ backgroundColor: 'white', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                          <div style={{ flex: 1, fontSize: '13px', lineHeight: '1.7', wordBreak: 'break-word' }}>
+                            {activePlaceholder === '[Name]' ? renderHighlightedTokens(ex, i) : <span style={{ color: '#374151' }}>{ex}</span>}
+                          </div>
+                          <button
+                            onClick={() => { setAddedSections(prev => [...prev, { id: makeId(), type: 'standard-comment' as SectionType, name: '', buttons: [], content: ex, instruction: '', showHeader: false }]); setHighlightedExamples(prev => prev.filter((_, j) => j !== i)); }}
+                            style={{ padding: '4px 10px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}
+                          >Add</button>
+                          <button onClick={() => setHighlightedExamples(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '16px', flexShrink: 0, lineHeight: 1, padding: '2px 0' }}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {(() => { const stmts = addedSections.filter(s => s.type === 'standard-comment'); return stmts.length > 0 && (
                     <div style={{ marginBottom: '16px' }}>
                       <div style={{ fontSize: '12px', fontWeight: '700', color: '#6b7280', letterSpacing: '0.04em', marginBottom: '8px' }}>ADDED ({stmts.length})</div>
