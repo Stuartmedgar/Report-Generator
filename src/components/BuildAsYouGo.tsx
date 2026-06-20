@@ -346,13 +346,49 @@ const handleSaveAndWrite = () => {
         {highlightedExamples.length > 0 && (
           <div style={{ padding: '8px 12px', backgroundColor: '#fefce8', borderBottom: '1px solid #fef08a', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <span style={{ fontSize: '11px', fontWeight: '700', color: '#713f12' }}>SELECTED EXAMPLES ({highlightedExamples.length}) — used to guide the AI search</span>
+              <span style={{ fontSize: '11px', fontWeight: '700', color: '#713f12' }}>HIGHLIGHTED ({highlightedExamples.length}) — assign to a button or use to guide AI</span>
               <button onClick={() => setHighlightedExamples([])} style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '11px', fontWeight: '500', padding: 0 }}>Clear all</button>
             </div>
             {highlightedExamples.map((ex, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', marginBottom: '4px' }}>
-                <span style={{ fontSize: '11px', color: '#92400e', flex: 1, lineHeight: '1.4' }}>"{ex.length > 90 ? ex.slice(0, 90) + '…' : ex}"</span>
-                <button onClick={() => setHighlightedExamples(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '13px', flexShrink: 0, lineHeight: 1, paddingTop: '1px' }}>✕</button>
+              <div key={i} style={{ marginBottom: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', marginBottom: '3px' }}>
+                  <span style={{ fontSize: '11px', color: '#92400e', flex: 1, lineHeight: '1.4' }}>"{ex.length > 90 ? ex.slice(0, 90) + '…' : ex}"</span>
+                  <button onClick={() => setHighlightedExamples(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '13px', flexShrink: 0, lineHeight: 1, paddingTop: '1px' }}>✕</button>
+                </div>
+                {phase === 'statements' && question?.hasButtons && (
+                  <select
+                    value=""
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (!val) return;
+                      if (val === 'new') {
+                        const name = window.prompt('Name for the new button:');
+                        if (!name?.trim()) return;
+                        const newIdx = buttons.length;
+                        setButtons(prev => [...prev, { name: name.trim(), statements: [ex] }]);
+                        setActiveButtonIndex(newIdx);
+                      } else {
+                        const bi = parseInt(val);
+                        if (buttons[bi]?.statements.length >= MAX_STATEMENTS) {
+                          alert(`"${buttons[bi].name}" already has the maximum ${MAX_STATEMENTS} statements.`);
+                          return;
+                        }
+                        setButtons(prev => { const u = [...prev]; u[bi] = { ...u[bi], statements: [...u[bi].statements, ex] }; return u; });
+                        setActiveButtonIndex(bi);
+                      }
+                      setHighlightedExamples(prev => prev.filter((_, j) => j !== i));
+                    }}
+                    style={{ fontSize: '11px', padding: '3px 6px', border: '1px solid #fde68a', borderRadius: '4px', backgroundColor: 'white', color: '#78350f', cursor: 'pointer', width: '100%' }}
+                  >
+                    <option value="">— assign to button —</option>
+                    {buttons.map((b, bi) => b.name ? (
+                      <option key={bi} value={String(bi)} disabled={b.statements.length >= MAX_STATEMENTS}>
+                        {b.name}{b.statements.length >= MAX_STATEMENTS ? ' (full)' : ''}
+                      </option>
+                    ) : null)}
+                    <option value="new">+ Add new button</option>
+                  </select>
+                )}
               </div>
             ))}
           </div>
