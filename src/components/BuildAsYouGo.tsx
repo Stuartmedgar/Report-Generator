@@ -120,6 +120,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const [movingStatementKey, setMovingStatementKey] = useState<{ buttonIdx: number; stmtIdx: number } | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [nameModeIdx, setNameModeIdx] = useState<number | null>(null);
   const statementInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { if (addedSections.length > 0) saveDraft(localTemplateName, addedSections); }, [addedSections, localTemplateName]);
@@ -401,6 +402,7 @@ const handleSaveAndWrite = () => {
         setActiveButtonIndex(bi);
       }
       setHighlightedExamples(prev => prev.filter((_, j) => j !== exIdx));
+      setNameModeIdx(null);
     };
 
     return (
@@ -411,27 +413,57 @@ const handleSaveAndWrite = () => {
               <span style={{ fontSize: '13px', fontWeight: '700', color: '#713f12' }}>Selected Statements ({highlightedExamples.length})</span>
               <button onClick={() => setHighlightedExamples([])} style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '12px', fontWeight: '500', padding: 0 }}>Clear all</button>
             </div>
-            {highlightedExamples.map((ex, i) => (
-              <div key={i} style={{ backgroundColor: 'white', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px' }}>
-                <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.5', marginBottom: '8px' }}>{ex}</div>
-                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  <select
-                    value=""
-                    onChange={e => handleAssignHighlight(ex, i, e.target.value)}
-                    style={{ flex: 1, fontSize: '12px', padding: '5px 8px', border: '1px solid #fde68a', borderRadius: '6px', backgroundColor: '#fffbeb', color: '#78350f', cursor: 'pointer' }}
-                  >
-                    <option value="">— assign to button —</option>
-                    {buttons.map((b, bi) => b.name ? (
-                      <option key={bi} value={String(bi)} disabled={b.statements.length >= MAX_STATEMENTS}>
-                        {b.name}{b.statements.length >= MAX_STATEMENTS ? ' (full)' : ''}
-                      </option>
-                    ) : null)}
-                    <option value="new">+ Add new button</option>
-                  </select>
-                  <button onClick={() => setHighlightedExamples(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '16px', flexShrink: 0, lineHeight: 1, padding: '2px 4px' }}>✕</button>
+            {highlightedExamples.map((ex, i) => {
+              const inNameMode = nameModeIdx === i;
+              const tokens = ex.split(/(\s+)/);
+              return (
+                <div key={i} style={{ backgroundColor: 'white', border: `1px solid ${inNameMode ? '#f59e0b' : '#fde68a'}`, borderRadius: '8px', padding: '10px 12px', marginBottom: '8px' }}>
+                  {inNameMode ? (
+                    <div style={{ fontSize: '13px', lineHeight: '1.9', marginBottom: '8px', wordBreak: 'break-word' }}>
+                      {tokens.map((token, ti) =>
+                        /^\s+$/.test(token) ? <span key={ti}>{token}</span> : (
+                          <span
+                            key={ti}
+                            onClick={() => {
+                              const updated = [...tokens];
+                              updated[ti] = '[Name]';
+                              setHighlightedExamples(prev => prev.map((e, j) => j === i ? updated.join('') : e));
+                            }}
+                            title="Click to replace with [Name]"
+                            style={{ cursor: 'pointer', borderRadius: '3px', padding: '1px 3px', backgroundColor: '#fef9c3', border: '1px solid #fde047', color: '#713f12' }}
+                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fbbf24'; e.currentTarget.style.color = 'white'; }}
+                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fef9c3'; e.currentTarget.style.color = '#713f12'; }}
+                          >{token}</span>
+                        )
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '13px', color: '#374151', lineHeight: '1.5', marginBottom: '8px' }}>{ex}</div>
+                  )}
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <button
+                      onClick={() => setNameModeIdx(inNameMode ? null : i)}
+                      title={inNameMode ? 'Done replacing names' : 'Click words to replace with [Name]'}
+                      style={{ padding: '4px 8px', border: `1px solid ${inNameMode ? '#f59e0b' : '#fde68a'}`, borderRadius: '5px', backgroundColor: inNameMode ? '#fef3c7' : 'white', color: '#92400e', fontSize: '11px', fontWeight: '700', cursor: 'pointer', flexShrink: 0 }}
+                    >[Name]</button>
+                    <select
+                      value=""
+                      onChange={e => handleAssignHighlight(ex, i, e.target.value)}
+                      style={{ flex: 1, fontSize: '12px', padding: '5px 8px', border: '1px solid #fde68a', borderRadius: '6px', backgroundColor: '#fffbeb', color: '#78350f', cursor: 'pointer' }}
+                    >
+                      <option value="">— assign to button —</option>
+                      {buttons.map((b, bi) => b.name ? (
+                        <option key={bi} value={String(bi)} disabled={b.statements.length >= MAX_STATEMENTS}>
+                          {b.name}{b.statements.length >= MAX_STATEMENTS ? ' (full)' : ''}
+                        </option>
+                      ) : null)}
+                      <option value="new">+ Add new button</option>
+                    </select>
+                    <button onClick={() => { setHighlightedExamples(prev => prev.filter((_, j) => j !== i)); setNameModeIdx(null); }} style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '16px', flexShrink: 0, lineHeight: 1, padding: '2px 4px' }}>✕</button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
         {isRated && (
