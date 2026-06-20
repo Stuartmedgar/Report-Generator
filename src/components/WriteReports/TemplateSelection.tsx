@@ -139,7 +139,7 @@ function TemplateSelection({
             <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 16px 0', lineHeight: '1.6' }}>
               Use the guided wizard to build a template from your existing reports. Takes about 20 minutes and gives great results.
             </p>
-            <Link to="/import-template" style={{ textDecoration: 'none' }}>
+            <Link to="/import-template" state={{ classId: selectedClass?.id }} style={{ textDecoration: 'none' }}>
               <button style={panelBtnPrimary('#8b5cf6')}>Start the Wizard</button>
             </Link>
           </div>
@@ -179,7 +179,7 @@ function TemplateSelection({
         You have {state.classes.length} {state.classes.length === 1 ? 'class' : 'classes'} ready — now get a template and you can start writing.
       </p>
       <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
-        <Link to="/import-template" style={{ textDecoration: 'none' }}>
+        <Link to="/import-template" state={{ classId: selectedClass?.id }} style={{ textDecoration: 'none' }}>
           <button style={panelBtnPrimary('#8b5cf6')}>🪄 Start the Wizard</button>
         </Link>
         <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
@@ -435,7 +435,7 @@ function TemplateSelection({
         {state.templates.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '32px 16px' }}>
             <p style={{ color: '#6b7280', marginBottom: '16px', fontSize: '14px' }}>No templates yet</p>
-            <Link to="/import-template" style={{ textDecoration: 'none' }}>
+            <Link to="/import-template" state={{ classId: selectedClass?.id }} style={{ textDecoration: 'none' }}>
               <button style={{ backgroundColor: '#8b5cf6', color: 'white', padding: '12px 20px', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
                 🪄 Start the Wizard
               </button>
@@ -472,7 +472,7 @@ function TemplateSelection({
           💡 Need a template?
         </p>
         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link to="/import-template" style={{ textDecoration: 'none' }}>
+          <Link to="/import-template" state={{ classId: selectedClass?.id }} style={{ textDecoration: 'none' }}>
             <button style={{ backgroundColor: '#8b5cf6', color: 'white', padding: '8px 12px', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}>
               🪄 Wizard
             </button>

@@ -286,7 +286,7 @@ function StartReports() {
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
 
           <button
-            onClick={() => navigate('/import-template')}
+            onClick={() => navigate('/import-template', { state: { classId: selectedClass?.id } })}
             style={{ ...optionBtnStyle('#8b5cf6'), marginBottom: 0 }}
           >
             <span style={{ fontSize: '22px', flexShrink: 0 }}>⚡</span>

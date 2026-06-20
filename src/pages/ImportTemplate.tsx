@@ -1,6 +1,6 @@
 // src/pages/ImportTemplate.tsx
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { TemplateSection } from '../types';
 import PageNav from '../components/PageNav';
@@ -123,6 +123,8 @@ function normaliseTemplateSections(sections: any[], pronounSet: PronounSet): any
 
 export default function ImportTemplate() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const classId = (location.state as { classId?: string } | null)?.classId;
   const { addTemplate } = useData();
 
   // Core state
@@ -636,7 +638,7 @@ export default function ImportTemplate() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <button onClick={() => { addTemplate({ name: previewFinalName, sections: previewSections }); navigate('/start'); }} style={{ backgroundColor: '#10b981', color: 'white', padding: '16px', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', width: '100%' }}>
+            <button onClick={() => { const newId = addTemplate({ name: previewFinalName, sections: previewSections }); navigate('/write-reports', { state: { preselectedClassId: classId, preselectedTemplateId: newId } }); }} style={{ backgroundColor: '#10b981', color: 'white', padding: '16px', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', width: '100%' }}>
               Save Template and Continue
             </button>
             <button onClick={() => setMainStep('paste')} style={{ background: 'none', border: '1px solid #d1d5db', borderRadius: '10px', padding: '12px', fontSize: '14px', color: '#6b7280', cursor: 'pointer', width: '100%' }}>
