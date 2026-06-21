@@ -72,7 +72,7 @@ function saveDraft(n: string, s: AddedSection[]) { try { localStorage.setItem(AU
 function clearDraft() { try { localStorage.removeItem(AUTOSAVE_KEY); } catch (_) {} }
 
 
-type Screen = 'subject' | 'standard-comment' | 'wizard';
+type Screen = 'subject' | 'wizard';
 
 const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onComplete, onCancel }) => {
   const navigate = useNavigate();
@@ -121,6 +121,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [activePlaceholder, setActivePlaceholder] = useState<string | null>(null);
+  const [showPool, setShowPool] = useState(false);
+  const [standardCandidateName, setStandardCandidateName] = useState('');
   const statementInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { if (addedSections.length > 0) saveDraft(localTemplateName, addedSections); }, [addedSections, localTemplateName]);
@@ -164,10 +166,20 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     setPhase('ask'); setSectionName(''); setButtons([]); setActiveButtonIndex(0);
     setNewStatement(''); setNewButtonName(''); setAddingNewButton(false); setNamingButtonIndex(null); setNamingButtonValue('');
     setStandardContent(''); setShowExamples(false); setAiError(null); setEditingStatementKey(null); setMovingStatementKey(null);
-    setHighlightedExamples([]);
+    setHighlightedExamples([]); setShowPool(false);
   };
   const advanceQuestion = () => { if (isLastQuestion) handleSaveAndWrite(); else { setCurrentStep(s => s + 1); resetWizardQuestion(); } };
-  const handleWizardYes = () => { setSectionName(question.defaultName); setPhase('name'); };
+  const handleWizardYes = () => {
+    const name = sectionName.trim() || question.defaultName;
+    setSectionName(name);
+    if (question.hasButtons) {
+      if (question.isRatedFixed) setButtons(DEFAULT_RATED_BUTTONS.map(n => ({ name: n, statements: [] })));
+      else if (question.id === 'assessment-comment') setButtons(ASSESSMENT_ADDABLE_UNIVERSAL.map(b => ({ name: b.name, statements: [] })));
+      else { setButtons([{ name: '', statements: [] }]); setNamingButtonIndex(0); setNamingButtonValue(''); }
+      setActiveButtonIndex(0);
+    }
+    setPhase('statements');
+  };
   const handleWizardNo = () => advanceQuestion();
   const handleNameConfirmed = () => {
     if (!sectionName.trim()) return;
@@ -185,12 +197,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     if (editingSectionId) { setAddedSections(prev => prev.map(s => s.id === editingSectionId ? { ...newSection, showHeader: s.showHeader } : s)); setEditingSectionId(null); setPhase('added'); }
     else { setAddedSections(prev => [...prev, newSection]); setPhase('added'); }
   };
-  const handleAddAnother = () => {
-    setSectionName(question.defaultName); setPhase('name'); setButtons([]); setActiveButtonIndex(0);
-    setNewStatement(''); setNewButtonName(''); setAddingNewButton(false); setNamingButtonIndex(null); setNamingButtonValue('');
-    setStandardContent(''); setShowExamples(false); setAiError(null); setEditingStatementKey(null); setMovingStatementKey(null);
-    setHighlightedExamples([]);
-  };
+  const handleAddAnother = () => { resetWizardQuestion(); };
 
   const handleAiFindInReports = async (sName?: string, sType?: string) => {
     if (!hasReports) return;
@@ -307,9 +314,9 @@ const handleSaveAndWrite = () => {
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{ width: '120px', height: '4px', backgroundColor: '#e5e7eb', borderRadius: '2px' }}>
-                <div style={{ width: `${((currentStep + 1) / QUESTIONS.length) * 100}%`, height: '100%', backgroundColor: '#3b82f6', borderRadius: '2px', transition: 'width 0.3s ease' }} />
+                <div style={{ width: `${currentStep >= 0 ? ((currentStep + 1) / QUESTIONS.length) * 100 : 0}%`, height: '100%', backgroundColor: '#3b82f6', borderRadius: '2px', transition: 'width 0.3s ease' }} />
               </div>
-              <span style={{ fontSize: '12px', color: '#6b7280' }}>{currentStep + 1}/{QUESTIONS.length}</span>
+              <span style={{ fontSize: '12px', color: '#6b7280' }}>{currentStep >= 0 ? `${currentStep + 1}/${QUESTIONS.length}` : 'Intro'}</span>
             </div>
             <button onClick={() => setReportsPanelOpen(o => !o)} style={{ backgroundColor: '#f3f4f6', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: '6px', padding: '6px 14px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>{reportsPanelOpen ? 'Hide reports' : '📄 Show reports'}</button>
           </>
@@ -356,7 +363,15 @@ const handleSaveAndWrite = () => {
               {pastedReports}
             </div>
           ) : (
-            <textarea ref={reportsPanelRef} value={pastedReports} onChange={e => setPastedReports(e.target.value)} onScroll={handleReportsPanelScroll} placeholder="Paste your existing reports here. Your reports stay on your device — they are never sent to a server or stored." style={{ flex: 1, width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '12px', lineHeight: '1.7', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'inherit', color: '#374151' }} />
+            <>
+              {!hasReports && (
+                <div style={{ textAlign: 'center', padding: '14px 0 10px 0' }}>
+                  <div style={{ fontSize: '20px', fontWeight: '800', color: '#1e293b', marginBottom: '5px' }}>Paste your reports here</div>
+                  <div style={{ fontSize: '12px', color: '#64748b' }}>Keep to one class worth of reports for best results</div>
+                </div>
+              )}
+              <textarea ref={reportsPanelRef} value={pastedReports} onChange={e => setPastedReports(e.target.value)} onScroll={handleReportsPanelScroll} placeholder="Paste existing reports here — they stay on your device and are never stored." style={{ flex: 1, width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '12px', lineHeight: '1.7', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'inherit', color: '#374151' }} />
+            </>
           )}
         </div>
       </div>
@@ -379,13 +394,23 @@ const handleSaveAndWrite = () => {
     return { ...base, backgroundColor: '#fef9c3', border: '1px solid #fde047', color: '#713f12' };
   };
 
-  const placeholderBtn = (p: string) => (
-    <button
-      key={p}
-      onClick={() => setActivePlaceholder(prev => prev === p ? null : p)}
-      style={{ padding: '3px 7px', border: `1px solid ${activePlaceholder === p ? '#f59e0b' : '#fde68a'}`, borderRadius: '5px', backgroundColor: activePlaceholder === p ? '#fef3c7' : 'white', color: '#92400e', fontSize: '11px', fontWeight: '700', cursor: 'pointer', flexShrink: 0 }}
-    >{p}</button>
-  );
+  const placeholderBtn = (p: string) => {
+    const tooltips: Record<string, string> = {
+      '[Name]': 'Replaces a pupil\'s real name with [Name] so the comment works for any pupil. Activate, then click names in the statements below.',
+      '[Score 1]': 'Replaces a score or percentage with [Score 1] so you can type the real value when writing. Activate, then click numbers in the statements.',
+      '[Score 2]': 'A second score placeholder — useful if a section shows two scores. Activate, then click numbers in the statements.',
+      '[Info 1]': 'Replaces any word or phrase with [Info 1] so you can personalise it per pupil (e.g. a target or sport). Activate, then click the word to replace.',
+      '[Info 2]': 'A second personalised placeholder for a different piece of pupil-specific information.',
+    };
+    return (
+      <button
+        key={p}
+        onClick={() => setActivePlaceholder(prev => prev === p ? null : p)}
+        title={tooltips[p] || p}
+        style={{ padding: '3px 7px', border: `1px solid ${activePlaceholder === p ? '#f59e0b' : '#fde68a'}`, borderRadius: '5px', backgroundColor: activePlaceholder === p ? '#fef3c7' : 'white', color: '#92400e', fontSize: '11px', fontWeight: '700', cursor: 'pointer', flexShrink: 0 }}
+      >{p}</button>
+    );
+  };
 
   const renderHighlightedTokens = (ex: string, i: number) => {
     const tokens = ex.split(/(\s+)/);
@@ -454,6 +479,7 @@ const handleSaveAndWrite = () => {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: activePlaceholder ? '6px' : '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '13px', fontWeight: '700', color: '#713f12' }}>Selected Statements ({highlightedExamples.length})</span>
+                <span style={{ fontSize: '11px', color: '#a16207', fontStyle: 'italic' }}>— replace words with placeholders (hover for help):</span>
                 {placeholderBtn('[Name]')}
                 {sType === 'assessment-comment' && <>{placeholderBtn('[Score 1]')}{placeholderBtn('[Score 2]')}</>}
                 {sType === 'personalised-comment' && <>{placeholderBtn('[Info 1]')}{placeholderBtn('[Info 2]')}</>}
@@ -531,10 +557,17 @@ const handleSaveAndWrite = () => {
         )}
         {hasPool && (
           <div style={{ marginBottom: '20px' }}>
-            <div style={{ height: '1px', backgroundColor: '#f3f4f6', margin: '8px 0 14px' }} />
-            <div style={{ fontSize: '12px', fontWeight: '700', color: '#9ca3af', letterSpacing: '0.04em', marginBottom: '10px' }}>ADD MORE BUTTONS</div>
-            {availableUniversal.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: availableSubject.length > 0 ? '10px' : '0' }}>{availableUniversal.map((btn, i) => <button key={i} onClick={() => setButtons(prev => [...prev, { name: btn.name, statements: btn.statements }])} style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', border: `2px solid ${accentColor}`, borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', backgroundColor: 'white', color: accentColor, opacity: 0.7 }} onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.backgroundColor = accentColor + '15'; }} onMouseLeave={e => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.backgroundColor = 'white'; }}><span style={{ fontSize: '14px', fontWeight: '700', lineHeight: 1 }}>﹢</span>{btn.name}</button>)}</div>}
-            {availableSubject.length > 0 && <div><div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px', fontWeight: '600' }}>{subject.toUpperCase()} SPECIFIC</div><div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>{availableSubject.map((btn, i) => <button key={i} onClick={() => setButtons(prev => [...prev, { name: btn.name, statements: btn.statements }])} style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', border: `2px solid ${accentColor}`, borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', backgroundColor: 'white', color: accentColor, opacity: 0.7 }} onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.backgroundColor = accentColor + '15'; }} onMouseLeave={e => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.backgroundColor = 'white'; }}><span style={{ fontSize: '14px', fontWeight: '700', lineHeight: 1 }}>﹢</span>{btn.name}</button>)}</div></div>}
+            <div style={{ height: '1px', backgroundColor: '#f3f4f6', margin: '8px 0 10px' }} />
+            <button onClick={() => setShowPool(o => !o)} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 8px 0', width: '100%', textAlign: 'left' }}>
+              <span style={{ fontSize: '12px', fontWeight: '700', color: '#9ca3af', letterSpacing: '0.04em' }}>ADD MORE BUTTONS</span>
+              <span style={{ fontSize: '11px', color: '#9ca3af' }}>{showPool ? '▲ hide' : '▼ show'}</span>
+            </button>
+            {showPool && (
+              <div>
+                {availableUniversal.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: availableSubject.length > 0 ? '10px' : '0' }}>{availableUniversal.map((btn, i) => <button key={i} onClick={() => setButtons(prev => [...prev, { name: btn.name, statements: btn.statements }])} style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', border: `2px solid ${accentColor}`, borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', backgroundColor: 'white', color: accentColor, opacity: 0.7 }} onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.backgroundColor = accentColor + '15'; }} onMouseLeave={e => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.backgroundColor = 'white'; }}><span style={{ fontSize: '14px', fontWeight: '700', lineHeight: 1 }}>﹢</span>{btn.name}</button>)}</div>}
+                {availableSubject.length > 0 && <div><div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '6px', fontWeight: '600' }}>{subject.toUpperCase()} SPECIFIC</div><div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>{availableSubject.map((btn, i) => <button key={i} onClick={() => setButtons(prev => [...prev, { name: btn.name, statements: btn.statements }])} style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', border: `2px solid ${accentColor}`, borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', backgroundColor: 'white', color: accentColor, opacity: 0.7 }} onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.backgroundColor = accentColor + '15'; }} onMouseLeave={e => { e.currentTarget.style.opacity = '0.7'; e.currentTarget.style.backgroundColor = 'white'; }}><span style={{ fontSize: '14px', fontWeight: '700', lineHeight: 1 }}>﹢</span>{btn.name}</button>)}</div></div>}
+              </div>
+            )}
           </div>
         )}
         {(isRated || (buttons[activeButtonIndex]?.name && !addingNewButton && namingButtonIndex === null)) && sType !== 'standard-comment' && (
@@ -621,7 +654,7 @@ const handleSaveAndWrite = () => {
           <p style={{ fontSize: '13px', fontWeight: '600', color: '#374151', margin: '0 0 12px 0' }}>Select your subject:</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
             {SUBJECTS.map(s => (
-              <button key={s} onClick={() => { if (!localTemplateName.trim()) { setTemplateNameError('Please enter a template name first.'); return; } setSubject(s); setScreen('standard-comment'); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', backgroundColor: 'white', border: '2px solid #e5e7eb', borderRadius: '10px', cursor: 'pointer', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#111827' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#eff6ff'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.backgroundColor = 'white'; }}>
+              <button key={s} onClick={() => { if (!localTemplateName.trim()) { setTemplateNameError('Please enter a template name first.'); return; } setSubject(s); setCurrentStep(-1); setHasStandardComment(null); setScreen('wizard'); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', backgroundColor: 'white', border: '2px solid #e5e7eb', borderRadius: '10px', cursor: 'pointer', textAlign: 'left', fontSize: '14px', fontWeight: '600', color: '#111827' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.backgroundColor = '#eff6ff'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.backgroundColor = 'white'; }}>
                 <span style={{ fontSize: '22px' }}>{SUBJECT_ICONS[s]}</span><span>{s}</span>
               </button>
             ))}
@@ -631,9 +664,11 @@ const handleSaveAndWrite = () => {
     </div>
   );
 
-  // ─── STANDARD COMMENT SCREEN ──────────────────────────────────────────────
+  // ─── WIZARD SCREEN ────────────────────────────────────────────────────────
 
-  if (screen === 'standard-comment') {
+  if (screen === 'wizard') {
+    // ── Step -1: Fixed / Standard Comment ──────────────────────────────────
+    if (currentStep === -1) {
     const handleFindFixed = async () => {
       setAiLoading(true); setAiError(null);
       try {
@@ -649,10 +684,11 @@ const handleSaveAndWrite = () => {
     const confirmCandidates = () => {
       const existingContents = new Set(addedSections.filter(s => s.type === 'standard-comment').map(s => s.content));
       const chosen = aiCandidates.filter(c => selectedCandidates.has(c) && !existingContents.has(c));
-      setAddedSections(prev => [...prev, ...chosen.map(c => ({ id: makeId(), type: 'standard-comment' as SectionType, name: '', buttons: [], content: c, instruction: '', showHeader: false }))]);
-      setAiCandidates([]); setSelectedCandidates(new Set()); setHasStandardComment('manual');
+      const heading = standardCandidateName.trim();
+      setAddedSections(prev => [...prev, ...chosen.map(c => ({ id: makeId(), type: 'standard-comment' as SectionType, name: heading, buttons: [], content: c, instruction: '', showHeader: !!heading }))]);
+      setAiCandidates([]); setSelectedCandidates(new Set()); setHasStandardComment('manual'); setStandardCandidateName('');
     };
-    const goNext = () => { setCurrentStep(0); resetWizardQuestion(); setScreen('wizard'); };
+    const goNext = () => { setCurrentStep(0); resetWizardQuestion(); };
 
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -691,7 +727,7 @@ const handleSaveAndWrite = () => {
               {hasStandardComment === 'candidates' && (
                 <div>
                   <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#1e40af', marginBottom: '16px', lineHeight: '1.5' }}>✨ Found {aiCandidates.length} repeated statement{aiCandidates.length !== 1 ? 's' : ''}. Untick any you don't want.</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
                     {aiCandidates.map((stmt, i) => { const checked = selectedCandidates.has(stmt); return (
                       <button key={i} onClick={() => setSelectedCandidates(prev => { const next = new Set(prev); if (next.has(stmt)) next.delete(stmt); else next.add(stmt); return next; })} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px 14px', backgroundColor: checked ? '#f0fdf4' : 'white', border: `2px solid ${checked ? '#10b981' : '#e5e7eb'}`, borderRadius: '8px', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
                         <div style={{ width: '18px', height: '18px', borderRadius: '4px', backgroundColor: checked ? '#10b981' : 'white', border: `2px solid ${checked ? '#10b981' : '#d1d5db'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px', fontSize: '11px', color: 'white', fontWeight: '700' }}>{checked ? '✓' : ''}</div>
@@ -699,6 +735,8 @@ const handleSaveAndWrite = () => {
                       </button>
                     ); })}
                   </div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Section heading (optional)</label>
+                  <input value={standardCandidateName} onChange={e => setStandardCandidateName(e.target.value)} placeholder="e.g. Introduction, Opening Remarks" style={{ ...inp, marginBottom: '16px' }} />
                   <div style={{ display: 'flex', gap: '12px' }}>
                     <button onClick={() => { setHasStandardComment('choose'); setAiCandidates([]); setSelectedCandidates(new Set()); setAiError(null); }} style={secondaryBtn}>← Back</button>
                     <button onClick={confirmCandidates} style={{ ...primaryBtn, backgroundColor: '#10b981' }}>Confirm {selectedCandidates.size} →</button>
@@ -711,8 +749,9 @@ const handleSaveAndWrite = () => {
                   {highlightedExamples.length > 0 && (
                     <div style={{ marginBottom: '20px', backgroundColor: '#fefce8', border: `1px solid ${activePlaceholder === '[Name]' ? '#f59e0b' : '#fde68a'}`, borderRadius: '10px', padding: '14px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: activePlaceholder === '[Name]' ? '6px' : '12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                           <span style={{ fontSize: '13px', fontWeight: '700', color: '#713f12' }}>Selected Statements ({highlightedExamples.length})</span>
+                          <span style={{ fontSize: '11px', color: '#a16207', fontStyle: 'italic' }}>— replace names (hover for help):</span>
                           {placeholderBtn('[Name]')}
                         </div>
                         <button onClick={() => { setHighlightedExamples([]); setActivePlaceholder(null); }} style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '12px', fontWeight: '500', padding: 0 }}>Clear all</button>
@@ -765,11 +804,9 @@ const handleSaveAndWrite = () => {
         </div>
       </div>
     );
-  }
+    } // end step -1
 
-  // ─── WIZARD SCREEN ────────────────────────────────────────────────────────
-
-  if (screen === 'wizard') {
+    // ── Regular wizard questions ────────────────────────────────────────────
     const wAccent = SECTION_COLORS[question?.sectionType] || '#3b82f6';
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -796,33 +833,31 @@ const handleSaveAndWrite = () => {
 
               {phase === 'ask' && (
                 <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Section name:</label>
+                  <input type="text" value={sectionName} onChange={e => setSectionName(e.target.value)} placeholder={question.namePlaceholder || question.defaultName} style={{ ...inp, borderColor: wAccent, marginBottom: '16px' }} />
                   <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-                    <button onClick={handleWizardYes} style={{ ...primaryBtn, flex: 1 }}>Yes</button>
-                    <button onClick={handleWizardNo} style={{ ...secondaryBtn, flex: 1 }}>No</button>
+                    <button onClick={handleWizardYes} style={{ ...primaryBtn, flex: 1 }}>Yes — build this section →</button>
+                    <button onClick={handleWizardNo} style={{ ...secondaryBtn, flex: 1 }}>Skip</button>
                   </div>
                   {currentStep > 0
                     ? <button onClick={() => { setCurrentStep(s => s - 1); resetWizardQuestion(); }} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>← Previous question</button>
-                    : <button onClick={() => setScreen('standard-comment')} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>← Back</button>}
-                </div>
-              )}
-
-              {phase === 'name' && (
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>What would you like to call this section?</label>
-                  <input type="text" value={sectionName} onChange={e => setSectionName(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleNameConfirmed(); }} placeholder={question.namePlaceholder} autoFocus style={{ ...inp, borderColor: wAccent, marginBottom: '16px' }} />
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <button onClick={() => setPhase('ask')} style={secondaryBtn}>← Back</button>
-                    <button onClick={handleNameConfirmed} disabled={!sectionName.trim()} style={{ ...primaryBtn, opacity: !sectionName.trim() ? 0.4 : 1 }}>Continue →</button>
-                  </div>
+                    : <button onClick={() => { setCurrentStep(-1); setHasStandardComment(null); }} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>← Back</button>}
                 </div>
               )}
 
               {phase === 'statements' && (
                 <div>
-                  <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#166534', marginBottom: '20px', lineHeight: '1.5' }}>💡 Add your own statements below, or use the ready-made buttons from the pool below. Paste existing reports on the right and use AI to find more.</div>
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px 14px', marginBottom: '20px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', letterSpacing: '0.05em', marginBottom: '8px' }}>3 WAYS TO ADD COMMENTS</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '12px', color: '#475569', lineHeight: '1.5' }}>
+                      <div>🖱️ <strong>Highlight &amp; assign</strong> — select text in your reports (right panel), then assign it to a button below</div>
+                      <div>🤖 <strong>AI fill</strong> — highlight a few examples first, then click "Find in my reports" to auto-populate</div>
+                      <div>✏️ <strong>Type manually</strong> — add buttons below and type or paste statements directly</div>
+                    </div>
+                  </div>
                   {renderStatementEditor(question.sectionType, sectionName)}
                   <div style={{ display: 'flex', gap: '12px' }}>
-                    <button onClick={() => setPhase('name')} style={secondaryBtn}>← Back</button>
+                    <button onClick={() => setPhase('ask')} style={secondaryBtn}>← Back</button>
                     <button onClick={handleWizardAddSection} style={primaryBtn}>{editingSectionId ? 'Save changes →' : 'Save section →'}</button>
                   </div>
                 </div>
