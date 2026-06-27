@@ -83,13 +83,6 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const handleReportsPanelScroll = useCallback((e: React.UIEvent<HTMLTextAreaElement>) => { reportsPanelScrollRef.current = e.currentTarget.scrollTop; }, []);
   useEffect(() => { if (reportsPanelRef.current) reportsPanelRef.current.scrollTop = reportsPanelScrollRef.current; });
 
-  const handleReportsPanelMouseUp = useCallback(() => {
-    const sel = window.getSelection();
-    const text = sel?.toString().trim() || '';
-    if (text.length >= 10) {
-      setHighlightedExamples(prev => prev.includes(text) ? prev : [...prev, text]);
-    }
-  }, []);
 
   const [screen, setScreen] = useState<Screen>('subject');
   const [subject, setSubject] = useState('');
@@ -139,6 +132,18 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
 
   useEffect(() => { if (addedSections.length > 0) saveDraft(localTemplateName, addedSections); }, [addedSections, localTemplateName]);
   useEffect(() => { setRestructuredReports(null); }, [pastedReports]);
+  useEffect(() => {
+    const handler = () => {
+      const sel = window.getSelection();
+      const text = sel?.toString().trim() || '';
+      const el = document.querySelector('[data-reports-reading-view]');
+      if (text.length >= 10 && el?.contains(sel?.anchorNode ?? null)) {
+        setHighlightedExamples(prev => prev.includes(text) ? prev : [...prev, text]);
+      }
+    };
+    document.addEventListener('mouseup', handler);
+    return () => document.removeEventListener('mouseup', handler);
+  }, []);
 
   const question = QUESTIONS[currentStep];
   const isLastQuestion = currentStep === QUESTIONS.length - 1;
@@ -390,7 +395,7 @@ const handleSaveAndWrite = () => {
         )}
         <div style={{ flex: 1, padding: '12px 16px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {showReadingView ? (
-            <div onMouseUp={handleReportsPanelMouseUp} style={{ flex: 1, overflowY: 'auto', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '12px', lineHeight: '1.7', color: '#374151', cursor: 'text', userSelect: 'text', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            <div data-reports-reading-view="true" style={{ flex: 1, overflowY: 'auto', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '12px', lineHeight: '1.7', color: '#374151', cursor: 'text', userSelect: 'text', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
               {pastedReports}
             </div>
           ) : (
@@ -560,7 +565,7 @@ const handleSaveAndWrite = () => {
         {!isRated && sType !== 'standard-comment' && (
           <div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px', alignItems: 'flex-end' }}>
-              {buttons.map((btn, i) => btn.name !== undefined && btn.name !== null ? (
+              {buttons.map((btn, i) => btn.name ? (
                 <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
                   <input
                     type="text"
@@ -907,27 +912,27 @@ const handleSaveAndWrite = () => {
                         </button>
                       </div>
                       {showInstructions && (
-                        <ol style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: aiUsedForSection ? '#047857' : '#1d4ed8', lineHeight: '1.8' }}>
+                        <div style={{ fontSize: '12px', color: aiUsedForSection ? '#047857' : '#1d4ed8', lineHeight: '1.8' }}>
                           {aiUsedForSection ? (<>
-                            <li>Check the buttons and statements — AI sometimes makes mistakes</li>
-                            <li>Use ✏️ edit, ↔ move and ✕ delete to make changes</li>
-                            <li>Move also lets you create a new button</li>
-                            <li>Rename a button by clicking on it and typing</li>
-                            <li>When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to select multiple statements per pupil when writing reports</li>
+                            <div>1. Check the buttons and statements — AI sometimes makes mistakes</div>
+                            <div>2. Use ✏️ edit, ↔ move and ✕ delete to make changes</div>
+                            <div>3. Move also lets you create a new button</div>
+                            <div>4. Rename a button by clicking on it and typing</div>
+                            <div>5. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to select multiple statements per pupil when writing reports</div>
                           </>) : hasReports ? (<>
-                            <li>Highlight statements in the reports panel that you want in this section</li>
-                            <li>To use AI: select around 5 statements, then click <strong>Find in my reports</strong> below</li>
-                            <li>Or highlight as many statements as you want manually — you can add more whilst writing reports</li>
-                            <li>Replace pupil names: click <strong>[Name]</strong> in the orange box, then click any word — names highlight blue</li>
-                            <li>Assign each statement to a button — click <strong>+ New button</strong> to create one first</li>
-                            <li>When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to select multiple statements per pupil when writing reports</li>
+                            <div>1. Highlight statements in the reports panel that you want in this section</div>
+                            <div>2. To use AI: select around 5 statements, then click <strong>Find in my reports</strong> below</div>
+                            <div>3. Or highlight as many statements as you want manually — you can add more whilst writing reports</div>
+                            <div>4. Replace pupil names: click <strong>[Name]</strong> in the orange box, then click any word — names highlight blue</div>
+                            <div>5. Assign each statement to a button — click <strong>+ New button</strong> to create one first</div>
+                            <div>6. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to select multiple statements per pupil when writing reports</div>
                           </>) : (<>
-                            <li>Click <strong>+ New button</strong> to create a button, then type or paste statements for it</li>
-                            <li>Rename a button by clicking on it and typing</li>
-                            <li>Repeat for as many buttons as you need</li>
-                            <li>When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to select multiple statements per pupil when writing reports</li>
+                            <div>1. Click <strong>+ New button</strong> to create a button, then type or paste statements for it</div>
+                            <div>2. Rename a button by clicking on it and typing</div>
+                            <div>3. Repeat for as many buttons as you need</div>
+                            <div>4. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to select multiple statements per pupil when writing reports</div>
                           </>)}
-                        </ol>
+                        </div>
                       )}
                     </div>
                   ) : (
