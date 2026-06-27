@@ -52,11 +52,11 @@ const DEVELOPMENT_BUTTONS_FOR_WIZARD: AddableButton[] = [
 ];
 
 const QUESTIONS: Question[] = [
-  { id: 'qualities', question: 'Do your reports comment on pupil qualities or strengths?', description: 'Comments picked from a set of options — for example effort, attitude, teamwork.', sectionType: 'qualities', namePlaceholder: 'e.g. Character Qualities, Strengths', defaultName: 'Character Qualities', allowMultiple: true, hasButtons: true, positionType: 'qualities', examples: ['[Name] consistently demonstrates excellent effort and a positive attitude towards learning.', '[Name] is a natural leader who supports and encourages classmates.', '[Name] shows great resilience and perseverance when faced with challenges.'] },
+  { id: 'qualities', question: 'Do your reports comment on pupil qualities or strengths?', description: 'Comments picked from a set of options — for example effort, attitude, teamwork.', sectionType: 'qualities', namePlaceholder: 'e.g. Pupil Strengths, Character Qualities', defaultName: 'Pupil Strengths', allowMultiple: true, hasButtons: true, positionType: 'qualities', examples: ['[Name] consistently demonstrates excellent effort and a positive attitude towards learning.', '[Name] is a natural leader who supports and encourages classmates.', '[Name] shows great resilience and perseverance when faced with challenges.'] },
   { id: 'rated-comment', question: 'Do your reports rate pupils on their performance?', description: 'Comments tied to a rating — Excellent, Good, Satisfactory, Needs Improvement.', sectionType: 'rated-comment', namePlaceholder: 'e.g. Progress, Effort Rating', defaultName: 'Progress', allowMultiple: true, hasButtons: true, isRatedFixed: true, positionType: 'rating', examples: ['[Name] has made excellent progress this term and consistently produces work of the highest standard.', '[Name] needs to focus on consolidating their understanding of the core topics covered this term.'] },
   { id: 'assessment-comment', question: 'Do your reports include assessment results with a score?', description: 'Comments linked to a score or percentage — use [Score] as the placeholder.', sectionType: 'assessment-comment', namePlaceholder: 'e.g. Assessment Result, Test Score', defaultName: 'Assessment', allowMultiple: true, hasButtons: true, isRatedFixed: false, positionType: 'assessment-comment', examples: ['[Name] achieved [Score] in the recent assessment, which reflects their hard work throughout the unit.'] },
   { id: 'personalised-comment', question: 'Do your reports include targets or specific information per pupil?', description: 'Comments where a detail unique to each pupil is typed in — for example a target, sport, instrument, or achievement.', sectionType: 'personalised-comment', namePlaceholder: 'e.g. Personal Target, Focus Area, Activity', defaultName: 'Personal Target', allowMultiple: true, hasButtons: true, positionType: 'personalised-comment', examples: ['[Name] should focus on [Info 1] as a key area for development going forward.', '[Name] has shown particular enthusiasm for [Info 1] this term and has made impressive progress.'] },
-  { id: 'next-steps', question: 'Do your reports include general next steps or areas for development?', description: 'Suggestions for what the pupil should focus on — chosen from a set of options rather than typed per pupil.', sectionType: 'next-steps', namePlaceholder: 'e.g. Next Steps, Areas for Development', defaultName: 'Next Steps', allowMultiple: true, hasButtons: true, positionType: 'next-steps', examples: ['[Name] should focus on developing their extended writing skills to reach the next level.', '[Name] should aim to consolidate the key topics covered this session through regular review.'] },
+  { id: 'next-steps', question: 'Do your reports include general next steps or areas for development?', description: 'Suggestions for what the pupil should focus on — chosen from a set of options rather than typed per pupil.', sectionType: 'next-steps', namePlaceholder: 'e.g. Pupil Next Steps, Areas for Development', defaultName: 'Pupil Next Steps', allowMultiple: true, hasButtons: true, positionType: 'next-steps', examples: ['[Name] should focus on developing their extended writing skills to reach the next level.', '[Name] should aim to consolidate the key topics covered this session through regular review.'] },
   { id: 'other-comments', question: 'Do your reports contain any other types of comments?', description: 'Any other categories not covered above — for example behaviour, homework, or wider achievement.', sectionType: 'qualities', namePlaceholder: 'e.g. Behaviour, Homework, Wider Achievement', defaultName: 'Other Comments', allowMultiple: true, hasButtons: true, positionType: 'qualities', examples: ['[Name] consistently demonstrates excellent behaviour and is a pleasure to have in class.', '[Name] completes homework to a high standard and always meets deadlines.'] },
 ];
 
@@ -131,6 +131,10 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const [activePlaceholder, setActivePlaceholder] = useState<string | null>(null);
   const [showPool, setShowPool] = useState(false);
   const [standardCandidateName, setStandardCandidateName] = useState('');
+  const [aiUsedForSection, setAiUsedForSection] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(true);
+  const [movingToNew, setMovingToNew] = useState(false);
+  const [movingToNewName, setMovingToNewName] = useState('');
   const statementInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { if (addedSections.length > 0) saveDraft(localTemplateName, addedSections); }, [addedSections, localTemplateName]);
@@ -159,10 +163,16 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     setButtons(prev => { const u = [...prev]; const ss = [...u[bi].statements]; ss[si] = editingStatementValue.trim(); u[bi] = { ...u[bi], statements: ss }; return u; });
     setEditingStatementKey(null);
   };
-  const handleMoveStatement = (bi: number, si: number, targetBi: number) => {
+  const handleMoveStatement = (bi: number, si: number, targetBi: number, newBtnName?: string) => {
     const stmt = buttons[bi].statements[si];
-    setButtons(prev => { const u = prev.map(b => ({ ...b, statements: [...b.statements] })); u[bi].statements.splice(si, 1); u[targetBi].statements.push(stmt); return u; });
-    setMovingStatementKey(null);
+    setButtons(prev => {
+      const u = prev.map(b => ({ ...b, statements: [...b.statements] }));
+      u[bi].statements.splice(si, 1);
+      if (newBtnName) { u.push({ name: newBtnName, statements: [stmt] }); }
+      else { u[targetBi].statements.push(stmt); }
+      return u;
+    });
+    setMovingStatementKey(null); setMovingToNew(false); setMovingToNewName('');
   };
   const handleConfirmNewButton = () => { if (!newButtonName.trim()) return; const idx = buttons.length; setButtons(prev => [...prev, { name: newButtonName.trim(), statements: [] }]); setActiveButtonIndex(idx); setNewButtonName(''); setAddingNewButton(false); };
   const handleConfirmButtonName = () => { if (!namingButtonValue.trim()) return; setButtons(prev => { const u = [...prev]; u[namingButtonIndex!] = { ...u[namingButtonIndex!], name: namingButtonValue.trim() }; return u; }); setNamingButtonIndex(null); setNamingButtonValue(''); };
@@ -170,19 +180,24 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const handleDeleteRatedButton = (idx: number) => { if (buttons.length <= 1) return; setButtons(prev => prev.filter((_, i) => i !== idx)); setActiveButtonIndex(0); };
   const handleRatedButtonRename = (idx: number, val: string) => { setButtons(prev => { const u = [...prev]; u[idx] = { ...u[idx], name: val }; return u; }); };
 
-  const resetWizardQuestion = () => {
-    setPhase('ask'); setSectionName(''); setButtons([]); setActiveButtonIndex(0);
+  const resetWizardQuestion = (defaultName?: string) => {
+    setPhase('ask'); setSectionName(defaultName ?? ''); setButtons([]); setActiveButtonIndex(0);
     setNewStatement(''); setNewButtonName(''); setAddingNewButton(false); setNamingButtonIndex(null); setNamingButtonValue('');
     setStandardContent(''); setShowExamples(false); setAiError(null); setEditingStatementKey(null); setMovingStatementKey(null);
     setHighlightedExamples([]); setShowPool(false);
+    setAiUsedForSection(false); setShowInstructions(true); setMovingToNew(false); setMovingToNewName('');
   };
-  const advanceQuestion = () => { if (isLastQuestion) handleSaveAndWrite(); else { setCurrentStep(s => s + 1); resetWizardQuestion(); } };
+  const advanceQuestion = () => {
+    if (isLastQuestion) handleSaveAndWrite();
+    else { const nextStep = currentStep + 1; setCurrentStep(nextStep); resetWizardQuestion(QUESTIONS[nextStep]?.defaultName); }
+  };
   const handleWizardYes = () => {
     const name = sectionName.trim() || question.defaultName;
     setSectionName(name);
     if (question.hasButtons) {
       if (question.isRatedFixed) setButtons(DEFAULT_RATED_BUTTONS.map(n => ({ name: n, statements: [] })));
       else if (question.id === 'assessment-comment') setButtons(ASSESSMENT_ADDABLE_UNIVERSAL.map(b => ({ name: b.name, statements: [] })));
+      else if (question.id === 'qualities' || question.id === 'next-steps') { setButtons([]); }
       else { setButtons([{ name: '', statements: [] }]); setNamingButtonIndex(0); setNamingButtonValue(''); }
       setActiveButtonIndex(0);
     }
@@ -205,7 +220,20 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     if (editingSectionId) { setAddedSections(prev => prev.map(s => s.id === editingSectionId ? { ...newSection, showHeader: s.showHeader } : s)); setEditingSectionId(null); setPhase('added'); }
     else { setAddedSections(prev => [...prev, newSection]); setPhase('added'); }
   };
-  const handleAddAnother = () => { resetWizardQuestion(); };
+  const handleAddAnother = () => { resetWizardQuestion(question?.defaultName); };
+  const handleWizardAddSectionAndDuplicate = () => {
+    const name = sectionName.trim() || question.defaultName;
+    const btns = question.hasButtons ? buttons : [];
+    const section1: AddedSection = { id: editingSectionId || makeId(), type: question.sectionType, name, buttons: btns, content: '', instruction: '', showHeader: false };
+    const section2: AddedSection = { ...section1, id: makeId() };
+    if (editingSectionId) {
+      setAddedSections(prev => [...prev.map(s => s.id === editingSectionId ? { ...section1, showHeader: s.showHeader } : s), section2]);
+      setEditingSectionId(null);
+    } else {
+      setAddedSections(prev => [...prev, section1, section2]);
+    }
+    setPhase('added');
+  };
 
   const handleAiFindInReports = async (sName?: string, sType?: string) => {
     if (!hasReports) return;
@@ -279,6 +307,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
         }
         return u.filter(b => b.name);
       });
+      setHighlightedExamples([]);
+      setAiUsedForSection(true);
     } catch { setAiError('AI extraction failed. Please try again.'); }
     finally { setAiLoading(false); }
   };
@@ -529,13 +559,26 @@ const handleSaveAndWrite = () => {
         )}
         {!isRated && sType !== 'standard-comment' && (
           <div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px', alignItems: 'center' }}>
-              {buttons.map((btn, i) => btn.name ? (
-                <button key={i} onClick={() => { setActiveButtonIndex(i); setAddingNewButton(false); setNamingButtonIndex(null); }} style={{ padding: '6px 14px', border: `2px solid ${accentColor}`, borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', backgroundColor: activeButtonIndex === i && namingButtonIndex === null && !addingNewButton ? accentColor : 'white', color: activeButtonIndex === i && namingButtonIndex === null && !addingNewButton ? 'white' : accentColor }}>
-                  {btn.name}{btn.statements.length > 0 && <span style={{ marginLeft: '6px', fontSize: '11px', opacity: 0.8 }}>({btn.statements.length})</span>}
-                </button>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px', alignItems: 'flex-end' }}>
+              {buttons.map((btn, i) => btn.name !== undefined && btn.name !== null ? (
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                  <input
+                    type="text"
+                    value={btn.name}
+                    onChange={e => handleRatedButtonRename(i, e.target.value)}
+                    onClick={() => { setActiveButtonIndex(i); setAddingNewButton(false); setNamingButtonIndex(null); }}
+                    onFocus={() => { setActiveButtonIndex(i); setAddingNewButton(false); setNamingButtonIndex(null); }}
+                    style={{
+                      padding: '6px 12px', border: `2px solid ${accentColor}`, borderRadius: '6px', fontSize: '13px', fontWeight: '600', outline: 'none', cursor: 'pointer',
+                      backgroundColor: activeButtonIndex === i && namingButtonIndex === null && !addingNewButton ? accentColor : 'white',
+                      color: activeButtonIndex === i && namingButtonIndex === null && !addingNewButton ? 'white' : accentColor,
+                      width: `${Math.max(80, btn.name.length * 8 + 24)}px`, minWidth: '80px', maxWidth: '200px', textAlign: 'center', fontFamily: 'inherit',
+                    }}
+                  />
+                  {btn.statements.length > 0 && <div style={{ fontSize: '10px', color: '#9ca3af' }}>({btn.statements.length})</div>}
+                </div>
               ) : null)}
-              {!addingNewButton && namingButtonIndex === null && <button onClick={() => { setAddingNewButton(true); setNewButtonName(''); }} style={{ padding: '6px 14px', border: `2px dashed ${accentColor}`, borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', backgroundColor: 'white', color: accentColor }}>+ New Button</button>}
+              {!addingNewButton && namingButtonIndex === null && <button onClick={() => { setAddingNewButton(true); setNewButtonName(''); }} style={{ padding: '6px 14px', border: `2px dashed ${accentColor}`, borderRadius: '6px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', backgroundColor: 'white', color: accentColor, alignSelf: 'flex-start' }}>+ New Button</button>}
             </div>
             {namingButtonIndex !== null && (
               <div style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '12px', marginBottom: '16px' }}>
@@ -589,17 +632,30 @@ const handleSaveAndWrite = () => {
                       ) : isMv ? (
                         <div style={{ padding: '8px' }}>
                           <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '6px' }}>Move to which button?</div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                            {buttons.map((b, bi) => bi !== activeButtonIndex && b.name ? <button key={bi} onClick={() => handleMoveStatement(activeButtonIndex, i, bi)} style={{ ...smallBtn(accentColor), fontSize: '12px', padding: '4px 10px' }}>{b.name}</button> : null)}
-                            <button onClick={() => setMovingStatementKey(null)} style={{ ...secondaryBtn, padding: '4px 10px', fontSize: '12px' }}>Cancel</button>
-                          </div>
+                          {buttons.filter(b => b.name && b !== buttons[activeButtonIndex]).length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
+                              {buttons.map((b, bi) => bi !== activeButtonIndex && b.name ? <button key={bi} onClick={() => handleMoveStatement(activeButtonIndex, i, bi)} style={{ ...smallBtn(accentColor), fontSize: '12px', padding: '4px 10px' }}>{b.name}</button> : null)}
+                            </div>
+                          )}
+                          {movingToNew ? (
+                            <div style={{ display: 'flex', gap: '4px', alignItems: 'center', marginBottom: '4px' }}>
+                              <input value={movingToNewName} onChange={e => setMovingToNewName(e.target.value)} placeholder="New button name..." autoFocus style={{ ...inp, flex: 1, padding: '5px 10px', fontSize: '13px' }} onKeyDown={e => { if (e.key === 'Enter' && movingToNewName.trim()) handleMoveStatement(activeButtonIndex, i, -1, movingToNewName.trim()); if (e.key === 'Escape') { setMovingToNew(false); setMovingToNewName(''); } }} />
+                              <button onClick={() => { if (movingToNewName.trim()) handleMoveStatement(activeButtonIndex, i, -1, movingToNewName.trim()); }} disabled={!movingToNewName.trim()} style={{ ...smallBtn(accentColor), fontSize: '12px', padding: '4px 10px', opacity: !movingToNewName.trim() ? 0.4 : 1 }}>Move</button>
+                              <button onClick={() => { setMovingToNew(false); setMovingToNewName(''); }} style={{ ...secondaryBtn, padding: '4px 8px', fontSize: '12px' }}>✕</button>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                              <button onClick={() => { setMovingToNew(true); setMovingToNewName(''); }} style={{ padding: '4px 10px', border: `1px dashed ${accentColor}`, borderRadius: '6px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', backgroundColor: 'white', color: accentColor }}>+ New button</button>
+                              <button onClick={() => { setMovingStatementKey(null); setMovingToNew(false); }} style={{ ...secondaryBtn, padding: '4px 10px', fontSize: '12px' }}>Cancel</button>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '8px 10px' }}>
                           <span style={{ flex: 1, fontSize: '13px', color: '#374151', lineHeight: '1.5' }}>{stmt}</span>
                           <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
                             <button onClick={() => handleStartEditStatement(activeButtonIndex, i, stmt)} title="Edit" style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', padding: '2px 4px' }}>✏️</button>
-                            {buttons.filter(b => b.name).length > 1 && <button onClick={() => setMovingStatementKey({ buttonIdx: activeButtonIndex, stmtIdx: i })} title="Move" style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', padding: '2px 4px' }}>↔</button>}
+                            <button onClick={() => { setMovingStatementKey({ buttonIdx: activeButtonIndex, stmtIdx: i }); setMovingToNew(false); setMovingToNewName(''); }} title="Move" style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', padding: '2px 4px' }}>↔</button>
                             <button onClick={() => handleRemoveStatement(activeButtonIndex, i)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '14px', padding: '2px 4px' }}>✕</button>
                           </div>
                         </div>
@@ -689,7 +745,7 @@ const handleSaveAndWrite = () => {
       setAddedSections(prev => [...prev, ...chosen.map(c => ({ id: makeId(), type: 'standard-comment' as SectionType, name: heading, buttons: [], content: c, instruction: '', showHeader: !!heading }))]);
       setAiCandidates([]); setSelectedCandidates(new Set()); setHasStandardComment('manual'); setStandardCandidateName('');
     };
-    const goNext = () => { setCurrentStep(0); resetWizardQuestion(); };
+    const goNext = () => { setCurrentStep(0); resetWizardQuestion(QUESTIONS[0]?.defaultName); };
 
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -832,25 +888,63 @@ const handleSaveAndWrite = () => {
                     <button onClick={handleWizardNo} style={{ ...secondaryBtn, flex: 1 }}>Skip</button>
                   </div>
                   {currentStep > 0
-                    ? <button onClick={() => { setCurrentStep(s => s - 1); resetWizardQuestion(); }} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>← Previous question</button>
+                    ? <button onClick={() => { const prev = currentStep - 1; setCurrentStep(prev); resetWizardQuestion(QUESTIONS[prev]?.defaultName); }} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>← Previous question</button>
                     : <button onClick={() => { setCurrentStep(-1); setHasStandardComment(null); }} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>← Back</button>}
                 </div>
               )}
 
               {phase === 'statements' && (
                 <div>
-                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px 14px', marginBottom: '20px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', letterSpacing: '0.05em', marginBottom: '8px' }}>3 WAYS TO ADD COMMENTS</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '12px', color: '#475569', lineHeight: '1.5' }}>
-                      <div>🖱️ <strong>Highlight &amp; assign</strong> — select text in your reports (right panel), then assign it to a button below</div>
-                      <div>🤖 <strong>AI fill</strong> — highlight a few examples first, then click "Find in my reports" to auto-populate</div>
-                      <div>✏️ <strong>Type manually</strong> — add buttons below and type or paste statements directly</div>
+                  {/* Contextual instruction panel for Q1 (qualities) and Q5 (next-steps) */}
+                  {(question.id === 'qualities' || question.id === 'next-steps') ? (
+                    <div style={{ backgroundColor: aiUsedForSection ? '#f0fdf4' : '#eff6ff', border: `1px solid ${aiUsedForSection ? '#bbf7d0' : '#bfdbfe'}`, borderRadius: '8px', padding: '10px 14px', marginBottom: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showInstructions ? '8px' : '0' }}>
+                        <span style={{ fontSize: '12px', fontWeight: '700', color: aiUsedForSection ? '#065f46' : '#1e40af' }}>
+                          {aiUsedForSection ? '✓ AI complete — check & adjust' : 'ℹ How to build this section'}
+                        </span>
+                        <button onClick={() => setShowInstructions(o => !o)} style={{ background: 'none', border: 'none', color: aiUsedForSection ? '#065f46' : '#1e40af', cursor: 'pointer', fontSize: '11px', padding: 0 }}>
+                          {showInstructions ? 'hide ▲' : 'show ▼'}
+                        </button>
+                      </div>
+                      {showInstructions && (
+                        <ol style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: aiUsedForSection ? '#047857' : '#1d4ed8', lineHeight: '1.8' }}>
+                          {aiUsedForSection ? (<>
+                            <li>Check the buttons and statements — AI sometimes makes mistakes</li>
+                            <li>Use ✏️ edit, ↔ move and ✕ delete to make changes</li>
+                            <li>Move also lets you create a new button</li>
+                            <li>Rename a button by clicking on it and typing</li>
+                            <li>When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to select multiple statements per pupil when writing reports</li>
+                          </>) : hasReports ? (<>
+                            <li>Highlight statements in the reports panel that you want in this section</li>
+                            <li>To use AI: select around 5 statements, then click <strong>Find in my reports</strong> below</li>
+                            <li>Or highlight as many statements as you want manually — you can add more whilst writing reports</li>
+                            <li>Replace pupil names: click <strong>[Name]</strong> in the orange box, then click any word — names highlight blue</li>
+                            <li>Assign each statement to a button — click <strong>+ New button</strong> to create one first</li>
+                            <li>When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to select multiple statements per pupil when writing reports</li>
+                          </>) : (<>
+                            <li>Click <strong>+ New button</strong> to create a button, then type or paste statements for it</li>
+                            <li>Rename a button by clicking on it and typing</li>
+                            <li>Repeat for as many buttons as you need</li>
+                            <li>When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to select multiple statements per pupil when writing reports</li>
+                          </>)}
+                        </ol>
+                      )}
                     </div>
-                  </div>
+                  ) : (
+                    <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px 14px', marginBottom: '20px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', letterSpacing: '0.05em', marginBottom: '8px' }}>3 WAYS TO ADD COMMENTS</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '12px', color: '#475569', lineHeight: '1.5' }}>
+                        <div>🖱️ <strong>Highlight &amp; assign</strong> — select text in your reports (right panel), then assign it to a button below</div>
+                        <div>🤖 <strong>AI fill</strong> — highlight a few examples first, then click "Find in my reports" to auto-populate</div>
+                        <div>✏️ <strong>Type manually</strong> — add buttons below and type or paste statements directly</div>
+                      </div>
+                    </div>
+                  )}
                   {renderStatementEditor(question.sectionType, sectionName)}
-                  <div style={{ display: 'flex', gap: '12px' }}>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                     <button onClick={() => setPhase('ask')} style={secondaryBtn}>← Back</button>
                     <button onClick={handleWizardAddSection} style={primaryBtn}>{editingSectionId ? 'Save changes →' : 'Save section →'}</button>
+                    <button onClick={handleWizardAddSectionAndDuplicate} style={{ ...primaryBtn, backgroundColor: '#7c3aed' }}>Duplicate →</button>
                   </div>
                 </div>
               )}
