@@ -780,8 +780,11 @@ const handleSaveAndWrite = () => {
                     </div>
                   ); })()}
 
-                  <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                  <div style={{ display: 'flex', gap: '12px', marginTop: '8px', flexWrap: 'wrap' }}>
                     <button onClick={() => setHasStandardComment(null)} style={secondaryBtn}>← Back</button>
+                    {addedSections.filter(s => s.type === 'standard-comment').length > 0 && (
+                      <button onClick={() => { setStandardSectionName(''); setStandardContent(''); setHighlightedExamples([]); setActivePlaceholder(null); }} style={secondaryBtn}>+ Add another</button>
+                    )}
                     <button onClick={goNext} style={primaryBtn}>{addedSections.filter(s => s.type === 'standard-comment').length > 0 ? `Continue with ${addedSections.filter(s => s.type === 'standard-comment').length} →` : 'Skip →'}</button>
                   </div>
                 </div>
