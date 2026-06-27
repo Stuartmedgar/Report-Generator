@@ -703,42 +703,17 @@ const handleSaveAndWrite = () => {
               {hasStandardComment === null && (
                 <div>
                   <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-                    <button onClick={() => setHasStandardComment('choose')} style={{ ...primaryBtn, flex: 1 }}>Yes</button>
+                    <button onClick={() => setHasStandardComment('manual')} style={{ ...primaryBtn, flex: 1 }}>Yes</button>
                     <button onClick={goNext} style={{ ...secondaryBtn, flex: 1 }}>No</button>
                   </div>
                   <button onClick={() => setScreen('subject')} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>← Back</button>
                 </div>
               )}
 
-              {hasStandardComment === 'choose' && (
+              {false && (
                 <div>
-                  <button onClick={hasReports ? handleFindFixed : undefined} disabled={!hasReports || aiLoading} style={{ width: '100%', textAlign: 'left', padding: '16px', backgroundColor: hasReports ? '#faf5ff' : '#f9fafb', border: `2px solid ${hasReports ? '#8b5cf6' : '#e5e7eb'}`, borderRadius: '10px', cursor: hasReports ? 'pointer' : 'not-allowed', marginBottom: '10px', opacity: hasReports ? 1 : 0.6 }} onMouseEnter={e => { if (hasReports) e.currentTarget.style.backgroundColor = '#f3e8ff'; }} onMouseLeave={e => { if (hasReports) e.currentTarget.style.backgroundColor = '#faf5ff'; }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontSize: '22px' }}>🔍</span><div><div style={{ fontSize: '14px', fontWeight: '700', color: '#7c3aed' }}>Find them for me</div><div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>{hasReports ? 'AI scans your pasted reports and identifies repeated sentences' : 'Paste your reports in the right panel to use this option'}</div></div></div>
-                  </button>
-                  <button onClick={() => setHasStandardComment('manual')} style={{ width: '100%', textAlign: 'left', padding: '16px', backgroundColor: 'white', border: '2px solid #e5e7eb', borderRadius: '10px', cursor: 'pointer', marginBottom: '16px' }} onMouseEnter={e => { e.currentTarget.style.borderColor = '#10b981'; e.currentTarget.style.backgroundColor = '#f0fdf4'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.backgroundColor = 'white'; }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ fontSize: '22px' }}>✏️</span><div><div style={{ fontSize: '14px', fontWeight: '700', color: '#374151' }}>I'll add them manually</div><div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Paste or type each fixed statement yourself</div></div></div>
-                  </button>
-                  {aiLoading && <div style={{ padding: '14px 16px', backgroundColor: '#faf5ff', border: '2px solid #8b5cf6', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}><div style={{ display: 'flex', gap: '4px' }}>{[0,1,2].map(i => <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#8b5cf6', animation: 'pulse 1.2s ease-in-out infinite', animationDelay: `${i * 0.2}s` }} />)}</div><div style={{ fontSize: '13px', color: '#7c3aed' }}>Scanning your reports...</div><style>{`@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}`}</style></div>}
-                  {aiError && <div style={{ padding: '10px 14px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '13px', color: '#b91c1c', marginBottom: '16px' }}>⚠️ {aiError}</div>}
-                  <button onClick={() => setHasStandardComment(null)} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>← Back</button>
-                </div>
-              )}
-
-              {hasStandardComment === 'candidates' && (
-                <div>
-                  <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#1e40af', marginBottom: '16px', lineHeight: '1.5' }}>✨ Found {aiCandidates.length} repeated statement{aiCandidates.length !== 1 ? 's' : ''}. Untick any you don't want.</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-                    {aiCandidates.map((stmt, i) => { const checked = selectedCandidates.has(stmt); return (
-                      <button key={i} onClick={() => setSelectedCandidates(prev => { const next = new Set(prev); if (next.has(stmt)) next.delete(stmt); else next.add(stmt); return next; })} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px 14px', backgroundColor: checked ? '#f0fdf4' : 'white', border: `2px solid ${checked ? '#10b981' : '#e5e7eb'}`, borderRadius: '8px', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
-                        <div style={{ width: '18px', height: '18px', borderRadius: '4px', backgroundColor: checked ? '#10b981' : 'white', border: `2px solid ${checked ? '#10b981' : '#d1d5db'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px', fontSize: '11px', color: 'white', fontWeight: '700' }}>{checked ? '✓' : ''}</div>
-                        <span style={{ fontSize: '13px', color: '#374151', lineHeight: '1.5' }}>{stmt}</span>
-                      </button>
-                    ); })}
-                  </div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Section heading (optional)</label>
-                  <input value={standardCandidateName} onChange={e => setStandardCandidateName(e.target.value)} placeholder="e.g. Introduction, Opening Remarks" style={{ ...inp, marginBottom: '16px' }} />
                   <div style={{ display: 'flex', gap: '12px' }}>
-                    <button onClick={() => { setHasStandardComment('choose'); setAiCandidates([]); setSelectedCandidates(new Set()); setAiError(null); }} style={secondaryBtn}>← Back</button>
+                    <button onClick={() => { setHasStandardComment('manual'); }} style={secondaryBtn}>← Back</button>
                     <button onClick={confirmCandidates} style={{ ...primaryBtn, backgroundColor: '#10b981' }}>Confirm {selectedCandidates.size} →</button>
                   </div>
                 </div>
@@ -746,31 +721,50 @@ const handleSaveAndWrite = () => {
 
               {hasStandardComment === 'manual' && (
                 <div>
-                  {highlightedExamples.length > 0 && (
-                    <div style={{ marginBottom: '20px', backgroundColor: '#fefce8', border: `1px solid ${activePlaceholder === '[Name]' ? '#f59e0b' : '#fde68a'}`, borderRadius: '10px', padding: '14px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: activePlaceholder === '[Name]' ? '6px' : '12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '13px', fontWeight: '700', color: '#713f12' }}>Selected Statements ({highlightedExamples.length})</span>
-                          <span style={{ fontSize: '11px', color: '#a16207', fontStyle: 'italic' }}>— replace names (hover for help):</span>
-                          {placeholderBtn('[Name]')}
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Section heading (optional)</label>
+                  <input value={standardSectionName} onChange={e => setStandardSectionName(e.target.value)} placeholder="e.g. Introduction, Opening Remarks" style={{ ...inp, marginBottom: '16px' }} autoFocus />
+
+                  {hasReports ? (
+                    <>
+                      {highlightedExamples.length === 0 ? (
+                        <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '16px 18px', marginBottom: '16px' }}>
+                          <div style={{ fontSize: '14px', fontWeight: '700', color: '#065f46', marginBottom: '4px' }}>👉 Highlight the statement in the reports panel</div>
+                          <div style={{ fontSize: '12px', color: '#047857', lineHeight: '1.5' }}>Select the text you want to use — it will appear here ready to add.</div>
                         </div>
-                        <button onClick={() => { setHighlightedExamples([]); setActivePlaceholder(null); }} style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '12px', fontWeight: '500', padding: 0 }}>Clear all</button>
-                      </div>
-                      {activePlaceholder === '[Name]' && <p style={{ fontSize: '11px', color: '#92400e', margin: '0 0 10px 0' }}>Click any word to replace it with [Name]</p>}
-                      {highlightedExamples.map((ex, i) => (
-                        <div key={i} style={{ backgroundColor: 'white', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                          <div style={{ flex: 1, fontSize: '13px', lineHeight: '1.7', wordBreak: 'break-word' }}>
-                            {activePlaceholder === '[Name]' ? renderHighlightedTokens(ex, i) : <span style={{ color: '#374151' }}>{ex}</span>}
+                      ) : (
+                        <div style={{ marginBottom: '16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '12px', color: '#6b7280' }}>Replace pupil names with a placeholder:</span>
+                            {placeholderBtn('[Name]')}
                           </div>
-                          <button
-                            onClick={() => { setAddedSections(prev => [...prev, { id: makeId(), type: 'standard-comment' as SectionType, name: '', buttons: [], content: ex, instruction: '', showHeader: false }]); setHighlightedExamples(prev => prev.filter((_, j) => j !== i)); }}
-                            style={{ padding: '4px 10px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}
-                          >Add</button>
-                          <button onClick={() => setHighlightedExamples(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '16px', flexShrink: 0, lineHeight: 1, padding: '2px 0' }}>✕</button>
+                          {activePlaceholder === '[Name]' && <p style={{ fontSize: '11px', color: '#92400e', margin: '0 0 8px 0' }}>Click any word to replace it with [Name]</p>}
+                          {highlightedExamples.map((ex, i) => (
+                            <div key={i} style={{ backgroundColor: 'white', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                              <div style={{ flex: 1, fontSize: '13px', lineHeight: '1.7', wordBreak: 'break-word' }}>
+                                {activePlaceholder === '[Name]' ? renderHighlightedTokens(ex, i) : <span style={{ color: '#374151' }}>{ex}</span>}
+                              </div>
+                              <button
+                                onClick={() => { setAddedSections(prev => [...prev, { id: makeId(), type: 'standard-comment' as SectionType, name: standardSectionName.trim(), buttons: [], content: ex, instruction: '', showHeader: !!standardSectionName.trim() }]); setHighlightedExamples(prev => prev.filter((_, j) => j !== i)); setActivePlaceholder(null); }}
+                                style={{ padding: '4px 10px', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}
+                              >Add</button>
+                              <button onClick={() => setHighlightedExamples(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '16px', flexShrink: 0, lineHeight: 1, padding: '2px 0' }}>✕</button>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                        {addedSections.filter(s => s.type === 'standard-comment').length === 0 ? 'Type or paste your statement:' : 'Add another:'}
+                      </label>
+                      <textarea value={standardContent} onChange={e => setStandardContent(e.target.value)} placeholder="e.g. It has been a pleasure teaching [Name] this term..." style={{ ...txa, minHeight: '90px', borderColor: '#10b981', marginBottom: '10px' }} />
+                      {standardContent.trim() && (
+                        <button onClick={() => { setAddedSections(prev => [...prev, { id: makeId(), type: 'standard-comment' as SectionType, name: standardSectionName.trim(), buttons: [], content: standardContent.trim(), instruction: '', showHeader: false }]); setStandardContent(''); }} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '16px' }}>+ Add statement</button>
+                      )}
+                    </>
                   )}
+
                   {(() => { const stmts = addedSections.filter(s => s.type === 'standard-comment'); return stmts.length > 0 && (
                     <div style={{ marginBottom: '16px' }}>
                       <div style={{ fontSize: '12px', fontWeight: '700', color: '#6b7280', letterSpacing: '0.04em', marginBottom: '8px' }}>ADDED ({stmts.length})</div>
@@ -785,15 +779,9 @@ const handleSaveAndWrite = () => {
                       ))}
                     </div>
                   ); })()}
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Section name (optional)</label>
-                  <input value={standardSectionName} onChange={e => setStandardSectionName(e.target.value)} placeholder="e.g. Introduction, Coursework Covered" style={{ ...inp, marginBottom: '10px' }} />
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>{addedSections.filter(s => s.type === 'standard-comment').length === 0 ? 'Paste your statement here:' : 'Add another:'}</label>
-                  <textarea value={standardContent} onChange={e => setStandardContent(e.target.value)} placeholder="e.g. It has been a pleasure teaching [Name] this term..." style={{ ...txa, minHeight: '90px', borderColor: '#10b981', marginBottom: '10px' }} />
-                  {standardContent.trim() && (
-                    <button onClick={() => { setAddedSections(prev => [...prev, { id: makeId(), type: 'standard-comment' as SectionType, name: standardSectionName.trim(), buttons: [], content: standardContent.trim(), instruction: '', showHeader: false }]); setStandardContent(''); setStandardSectionName(''); }} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '16px' }}>+ Add statement</button>
-                  )}
+
                   <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                    <button onClick={() => setHasStandardComment('choose')} style={secondaryBtn}>← Back</button>
+                    <button onClick={() => setHasStandardComment(null)} style={secondaryBtn}>← Back</button>
                     <button onClick={goNext} style={primaryBtn}>{addedSections.filter(s => s.type === 'standard-comment').length > 0 ? `Continue with ${addedSections.filter(s => s.type === 'standard-comment').length} →` : 'Skip →'}</button>
                   </div>
                 </div>
