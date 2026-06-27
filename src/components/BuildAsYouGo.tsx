@@ -86,7 +86,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const handleReportsPanelMouseUp = useCallback(() => {
     const sel = window.getSelection();
     const text = sel?.toString().trim() || '';
-    if (text.length > 15) {
+    if (text.split(/\s+/).filter(Boolean).length >= 3) {
       setHighlightedExamples(prev => prev.includes(text) ? prev : [...prev, text]);
     }
   }, []);
