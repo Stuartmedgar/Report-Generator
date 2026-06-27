@@ -83,6 +83,14 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const handleReportsPanelScroll = useCallback((e: React.UIEvent<HTMLTextAreaElement>) => { reportsPanelScrollRef.current = e.currentTarget.scrollTop; }, []);
   useEffect(() => { if (reportsPanelRef.current) reportsPanelRef.current.scrollTop = reportsPanelScrollRef.current; });
 
+  const handleReportsPanelMouseUp = useCallback(() => {
+    const sel = window.getSelection();
+    const text = sel?.toString().trim() || '';
+    if (text.length > 15) {
+      setHighlightedExamples(prev => prev.includes(text) ? prev : [...prev, text]);
+    }
+  }, []);
+
   const [screen, setScreen] = useState<Screen>('subject');
   const [subject, setSubject] = useState('');
   const [localTemplateName, setLocalTemplateName] = useState(templateName || '');
@@ -327,13 +335,6 @@ const handleSaveAndWrite = () => {
   );
 
   const ReportsPanel = () => {
-    const handleMouseUp = () => {
-      const sel = window.getSelection();
-      const text = sel?.toString().trim() || '';
-      if (text.length > 15 && !highlightedExamples.includes(text)) {
-        setHighlightedExamples(prev => [...prev, text]);
-      }
-    };
     const showReadingView = hasReports && !reportsEditMode;
     const currentSectionLabel = question ? (sectionName || question.defaultName) : '';
     return (
@@ -359,7 +360,7 @@ const handleSaveAndWrite = () => {
         )}
         <div style={{ flex: 1, padding: '12px 16px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {showReadingView ? (
-            <div onMouseUp={handleMouseUp} style={{ flex: 1, overflowY: 'auto', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '12px', lineHeight: '1.7', color: '#374151', cursor: 'text', userSelect: 'text', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            <div onMouseUp={handleReportsPanelMouseUp} style={{ flex: 1, overflowY: 'auto', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '12px', lineHeight: '1.7', color: '#374151', cursor: 'text', userSelect: 'text', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
               {pastedReports}
             </div>
           ) : (
