@@ -900,51 +900,91 @@ const handleSaveAndWrite = () => {
 
               {phase === 'statements' && (
                 <div>
-                  {/* Contextual instruction panel for Q1 (qualities) and Q5 (next-steps) */}
-                  {(question.id === 'qualities' || question.id === 'next-steps') ? (
-                    <div style={{ backgroundColor: aiUsedForSection ? '#f0fdf4' : '#eff6ff', border: `1px solid ${aiUsedForSection ? '#bbf7d0' : '#bfdbfe'}`, borderRadius: '8px', padding: '10px 14px', marginBottom: '16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showInstructions ? '8px' : '0' }}>
-                        <span style={{ fontSize: '12px', fontWeight: '700', color: aiUsedForSection ? '#065f46' : '#1e40af' }}>
-                          {aiUsedForSection ? '✓ AI complete — check & adjust' : 'ℹ How to build this section'}
-                        </span>
-                        <button onClick={() => setShowInstructions(o => !o)} style={{ background: 'none', border: 'none', color: aiUsedForSection ? '#065f46' : '#1e40af', cursor: 'pointer', fontSize: '11px', padding: 0 }}>
-                          {showInstructions ? 'hide ▲' : 'show ▼'}
-                        </button>
-                      </div>
-                      {showInstructions && (
-                        <div style={{ fontSize: '12px', color: aiUsedForSection ? '#047857' : '#1d4ed8', lineHeight: '1.8' }}>
-                          {aiUsedForSection ? (<>
+                  <div style={{ backgroundColor: aiUsedForSection ? '#f0fdf4' : '#eff6ff', border: `1px solid ${aiUsedForSection ? '#bbf7d0' : '#bfdbfe'}`, borderRadius: '8px', padding: '10px 14px', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showInstructions ? '8px' : '0' }}>
+                      <span style={{ fontSize: '12px', fontWeight: '700', color: aiUsedForSection ? '#065f46' : '#1e40af' }}>
+                        {aiUsedForSection ? '✓ AI complete — check & adjust' : 'ℹ How to build this section'}
+                      </span>
+                      <button onClick={() => setShowInstructions(o => !o)} style={{ background: 'none', border: 'none', color: aiUsedForSection ? '#065f46' : '#1e40af', cursor: 'pointer', fontSize: '11px', padding: 0 }}>
+                        {showInstructions ? 'hide ▲' : 'show ▼'}
+                      </button>
+                    </div>
+                    {showInstructions && (
+                      <div style={{ fontSize: '12px', color: aiUsedForSection ? '#047857' : '#1d4ed8', lineHeight: '1.8' }}>
+                        {aiUsedForSection ? (
+                          question.sectionType === 'rated-comment' ? (<>
+                            <div>1. Check statements for each rating level — AI sometimes makes mistakes</div>
+                            <div>2. Use ✏️ edit and ✕ delete to make changes</div>
+                            <div>3. Rename a button by clicking on it and typing</div>
+                            <div>4. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to create two linked rated sections</div>
+                          </>) : question.sectionType === 'assessment-comment' ? (<>
+                            <div>1. Check statements — replace actual scores with <strong>[Score 1]</strong> (click it in the orange box, then click the number)</div>
+                            <div>2. Use ✏️ edit, ↔ move and ✕ delete to make changes</div>
+                            <div>3. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> for multiple assessment sections</div>
+                          </>) : question.sectionType === 'personalised-comment' ? (<>
+                            <div>1. Check statements — replace specific details with <strong>[Info 1]</strong> (click it in the orange box, then click the word)</div>
+                            <div>2. Use ✏️ edit, ↔ move and ✕ delete to make changes</div>
+                            <div>3. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> for multiple target sections</div>
+                          </>) : (<>
                             <div>1. Check the buttons and statements — AI sometimes makes mistakes</div>
                             <div>2. Use ✏️ edit, ↔ move and ✕ delete to make changes</div>
                             <div>3. Move also lets you create a new button</div>
                             <div>4. Rename a button by clicking on it and typing</div>
                             <div>5. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to select multiple statements per pupil when writing reports</div>
-                          </>) : hasReports ? (<>
+                          </>)
+                        ) : hasReports ? (
+                          question.sectionType === 'rated-comment' ? (<>
+                            <div>1. Click a rating button — Excellent, Good etc. — to select it</div>
+                            <div>2. Highlight statements from your reports for that rating level, then assign them</div>
+                            <div>3. Repeat across all 4 rating levels</div>
+                            <div>4. To use AI: highlight 1–2 examples per level, then click <strong>Find in my reports</strong></div>
+                            <div>5. Replace pupil names: click <strong>[Name]</strong> in the orange box, then click any word</div>
+                            <div>6. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to create two linked rated sections</div>
+                          </>) : question.sectionType === 'assessment-comment' ? (<>
+                            <div>1. Highlight assessment statements from your reports, then assign to a button</div>
+                            <div>2. Use <strong>[Score 1]</strong> to replace actual scores — click it in the orange box, then click the number</div>
+                            <div>3. To use AI: highlight a few examples, then click <strong>Find in my reports</strong></div>
+                            <div>4. Replace pupil names: click <strong>[Name]</strong> in the orange box, then click any word</div>
+                            <div>5. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> for multiple assessment sections</div>
+                          </>) : question.sectionType === 'personalised-comment' ? (<>
+                            <div>1. Highlight personalised statements from your reports, then assign to a button</div>
+                            <div>2. Use <strong>[Info 1]</strong> to replace the specific detail — click it in the orange box, then click the word</div>
+                            <div>3. To use AI: highlight a few examples, then click <strong>Find in my reports</strong></div>
+                            <div>4. Replace pupil names: click <strong>[Name]</strong> in the orange box, then click any word</div>
+                            <div>5. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> for multiple target sections</div>
+                          </>) : (<>
                             <div>1. Highlight statements in the reports panel that you want in this section</div>
                             <div>2. To use AI: select around 5 statements, then click <strong>Find in my reports</strong> below</div>
                             <div>3. Or highlight as many statements as you want manually — you can add more whilst writing reports</div>
                             <div>4. Replace pupil names: click <strong>[Name]</strong> in the orange box, then click any word — names highlight blue</div>
                             <div>5. Assign each statement to a button — click <strong>+ New button</strong> to create one first</div>
                             <div>6. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to select multiple statements per pupil when writing reports</div>
+                          </>)
+                        ) : (
+                          question.sectionType === 'rated-comment' ? (<>
+                            <div>1. Click a rating button — Excellent, Good etc. — to select it</div>
+                            <div>2. Type or paste statements for that performance level</div>
+                            <div>3. Repeat for each of the 4 rating levels</div>
+                            <div>4. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to create two linked rated sections</div>
+                          </>) : question.sectionType === 'assessment-comment' ? (<>
+                            <div>1. Click a button to select it, then type statements using <strong>[Score 1]</strong> where the score goes</div>
+                            <div>2. Use <strong>+ Add</strong> to create buttons for different score ranges</div>
+                            <div>3. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> for multiple assessment sections</div>
+                          </>) : question.sectionType === 'personalised-comment' ? (<>
+                            <div>1. Click <strong>+ New button</strong> to create a button, then type statements using <strong>[Info 1]</strong> for the specific detail</div>
+                            <div>2. Rename a button by clicking on it and typing</div>
+                            <div>3. Repeat for as many buttons as you need</div>
+                            <div>4. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> for multiple target sections</div>
                           </>) : (<>
                             <div>1. Click <strong>+ New button</strong> to create a button, then type or paste statements for it</div>
                             <div>2. Rename a button by clicking on it and typing</div>
                             <div>3. Repeat for as many buttons as you need</div>
                             <div>4. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to select multiple statements per pupil when writing reports</div>
-                          </>)}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px 14px', marginBottom: '20px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', letterSpacing: '0.05em', marginBottom: '8px' }}>3 WAYS TO ADD COMMENTS</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '12px', color: '#475569', lineHeight: '1.5' }}>
-                        <div>🖱️ <strong>Highlight &amp; assign</strong> — select text in your reports (right panel), then assign it to a button below</div>
-                        <div>🤖 <strong>AI fill</strong> — highlight a few examples first, then click "Find in my reports" to auto-populate</div>
-                        <div>✏️ <strong>Type manually</strong> — add buttons below and type or paste statements directly</div>
+                          </>)
+                        )}
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                   {renderStatementEditor(question.sectionType, sectionName)}
                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                     <button onClick={() => setPhase('ask')} style={secondaryBtn}>← Back</button>
