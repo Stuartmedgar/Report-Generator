@@ -203,6 +203,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
       if (question.isRatedFixed) setButtons(DEFAULT_RATED_BUTTONS.map(n => ({ name: n, statements: [] })));
       else if (question.id === 'assessment-comment') setButtons(ASSESSMENT_ADDABLE_UNIVERSAL.map(b => ({ name: b.name, statements: [] })));
       else if (question.id === 'qualities' || question.id === 'next-steps') { setButtons([]); }
+      else if (hasReports) { setButtons([]); }
       else { setButtons([{ name: '', statements: [] }]); setNamingButtonIndex(0); setNamingButtonValue(''); }
       setActiveButtonIndex(0);
     }
@@ -395,7 +396,7 @@ const handleSaveAndWrite = () => {
         )}
         <div style={{ flex: 1, padding: '12px 16px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           {showReadingView ? (
-            <div data-reports-reading-view="true" style={{ flex: 1, overflowY: 'auto', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '12px', lineHeight: '1.7', color: '#374151', cursor: 'text', userSelect: 'text', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            <div data-reports-reading-view="true" style={{ flex: 1, overflowY: 'auto', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '12px', lineHeight: '1.7', color: '#374151', cursor: 'text', userSelect: 'text', whiteSpace: 'pre-wrap', wordBreak: 'break-word', textAlign: 'left' }}>
               {pastedReports}
             </div>
           ) : (
@@ -525,7 +526,7 @@ const handleSaveAndWrite = () => {
             {activePlaceholder && <p style={{ fontSize: '11px', color: '#92400e', margin: '0 0 10px 0' }}>Click any word to replace it with {activePlaceholder}</p>}
             {highlightedExamples.map((ex, i) => (
               <div key={i} style={{ backgroundColor: 'white', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                <div style={{ flex: 1, fontSize: '13px', lineHeight: '1.7', wordBreak: 'break-word' }}>
+                <div style={{ flex: 1, fontSize: '13px', lineHeight: '1.7', wordBreak: 'break-word', textAlign: 'left' }}>
                   {activePlaceholder ? renderHighlightedTokens(ex, i) : <span style={{ color: '#374151' }}>{ex}</span>}
                 </div>
                 <select
@@ -657,7 +658,7 @@ const handleSaveAndWrite = () => {
                         </div>
                       ) : (
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '8px 10px' }}>
-                          <span style={{ flex: 1, fontSize: '13px', color: '#374151', lineHeight: '1.5' }}>{stmt}</span>
+                          <span style={{ flex: 1, fontSize: '13px', color: '#374151', lineHeight: '1.5', textAlign: 'left' }}>{stmt}</span>
                           <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
                             <button onClick={() => handleStartEditStatement(activeButtonIndex, i, stmt)} title="Edit" style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', padding: '2px 4px' }}>✏️</button>
                             <button onClick={() => { setMovingStatementKey({ buttonIdx: activeButtonIndex, stmtIdx: i }); setMovingToNew(false); setMovingToNewName(''); }} title="Move" style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', padding: '2px 4px' }}>↔</button>
