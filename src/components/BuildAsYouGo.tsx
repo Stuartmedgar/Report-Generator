@@ -72,6 +72,23 @@ function saveDraft(n: string, s: AddedSection[]) { try { localStorage.setItem(AU
 function clearDraft() { try { localStorage.removeItem(AUTOSAVE_KEY); } catch (_) {} }
 
 
+const HelpStep = ({ text, tip }: { text: React.ReactNode; tip: string }) => {
+  const [hover, setHover] = React.useState(false);
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+      <span style={{ flex: 1 }}>{text}</span>
+      <span style={{ position: 'relative', flexShrink: 0 }} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+        <span style={{ fontSize: '10px', fontWeight: '700', border: '1px solid currentColor', borderRadius: '50%', width: '14px', height: '14px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'default', opacity: 0.65 }}>?</span>
+        {hover && (
+          <div style={{ position: 'absolute', right: 0, top: '18px', width: '220px', backgroundColor: '#1e293b', color: 'white', padding: '8px 10px', borderRadius: '6px', fontSize: '11px', lineHeight: '1.5', zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.25)', pointerEvents: 'none' }}>
+            {tip}
+          </div>
+        )}
+      </span>
+    </div>
+  );
+};
+
 type Screen = 'subject' | 'wizard';
 
 const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onComplete, onCancel }) => {
@@ -917,85 +934,81 @@ const handleSaveAndWrite = () => {
                       <div style={{ fontSize: '12px', color: aiUsedForSection ? '#047857' : '#1d4ed8', lineHeight: '1.8' }}>
                         {aiUsedForSection ? (
                           question.sectionType === 'rated-comment' ? (<>
-                            <div>1. Check statements for each rating level — AI sometimes makes mistakes</div>
-                            <div>2. Use ✏️ edit and ✕ delete to make changes</div>
-                            <div>3. Rename a button by clicking on it and typing — use <strong>+ Add</strong> to add more levels or ✕ (beside the button name) to delete one</div>
-                            <div>4. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to create two linked rated sections</div>
+                            <HelpStep text="1. Check statements for each rating level — AI sometimes makes mistakes" tip="Read through each button's statements carefully — AI can misclassify levels or add extra words." />
+                            <HelpStep text={<>2. Use ✏️ edit, ↔ move and ✕ delete to make changes to statements</>} tip="Click ✏️ to edit a statement inline. Use ↔ to move it to a different button. ✕ removes it." />
+                            <HelpStep text={<>3. Rename a button by clicking on it and typing — use <strong>+ Add</strong> to add more levels or ✕ (beside the button name) to delete one</>} tip="Click the button label itself to rename it. Use + Add to create extra performance levels if needed." />
+                            <HelpStep text={<>4. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to create two linked rated sections</>} tip="Duplicate creates a second copy — useful if you want two rated sections side by side, e.g. effort and attainment." />
                           </>) : question.sectionType === 'assessment-comment' ? (<>
-                            <div>1. Check statements — replace actual scores with <strong>[Score 1]</strong> (click it in the orange box, then click the number)</div>
-                            <div>2. For additional scores in one comment use <strong>[Score 2]</strong>, <strong>[Score 3]</strong> etc.</div>
-                            <div>3. Rename a button by clicking on it and typing — use <strong>+ Add</strong> to add more or ✕ to delete one</div>
-                            <div>4. Use ✏️ edit, ↔ move and ✕ delete to make changes to statements</div>
-                            <div>5. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> for multiple assessment sections</div>
+                            <HelpStep text={<>1. Check statements — replace actual scores with <strong>[Score 1]</strong> (click it in the orange box, then click the number)</>} tip="Click [Score 1] in the placeholder bar above the statement, then click the actual number in the statement to swap it." />
+                            <HelpStep text={<>2. For additional scores use <strong>[Score 2]</strong>, <strong>[Score 3]</strong> etc.</>} tip="If a statement references two scores, use [Score 1] for the first and [Score 2] for the second." />
+                            <HelpStep text={<>3. Rename a button by clicking on it and typing — use <strong>+ Add</strong> to add more or ✕ to delete one</>} tip="Click the button label itself to rename it. Button names appear as labels in the report writer." />
+                            <HelpStep text={<>4. Use ✏️ edit, ↔ move and ✕ delete to make changes to statements</>} tip="Click ✏️ to edit a statement inline. Use ↔ to move it to a different button. ✕ removes it." />
+                            <HelpStep text={<>5. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> for multiple assessment sections</>} tip="Duplicate creates a second copy — useful if pupils sit more than one assessment." />
                           </>) : question.sectionType === 'personalised-comment' ? (<>
-                            <div>1. Check statements — replace specific details with <strong>[Info 1]</strong> (click it in the orange box, then click the word)</div>
-                            <div>2. If a statement has two pieces of personal info, use <strong>[Info 2]</strong> for the second one</div>
-                            <div>3. Use ✏️ edit, ↔ move and ✕ delete to make changes</div>
-                            <div>4. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> for multiple target sections</div>
+                            <HelpStep text={<>1. Check statements — replace specific details with <strong>[Info 1]</strong> (click it in the orange box, then click the word)</>} tip="Click [Info 1] in the placeholder bar above the statement, then click the specific word in the statement to swap it out." />
+                            <HelpStep text={<>2. If a statement has two pieces of personal info, use <strong>[Info 2]</strong> for the second one</>} tip="For example: '[Name] excelled at [Info 1] and also showed talent in [Info 2].'" />
+                            <HelpStep text={<>3. Use ✏️ edit, ↔ move and ✕ delete to make changes</>} tip="Click ✏️ to edit a statement inline. Use ↔ to move it to a different button. ✕ removes it." />
+                            <HelpStep text={<>4. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> for multiple target sections</>} tip="Duplicate creates a second copy — useful if you want separate sections for different types of personal info." />
                           </>) : (<>
-                            <div>1. Check the buttons and statements — AI sometimes makes mistakes</div>
-                            <div>2. Use ✏️ edit, ↔ move and ✕ delete to make changes</div>
-                            <div>3. Move also lets you create a new button</div>
-                            <div>4. Rename a button by clicking on it and typing</div>
-                            <div>5. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to select multiple statements per pupil when writing reports</div>
+                            <HelpStep text="1. Check the buttons and statements — AI sometimes makes mistakes" tip="Read through each button's statements carefully — AI can misclassify or add extra words." />
+                            <HelpStep text={<>2. Use ✏️ edit, ↔ move and ✕ delete to make changes</>} tip="Click ✏️ to edit a statement inline. Use ↔ to move it to a different button. ✕ removes it." />
+                            <HelpStep text="3. Move also lets you create a new button" tip="When moving a statement, choose 'New button' to place it in a brand new category." />
+                            <HelpStep text="4. Rename a button by clicking on it and typing" tip="Click the button label itself to rename it directly." />
+                            <HelpStep text={<>5. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to select multiple statements per pupil when writing reports</>} tip="Duplicate creates a second copy of this section — useful for selecting more than one statement per pupil." />
                           </>)
                         ) : hasReports ? (
                           question.sectionType === 'rated-comment' ? (<>
-                            <div>1. Click a rating button — Excellent, Good etc. — to select it</div>
-                            <div>2. Highlight statements from your reports for that rating level, then assign them — or type directly in the box below</div>
-                            <div>3. Repeat across all 4 rating levels</div>
-                            <div>4. Rename a button by clicking on it and typing — use <strong>+ Add</strong> to add more levels or ✕ to delete one</div>
-                            <div>5. To use AI: highlight 1–2 examples per level, then click <strong>Find in my reports</strong></div>
-                            <div>6. Replace pupil names: click <strong>[Name]</strong> in the orange box, then click any word</div>
-                            <div>7. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to create two linked rated sections</div>
+                            <HelpStep text="1. Select rating statements by highlighting them in your reports" tip="Click and drag to highlight a sentence in the reports panel on the right — it will appear as a captured statement ready to assign." />
+                            <HelpStep text={<>2. Replace pupil names: click <strong>[Name]</strong> in the orange box, then click any word</>} tip="After assigning a statement, click [Name] in the orange placeholder bar, then click the pupil's name in the statement to swap it out." />
+                            <HelpStep text="3. Click a rating button — Excellent, Good etc. — to select it, then assign statements for that level. Repeat for each level." tip="You must select a button before assigning. Highlighted statements will be assigned to whichever button is currently selected." />
+                            <HelpStep text={<>4. To use AI: highlight 1–2 examples per level, then click <strong>Find in my reports</strong></>} tip="The AI scans your pasted reports for more statements at each performance level and populates the buttons automatically." />
+                            <HelpStep text={<>5. Rename a button by clicking on it and typing — use <strong>+ Add</strong> to add more levels or ✕ to delete one</>} tip="Click the button label itself to rename it. Use + Add to create extra performance levels if needed." />
+                            <HelpStep text={<>6. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to create two linked rated sections</>} tip="Duplicate creates a second copy — useful if you want two rated sections side by side, e.g. effort and attainment." />
                           </>) : question.sectionType === 'assessment-comment' ? (<>
-                            <div>1. Highlight assessment statements from your reports, then assign to a button</div>
-                            <div>2. Use <strong>[Score 1]</strong> to replace the first score — click it in the orange box, then click the number</div>
-                            <div>3. For additional scores in one comment use <strong>[Score 2]</strong>, <strong>[Score 3]</strong> etc.</div>
-                            <div>4. If reports only state a score with no other text, one button is enough</div>
-                            <div>5. Rename a button by clicking on it and typing — use <strong>+ Add</strong> to add more or ✕ to delete one</div>
-                            <div>6. To use AI: highlight a few examples, then click <strong>Find in my reports</strong></div>
-                            <div>7. Replace pupil names: click <strong>[Name]</strong> in the orange box, then click any word</div>
-                            <div>8. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> for multiple assessment sections</div>
+                            <HelpStep text="1. Select assessment statements by highlighting them in your reports" tip="Click and drag to highlight a sentence in the reports panel on the right — it will appear as a captured statement ready to assign." />
+                            <HelpStep text={<>2. Replace pupil names: click <strong>[Name]</strong> in the orange box, then click any word</>} tip="After assigning a statement, click [Name] in the orange placeholder bar, then click the pupil's name in the statement to swap it out." />
+                            <HelpStep text={<>3. Replace scores with <strong>[Score 1]</strong> — click it in the orange box, then click the number. Use <strong>[Score 2]</strong>, <strong>[Score 3]</strong> for additional scores in the same comment</>} tip="If a statement mentions two scores, use [Score 1] for the first and [Score 2] for the second." />
+                            <HelpStep text={<>4. To use AI: highlight a few examples, then click <strong>Find in my reports</strong></>} tip="The AI scans your pasted reports for similar assessment statements and populates the buttons automatically." />
+                            <HelpStep text={<>5. Rename a button by clicking on it and typing — use <strong>+ Add</strong> to add more or ✕ to delete one</>} tip="Button names appear as labels in the report writer — keep them short and descriptive." />
+                            <HelpStep text={<>6. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> for multiple assessment sections</>} tip="Duplicate creates a second copy — useful if pupils sit more than one assessment." />
                           </>) : question.sectionType === 'personalised-comment' ? (<>
-                            <div>1. Highlight personalised statements from your reports, then assign to a button</div>
-                            <div>2. Use <strong>[Info 1]</strong> to replace the specific detail — click it in the orange box, then click the word</div>
-                            <div>3. If a statement has two pieces of personal info, use <strong>[Info 2]</strong> for the second one</div>
-                            <div>4. To use AI: highlight a few examples, then click <strong>Find in my reports</strong></div>
-                            <div>5. Replace pupil names: click <strong>[Name]</strong> in the orange box, then click any word</div>
-                            <div>6. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> for multiple target sections</div>
+                            <HelpStep text="1. Select personalised statements by highlighting them in your reports" tip="Click and drag to highlight a sentence in the reports panel on the right — it will appear as a captured statement ready to assign." />
+                            <HelpStep text={<>2. Replace pupil names: click <strong>[Name]</strong> in the orange box, then click any word</>} tip="After assigning a statement, click [Name] in the orange placeholder bar, then click the pupil's name in the statement to swap it out." />
+                            <HelpStep text={<>3. Replace specific details with <strong>[Info 1]</strong> — click it in the orange box, then click the word. Use <strong>[Info 2]</strong> for a second piece of info</>} tip="For example: '[Name] excelled at [Info 1] and also showed talent in [Info 2].'" />
+                            <HelpStep text={<>4. To use AI: highlight a few examples, then click <strong>Find in my reports</strong></>} tip="The AI scans your pasted reports for similar personalised statements and populates the buttons automatically." />
+                            <HelpStep text={<>5. Rename a button by clicking on it and typing — use <strong>+ Add</strong> to add more or ✕ to delete one</>} tip="Button names appear as labels in the report writer — keep them short and descriptive." />
+                            <HelpStep text={<>6. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> for multiple target sections</>} tip="Duplicate creates a second copy — useful if you want separate sections for different types of personal info." />
                           </>) : (<>
-                            <div>1. Highlight statements in the reports panel that you want in this section</div>
-                            <div>2. To use AI: select around 5 statements, then click <strong>Find in my reports</strong> below</div>
-                            <div>3. Or highlight as many statements as you want manually — you can add more whilst writing reports</div>
-                            <div>4. Replace pupil names: click <strong>[Name]</strong> in the orange box, then click any word — names highlight blue</div>
-                            <div>5. Assign each statement to a button — click <strong>+ New button</strong> to create one first</div>
-                            <div>6. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to select multiple statements per pupil when writing reports</div>
+                            <HelpStep text="1. Select statements by highlighting them in your reports" tip="Click and drag to highlight a sentence in the reports panel on the right — it will appear as a captured statement ready to assign." />
+                            <HelpStep text={<>2. Replace pupil names: click <strong>[Name]</strong> in the orange box, then click any word</>} tip="After assigning a statement, click [Name] in the orange placeholder bar, then click the pupil's name in the statement to swap it out." />
+                            <HelpStep text={<>3. To use AI: highlight a few examples, then click <strong>Find in my reports</strong></>} tip="The AI scans your pasted reports for similar statements and populates the buttons automatically." />
+                            <HelpStep text={<>4. Rename a button by clicking on it and typing — use <strong>+ Add</strong> to add more or ✕ to delete one</>} tip="Button names appear as labels in the report writer — keep them short and descriptive." />
+                            <HelpStep text={<>5. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to select multiple statements per pupil when writing reports</>} tip="Duplicate creates a second copy of this section — useful for selecting more than one statement per pupil." />
                           </>)
                         ) : (
                           question.sectionType === 'rated-comment' ? (<>
-                            <div>1. Click a rating button — Excellent, Good etc. — to select it</div>
-                            <div>2. Type or paste statements for that performance level</div>
-                            <div>3. Repeat for each of the 4 rating levels</div>
-                            <div>4. Rename a button by clicking on it and typing — use <strong>+ Add</strong> to add more levels or ✕ to delete one</div>
-                            <div>5. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to create two linked rated sections</div>
+                            <HelpStep text="1. Click a rating button — Excellent, Good etc. — to select it" tip="You need to select a button before typing — the selected button is highlighted. Repeat for each rating level." />
+                            <HelpStep text="2. Type or paste statements for that performance level" tip="Type directly in the statement box below, or paste statements you've written elsewhere." />
+                            <HelpStep text="3. Repeat for each of the 4 rating levels" tip="Work through Excellent, Good, Satisfactory and Needs Improvement (or rename them to match your school's language)." />
+                            <HelpStep text={<>4. Rename a button by clicking on it and typing — use <strong>+ Add</strong> to add more levels or ✕ to delete one</>} tip="Click the button label itself to rename it. Use + Add to create extra performance levels if needed." />
+                            <HelpStep text={<>5. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to create two linked rated sections</>} tip="Duplicate creates a second copy — useful if you want two rated sections side by side, e.g. effort and attainment." />
                           </>) : question.sectionType === 'assessment-comment' ? (<>
-                            <div>1. Click a button to select it, then type statements using <strong>[Score 1]</strong> where the score goes</div>
-                            <div>2. For additional scores in one comment use <strong>[Score 2]</strong>, <strong>[Score 3]</strong> etc.</div>
-                            <div>3. If comments only state a score with no other text, one button is enough</div>
-                            <div>4. Rename a button by clicking on it and typing — use <strong>+ Add</strong> to create more or ✕ to delete one</div>
-                            <div>5. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> for multiple assessment sections</div>
+                            <HelpStep text={<>1. Click a button to select it, then type statements using <strong>[Score 1]</strong> where the score goes</>} tip="Type [Score 1] as a placeholder — when writing reports you'll type the actual score in its place." />
+                            <HelpStep text={<>2. For additional scores in one comment use <strong>[Score 2]</strong>, <strong>[Score 3]</strong> etc.</>} tip="If a statement references two scores, use [Score 1] for the first and [Score 2] for the second." />
+                            <HelpStep text="3. If comments only state a score with no other text, one button is enough" tip="In this case, just add a single button and leave the statement as '[Score 1]' alone." />
+                            <HelpStep text={<>4. Rename a button by clicking on it and typing — use <strong>+ Add</strong> to create more or ✕ to delete one</>} tip="Button names appear as labels in the report writer — keep them short and descriptive." />
+                            <HelpStep text={<>5. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> for multiple assessment sections</>} tip="Duplicate creates a second copy — useful if pupils sit more than one assessment." />
                           </>) : question.sectionType === 'personalised-comment' ? (<>
-                            <div>1. Click <strong>+ New button</strong> to create a button, then type statements using <strong>[Info 1]</strong> for the specific detail</div>
-                            <div>2. If a statement has two pieces of personal info, use <strong>[Info 2]</strong> for the second one</div>
-                            <div>3. Rename a button by clicking on it and typing</div>
-                            <div>4. Repeat for as many buttons as you need</div>
-                            <div>5. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> for multiple target sections</div>
+                            <HelpStep text={<>1. Click <strong>+ New button</strong> to create a button, then type statements using <strong>[Info 1]</strong> for the specific detail</>} tip="Type [Info 1] as a placeholder — when writing reports you'll type the actual detail (e.g. a sport, instrument, or target) in its place." />
+                            <HelpStep text={<>2. If a statement has two pieces of personal info, use <strong>[Info 2]</strong> for the second one</>} tip="For example: '[Name] excelled at [Info 1] and also showed talent in [Info 2].'" />
+                            <HelpStep text="3. Rename a button by clicking on it and typing" tip="Click the button label itself to rename it directly." />
+                            <HelpStep text="4. Repeat for as many buttons as you need" tip="Each button becomes a selectable option in the report writer." />
+                            <HelpStep text={<>5. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> for multiple target sections</>} tip="Duplicate creates a second copy — useful if you want separate sections for different types of personal info." />
                           </>) : (<>
-                            <div>1. Click <strong>+ New button</strong> to create a button, then type or paste statements for it</div>
-                            <div>2. Rename a button by clicking on it and typing</div>
-                            <div>3. Repeat for as many buttons as you need</div>
-                            <div>4. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to select multiple statements per pupil when writing reports</div>
+                            <HelpStep text={<>1. Click <strong>+ New button</strong> to create a button, then type or paste statements for it</>} tip="Each button groups related statements together — e.g. one button per theme or topic." />
+                            <HelpStep text="2. Rename a button by clicking on it and typing" tip="Click the button label itself to rename it directly." />
+                            <HelpStep text="3. Repeat for as many buttons as you need" tip="Each button becomes a selectable option in the report writer." />
+                            <HelpStep text={<>4. When finished: <strong>Save section</strong> or <strong>Duplicate</strong> to select multiple statements per pupil when writing reports</>} tip="Duplicate creates a second copy of this section — useful for selecting more than one statement per pupil." />
                           </>)
                         )}
                       </div>
