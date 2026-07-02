@@ -617,7 +617,7 @@ serve(async (req) => {
   let mode, subject, yearGroup, reportText, pronounSet, openerType,
       sectionName, builtSections, existingTemplate, refineText,
       sourceSection, scaleType, positionType, selectedText, existingHeadings,
-      piInstruction, reportStructure: string;
+      piInstruction, reportStructure: string, ratingLevels: string[] | null;
 
   try {
     const body = await req.json();
@@ -638,6 +638,7 @@ serve(async (req) => {
     existingHeadings = body.existingHeadings || [];
     piInstruction = body.piInstruction || "";
     reportStructure = body.reportStructure || "";
+    ratingLevels = body.ratingLevels || null;
   } catch {
     return new Response(JSON.stringify({ error: "Invalid request body" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
@@ -885,7 +886,7 @@ Group complete options by topic. ${openerInstruction}`,
 
       assessment: `ASSESSMENT sentences — ONLY extract sentences specifically about a named formal test or exam result. DO NOT INCLUDE general progress sentences or character sentences. Group by performance level with judgement-clear headings. Replace actual scores with [Score 1]. Apply NO DUPLICATES. ${openerInstruction}`,
       "assessment-comment": `ASSESSMENT COMMENT sentences — ONLY extract sentences specifically about a named formal test or exam result where the teacher uses different sentences by performance level. DO NOT INCLUDE general progress or quality sentences. Group into: excellent, good, satisfactory, needsImprovement. Replace names with [Name] and scores with [Score 1]. Apply PRONOUN TO [Name] CONVERSION with verb agreement fixes. Apply POSSESSIVE PRONOUNS rule. Apply NO DUPLICATES. ${openerInstruction}`,
-      rating: `RATING/JUDGEMENT sentences — the teacher's overall attainment or performance verdict that differs clearly between pupils (e.g. "has made excellent progress", "is working at the expected level", "needs to focus on improving"). Find every such sentence. ${scaleType === 'four-level' ? 'Use EXACTLY these four heading names and no others: "excellent", "good", "satisfactory", "needsImprovement". Do NOT invent other heading names.' : 'Derive the teacher\'s own groupings from their language.'} Apply PRONOUN TO [Name] CONVERSION with verb agreement fixes. Apply NO SENTENCE FRAGMENTS. Apply NO DUPLICATES. ${openerInstruction}`,
+      rating: `RATING/JUDGEMENT sentences — the teacher's overall attainment or performance verdict that differs clearly between pupils (e.g. "has made excellent progress", "is working at the expected level", "needs to focus on improving"). Find every such sentence. ${ratingLevels && ratingLevels.length > 0 ? `Use EXACTLY these heading names and no others: ${ratingLevels.map(l => `"${l}"`).join(', ')}. Assign each sentence to whichever heading best matches its performance level. Do NOT invent other heading names.` : scaleType === 'four-level' ? 'Use EXACTLY these four heading names and no others: "excellent", "good", "satisfactory", "needsImprovement". Do NOT invent other heading names.' : 'Derive the teacher\'s own groupings from their language.'} Apply PRONOUN TO [Name] CONVERSION with verb agreement fixes. Apply NO SENTENCE FRAGMENTS. Apply NO DUPLICATES. ${openerInstruction}`,
     };
 
     const instruction = positionInstructions[positionType] || positionInstructions.qualities;

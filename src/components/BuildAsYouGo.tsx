@@ -295,7 +295,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
       }
 
       const positionType = activeType === 'next-steps' ? 'next-steps' : activeType === 'rated-comment' ? 'rating' : activeType === 'assessment-comment' ? 'assessment-comment' : activeType === 'personalised-comment' ? 'personalised-comment' : activeName === 'Areas for Development' ? 'next-steps' : 'qualities';
-      const response = await fetch(SUPABASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'extract-only', subject: subject || activeName, yearGroup: '', reportText: reportTextForAI, pronounSet: 'they/their', openerType: 'name', sectionName: activeName, positionType, selectedText: selectedTextForAI, scaleType: activeType === 'rated-comment' ? 'four-level' : 'own' }) });
+      const ratingLevels = isRated ? buttons.map(b => b.name).filter(Boolean) : undefined;
+      const response = await fetch(SUPABASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'extract-only', subject: subject || activeName, yearGroup: '', reportText: reportTextForAI, pronounSet: 'they/their', openerType: 'name', sectionName: activeName, positionType, selectedText: selectedTextForAI, scaleType: activeType === 'rated-comment' ? 'four-level' : 'own', ratingLevels }) });
       if (!response.ok) throw new Error('failed');
       const data = await response.json();
       const headings: { name: string; comments: string[] }[] = data.headings || [];
@@ -305,12 +306,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
         const u = [...prev];
         if (isRated) {
           headings.forEach(h => {
-            const n = h.name.toLowerCase(); let ti = 1;
-            if (n.includes('excellent') || n.includes('outstanding') || n.includes('strong')) ti = 0;
-            else if (n.includes('good') || n.includes('solid') || n.includes('pleasing')) ti = 1;
-            else if (n.includes('satisfactory') || n.includes('adequate') || n.includes('reasonable')) ti = 2;
-            else if (n.includes('improvement') || n.includes('needs') || n.includes('limited') || n.includes('poor')) ti = 3;
-            if (ti < u.length) { const newStmts = h.comments.filter(c => !u[ti].statements.includes(c)); u[ti] = { ...u[ti], statements: [...u[ti].statements, ...newStmts].slice(0, MAX_STATEMENTS) }; }
+            const ei = u.findIndex(b => b.name && (b.name.toLowerCase() === h.name.toLowerCase() || h.name.toLowerCase().includes(b.name.toLowerCase()) || b.name.toLowerCase().includes(h.name.toLowerCase())));
+            if (ei >= 0) { const newStmts = h.comments.filter(c => !u[ei].statements.includes(c)); u[ei] = { ...u[ei], statements: [...u[ei].statements, ...newStmts].slice(0, MAX_STATEMENTS) }; }
           });
         } else {
           headings.forEach(h => {
