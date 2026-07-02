@@ -106,36 +106,30 @@ const AI_BUILDER_STEPS: TourStep[] = [
 
 const WIZARD_STEPS: TourStep[] = [
   {
-    title: "Your template is built — let's try it!",
-    content: "Here's how to use it to write your first report.",
+    title: "Your template is built — let's get it ready!",
+    content: 'Before you start writing, here are a few things worth setting up.',
   },
   {
-    target: 'pronoun',
-    title: 'Set the pronoun',
-    content: 'Start by choosing He, She, or They for this student. All comments will use the right pronoun automatically.',
+    target: 'reorder',
+    title: 'Arrange sections in report order',
+    content: 'Use the ▲ ▼ arrows to move sections into the order you want them to appear in your reports. Get this right now and you won\'t need to think about it again.',
+    position: 'right',
+  },
+  {
+    target: 'add-section',
+    title: 'Add line breaks and optional comments',
+    content: 'Click + to open the add menu. A ⏎ Line Break adds spacing between sections in the report. A 📝 Optional Comment Box adds a free-text field for one-off additions — both appear exactly where you place them.',
+    position: 'above',
+  },
+  {
+    target: 'duplicate',
+    title: 'Duplicate and merge sections',
+    content: '⧉ Duplicate creates an identical copy of a section — useful for subject-specific or pronoun variants. ⇥ Merge into… combines all the buttons from one section into another, then removes the original.',
     position: 'below',
   },
   {
-    target: 'section',
-    title: 'Choose a comment',
-    content: 'Click any button to select a comment for this section. The report preview on the right updates instantly. Click again to deselect.',
-    position: 'below',
-  },
-  {
-    target: 'preview',
-    title: 'Your report takes shape here',
-    content: 'Watch it build as you make selections. You can also click directly into the preview to make one-off edits for this student.',
-    position: 'left',
-  },
-  {
-    target: 'navigation',
-    title: 'Move between students',
-    content: 'Use the arrows to move to the next student — reports save automatically as you go.',
-    position: 'left',
-  },
-  {
-    title: "You're all set!",
-    content: 'Use ? Help any time to revisit these tours or explore the editing features.',
+    title: "Ready to write your first report!",
+    content: 'Use ? Help → Writing reports for a walkthrough of the report-writing features.',
   },
 ];
 

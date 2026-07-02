@@ -157,7 +157,7 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
         <InlineEditableTitle name={section.name} defaultName="Qualities" color="#7c3aed" onRename={onRenameSection ? (n) => onRenameSection(section.id, n) : undefined} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           {onDuplicateSection && (
-            <button onClick={() => onDuplicateSection(section.id)} title="Duplicate this section"
+            <button data-tour="duplicate" onClick={() => onDuplicateSection(section.id)} title="Duplicate this section"
               style={{ backgroundColor: '#e5e7eb', color: '#374151', border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: '500' }}>
               ⧉ Duplicate
             </button>
