@@ -190,7 +190,7 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
       {/* Pronoun selector */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
         <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: '500' }}>Use:</span>
-        {[{ value: '', label: 'Name' }, { value: globalPronoun || 'he', label: globalPronoun === 'she' ? 'She / Her' : globalPronoun === 'they' ? 'They / Them' : 'He / His' }].map(opt => (
+        {[{ value: '', label: 'Name' }, { value: globalPronoun || 'he', label: 'Pronoun' }].map(opt => (
           <button key={opt.value} onClick={() => updateSectionData(section.id, { pronounOverride: opt.value })}
             style={{
               padding: '2px 8px', border: '1px solid #f59e0b', borderRadius: '4px',
