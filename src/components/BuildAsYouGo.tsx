@@ -145,6 +145,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const [showInstructions, setShowInstructions] = useState(false);
   const [movingToNew, setMovingToNew] = useState(false);
   const [movingToNewName, setMovingToNewName] = useState('');
+  const [splittingStatementKey, setSplittingStatementKey] = useState<{ buttonIdx: number; stmtIdx: number } | null>(null);
+  const [splitSelectedText, setSplitSelectedText] = useState('');
   const statementInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { if (addedSections.length > 0) saveDraft(localTemplateName, addedSections); }, [addedSections, localTemplateName]);
@@ -201,6 +203,22 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const handleAddRatedButton = () => setButtons(prev => [...prev, { name: 'New Level', statements: [] }]);
   const handleDeleteRatedButton = (idx: number) => { if (buttons.length <= 1) return; setButtons(prev => prev.filter((_, i) => i !== idx)); setActiveButtonIndex(0); };
   const handleRatedButtonRename = (idx: number, val: string) => { setButtons(prev => { const u = [...prev]; u[idx] = { ...u[idx], name: val }; return u; }); };
+  const handleSplitConfirm = (buttonIdx: number, stmtIdx: number, originalStmt: string) => {
+    if (!splitSelectedText) return;
+    const idx = originalStmt.indexOf(splitSelectedText);
+    if (idx === -1) return;
+    const before = originalStmt.slice(0, idx).trim();
+    const after = originalStmt.slice(idx + splitSelectedText.length).trim();
+    const remaining = [before, after].filter(Boolean).join(' ');
+    setButtons(prev => {
+      const u = prev.map(b => ({ ...b, statements: [...b.statements] }));
+      const stmts = u[buttonIdx].statements;
+      if (remaining) { stmts[stmtIdx] = remaining; stmts.splice(stmtIdx + 1, 0, splitSelectedText); }
+      else { stmts[stmtIdx] = splitSelectedText; }
+      return u;
+    });
+    setSplittingStatementKey(null); setSplitSelectedText('');
+  };
 
   const resetWizardQuestion = (defaultName?: string) => {
     setPhase('ask'); setSectionName(defaultName ?? ''); setButtons([]); setActiveButtonIndex(0);
@@ -208,6 +226,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
     setStandardContent(''); setShowExamples(false); setAiError(null); setEditingStatementKey(null); setMovingStatementKey(null);
     setHighlightedExamples([]); setShowPool(false);
     setAiUsedForSection(false); setShowInstructions(true); setMovingToNew(false); setMovingToNewName('');
+    setSplittingStatementKey(null); setSplitSelectedText('');
   };
   const advanceQuestion = () => {
     if (isLastQuestion) handleSaveAndWrite();
@@ -645,12 +664,26 @@ const handleSaveAndWrite = () => {
                 {buttons[activeButtonIndex].statements.map((stmt, i) => {
                   const isEd = editingStatementKey?.buttonIdx === activeButtonIndex && editingStatementKey?.stmtIdx === i;
                   const isMv = movingStatementKey?.buttonIdx === activeButtonIndex && movingStatementKey?.stmtIdx === i;
+                  const isSp = splittingStatementKey?.buttonIdx === activeButtonIndex && splittingStatementKey?.stmtIdx === i;
                   return (
-                    <div key={i} style={{ backgroundColor: 'white', border: `1px solid ${isEd ? accentColor : '#e5e7eb'}`, borderRadius: '6px', marginBottom: '6px', overflow: 'hidden' }}>
+                    <div key={i} style={{ backgroundColor: 'white', border: `1px solid ${isEd || isSp ? accentColor : '#e5e7eb'}`, borderRadius: '6px', marginBottom: '6px', overflow: 'hidden' }}>
                       {isEd ? (
                         <div style={{ padding: '8px' }}>
                           <textarea value={editingStatementValue} onChange={e => setEditingStatementValue(e.target.value)} autoFocus style={{ ...txa, minHeight: '60px', marginBottom: '6px', borderColor: accentColor }} />
                           <div style={{ display: 'flex', gap: '6px' }}><button onClick={() => setEditingStatementKey(null)} style={{ ...secondaryBtn, padding: '4px 10px', fontSize: '12px' }}>Cancel</button><button onClick={handleSaveEditStatement} style={smallBtn(accentColor)}>Save</button></div>
+                        </div>
+                      ) : isSp ? (
+                        <div style={{ padding: '8px' }}>
+                          <div style={{ fontSize: '12px', color: '#92400e', fontWeight: '600', marginBottom: '6px' }}>Select the part to split into a new statement</div>
+                          <div
+                            style={{ fontSize: '13px', color: '#374151', lineHeight: '1.5', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '4px', padding: '8px', cursor: 'text', userSelect: 'text', marginBottom: '8px' }}
+                            onMouseUp={() => { const sel = window.getSelection(); const text = sel?.toString().trim() || ''; if (text.length > 0) setSplitSelectedText(text); }}
+                          >{stmt}</div>
+                          {splitSelectedText && <div style={{ fontSize: '12px', color: '#374151', backgroundColor: '#fef9c3', border: '1px solid #fde68a', borderRadius: '4px', padding: '6px 8px', marginBottom: '8px' }}>Split out: "<em>{splitSelectedText}</em>"</div>}
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <button onClick={() => { setSplittingStatementKey(null); setSplitSelectedText(''); }} style={{ ...secondaryBtn, padding: '4px 10px', fontSize: '12px' }}>Cancel</button>
+                            {splitSelectedText && <button onClick={() => handleSplitConfirm(activeButtonIndex, i, stmt)} style={smallBtn(accentColor)}>Split</button>}
+                          </div>
                         </div>
                       ) : isMv ? (
                         <div style={{ padding: '8px' }}>
@@ -679,6 +712,7 @@ const handleSaveAndWrite = () => {
                           <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
                             <button onClick={() => handleStartEditStatement(activeButtonIndex, i, stmt)} title="Edit" style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', padding: '2px 4px' }}>✏️</button>
                             <button onClick={() => { setMovingStatementKey({ buttonIdx: activeButtonIndex, stmtIdx: i }); setMovingToNew(false); setMovingToNewName(''); }} title="Move" style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', padding: '2px 4px' }}>↔</button>
+                            <button onClick={() => { setSplittingStatementKey({ buttonIdx: activeButtonIndex, stmtIdx: i }); setSplitSelectedText(''); }} title="Split" style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', padding: '2px 4px' }}>✂</button>
                             <button onClick={() => handleRemoveStatement(activeButtonIndex, i)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '14px', padding: '2px 4px' }}>✕</button>
                           </div>
                         </div>
