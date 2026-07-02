@@ -111,7 +111,8 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
   const [addingSectionAfterIndex, setAddingSectionAfterIndex] = useState<number | null>(null);
   const [addingSectionType, setAddingSectionType] = useState<string | null>(null);
   const [dynamicSections, setDynamicSections] = useState<any[]>([]);
-  const [showTour, setShowTour] = useState(false);
+  const [activeTour, setActiveTour] = useState<'writing' | 'editing' | null>(null);
+  const [helpMenuOpen, setHelpMenuOpen] = useState(false);
 
   const currentStudent = students[currentStudentIndex];
 
@@ -125,12 +126,12 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
   }, []);
 
   useEffect(() => {
-    if (!localStorage.getItem('erg_rwTourSeen')) setShowTour(true);
+    if (!localStorage.getItem('erg_rwTourSeen')) setActiveTour('writing');
   }, []);
 
   const handleDismissTour = () => {
-    localStorage.setItem('erg_rwTourSeen', 'true');
-    setShowTour(false);
+    if (activeTour === 'writing') localStorage.setItem('erg_rwTourSeen', 'true');
+    setActiveTour(null);
   };
 
   // ─── PRONOUN ──────────────────────────────────────────────────────────────
@@ -373,11 +374,37 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
                 }}>
                 ⌂ Exit to Home
               </button>
-              <button onClick={() => setShowTour(true)}
-                title="Show feature tour"
-                style={{ background: 'none', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: '12px', cursor: 'pointer', padding: '4px 10px', borderRadius: '6px' }}>
-                ? Help
-              </button>
+              <div style={{ position: 'relative' }}>
+                <button onClick={() => setHelpMenuOpen(o => !o)}
+                  title="Show feature tour"
+                  style={{ background: 'none', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: '12px', cursor: 'pointer', padding: '4px 10px', borderRadius: '6px' }}>
+                  ? Help
+                </button>
+                {helpMenuOpen && (
+                  <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 98 }} onClick={() => setHelpMenuOpen(false)} />
+                    <div style={{
+                      position: 'absolute', top: 'calc(100% + 4px)', left: 0,
+                      backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.12)', padding: '4px', minWidth: '200px',
+                      zIndex: 99,
+                    }}>
+                      <button
+                        onClick={() => { setActiveTour('writing'); setHelpMenuOpen(false); }}
+                        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', background: 'none', fontSize: '13px', cursor: 'pointer', borderRadius: '4px', color: '#374151' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#eff6ff'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >📝 Writing reports</button>
+                      <button
+                        onClick={() => { setActiveTour('editing'); setHelpMenuOpen(false); }}
+                        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', background: 'none', fontSize: '13px', cursor: 'pointer', borderRadius: '4px', color: '#374151' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f5f3ff'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >🔧 Editing templates</button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
 
             {reportLogic.hasTemplateChanges && (
@@ -426,7 +453,7 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
               return (
                 <div key={section.id || index} style={{ marginBottom: '20px', position: 'relative' }}>
                   {isTemplateSec && (
-                    <div style={{
+                    <div data-tour="reorder" style={{
                       position: 'absolute', top: '8px', left: '-36px',
                       display: 'flex', flexDirection: 'column', gap: '2px', zIndex: 5,
                     }}>
@@ -513,7 +540,7 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
         </div>
       </div>
 
-      {showTour && <ReportWriterTour onDismiss={handleDismissTour} />}
+      {activeTour && <ReportWriterTour tourType={activeTour} onDismiss={handleDismissTour} />}
 
       {/* Comment Builders */}
       {showRatedCommentBuilder && (editingSection || addingSectionType === 'rated-comment') && (

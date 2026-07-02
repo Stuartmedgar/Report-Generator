@@ -110,6 +110,7 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
         )}
 
         <button
+          data-tour="add-section"
           ref={plusButtonRef}
           onClick={handleToggleMenu}
           style={{

@@ -7,10 +7,10 @@ interface TourStep {
   position?: 'below' | 'above' | 'left' | 'right';
 }
 
-const STEPS: TourStep[] = [
+const WRITING_STEPS: TourStep[] = [
   {
-    title: 'Welcome to the Report Writer',
-    content: 'This quick tour covers the main features. Click Next to begin, or Skip to dismiss.',
+    title: 'Writing reports — quick tour',
+    content: 'This covers the essentials for writing reports. Click Next to begin, or Skip to dismiss.',
   },
   {
     target: 'pronoun',
@@ -25,26 +25,53 @@ const STEPS: TourStep[] = [
     position: 'below',
   },
   {
-    target: 'section-actions',
-    title: 'Edit or remove a section',
-    content: 'The ✏️ pencil opens the statement editor — add, edit, split or remove statements. 🗑 removes the section from your template entirely. ▲▼ on the left reorders sections.',
-    position: 'above',
-  },
-  {
     target: 'preview',
     title: 'Live report preview',
-    content: 'Your report builds here as you make selections. You can also click directly into the text to make one-off edits for this student — perfect for fine-tuning without changing the template.',
+    content: 'Your report builds here as you make selections. You can also click directly into the preview text to make one-off edits for this student without changing the template.',
     position: 'left',
   },
   {
     target: 'navigation',
     title: 'Student navigation',
-    content: 'Use the arrows to move between students. Reports are saved automatically as you move. Press Finish when you\'re done to go to the reports view.',
+    content: 'Use the arrows to move between students. Reports save automatically as you move. Press Finish when done to go to the reports view.',
     position: 'left',
   },
   {
-    title: "You're all set!",
-    content: 'You can replay this tour at any time by clicking the ? Help button in the top bar.',
+    title: "That's the essentials!",
+    content: 'Use ? Help → Editing templates whenever you want to learn how to customise your template while you write.',
+  },
+];
+
+const EDITING_STEPS: TourStep[] = [
+  {
+    title: 'Editing templates — quick tour',
+    content: 'You can edit your template at any time while writing — changes are tracked and can be saved at the end.',
+  },
+  {
+    target: 'section-actions',
+    title: 'Section action buttons',
+    content: 'The ✏️ pencil opens the full statement editor for this section — add, edit, split or remove individual statements. 🗑 permanently removes the section from your template.',
+    position: 'above',
+  },
+  {
+    target: 'reorder',
+    title: 'Reorder sections',
+    content: 'The ▲ ▼ arrows on the left of each section let you change the order they appear in the report. Only template sections can be reordered.',
+    position: 'right',
+  },
+  {
+    target: 'add-section',
+    title: 'Add a section',
+    content: "The + button adds a new section after this one. You can add rated comments, qualities, next steps, assessment scores, personalised comments, standard fixed text, or a line break.",
+    position: 'above',
+  },
+  {
+    title: 'Saving template changes',
+    content: 'Any changes you make are tracked. A 💾 Save Template button appears in the header bar — click it to save changes to the template permanently, or skip it to discard.',
+  },
+  {
+    title: "You're ready to edit!",
+    content: 'Use ? Help → Writing reports any time to revisit the report-writing tour.',
   },
 ];
 
@@ -52,24 +79,27 @@ const PAD = 6;
 const TIP_W = 290;
 
 interface Props {
+  tourType: 'writing' | 'editing';
   onDismiss: () => void;
 }
 
-export function ReportWriterTour({ onDismiss }: Props) {
+export function ReportWriterTour({ tourType, onDismiss }: Props) {
+  const STEPS = tourType === 'writing' ? WRITING_STEPS : EDITING_STEPS;
+  const accentColor = tourType === 'writing' ? '#3b82f6' : '#8b5cf6';
+
   const [step, setStep] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
 
   const current = STEPS[step];
 
   useEffect(() => {
-    if (!current.target) { setRect(null); return; }
+    setRect(null);
+    if (!current.target) return;
     const id = setTimeout(() => {
       const el = document.querySelector(`[data-tour="${current.target}"]`);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         setRect(el.getBoundingClientRect());
-      } else {
-        setRect(null);
       }
     }, 80);
     return () => clearTimeout(id);
@@ -108,7 +138,7 @@ export function ReportWriterTour({ onDismiss }: Props) {
 
   return (
     <>
-      {/* Click trap — prevents interaction with page while tour is open */}
+      {/* Click trap */}
       <div style={{ position: 'fixed', inset: 0, zIndex: 9999 }} />
 
       {/* Spotlight or full backdrop */}
@@ -119,7 +149,7 @@ export function ReportWriterTour({ onDismiss }: Props) {
           width: rect.width + PAD * 2, height: rect.height + PAD * 2,
           borderRadius: '8px',
           boxShadow: '0 0 0 9999px rgba(0,0,0,0.55)',
-          outline: '2px solid #3b82f6',
+          outline: `2px solid ${accentColor}`,
           zIndex: 10000, pointerEvents: 'none',
         }} />
       ) : (
@@ -139,7 +169,7 @@ export function ReportWriterTour({ onDismiss }: Props) {
             {step > 0 && (
               <button onClick={prev} style={{ backgroundColor: '#f3f4f6', color: '#374151', border: 'none', borderRadius: '6px', padding: '7px 14px', fontSize: '13px', cursor: 'pointer' }}>← Back</button>
             )}
-            <button onClick={next} style={{ backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', padding: '7px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+            <button onClick={next} style={{ backgroundColor: accentColor, color: 'white', border: 'none', borderRadius: '6px', padding: '7px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
               {step === STEPS.length - 1 ? 'Done ✓' : 'Next →'}
             </button>
           </div>
