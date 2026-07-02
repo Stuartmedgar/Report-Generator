@@ -138,9 +138,6 @@ export function ReportWriterTour({ tourType, onDismiss }: Props) {
 
   return (
     <>
-      {/* Click trap */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 9999 }} />
-
       {/* Spotlight or full backdrop */}
       {rect ? (
         <div style={{
