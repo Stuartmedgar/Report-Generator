@@ -585,19 +585,22 @@ const handleSaveAndWrite = () => {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px', alignItems: 'flex-end' }}>
               {buttons.map((btn, i) => btn.name ? (
                 <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                  <input
-                    type="text"
-                    value={btn.name}
-                    onChange={e => handleRatedButtonRename(i, e.target.value)}
-                    onClick={() => { setActiveButtonIndex(i); setAddingNewButton(false); setNamingButtonIndex(null); }}
-                    onFocus={() => { setActiveButtonIndex(i); setAddingNewButton(false); setNamingButtonIndex(null); }}
-                    style={{
-                      padding: '6px 12px', border: `2px solid ${accentColor}`, borderRadius: '6px', fontSize: '13px', fontWeight: '600', outline: 'none', cursor: 'pointer',
-                      backgroundColor: activeButtonIndex === i && namingButtonIndex === null && !addingNewButton ? accentColor : 'white',
-                      color: activeButtonIndex === i && namingButtonIndex === null && !addingNewButton ? 'white' : accentColor,
-                      width: `${Math.max(80, btn.name.length * 8 + 24)}px`, minWidth: '80px', maxWidth: '200px', textAlign: 'center', fontFamily: 'inherit',
-                    }}
-                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                    <input
+                      type="text"
+                      value={btn.name}
+                      onChange={e => handleRatedButtonRename(i, e.target.value)}
+                      onClick={() => { setActiveButtonIndex(i); setAddingNewButton(false); setNamingButtonIndex(null); }}
+                      onFocus={() => { setActiveButtonIndex(i); setAddingNewButton(false); setNamingButtonIndex(null); }}
+                      style={{
+                        padding: '6px 12px', border: `2px solid ${accentColor}`, borderRadius: '6px', fontSize: '13px', fontWeight: '600', outline: 'none', cursor: 'pointer',
+                        backgroundColor: activeButtonIndex === i && namingButtonIndex === null && !addingNewButton ? accentColor : 'white',
+                        color: activeButtonIndex === i && namingButtonIndex === null && !addingNewButton ? 'white' : accentColor,
+                        width: `${Math.max(80, btn.name.length * 8 + 24)}px`, minWidth: '80px', maxWidth: '200px', textAlign: 'center', fontFamily: 'inherit',
+                      }}
+                    />
+                    {buttons.length > 1 && <button onClick={() => handleDeleteRatedButton(i)} style={{ width: '18px', height: '18px', borderRadius: '50%', border: 'none', backgroundColor: '#fee2e2', color: '#ef4444', cursor: 'pointer', fontSize: '10px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>}
+                  </div>
                   {btn.statements.length > 0 && <div style={{ fontSize: '10px', color: '#9ca3af' }}>({btn.statements.length})</div>}
                 </div>
               ) : null)}
@@ -931,7 +934,7 @@ const handleSaveAndWrite = () => {
                       </button>
                     </div>
                     {showInstructions && (
-                      <div style={{ fontSize: '12px', color: aiUsedForSection ? '#047857' : '#1d4ed8', lineHeight: '1.8' }}>
+                      <div style={{ fontSize: '12px', color: aiUsedForSection ? '#047857' : '#1d4ed8', lineHeight: '1.8', textAlign: 'left' }}>
                         {aiUsedForSection ? (
                           question.sectionType === 'rated-comment' ? (<>
                             <HelpStep text="1. Check statements for each rating level — AI sometimes makes mistakes" tip="Read through each button's statements carefully — AI can misclassify levels or add extra words." />
