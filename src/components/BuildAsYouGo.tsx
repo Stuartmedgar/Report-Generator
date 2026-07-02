@@ -693,7 +693,7 @@ const handleSaveAndWrite = () => {
             )}
             {buttons[activeButtonIndex]?.statements.length >= MAX_STATEMENTS ? (
               <div style={{ fontSize: '12px', color: '#6b7280', backgroundColor: '#f3f4f6', borderRadius: '6px', padding: '8px 12px', marginBottom: '20px' }}>Maximum {MAX_STATEMENTS} statements per button reached.</div>
-            ) : (!hasReports || isRated) ? (
+            ) : !hasReports ? (
               <>
                 <textarea ref={statementInputRef} value={newStatement} onChange={e => setNewStatement(e.target.value)} placeholder="Type or paste a statement... Use [Name] for pupil name, [Score] for scores, [Info 1] for personalised info." style={{ ...txa, minHeight: '70px', borderColor: accentColor, marginBottom: '8px' }} />
                 <button onClick={handleAddStatement} disabled={!newStatement.trim()} style={{ ...smallBtn(accentColor), opacity: !newStatement.trim() ? 0.4 : 1, marginBottom: '20px' }}>+ Add statement</button>
