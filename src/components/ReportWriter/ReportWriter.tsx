@@ -21,6 +21,7 @@ interface ReportWriterProps {
   students: Student[];
   onBack: () => void;
   startStudentIndex?: number;
+  tourSource?: 'ai-builder' | 'wizard';
 }
 
 // ─── DATA SHAPERS ─────────────────────────────────────────────────────────────
@@ -92,7 +93,7 @@ const BuilderOverlay: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 
-function ReportWriter({ template, classData, students, onBack, startStudentIndex = 0 }: ReportWriterProps) {
+function ReportWriter({ template, classData, students, onBack, startStudentIndex = 0, tourSource }: ReportWriterProps) {
   const navigate = useNavigate();
   const { updateTemplate } = useData();
   const [currentStudentIndex, setCurrentStudentIndex] = useState(startStudentIndex);
@@ -111,7 +112,7 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
   const [addingSectionAfterIndex, setAddingSectionAfterIndex] = useState<number | null>(null);
   const [addingSectionType, setAddingSectionType] = useState<string | null>(null);
   const [dynamicSections, setDynamicSections] = useState<any[]>([]);
-  const [activeTour, setActiveTour] = useState<'writing' | 'editing' | null>(null);
+  const [activeTour, setActiveTour] = useState<'writing' | 'editing' | 'ai-builder' | 'wizard' | null>(null);
   const [helpMenuOpen, setHelpMenuOpen] = useState(false);
 
   const currentStudent = students[currentStudentIndex];
@@ -126,11 +127,20 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
   }, []);
 
   useEffect(() => {
-    if (!localStorage.getItem('erg_rwTourSeen')) setActiveTour('writing');
+    if (tourSource === 'ai-builder' && !localStorage.getItem('erg_rwAiBuilderTourSeen')) {
+      setActiveTour('ai-builder');
+    } else if (tourSource === 'wizard' && !localStorage.getItem('erg_rwWizardTourSeen')) {
+      setActiveTour('wizard');
+    } else if (!tourSource && !localStorage.getItem('erg_rwTourSeen')) {
+      setActiveTour('writing');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleDismissTour = () => {
     if (activeTour === 'writing') localStorage.setItem('erg_rwTourSeen', 'true');
+    else if (activeTour === 'ai-builder') localStorage.setItem('erg_rwAiBuilderTourSeen', 'true');
+    else if (activeTour === 'wizard') localStorage.setItem('erg_rwWizardTourSeen', 'true');
     setActiveTour(null);
   };
 

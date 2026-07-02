@@ -222,7 +222,7 @@ const CreateTemplate: React.FC = () => {
   };
           addTemplate(template);
           navigate('/write-reports', {
-            state: { preselectedClassId: location.state?.classId }
+            state: { preselectedClassId: location.state?.classId, tourSource: 'wizard' }
           });
         }}
         onCancel={() => navigate(-1)}

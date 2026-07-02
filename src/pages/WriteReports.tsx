@@ -13,12 +13,12 @@ type Step = 'template-selection' | 'class-selection' | 'student-selection' | 'wr
 function getInitialState(
   classes: Class[],
   templates: Template[],
-  locationState?: { preselectedClassId?: string; preselectedTemplateId?: string } | null
+  locationState?: { preselectedClassId?: string; preselectedTemplateId?: string; tourSource?: string } | null
 ) {
   try {
     const raw = sessionStorage.getItem('continueEditing');
     if (raw) {
-      const { classId, templateId, studentIndex } = JSON.parse(raw);
+      const { classId, templateId, studentIndex, tourSource } = JSON.parse(raw);
       const template = templates.find(t => t.id === templateId) || null;
       const classData = classes.find(c => c.id === classId) || null;
       if (template && classData) {
@@ -30,6 +30,7 @@ function getInitialState(
           students: classData.students.map((s: Student) => s.id),
           studentIndex: studentIndex >= 0 ? studentIndex : 0,
           directNav: true,
+          tourSource: (tourSource as string) || null,
         };
       }
     }
@@ -50,6 +51,7 @@ function getInitialState(
       students: [] as string[],
       studentIndex: 0,
       directNav: false,
+      tourSource: locationState.tourSource || null,
     };
   }
   return {
@@ -59,6 +61,7 @@ function getInitialState(
     students: [] as string[],
     studentIndex: 0,
     directNav: false,
+    tourSource: null,
   };
 }
 
@@ -79,6 +82,7 @@ function WriteReports() {
   const [selectedStudents, setSelectedStudents] = useState<string[]>(init.students);
   const [resumeStudentIndex, setResumeStudentIndex] = useState<number>(init.studentIndex);
   const [directNav] = useState<boolean>(init.directNav || false);
+  const [tourSource] = useState<string | null>(init.tourSource || null);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -166,6 +170,7 @@ function WriteReports() {
         students={studentsToWrite}
         onBack={handleBackFromWriting}
         startStudentIndex={resumeStudentIndex}
+        tourSource={tourSource as 'ai-builder' | 'wizard' | undefined}
       />
     );
   }

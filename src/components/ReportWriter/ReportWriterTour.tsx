@@ -75,17 +75,89 @@ const EDITING_STEPS: TourStep[] = [
   },
 ];
 
+const AI_BUILDER_STEPS: TourStep[] = [
+  {
+    title: 'Your AI-built template is ready!',
+    content: "Let's quickly check it before you start writing. This tour takes about 30 seconds.",
+  },
+  {
+    target: 'section',
+    title: 'Review your sections',
+    content: 'The AI has populated these sections from your reports. Click any button to see how it reads in the preview — you can select and deselect freely.',
+    position: 'below',
+  },
+  {
+    target: 'section-actions',
+    title: 'Refine anything that needs it',
+    content: 'Not quite right? ✏️ opens the statement editor to add, edit, split or remove statements. 🗑 removes a section entirely. Changes are tracked and can be saved at the end.',
+    position: 'above',
+  },
+  {
+    target: 'pronoun',
+    title: "Set the pronoun and start writing",
+    content: 'Choose He, She, or They for this student — then work through the sections selecting your comments. The report builds live on the right.',
+    position: 'below',
+  },
+  {
+    title: "You're ready to go!",
+    content: 'Use ? Help → Editing templates any time to refine your template further as you go.',
+  },
+];
+
+const WIZARD_STEPS: TourStep[] = [
+  {
+    title: "Your template is built — let's try it!",
+    content: "Here's how to use it to write your first report.",
+  },
+  {
+    target: 'pronoun',
+    title: 'Set the pronoun',
+    content: 'Start by choosing He, She, or They for this student. All comments will use the right pronoun automatically.',
+    position: 'below',
+  },
+  {
+    target: 'section',
+    title: 'Choose a comment',
+    content: 'Click any button to select a comment for this section. The report preview on the right updates instantly. Click again to deselect.',
+    position: 'below',
+  },
+  {
+    target: 'preview',
+    title: 'Your report takes shape here',
+    content: 'Watch it build as you make selections. You can also click directly into the preview to make one-off edits for this student.',
+    position: 'left',
+  },
+  {
+    target: 'navigation',
+    title: 'Move between students',
+    content: 'Use the arrows to move to the next student — reports save automatically as you go.',
+    position: 'left',
+  },
+  {
+    title: "You're all set!",
+    content: 'Use ? Help any time to revisit these tours or explore the editing features.',
+  },
+];
+
 const PAD = 6;
 const TIP_W = 290;
 
 interface Props {
-  tourType: 'writing' | 'editing';
+  tourType: 'writing' | 'editing' | 'ai-builder' | 'wizard';
   onDismiss: () => void;
 }
 
 export function ReportWriterTour({ tourType, onDismiss }: Props) {
-  const STEPS = tourType === 'writing' ? WRITING_STEPS : EDITING_STEPS;
-  const accentColor = tourType === 'writing' ? '#3b82f6' : '#8b5cf6';
+  const STEPS =
+    tourType === 'writing' ? WRITING_STEPS :
+    tourType === 'editing' ? EDITING_STEPS :
+    tourType === 'ai-builder' ? AI_BUILDER_STEPS :
+    WIZARD_STEPS;
+  const accentColor =
+    tourType === 'writing' ? '#3b82f6' :
+    tourType === 'editing' ? '#8b5cf6' :
+    tourType === 'ai-builder' ? '#f59e0b' :
+    '#10b981';
 
   const [step, setStep] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
