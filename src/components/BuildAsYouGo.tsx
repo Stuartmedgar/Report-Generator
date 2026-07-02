@@ -271,6 +271,9 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
         buttons.forEach(b => { if (b.name && b.statements.length > 0) exampleLines.push(...b.statements.slice(0, 2)); });
         if (exampleLines.length) {
           selectedTextForAI = exampleLines.join('\n');
+        } else if (isRated) {
+          setAiError('Highlight 1–2 example sentences per rating level in the reports panel first, then click Find in my reports.');
+          setAiLoading(false); return;
         } else {
           const qExamples = QUESTIONS.find(q => q.sectionType === activeType || q.id === activeType)?.examples || [];
           if (qExamples.length) { selectedTextForAI = qExamples.join('\n'); }
@@ -708,7 +711,7 @@ const handleSaveAndWrite = () => {
               <span style={{ fontSize: '20px' }}>🔍</span>
               <div style={{ textAlign: 'left' }}>
                 <div style={{ fontSize: '14px', fontWeight: '700', color: highlightedExamples.length > 0 ? '#b45309' : '#7c3aed' }}>Find in my reports</div>
-                <div style={{ fontSize: '12px', color: '#9ca3af' }}>{highlightedExamples.length > 0 ? `AI will search for sentences matching your ${highlightedExamples.length} selected example${highlightedExamples.length > 1 ? 's' : ''}` : 'Highlight example sentences in your reports first, or click to search automatically'}</div>
+                <div style={{ fontSize: '12px', color: '#9ca3af' }}>{highlightedExamples.length > 0 ? `AI will search for sentences matching your ${highlightedExamples.length} selected example${highlightedExamples.length > 1 ? 's' : ''}` : isRated ? 'Highlight 1–2 example sentences per rating level first' : 'Highlight example sentences in your reports first, or click to search automatically'}</div>
               </div>
             </button>
           </div>
