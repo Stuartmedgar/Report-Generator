@@ -13,6 +13,7 @@ import PersonalisedCommentBuilder from '../PersonalisedCommentBuilder';
 import NextStepsCommentBuilder from '../NextStepsCommentBuilder';
 import QualitiesCommentBuilder from '../QualitiesCommentBuilder';
 import StandardCommentBuilder from '../StandardCommentBuilder';
+import { ReportWriterTour } from './ReportWriterTour';
 
 interface ReportWriterProps {
   template: Template;
@@ -110,6 +111,7 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
   const [addingSectionAfterIndex, setAddingSectionAfterIndex] = useState<number | null>(null);
   const [addingSectionType, setAddingSectionType] = useState<string | null>(null);
   const [dynamicSections, setDynamicSections] = useState<any[]>([]);
+  const [showTour, setShowTour] = useState(false);
 
   const currentStudent = students[currentStudentIndex];
 
@@ -121,6 +123,15 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    if (!localStorage.getItem('erg_rwTourSeen')) setShowTour(true);
+  }, []);
+
+  const handleDismissTour = () => {
+    localStorage.setItem('erg_rwTourSeen', 'true');
+    setShowTour(false);
+  };
 
   // ─── PRONOUN ──────────────────────────────────────────────────────────────
 
@@ -354,14 +365,20 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
 
-            {/* ─── UPDATED: subtle exit button instead of prominent back ─── */}
-            <button onClick={onBack}
-              style={{
-                background: 'none', border: 'none', color: '#9ca3af',
-                fontSize: '13px', cursor: 'pointer', padding: 0
-              }}>
-              ⌂ Exit to Home
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button onClick={onBack}
+                style={{
+                  background: 'none', border: 'none', color: '#9ca3af',
+                  fontSize: '13px', cursor: 'pointer', padding: 0
+                }}>
+                ⌂ Exit to Home
+              </button>
+              <button onClick={() => setShowTour(true)}
+                title="Show feature tour"
+                style={{ background: 'none', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: '12px', cursor: 'pointer', padding: '4px 10px', borderRadius: '6px' }}>
+                ? Help
+              </button>
+            </div>
 
             {reportLogic.hasTemplateChanges && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -386,7 +403,7 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
         {/* Left Column - Sections */}
         <div style={{ flex: 1 }}>
           {/* Global pronoun selector above first section */}
-          <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <div data-tour="pronoun" style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '13px', fontWeight: '600', color: '#374151' }}>Pronoun for this student:</span>
             {[{ value: 'he', label: 'He / His' }, { value: 'she', label: 'She / Her' }, { value: 'they', label: 'They / Them' }].map(opt => (
               <button key={opt.value} onClick={() => handlePronounChange(opt.value)}
@@ -468,29 +485,35 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
 
         {/* Right Column */}
         <div style={{ width: '400px', position: 'sticky', top: '20px', height: 'fit-content' }}>
-          <ReportPreview
-            generateReportContent={reportLogic.generateReportContent}
-            isPreviewEditing={reportLogic.isPreviewEditing}
-            editableReportContent={reportLogic.editableReportContent}
-            setEditableReportContent={reportLogic.setEditableReportContent}
-            onPreviewEdit={reportLogic.handlePreviewEdit}
-            onSavePreviewEdit={reportLogic.handleSavePreviewEdit}
-            hideEditButton={true}
-          />
-          <StudentNavigation
-            currentStudentIndex={currentStudentIndex}
-            studentsLength={students.length}
-            hasUnsavedChanges={reportLogic.hasUnsavedChanges}
-            onSaveReport={navigationHandlers.handleSaveReport}
-            onPreviousStudent={navigationHandlers.handlePreviousStudent}
-            onNextStudent={navigationHandlers.handleNextStudent}
-            onFinish={navigationHandlers.handleFinish}
-            onViewAllReports={navigationHandlers.handleViewAllReports}
-            pronounOverride={undefined}
-            onPronounChange={undefined}
-          />
+          <div data-tour="preview">
+            <ReportPreview
+              generateReportContent={reportLogic.generateReportContent}
+              isPreviewEditing={reportLogic.isPreviewEditing}
+              editableReportContent={reportLogic.editableReportContent}
+              setEditableReportContent={reportLogic.setEditableReportContent}
+              onPreviewEdit={reportLogic.handlePreviewEdit}
+              onSavePreviewEdit={reportLogic.handleSavePreviewEdit}
+              hideEditButton={true}
+            />
+          </div>
+          <div data-tour="navigation">
+            <StudentNavigation
+              currentStudentIndex={currentStudentIndex}
+              studentsLength={students.length}
+              hasUnsavedChanges={reportLogic.hasUnsavedChanges}
+              onSaveReport={navigationHandlers.handleSaveReport}
+              onPreviousStudent={navigationHandlers.handlePreviousStudent}
+              onNextStudent={navigationHandlers.handleNextStudent}
+              onFinish={navigationHandlers.handleFinish}
+              onViewAllReports={navigationHandlers.handleViewAllReports}
+              pronounOverride={undefined}
+              onPronounChange={undefined}
+            />
+          </div>
         </div>
       </div>
+
+      {showTour && <ReportWriterTour onDismiss={handleDismissTour} />}
 
       {/* Comment Builders */}
       {showRatedCommentBuilder && (editingSection || addingSectionType === 'rated-comment') && (

@@ -65,7 +65,7 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
   };
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div data-tour="section" style={{ position: 'relative' }}>
       <div style={{ position: 'relative' }}>
         <SectionRenderer
           section={section}
@@ -82,7 +82,7 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
       </div>
 
       {/* Bottom Right Corner - Plus Button and Edit Button */}
-      <div style={{ position: 'absolute', bottom: '8px', right: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+      <div data-tour="section-actions" style={{ position: 'absolute', bottom: '8px', right: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
         {onDeleteSection && (
           <button
             onClick={() => onDeleteSection(section.id)}
