@@ -77,30 +77,42 @@ const EDITING_STEPS: TourStep[] = [
 
 const AI_BUILDER_STEPS: TourStep[] = [
   {
-    title: 'Your AI-built template is ready!',
-    content: "Let's quickly check it before you start writing. This tour takes about 30 seconds.",
+    title: '1 of 7 — Merge duplicate sections',
+    content: 'If the AI has created several sections covering the same area, you can combine them. Find ⇥ Merge into… in the section header, choose the target section from the dropdown, and all its buttons will move across. The original section is then removed.',
   },
   {
-    target: 'section',
-    title: 'Review your sections',
-    content: 'The AI has populated these sections from your reports. Click any button to see how it reads in the preview — you can select and deselect freely.',
+    target: 'duplicate',
+    title: '2 of 7 — Duplicate sections',
+    content: 'Once your sections are consolidated, use ⧉ Duplicate to create copies where needed. This lets you offer pupils more than one comment in the same area — for example a general strengths section and a subject-specific one.',
     position: 'below',
   },
   {
     target: 'section-actions',
-    title: 'Refine anything that needs it',
-    content: 'Not quite right? ✏️ opens the statement editor to add, edit, split or remove statements. 🗑 removes a section entirely. Changes are tracked and can be saved at the end.',
+    title: '3 of 7 — Check and edit statements',
+    content: 'Click ✏️ to open the statement editor for any section. Here you can read through what the AI has created, edit individual statements, split chunked text into separate options, and remove anything that doesn\'t fit.',
     position: 'above',
   },
   {
-    target: 'pronoun',
-    title: "Set the pronoun and start writing",
-    content: 'Choose He, She, or They for this student — then work through the sections selecting your comments. The report builds live on the right.',
+    target: 'reorder',
+    title: '4 of 7 — Reorganise section order',
+    content: 'Use ▲ ▼ to move sections into the order you want them to appear in the report. Get this right now and you won\'t need to adjust it while writing.',
+    position: 'right',
+  },
+  {
+    target: 'section-title',
+    title: '5 of 7 — Rename sections',
+    content: 'Click any section title to rename it. Type your new name and press Enter (or click away) to save. Clear names make writing reports faster.',
     position: 'below',
   },
   {
-    title: "You're ready to go!",
-    content: 'Use ? Help → Editing templates any time to refine your template further as you go.',
+    target: 'add-section',
+    title: '6 of 7 — Add missing sections',
+    content: 'Click + to add anything the AI missed. A ⏎ Line Break improves spacing between sections in the final report. A 📝 Optional Comment Box gives a free-text space for personal pupil comments. All standard section types are also available.',
+    position: 'above',
+  },
+  {
+    title: '7 of 7 — Save your template',
+    content: 'Once you\'re happy with everything, click 💾 Save Template Now in the header bar. This saves all changes permanently and your template is ready to use for your whole class.',
   },
 ];
 

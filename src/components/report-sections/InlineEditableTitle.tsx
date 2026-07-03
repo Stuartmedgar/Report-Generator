@@ -37,6 +37,7 @@ const InlineEditableTitle: React.FC<InlineEditableTitleProps> = ({ name, default
 
   return (
     <h3
+      data-tour="section-title"
       onClick={onRename ? () => setEditing(true) : undefined}
       title={onRename ? 'Click to rename' : undefined}
       style={{ fontSize: '16px', fontWeight: '600', color, margin: 0, cursor: onRename ? 'text' : 'default' }}
