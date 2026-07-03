@@ -127,9 +127,9 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
   }, []);
 
   useEffect(() => {
-    if (tourSource === 'ai-builder' && !localStorage.getItem('erg_rwAiBuilderTourV2Seen')) {
+    if (tourSource === 'ai-builder') {
       setActiveTour('ai-builder');
-    } else if (tourSource === 'wizard' && !localStorage.getItem('erg_rwWizardTourSeen')) {
+    } else if (tourSource === 'wizard') {
       setActiveTour('wizard');
     } else if (!tourSource && !localStorage.getItem('erg_rwTourSeen')) {
       setActiveTour('writing');
@@ -139,8 +139,6 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
 
   const handleDismissTour = () => {
     if (activeTour === 'writing') localStorage.setItem('erg_rwTourSeen', 'true');
-    else if (activeTour === 'ai-builder') localStorage.setItem('erg_rwAiBuilderTourV2Seen', 'true');
-    else if (activeTour === 'wizard') localStorage.setItem('erg_rwWizardTourSeen', 'true');
     setActiveTour(null);
   };
 
