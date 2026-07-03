@@ -13,7 +13,7 @@ type Step = 'template-selection' | 'class-selection' | 'student-selection' | 'wr
 function getInitialState(
   classes: Class[],
   templates: Template[],
-  locationState?: { preselectedClassId?: string; preselectedTemplateId?: string; tourSource?: string } | null
+  locationState?: { preselectedClassId?: string; preselectedTemplateId?: string; tourSource?: string; autoStart?: boolean } | null
 ) {
   try {
     const raw = sessionStorage.getItem('continueEditing');
@@ -44,6 +44,17 @@ function getInitialState(
     const template = locationState.preselectedTemplateId
       ? templates.find(t => t.id === locationState.preselectedTemplateId) ?? null
       : null;
+    if (locationState.autoStart && classData && template) {
+      return {
+        step: 'writing' as Step,
+        template,
+        classData,
+        students: classData.students.map((s: Student) => s.id),
+        studentIndex: 0,
+        directNav: false,
+        tourSource: locationState.tourSource || null,
+      };
+    }
     return {
       step: (classData && template ? 'student-selection' : 'template-selection') as Step,
       template,
@@ -74,7 +85,7 @@ function WriteReports() {
   const init = getInitialState(
     state.classes,
     state.templates,
-    location.state as { preselectedClassId?: string; preselectedTemplateId?: string } | null
+    location.state as { preselectedClassId?: string; preselectedTemplateId?: string; tourSource?: string; autoStart?: boolean } | null
   );
   const [currentStep, setCurrentStep] = useState<Step>(init.step);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(init.template);

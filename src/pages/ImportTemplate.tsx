@@ -385,9 +385,16 @@ export default function ImportTemplate() {
       const mergedSections = mergeDuplicateSectionTypes(normalisedSections);
       const splitResult = splitSections(mergedSections, typicalCountMap);
       const finalName = templateName.trim() || result.templateName || `${subject}${yearGroup ? ' ' + yearGroup : ''} Report Template`;
-      setPreviewSections(splitResult);
-      setPreviewFinalName(finalName);
-      setMainStep('preview');
+      if (classId) {
+        const newId = addTemplate({ name: finalName, sections: splitResult });
+        navigate('/write-reports', {
+          state: { preselectedClassId: classId, preselectedTemplateId: newId, autoStart: true, tourSource: 'ai-builder' },
+        });
+      } else {
+        setPreviewSections(splitResult);
+        setPreviewFinalName(finalName);
+        setMainStep('preview');
+      }
     } catch (err: any) {
       setError('Quick build failed. Please try the guided wizard instead.');
     } finally {
