@@ -3,9 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { Template, Class, Student } from '../types';
 import ReportWriter from '../components/ReportWriter';
-import TemplateSelection from '../components/WriteReports/TemplateSelection';
 import ClassSelection from '../components/WriteReports/ClassSelection';
-import StudentSelection from '../components/WriteReports/StudentSelection';
 
 type Step = 'template-selection' | 'class-selection' | 'student-selection' | 'writing';
 
@@ -13,7 +11,7 @@ type Step = 'template-selection' | 'class-selection' | 'student-selection' | 'wr
 function getInitialState(
   classes: Class[],
   templates: Template[],
-  locationState?: { preselectedClassId?: string; preselectedTemplateId?: string; tourSource?: string; autoStart?: boolean } | null
+  locationState?: { preselectedClassId?: string; preselectedTemplateId?: string; tourSource?: string } | null
 ) {
   try {
     const raw = sessionStorage.getItem('continueEditing');
@@ -44,22 +42,11 @@ function getInitialState(
     const template = locationState.preselectedTemplateId
       ? templates.find(t => t.id === locationState.preselectedTemplateId) ?? null
       : null;
-    if (locationState.autoStart && classData && template) {
-      return {
-        step: 'writing' as Step,
-        template,
-        classData,
-        students: classData.students.map((s: Student) => s.id),
-        studentIndex: 0,
-        directNav: false,
-        tourSource: locationState.tourSource || null,
-      };
-    }
     return {
-      step: (classData && template ? 'student-selection' : 'template-selection') as Step,
+      step: (classData && template ? 'writing' : 'template-selection') as Step,
       template,
       classData,
-      students: [] as string[],
+      students: classData && template ? classData.students.map((s: Student) => s.id) : [] as string[],
       studentIndex: 0,
       directNav: false,
       tourSource: locationState.tourSource || null,
@@ -85,13 +72,13 @@ function WriteReports() {
   const init = getInitialState(
     state.classes,
     state.templates,
-    location.state as { preselectedClassId?: string; preselectedTemplateId?: string; tourSource?: string; autoStart?: boolean } | null
+    location.state as { preselectedClassId?: string; preselectedTemplateId?: string; tourSource?: string } | null
   );
   const [currentStep, setCurrentStep] = useState<Step>(init.step);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(init.template);
   const [selectedClass, setSelectedClass] = useState<Class | null>(init.classData);
   const [selectedStudents, setSelectedStudents] = useState<string[]>(init.students);
-  const [resumeStudentIndex, setResumeStudentIndex] = useState<number>(init.studentIndex);
+  const [resumeStudentIndex] = useState<number>(init.studentIndex);
   const [directNav] = useState<boolean>(init.directNav || false);
   const [tourSource] = useState<string | null>(init.tourSource || null);
 
@@ -113,31 +100,17 @@ function WriteReports() {
       if (template) setSelectedTemplate(template);
 
       if (classData && template) {
-        setCurrentStep('student-selection');
-      } else if (classData) {
+        setSelectedStudents(classData.students.map((s: Student) => s.id));
+        setCurrentStep('writing');
+      } else if (classData && !template) {
         setCurrentStep('template-selection');
       }
     }
   }, [location.state, state.classes, state.templates]);
 
-  const handleTemplateSelect = (template: Template) => {
-    setSelectedTemplate(template);
-    if (isMobile) setCurrentStep('class-selection');
-  };
-
   const handleClassSelect = (classData: Class) => {
     setSelectedClass(classData);
-    if (isMobile) {
-      setCurrentStep('student-selection');
-    } else {
-      if (selectedTemplate) setCurrentStep('student-selection');
-    }
-  };
-
-  const handleStudentSelection = (mode: 'all' | 'selected', studentIds: string[] = []) => {
-    setSelectedStudents(mode === 'all' ?
-      selectedClass?.students.map((s: Student) => s.id) || [] : studentIds);
-    setResumeStudentIndex(0);
+    setSelectedStudents(classData.students.map((s: Student) => s.id));
     setCurrentStep('writing');
   };
 
@@ -148,18 +121,6 @@ function WriteReports() {
     setCurrentStep('template-selection');
   };
 
-  const handleBackToClasses = () => {
-    setSelectedClass(null);
-    setSelectedStudents([]);
-    setCurrentStep('class-selection');
-  };
-
-  const handleBackToStudents = () => {
-    setSelectedStudents([]);
-    setResumeStudentIndex(0);
-    setCurrentStep('student-selection');
-  };
-
   // ─── When arrived via direct nav (continueEditing), exit goes home ─────────
   const handleBackFromWriting = directNav
     ? () => {
@@ -167,7 +128,7 @@ function WriteReports() {
           navigate('/', { replace: true });
         }
       }
-    : handleBackToStudents;
+    : handleBackToTemplates;
 
   const studentsToWrite = selectedClass?.students.filter(s =>
     selectedStudents.includes(s.id)
@@ -182,18 +143,6 @@ function WriteReports() {
         onBack={handleBackFromWriting}
         startStudentIndex={resumeStudentIndex}
         tourSource={tourSource as 'ai-builder' | 'wizard' | undefined}
-      />
-    );
-  }
-
-  if (currentStep === 'student-selection' && selectedTemplate && selectedClass) {
-    return (
-      <StudentSelection
-        template={selectedTemplate}
-        classData={selectedClass}
-        onSelectStudents={handleStudentSelection}
-        onBack={isMobile ? handleBackToClasses : handleBackToTemplates}
-        isMobile={isMobile}
       />
     );
   }

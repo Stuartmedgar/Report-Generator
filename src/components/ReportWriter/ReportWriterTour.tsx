@@ -77,8 +77,10 @@ const EDITING_STEPS: TourStep[] = [
 
 const AI_BUILDER_STEPS: TourStep[] = [
   {
+    target: 'merge',
     title: '1 of 7 — Merge duplicate sections',
     content: 'If the AI has created several sections covering the same area, you can combine them. Find ⇥ Merge into… in the section header, choose the target section from the dropdown, and all its buttons will move across. The original section is then removed.',
+    position: 'below',
   },
   {
     target: 'duplicate',
@@ -111,8 +113,10 @@ const AI_BUILDER_STEPS: TourStep[] = [
     position: 'above',
   },
   {
+    target: 'save-template',
     title: '7 of 7 — Save your template',
     content: 'Once you\'re happy with everything, click 💾 Save Template Now in the header bar. This saves all changes permanently and your template is ready to use for your whole class.',
+    position: 'below',
   },
 ];
 
@@ -167,6 +171,7 @@ export function ReportWriterTour({ tourType, onDismiss }: Props) {
 
   const [step, setStep] = useState(0);
   const [rect, setRect] = useState<DOMRect | null>(null);
+  const [paused, setPaused] = useState(false);
 
   const current = STEPS[step];
 
@@ -193,8 +198,8 @@ export function ReportWriterTour({ tourType, onDismiss }: Props) {
     return () => window.removeEventListener('resize', remeasure);
   }, [step, current.target]);
 
-  const next = () => { if (step < STEPS.length - 1) setStep(s => s + 1); else onDismiss(); };
-  const prev = () => setStep(s => Math.max(0, s - 1));
+  const next = () => { setPaused(false); if (step < STEPS.length - 1) setStep(s => s + 1); else onDismiss(); };
+  const prev = () => { setPaused(false); setStep(s => Math.max(0, s - 1)); };
 
   const safeLeft = (l: number) => Math.max(8, Math.min(l, window.innerWidth - TIP_W - 8));
 
@@ -213,6 +218,18 @@ export function ReportWriterTour({ tourType, onDismiss }: Props) {
     if (pos === 'right') return { ...base, top: Math.max(8, rect.top), left: rect.right + PAD + 8 };
     return { ...base, top: rect.bottom + 8, left: safeLeft(rect.left) };
   };
+
+  if (paused) {
+    return (
+      <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 10001 }}>
+        <button
+          onClick={() => setPaused(false)}
+          style={{ backgroundColor: accentColor, color: 'white', border: 'none', borderRadius: '20px', padding: '10px 20px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 14px rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          ▶ Resume tour <span style={{ opacity: 0.75, fontWeight: '400', fontSize: '12px' }}>step {step + 1} of {STEPS.length}</span>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -243,6 +260,9 @@ export function ReportWriterTour({ tourType, onDismiss }: Props) {
           <div style={{ display: 'flex', gap: '8px' }}>
             {step > 0 && (
               <button onClick={prev} style={{ backgroundColor: '#f3f4f6', color: '#374151', border: 'none', borderRadius: '6px', padding: '7px 14px', fontSize: '13px', cursor: 'pointer' }}>← Back</button>
+            )}
+            {current.target && (
+              <button onClick={() => setPaused(true)} style={{ backgroundColor: '#f3f4f6', color: '#374151', border: 'none', borderRadius: '6px', padding: '7px 14px', fontSize: '13px', cursor: 'pointer' }}>Try it ↗</button>
             )}
             <button onClick={next} style={{ backgroundColor: accentColor, color: 'white', border: 'none', borderRadius: '6px', padding: '7px 16px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
               {step === STEPS.length - 1 ? 'Done ✓' : 'Next →'}

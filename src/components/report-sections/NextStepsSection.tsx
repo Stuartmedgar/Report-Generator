@@ -169,7 +169,7 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
             </button>
           )}
           {onMergeSections && mergeTargets.length > 0 && (
-            <button onClick={() => setShowMergeModal(true)} title="Merge buttons from this section into another"
+            <button data-tour="merge" onClick={() => setShowMergeModal(true)} title="Merge buttons from this section into another"
               style={{ backgroundColor: '#cffafe', color: '#0891b2', border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: '500' }}>
               ⇥ Merge into…
             </button>

@@ -421,6 +421,7 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '12px', color: '#6b7280', fontStyle: 'italic' }}>Template has unsaved changes</span>
                 <button
+                  data-tour="save-template"
                   onClick={async () => { const ok = await reportLogic.handleSaveWorkingTemplate(); if (ok) alert('Template saved.'); }}
                   style={{ backgroundColor: '#8b5cf6', color: 'white', padding: '8px 16px', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
                   💾 Save Template Now

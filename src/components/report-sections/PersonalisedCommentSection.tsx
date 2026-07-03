@@ -148,7 +148,7 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
             </button>
           )}
           {onMergeSections && mergeTargets.length > 0 && (
-            <button onClick={() => setShowMergeModal(true)} title="Merge buttons from this section into another"
+            <button data-tour="merge" onClick={() => setShowMergeModal(true)} title="Merge buttons from this section into another"
               style={{ backgroundColor: '#fef3c7', color: '#d97706', border: 'none', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: '500' }}>
               ⇥ Merge into…
             </button>
