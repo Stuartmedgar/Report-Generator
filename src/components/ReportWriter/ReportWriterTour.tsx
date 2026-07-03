@@ -175,28 +175,38 @@ export function ReportWriterTour({ tourType, onDismiss }: Props) {
 
   const current = STEPS[step];
 
+  // Scroll into view once when the step changes
   useEffect(() => {
-    setRect(null);
-    if (!current.target) return;
+    if (!current.target || paused) return;
     const id = setTimeout(() => {
       const el = document.querySelector(`[data-tour="${current.target}"]`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        setRect(el.getBoundingClientRect());
-      }
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 80);
     return () => clearTimeout(id);
-  }, [step, current.target]);
+  }, [step, current.target]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Track element position on every animation frame so the spotlight
+  // follows the element when the page scrolls or content shifts
   useEffect(() => {
-    if (!current.target) return;
-    const remeasure = () => {
+    setRect(null);
+    if (!current.target || paused) return;
+    let frameId: number;
+    let lt = -1, ll = -1, lw = -1, lh = -1;
+    const track = () => {
       const el = document.querySelector(`[data-tour="${current.target}"]`);
-      if (el) setRect(el.getBoundingClientRect());
+      if (el) {
+        const r = el.getBoundingClientRect();
+        const t = Math.round(r.top), l = Math.round(r.left), w = Math.round(r.width), h = Math.round(r.height);
+        if (t !== lt || l !== ll || w !== lw || h !== lh) {
+          lt = t; ll = l; lw = w; lh = h;
+          setRect(r);
+        }
+      }
+      frameId = requestAnimationFrame(track);
     };
-    window.addEventListener('resize', remeasure);
-    return () => window.removeEventListener('resize', remeasure);
-  }, [step, current.target]);
+    frameId = requestAnimationFrame(track);
+    return () => cancelAnimationFrame(frameId);
+  }, [step, current.target, paused]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const next = () => { setPaused(false); if (step < STEPS.length - 1) setStep(s => s + 1); else onDismiss(); };
   const prev = () => { setPaused(false); setStep(s => Math.max(0, s - 1)); };
