@@ -489,10 +489,10 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
 
   const renderRatedComment = () => {
     const ratings = [
-      { value: 'excellent', label: 'Excellent', color: '#10b981' },
-      { value: 'good', label: 'Good', color: '#3b82f6' },
-      { value: 'satisfactory', label: 'Satisfactory', color: '#f59e0b' },
-      { value: 'needsImprovement', label: 'Needs Improvement', color: '#ef4444' }
+      { value: 'excellent', label: data.labels?.excellent || 'Excellent', color: '#10b981' },
+      { value: 'good', label: data.labels?.good || 'Good', color: '#3b82f6' },
+      { value: 'satisfactory', label: data.labels?.satisfactory || 'Satisfactory', color: '#f59e0b' },
+      { value: 'needsImprovement', label: data.labels?.needsImprovement || 'Needs Improvement', color: '#ef4444' }
     ];
 
     return (

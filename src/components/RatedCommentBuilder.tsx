@@ -37,6 +37,9 @@ function RatedCommentBuilder({ onSave, onCancel, existingComment }: RatedComment
   const [splittingKey, setSplittingKey] = useState<{ group: string; idx: number } | null>(null);
   const [splitSelectedText, setSplitSelectedText] = useState('');
 
+  // Reflect any custom button names set elsewhere (e.g. the AI wizard) so headings here match what the teacher sees in the report writer
+  const displayRatingConfig = ratingConfig.map(r => ({ ...r, label: existingComment?.labels?.[r.key] || r.label }));
+
   const handleBatchPaste = (rating: RatingKey) => {
     if (batchText.trim()) {
       let newComments: string[] = [];
@@ -114,7 +117,8 @@ function RatedCommentBuilder({ onSave, onCancel, existingComment }: RatedComment
         good: comments.good.filter(c => c.trim()),
         satisfactory: comments.satisfactory.filter(c => c.trim()),
         needsImprovement: comments.needsImprovement.filter(c => c.trim()),
-      }
+      },
+      ...(existingComment?.labels ? { labels: existingComment.labels } : {}),
     };
     onSave(ratedComment);
   };
@@ -138,9 +142,9 @@ function RatedCommentBuilder({ onSave, onCancel, existingComment }: RatedComment
             <p style={{ color: '#1e40af', fontSize: '14px', margin: 0 }}>• Example: "[Name] shows excellent effort in all activities"</p>
           </div>
 
-          {ratingConfig.map(rating => {
+          {displayRatingConfig.map(rating => {
             const ratingComments = comments[rating.key] || [];
-            const otherRatings = ratingConfig.filter(r => r.key !== rating.key);
+            const otherRatings = displayRatingConfig.filter(r => r.key !== rating.key);
             return (
               <div key={rating.key} style={{ border: `2px solid ${rating.color}`, borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>

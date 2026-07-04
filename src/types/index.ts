@@ -32,6 +32,13 @@ export interface RatedComment {
     satisfactory: string[];
     needsImprovement: string[];
   };
+  // Custom display names for the fixed keys above (e.g. renamed in the AI wizard) — falls back to the default label when absent
+  labels?: {
+    excellent?: string;
+    good?: string;
+    satisfactory?: string;
+    needsImprovement?: string;
+  };
 }
 
 // Standard Comment types
