@@ -61,7 +61,13 @@ CRITICAL — NO DUPLICATES:
 - The same sentence (or near-identical sentence) must appear only ONCE across the entire section
 - A sentence must not appear under two different buttons/headings
 - A sentence must not appear twice under the same button/heading
-- If near-identical sentences exist (same meaning, minor wording difference), include only the clearest version`;
+- If near-identical sentences exist (same meaning, minor wording difference), include only the clearest version
+
+CRITICAL — SPLIT REPEATED SENTENCE PAIRS:
+When several two-sentence comments share an identical opening sentence but a different closing sentence (e.g. "[Name] worked hard this term. [Name] particularly enjoyed the art unit." and "[Name] worked hard this term. [Name] particularly enjoyed the drama unit."), do not repeat the shared opening sentence once per pair. Instead, where each half can stand alone as a complete, independent comment: extract the shared opening sentence as ONE separate option (added only once), and extract each distinct closing sentence as its own separate option. Only split when both halves are genuinely self-contained — if the second sentence cannot stand alone without the first (see NO SENTENCE FRAGMENTS above), keep the original two-sentence comment intact instead of splitting it.
+
+CRITICAL — HEADING/BUTTON NAMES:
+Every heading name must be derived from the shared THEME of the statements grouped under it, decided only after reading all of them together — never copy wording from a single sentence or use a generic placeholder label like "General" or "Comment 1". Name the common topic first, then the performance level or tone where relevant (e.g. "Teamwork — confident contributor", not "Sentence about teamwork").`;
 
 const EXTRACT_ONLY_SYSTEM = `${KNOWLEDGE_BASE}
 
@@ -537,6 +543,28 @@ function mechanicalAssemble(params: { subject: string; yearGroup: string; builtS
   return { templateName, sections };
 }
 
+function normaliseForDedupe(text: string): string {
+  return text.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+// Belt-and-braces guard against the model repeating an identical statement
+// within a heading or across headings — the prompt asks for this too, but
+// duplicates still slip through often enough to warrant enforcing it here.
+function dedupeHeadings(headings: { name: string; comments: string[] }[]): { name: string; comments: string[] }[] {
+  const seen = new Set<string>();
+  return headings
+    .map(h => ({
+      ...h,
+      comments: (h.comments || []).filter(c => {
+        const key = normaliseForDedupe(c);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      }),
+    }))
+    .filter(h => h.comments.length > 0);
+}
+
 function stripPercent(text: string): string {
   return text
     .replace(/\[Score 1\]%/g, '[Score 1]')
@@ -820,7 +848,7 @@ IMPORTANT: Extract ONLY sentences that match the pattern of the highlighted exam
 
         return new Response(JSON.stringify({
           sectionName: parsed.sectionName || sectionName,
-          headings: parsed.headings || [],
+          headings: dedupeHeadings(parsed.headings || []),
           isPersonalisedComment: true,
           instruction: piInstruction,
         }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -923,7 +951,9 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
 
       const data = await response.json();
       const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
-      return new Response(JSON.stringify(JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim())), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const parsedResult = JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
+      if (Array.isArray(parsedResult.headings)) parsedResult.headings = dedupeHeadings(parsedResult.headings);
+      return new Response(JSON.stringify(parsedResult), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     } catch {
       return new Response(JSON.stringify({ error: "Extraction failed." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -1040,6 +1070,15 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
       const data = await response.json();
       const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
       const parsed = JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
+      if (Array.isArray(parsed.statements)) {
+        const seen = new Set<string>();
+        parsed.statements = parsed.statements.filter((s: string) => {
+          const key = normaliseForDedupe(s);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      }
       return new Response(JSON.stringify(parsed), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } catch {
       return new Response(JSON.stringify({ error: "Find-fixed scan failed." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

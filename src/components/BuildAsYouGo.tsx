@@ -599,7 +599,7 @@ const handleSaveAndWrite = () => {
         {!isRated && sType !== 'standard-comment' && (
           <div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px', alignItems: 'flex-end' }}>
-              {buttons.map((btn, i) => btn.name ? (
+              {buttons.map((btn, i) => (btn.name || (activeButtonIndex === i && namingButtonIndex !== i)) ? (
                 <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                     <input
@@ -656,7 +656,7 @@ const handleSaveAndWrite = () => {
             )}
           </div>
         )}
-        {(isRated || (buttons[activeButtonIndex]?.name && !addingNewButton && namingButtonIndex === null)) && sType !== 'standard-comment' && (
+        {(isRated || (buttons[activeButtonIndex] && !addingNewButton && namingButtonIndex === null)) && sType !== 'standard-comment' && (
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>Statements for <span style={{ color: accentColor }}>{buttons[activeButtonIndex]?.name}</span>:</label>
             {buttons[activeButtonIndex]?.statements.length > 0 && (
