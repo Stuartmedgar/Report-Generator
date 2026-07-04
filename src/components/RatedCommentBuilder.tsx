@@ -40,6 +40,15 @@ function RatedCommentBuilder({ onSave, onCancel, existingComment }: RatedComment
   // Reflect any custom button names set elsewhere (e.g. the AI wizard) so headings here match what the teacher sees in the report writer
   const displayRatingConfig = ratingConfig.map(r => ({ ...r, label: existingComment?.labels?.[r.key] || r.label }));
 
+  // This editor only exposes the four fixed rating levels — but a section may have extra
+  // levels added/renamed via the report writer's "Edit Buttons" feature. Carry those straight
+  // through on save rather than silently deleting them.
+  const knownKeys = ['excellent', 'good', 'satisfactory', 'needsImprovement'];
+  const extraComments: Record<string, string[]> = {};
+  Object.entries(existingComment?.comments || {}).forEach(([key, value]) => {
+    if (!knownKeys.includes(key)) extraComments[key] = value as string[];
+  });
+
   const handleBatchPaste = (rating: RatingKey) => {
     if (batchText.trim()) {
       let newComments: string[] = [];
@@ -117,6 +126,7 @@ function RatedCommentBuilder({ onSave, onCancel, existingComment }: RatedComment
         good: comments.good.filter(c => c.trim()),
         satisfactory: comments.satisfactory.filter(c => c.trim()),
         needsImprovement: comments.needsImprovement.filter(c => c.trim()),
+        ...extraComments,
       },
       ...(existingComment?.labels ? { labels: existingComment.labels } : {}),
     };

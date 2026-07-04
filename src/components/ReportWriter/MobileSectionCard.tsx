@@ -529,13 +529,9 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
   };
 
   const renderAssessmentComment = () => {
-    const performances = [
-      { value: 'excellent', label: 'Excellent', color: '#10b981' },
-      { value: 'good', label: 'Good', color: '#3b82f6' },
-      { value: 'satisfactory', label: 'Satisfactory', color: '#f59e0b' },
-      { value: 'needsImprovement', label: 'Needs Improvement', color: '#ef4444' },
-      { value: 'notCompleted', label: 'Not Completed', color: '#6b7280' }
-    ];
+    const PERFORMANCE_COLORS = ['#7c3aed', '#6d28d9', '#5b21b6', '#4c1d95', '#3730a3'];
+    const performanceKeys: string[] = Object.keys(section.data?.comments || {});
+    const performances = performanceKeys.map((key, idx) => ({ value: key, label: key, color: PERFORMANCE_COLORS[idx % PERFORMANCE_COLORS.length] }));
 
     return (
       <div>

@@ -55,6 +55,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
           section={section} data={data}
           updateSectionData={enhancedUpdateSectionData}
           onTemplateAction={onTemplateAction}
+          onAddButton={onAddButton}
           onRenameSection={onRenameSection}
           globalPronoun={globalPronoun}
         />
@@ -85,6 +86,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({
           section={section} data={data}
           updateSectionData={enhancedUpdateSectionData}
           onTemplateAction={onTemplateAction}
+          onAddButton={onAddButton}
           onRenameSection={onRenameSection}
           globalPronoun={globalPronoun}
         />

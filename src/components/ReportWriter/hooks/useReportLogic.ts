@@ -246,17 +246,56 @@ export const useReportLogic = ({
         }
 
         if (section.type === 'rated-comment') {
-          const comments = { ...newData.comments };
-          if (action.type === 'replace' && action.buttonName) {
-            const options = [...(comments[action.buttonName] || [])];
-            options[0] = action.commentText;
-            comments[action.buttonName] = options;
-          } else if (action.type === 'add-to-button' && action.buttonName) {
-            comments[action.buttonName] = [...(comments[action.buttonName] || []), action.commentText];
-          } else if (action.type === 'add-to-new-button' && action.newButtonName) {
-            comments[action.newButtonName] = [action.commentText];
+          if (action.type === 'rename-button' || action.type === 'delete-button') {
+            newData.comments = action.updatedComments || newData.comments;
+            if (newData.labels && action.oldButtonName) {
+              const labels = { ...newData.labels };
+              delete labels[action.oldButtonName];
+              newData.labels = labels;
+            }
+          } else if (action.type === 'move-statement' && action.fromButton && action.toButton && action.statement) {
+            const comments = { ...newData.comments };
+            comments[action.fromButton] = (comments[action.fromButton] || []).filter((s: string) => s !== action.statement);
+            if (comments[action.fromButton].length === 0) delete comments[action.fromButton];
+            comments[action.toButton] = [...(comments[action.toButton] || []), action.statement];
+            newData.comments = comments;
+          } else {
+            const comments = { ...newData.comments };
+            if (action.type === 'replace' && action.buttonName) {
+              const options = [...(comments[action.buttonName] || [])];
+              options[0] = action.commentText;
+              comments[action.buttonName] = options;
+            } else if (action.type === 'add-to-button' && action.buttonName) {
+              comments[action.buttonName] = [...(comments[action.buttonName] || []), action.commentText];
+            } else if (action.type === 'add-to-new-button' && action.newButtonName) {
+              comments[action.newButtonName] = [action.commentText];
+            }
+            newData.comments = comments;
           }
-          newData.comments = comments;
+        }
+
+        if (section.type === 'assessment-comment') {
+          if (action.type === 'rename-button' || action.type === 'delete-button') {
+            newData.comments = action.updatedComments || newData.comments;
+          } else if (action.type === 'move-statement' && action.fromButton && action.toButton && action.statement) {
+            const comments = { ...newData.comments };
+            comments[action.fromButton] = (comments[action.fromButton] || []).filter((s: string) => s !== action.statement);
+            if (comments[action.fromButton].length === 0) delete comments[action.fromButton];
+            comments[action.toButton] = [...(comments[action.toButton] || []), action.statement];
+            newData.comments = comments;
+          } else {
+            const comments = { ...newData.comments };
+            if (action.type === 'replace' && action.buttonName) {
+              const options = [...(comments[action.buttonName] || [])];
+              options[0] = action.commentText;
+              comments[action.buttonName] = options;
+            } else if (action.type === 'add-to-button' && action.buttonName) {
+              comments[action.buttonName] = [...(comments[action.buttonName] || []), action.commentText];
+            } else if (action.type === 'add-to-new-button' && action.newButtonName) {
+              comments[action.newButtonName] = [action.commentText];
+            }
+            newData.comments = comments;
+          }
         }
 
         return { ...section, data: newData };
@@ -279,6 +318,8 @@ export const useReportLogic = ({
           newData.focusAreas = { ...newData.focusAreas, [buttonName]: [firstOption] };
         } else if (section.type === 'personalised-comment') {
           newData.categories = { ...newData.categories, [buttonName]: [firstOption] };
+        } else if (section.type === 'rated-comment' || section.type === 'assessment-comment') {
+          newData.comments = { ...newData.comments, [buttonName]: [firstOption] };
         }
         return { ...section, data: newData };
       });

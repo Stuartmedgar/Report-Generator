@@ -111,6 +111,14 @@ function AssessmentCommentBuilder({ onSave, onCancel, existingComment }: Assessm
     if (!commentName.trim()) { alert('Please enter a name for this assessment comment'); return; }
     const hasEmptyRatings = Object.entries(comments).some(([_, list]) => list.every(c => !c.trim()));
     if (hasEmptyRatings) { alert('Please add at least one comment for each rating level'); return; }
+    // This editor only exposes the five fixed rating levels — but a section may have extra
+    // levels added/renamed via the report writer's "Edit Buttons" feature. Carry those straight
+    // through rather than silently deleting them.
+    const knownKeys = ['excellent', 'good', 'satisfactory', 'needsImprovement', 'notCompleted'];
+    const extraComments: Record<string, string[]> = {};
+    Object.entries(existingComment?.comments || {}).forEach(([key, value]) => {
+      if (!knownKeys.includes(key)) extraComments[key] = value as string[];
+    });
     const assessmentComment: AssessmentComment = {
       name: commentName.trim(),
       scoreType,
@@ -121,6 +129,7 @@ function AssessmentCommentBuilder({ onSave, onCancel, existingComment }: Assessm
         satisfactory: comments.satisfactory.filter(c => c.trim()),
         needsImprovement: comments.needsImprovement.filter(c => c.trim()),
         notCompleted: comments.notCompleted.filter(c => c.trim()),
+        ...extraComments,
       }
     };
     onSave(assessmentComment);
