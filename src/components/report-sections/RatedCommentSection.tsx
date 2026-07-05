@@ -19,10 +19,10 @@ const DEFAULT_RATED_LABELS: Record<string, string> = {
   needsImprovement: 'Needs Improvement',
 };
 const KNOWN_RATED_COLORS: Record<string, string> = {
-  excellent: '#10b981',
-  good: '#3b82f6',
-  satisfactory: '#f59e0b',
-  needsImprovement: '#ef4444',
+  Excellent: '#10b981',
+  Good: '#3b82f6',
+  Satisfactory: '#f59e0b',
+  'Needs Improvement': '#ef4444',
 };
 const EXTRA_RATED_COLORS = ['#8b5cf6', '#6366f1', '#ec4899', '#14b8a6', '#f97316'];
 
@@ -55,9 +55,9 @@ const RatedCommentSection: React.FC<RatedCommentSectionProps> = ({
   }, [data.selectedComment, data.customEditedComment]);
 
   const ratingKeys: string[] = Object.keys(section.data?.comments || {});
-  const getColor = (key: string, idx: number) => KNOWN_RATED_COLORS[key] || EXTRA_RATED_COLORS[idx % EXTRA_RATED_COLORS.length];
+  const getColor = (label: string, idx: number) => KNOWN_RATED_COLORS[label] || EXTRA_RATED_COLORS[idx % EXTRA_RATED_COLORS.length];
   const getLabel = (key: string) => (data.labels || section.data?.labels)?.[key] || DEFAULT_RATED_LABELS[key] || key;
-  const ratings = ratingKeys.map((key, idx) => ({ value: key, label: getLabel(key), color: getColor(key, idx) }));
+  const ratings = ratingKeys.map((key, idx) => { const label = getLabel(key); return { value: key, label, color: getColor(label, idx) }; });
 
   const handleRatingChange = (rating: string) => {
     if (editingButtons) return;
@@ -180,7 +180,7 @@ const RatedCommentSection: React.FC<RatedCommentSectionProps> = ({
             </button>
           )}
           <HeaderStylePicker showHeader={data.showHeader !== false} headerStyle={data.headerStyle || section.data?.headerStyle || 'inline'} onChange={(show, style) => updateSectionData(section.id, { showHeader: show, headerStyle: style })} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div data-tour="exclude" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <input type="checkbox" checked={data.exclude || false}
               onChange={(e) => updateSectionData(section.id, { exclude: e.target.checked })}
               style={{ width: '14px', height: '14px', cursor: 'pointer' }} />
@@ -190,7 +190,7 @@ const RatedCommentSection: React.FC<RatedCommentSectionProps> = ({
       </div>
 
       {/* Pronoun selector */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+      <div data-tour="name-or-pronoun" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
         <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: '500' }}>Use:</span>
         {[{ value: '', label: 'Name' }, { value: globalPronoun || 'he', label: 'Pronoun' }].map(opt => (
           <button key={opt.value} onClick={() => updateSectionData(section.id, { pronounOverride: opt.value })}
@@ -297,7 +297,7 @@ const RatedCommentSection: React.FC<RatedCommentSectionProps> = ({
       {/* Edit toggle */}
       {hasSelectedComment && !editingButtons && (
         <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: showEditComment ? '12px' : '0' }}>
-          <button onClick={() => setShowEditComment(!showEditComment)}
+          <button data-tour="edit-comment" onClick={() => setShowEditComment(!showEditComment)}
             style={{
               backgroundColor: showEditComment ? '#10b981' : '#e5e7eb',
               color: showEditComment ? 'white' : '#6b7280',

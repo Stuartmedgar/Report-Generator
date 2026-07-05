@@ -8,6 +8,8 @@ interface RatedCommentSelectorProps {
   onBack: () => void;
 }
 
+const LEVEL_BADGE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#6366f1'];
+
 function RatedCommentSelector({ onSelectComment, onBack }: RatedCommentSelectorProps) {
   const { state, addRatedComment, deleteRatedComment } = useData();
   const [showBuilder, setShowBuilder] = useState(false);
@@ -187,51 +189,23 @@ function RatedCommentSelector({ onSelectComment, onBack }: RatedCommentSelectorP
                       }}>
                         {comment.name}
                       </h3>
-                      <div style={{ 
-                        display: 'flex', 
-                        flexWrap: 'wrap', 
-                        gap: '8px' 
+                      <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '8px'
                       }}>
-                        <span style={{
-                          backgroundColor: '#10b981',
-                          color: 'white',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: '500'
-                        }}>
-                          {comment.comments.excellent.length} Excellent
-                        </span>
-                        <span style={{
-                          backgroundColor: '#3b82f6',
-                          color: 'white',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: '500'
-                        }}>
-                          {comment.comments.good.length} Good
-                        </span>
-                        <span style={{
-                          backgroundColor: '#f59e0b',
-                          color: 'white',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: '500'
-                        }}>
-                          {comment.comments.satisfactory.length} Satisfactory
-                        </span>
-                        <span style={{
-                          backgroundColor: '#ef4444',
-                          color: 'white',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: '500'
-                        }}>
-                          {comment.comments.needsImprovement.length} Needs Improvement
-                        </span>
+                        {Object.entries(comment.comments).map(([level, list], idx) => (
+                          <span key={level} style={{
+                            backgroundColor: LEVEL_BADGE_COLORS[idx % LEVEL_BADGE_COLORS.length],
+                            color: 'white',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            fontWeight: '500'
+                          }}>
+                            {(list as string[]).length} {level}
+                          </span>
+                        ))}
                       </div>
                     </div>
                   </div>

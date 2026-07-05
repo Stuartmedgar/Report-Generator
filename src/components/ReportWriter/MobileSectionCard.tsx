@@ -488,12 +488,14 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
   };
 
   const renderRatedComment = () => {
-    const ratings = [
-      { value: 'excellent', label: data.labels?.excellent || 'Excellent', color: '#10b981' },
-      { value: 'good', label: data.labels?.good || 'Good', color: '#3b82f6' },
-      { value: 'satisfactory', label: data.labels?.satisfactory || 'Satisfactory', color: '#f59e0b' },
-      { value: 'needsImprovement', label: data.labels?.needsImprovement || 'Needs Improvement', color: '#ef4444' }
-    ];
+    // "excellent"/"good" etc are legacy fixed keys from before rating levels became
+    // free-form — translated to a friendly label for templates saved before that change.
+    const LEGACY_LABELS: Record<string, string> = { excellent: 'Excellent', good: 'Good', satisfactory: 'Satisfactory', needsImprovement: 'Needs Improvement' };
+    const KNOWN_RATED_COLORS: Record<string, string> = { Excellent: '#10b981', Good: '#3b82f6', Satisfactory: '#f59e0b', 'Needs Improvement': '#ef4444' };
+    const EXTRA_RATED_COLORS = ['#8b5cf6', '#6366f1', '#ec4899', '#14b8a6', '#f97316'];
+    const ratingKeys: string[] = Object.keys(section.data?.comments || {});
+    const getLabel = (key: string) => (data.labels || section.data?.labels)?.[key] || LEGACY_LABELS[key] || key;
+    const ratings = ratingKeys.map((key, idx) => { const label = getLabel(key); return { value: key, label, color: KNOWN_RATED_COLORS[label] || EXTRA_RATED_COLORS[idx % EXTRA_RATED_COLORS.length] }; });
 
     return (
       <div>

@@ -25,23 +25,21 @@ export const exportTemplateToText = (
       case 'rated-comment':
         const ratedComments = section.data?.comments || section.data?.ratings;
         if (ratedComments) {
-          ['excellent', 'good', 'satisfactory', 'needsImprovement'].forEach(level => {
+          Object.entries(ratedComments).forEach(([level, comments]) => {
             exportContent += `\n${level.toUpperCase()}:\n`;
-            const comments = ratedComments[level] || [];
-            comments.forEach((comment: string, i: number) => {
+            (comments as string[]).forEach((comment: string, i: number) => {
               exportContent += `  ${i + 1}. ${comment}\n`;
             });
           });
         }
         break;
-        
+
       case 'assessment-comment':
         const assessmentComments = section.data?.comments;
         if (assessmentComments) {
-          ['excellent', 'good', 'satisfactory', 'needsImprovement', 'notCompleted'].forEach(level => {
+          Object.entries(assessmentComments).forEach(([level, comments]) => {
             exportContent += `\n${level.toUpperCase()}:\n`;
-            const comments = assessmentComments[level] || [];
-            comments.forEach((comment: string, i: number) => {
+            (comments as string[]).forEach((comment: string, i: number) => {
               exportContent += `  ${i + 1}. ${comment}\n`;
             });
           });
@@ -139,23 +137,27 @@ export const generateSampleReport = (sections: TemplateSection[]): string => {
     
     // Add sample content based on section type
     switch (section.type) {
-      case 'rated-comment':
+      case 'rated-comment': {
         const ratedComments = section.data?.comments || section.data?.ratings;
-        if (ratedComments?.excellent?.[0]) {
-          reportContent += `${ratedComments.excellent[0]}\n\n`;
+        const firstRated = ratedComments ? (Object.values(ratedComments)[0] as string[] | undefined)?.[0] : undefined;
+        if (firstRated) {
+          reportContent += `${firstRated}\n\n`;
         } else {
           reportContent += '[Sample comment would appear here]\n\n';
         }
         break;
-        
-      case 'assessment-comment':
+      }
+
+      case 'assessment-comment': {
         const assessmentComments = section.data?.comments;
-        if (assessmentComments?.excellent?.[0]) {
-          reportContent += `${assessmentComments.excellent[0]}\n\n`;
+        const firstAssessment = assessmentComments ? (Object.values(assessmentComments)[0] as string[] | undefined)?.[0] : undefined;
+        if (firstAssessment) {
+          reportContent += `${firstAssessment}\n\n`;
         } else {
           reportContent += '[Sample assessment comment would appear here]\n\n';
         }
         break;
+      }
         
       case 'personalised-comment':
         if (section.data?.instruction) {

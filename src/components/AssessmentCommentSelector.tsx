@@ -8,6 +8,8 @@ interface AssessmentCommentSelectorProps {
   onBack: () => void;
 }
 
+const LEVEL_BADGE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#6b7280', '#8b5cf6'];
+
 function AssessmentCommentSelector({ onSelectComment, onBack }: AssessmentCommentSelectorProps) {
   const { state, addAssessmentComment, deleteAssessmentComment } = useData();
   const [showBuilder, setShowBuilder] = useState(false);
@@ -19,23 +21,23 @@ function AssessmentCommentSelector({ onSelectComment, onBack }: AssessmentCommen
     scoreType: 'outOf',
     maxScore: 100,
     comments: {
-      excellent: [
+      'Excellent': [
         '[Name] achieved an excellent score of [Score] demonstrating outstanding understanding.',
         '[Name] scored [Score] which reflects exceptional performance and mastery of the subject.'
       ],
-      good: [
+      'Good': [
         '[Name] achieved a good score of [Score] showing solid understanding of the material.',
         '[Name] scored [Score] demonstrating good progress and comprehension.'
       ],
-      satisfactory: [
+      'Satisfactory': [
         '[Name] achieved a satisfactory score of [Score] meeting the expected standards.',
         '[Name] scored [Score] showing adequate understanding of the key concepts.'
       ],
-      needsImprovement: [
+      'Needs Improvement': [
         '[Name] scored [Score] which indicates areas requiring further development.',
         '[Name] achieved [Score] and would benefit from additional practice and support.'
       ],
-      notCompleted: [
+      'Not Completed': [
         '[Name] did not complete this assessment and will need to arrange a makeup opportunity.',
         'This assessment was not completed by [Name] and should be rescheduled.'
       ]
@@ -309,56 +311,18 @@ function AssessmentCommentSelector({ onSelectComment, onBack }: AssessmentCommen
                         }}>
                           {comment.scoreType === 'outOf' ? `Out of ${comment.maxScore}` : 'Percentage'}
                         </span>
-                        <span style={{
-                          backgroundColor: '#10b981',
-                          color: 'white',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: '500'
-                        }}>
-                          {comment.comments.excellent.length} Excellent
-                        </span>
-                        <span style={{
-                          backgroundColor: '#3b82f6',
-                          color: 'white',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: '500'
-                        }}>
-                          {comment.comments.good.length} Good
-                        </span>
-                        <span style={{
-                          backgroundColor: '#f59e0b',
-                          color: 'white',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: '500'
-                        }}>
-                          {comment.comments.satisfactory.length} Satisfactory
-                        </span>
-                        <span style={{
-                          backgroundColor: '#ef4444',
-                          color: 'white',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: '500'
-                        }}>
-                          {comment.comments.needsImprovement.length} Needs Improvement
-                        </span>
-                        <span style={{
-                          backgroundColor: '#6b7280',
-                          color: 'white',
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: '500'
-                        }}>
-                          {comment.comments.notCompleted.length} Not Completed
-                        </span>
+                        {Object.entries(comment.comments).map(([level, list], idx) => (
+                          <span key={level} style={{
+                            backgroundColor: LEVEL_BADGE_COLORS[idx % LEVEL_BADGE_COLORS.length],
+                            color: 'white',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            fontWeight: '500'
+                          }}>
+                            {(list as string[]).length} {level}
+                          </span>
+                        ))}
                       </div>
                     </div>
                   </div>

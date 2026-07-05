@@ -24,21 +24,14 @@ export type SectionType =
   | 'qualities';
 
 // Rated Comment types
+// Keys are the rating level names themselves (e.g. "Excellent") — free-form so
+// teachers can rename, add, or remove levels, same as qualities/next-steps.
 export interface RatedComment {
   name: string;
-  comments: {
-    excellent: string[];
-    good: string[];
-    satisfactory: string[];
-    needsImprovement: string[];
-  };
-  // Custom display names for the fixed keys above (e.g. renamed in the AI wizard) — falls back to the default label when absent
-  labels?: {
-    excellent?: string;
-    good?: string;
-    satisfactory?: string;
-    needsImprovement?: string;
-  };
+  comments: Record<string, string[]>;
+  // Legacy field from when rating levels used fixed keys with a separate display
+  // name — kept optional so old stored templates still type-check when read.
+  labels?: Record<string, string>;
 }
 
 // Standard Comment types
@@ -48,17 +41,13 @@ export interface StandardComment {
 }
 
 // Assessment Comment types
+// Keys are the performance button names themselves (e.g. "Excellent") — free-form
+// so teachers can rename, add, or remove levels, same as qualities/next-steps.
 export interface AssessmentComment {
   name: string;
   scoreType: 'outOf' | 'percentage';
   maxScore?: number;
-  comments: {
-    excellent: string[];
-    good: string[];
-    satisfactory: string[];
-    needsImprovement: string[];
-    notCompleted: string[];
-  };
+  comments: Record<string, string[]>;
 }
 
 // Personalised Comment types

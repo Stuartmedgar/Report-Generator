@@ -33,28 +33,26 @@ export const validateTemplate = (
     // Check rated comments
     if (section.type === 'rated-comment') {
       const comments = section.data?.comments || section.data?.ratings;
-      if (!comments) {
+      if (!comments || Object.keys(comments).length === 0) {
         errors.push(`Section ${sectionNum} (${section.name || 'Rated Comment'}) has no comment options`);
       } else {
-        const levels = ['excellent', 'good', 'satisfactory', 'needsImprovement'];
-        levels.forEach(level => {
-          if (!comments[level] || comments[level].length === 0) {
-            errors.push(`Section ${sectionNum} (${section.name || 'Rated Comment'}) is missing ${level} comments`);
+        Object.entries(comments).forEach(([level, list]) => {
+          if (!Array.isArray(list) || list.length === 0) {
+            errors.push(`Section ${sectionNum} (${section.name || 'Rated Comment'}) rating level "${level}" has no comments`);
           }
         });
       }
     }
-    
+
     // Check assessment comments
     if (section.type === 'assessment-comment') {
       const comments = section.data?.comments;
-      if (!comments) {
+      if (!comments || Object.keys(comments).length === 0) {
         errors.push(`Section ${sectionNum} (${section.name || 'Assessment Comment'}) has no comment options`);
       } else {
-        const levels = ['excellent', 'good', 'satisfactory', 'needsImprovement', 'notCompleted'];
-        levels.forEach(level => {
-          if (!comments[level] || comments[level].length === 0) {
-            errors.push(`Section ${sectionNum} (${section.name || 'Assessment Comment'}) is missing ${level} comments`);
+        Object.entries(comments).forEach(([level, list]) => {
+          if (!Array.isArray(list) || list.length === 0) {
+            errors.push(`Section ${sectionNum} (${section.name || 'Assessment Comment'}) performance level "${level}" has no comments`);
           }
         });
       }

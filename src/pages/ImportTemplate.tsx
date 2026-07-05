@@ -339,8 +339,8 @@ export default function ImportTemplate() {
         if (text) parts.push(text);
       } else if (sec.type === 'rated-comment') {
         const c = sec.data?.comments || {};
-        const opt = c.good?.[0] || c.excellent?.[0] || c.satisfactory?.[0] || c.needsImprovement?.[0] || '';
-        if (opt) parts.push(opt);
+        const firstLevel = Object.keys(c)[0];
+        if (firstLevel && c[firstLevel]?.[0]) parts.push(c[firstLevel][0]);
       } else if (sec.type === 'qualities') {
         const c = sec.data?.comments || {};
         const firstHeading = Object.keys(c)[0];
@@ -355,8 +355,8 @@ export default function ImportTemplate() {
         if (firstCat && cats[firstCat]?.[0]) parts.push(cats[firstCat][0]);
       } else if (sec.type === 'assessment-comment') {
         const c = sec.data?.comments || {};
-        const opt = c.good?.[0] || c.excellent?.[0] || '';
-        if (opt) parts.push(opt);
+        const firstLevel = Object.keys(c)[0];
+        if (firstLevel && c[firstLevel]?.[0]) parts.push(c[firstLevel][0]);
       }
     }
     return parts.join(' ').replace(/\[Name\]/g, 'Alex').replace(/\[Score\]/g, '72%').replace(/\[Info \d\]/g, '(personal detail)');
@@ -478,17 +478,17 @@ export default function ImportTemplate() {
   };
 
   const buildAssessmentComments = (headings: Heading[]) => {
-    const levels: Record<string, string[]> = { excellent: [], good: [], satisfactory: [], needsImprovement: [], notCompleted: [] };
+    const levels: Record<string, string[]> = { 'Excellent': [], 'Good': [], 'Satisfactory': [], 'Needs Improvement': [], 'Not Completed': [] };
     headings.forEach(h => {
       const n = h.name.toLowerCase();
-      if (n.includes('excellent') || n.includes('outstanding') || n.includes('very well')) levels.excellent.push(...h.comments.map(stripPercent));
-      else if (n.includes('good') || n.includes('solid') || n.includes('well')) levels.good.push(...h.comments.map(stripPercent));
-      else if (n.includes('satisfactory') || n.includes('some') || n.includes('challenge')) levels.satisfactory.push(...h.comments.map(stripPercent));
-      else if (n.includes('improvement') || n.includes('difficult') || n.includes('poor')) levels.needsImprovement.push(...h.comments.map(stripPercent));
-      else if (n.includes('completed') || n.includes('absent') || n.includes('missed')) levels.notCompleted.push(...h.comments.map(stripPercent));
-      else levels.good.push(...h.comments.map(stripPercent));
+      if (n.includes('excellent') || n.includes('outstanding') || n.includes('very well')) levels['Excellent'].push(...h.comments.map(stripPercent));
+      else if (n.includes('good') || n.includes('solid') || n.includes('well')) levels['Good'].push(...h.comments.map(stripPercent));
+      else if (n.includes('satisfactory') || n.includes('some') || n.includes('challenge')) levels['Satisfactory'].push(...h.comments.map(stripPercent));
+      else if (n.includes('improvement') || n.includes('difficult') || n.includes('poor')) levels['Needs Improvement'].push(...h.comments.map(stripPercent));
+      else if (n.includes('completed') || n.includes('absent') || n.includes('missed')) levels['Not Completed'].push(...h.comments.map(stripPercent));
+      else levels['Good'].push(...h.comments.map(stripPercent));
     });
-    if (!levels.notCompleted.length) levels.notCompleted = ['[Name] has not yet completed this assessment.', '[Name] was absent for this assessment.'];
+    if (!levels['Not Completed'].length) levels['Not Completed'] = ['[Name] has not yet completed this assessment.', '[Name] was absent for this assessment.'];
     return levels;
   };
 

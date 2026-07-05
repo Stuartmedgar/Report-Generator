@@ -27,15 +27,7 @@ interface ReportWriterProps {
 // ─── DATA SHAPERS ─────────────────────────────────────────────────────────────
 
 function shapeForRatedBuilder(section: any) {
-  return {
-    name: section.name || '',
-    comments: {
-      excellent: section.data?.comments?.excellent || [],
-      good: section.data?.comments?.good || [],
-      satisfactory: section.data?.comments?.satisfactory || [],
-      needsImprovement: section.data?.comments?.needsImprovement || [],
-    },
-  };
+  return { name: section.name || '', comments: section.data?.comments || {}, labels: section.data?.labels };
 }
 
 function shapeForAssessmentBuilder(section: any) {
@@ -43,13 +35,7 @@ function shapeForAssessmentBuilder(section: any) {
     name: section.name || '',
     scoreType: section.data?.scoreType || 'outOf',
     maxScore: section.data?.maxScore,
-    comments: {
-      excellent: section.data?.comments?.excellent || [],
-      good: section.data?.comments?.good || [],
-      satisfactory: section.data?.comments?.satisfactory || [],
-      needsImprovement: section.data?.comments?.needsImprovement || [],
-      notCompleted: section.data?.comments?.notCompleted || [],
-    },
+    comments: section.data?.comments || {},
   };
 }
 

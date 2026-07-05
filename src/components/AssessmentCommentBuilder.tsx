@@ -10,27 +10,45 @@ interface AssessmentCommentBuilderProps {
 const smallBtn = (c: string): React.CSSProperties => ({ backgroundColor: c, color: 'white', border: 'none', borderRadius: '6px', padding: '5px 12px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' });
 const cancelBtn: React.CSSProperties = { backgroundColor: '#f3f4f6', color: '#374151', border: 'none', borderRadius: '6px', padding: '5px 12px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' };
 
-const ratingConfig = [
-  { key: 'excellent' as const, label: 'Excellent', color: '#10b981' },
-  { key: 'good' as const, label: 'Good', color: '#3b82f6' },
-  { key: 'satisfactory' as const, label: 'Satisfactory', color: '#f59e0b' },
-  { key: 'needsImprovement' as const, label: 'Needs Improvement', color: '#ef4444' },
-  { key: 'notCompleted' as const, label: 'Assessment not completed', color: '#6b7280' },
-];
+// Legacy fixed keys used before performance levels became free-form — translated
+// to a friendly display heading (and used as the heading itself) when loading old data.
+const LEGACY_LABELS: Record<string, string> = {
+  excellent: 'Excellent',
+  good: 'Good',
+  satisfactory: 'Satisfactory',
+  needsImprovement: 'Needs Improvement',
+  notCompleted: 'Not Completed',
+};
+const KNOWN_COLORS: Record<string, string> = {
+  Excellent: '#10b981',
+  Good: '#3b82f6',
+  Satisfactory: '#f59e0b',
+  'Needs Improvement': '#ef4444',
+  'Not Completed': '#6b7280',
+};
+const EXTRA_COLORS = ['#8b5cf6', '#6366f1', '#ec4899', '#14b8a6', '#f97316'];
+const getColor = (heading: string, idx: number) => KNOWN_COLORS[heading] || EXTRA_COLORS[idx % EXTRA_COLORS.length];
 
-type RatingKey = 'excellent' | 'good' | 'satisfactory' | 'needsImprovement' | 'notCompleted';
+function buildInitialState(existingComment?: AssessmentComment): { headings: string[]; comments: Record<string, string[]> } {
+  if (!existingComment?.comments) {
+    const headings = ['Excellent', 'Good', 'Satisfactory', 'Needs Improvement', 'Not Completed'];
+    return { headings, comments: Object.fromEntries(headings.map(h => [h, []])) };
+  }
+  const comments: Record<string, string[]> = {};
+  Object.entries(existingComment.comments).forEach(([key, value]) => {
+    const heading = LEGACY_LABELS[key] || key;
+    comments[heading] = value;
+  });
+  return { headings: Object.keys(comments), comments };
+}
 
 function AssessmentCommentBuilder({ onSave, onCancel, existingComment }: AssessmentCommentBuilderProps) {
   const [commentName, setCommentName] = useState(existingComment?.name || '');
   const [scoreType, setScoreType] = useState<'outOf' | 'percentage'>(existingComment?.scoreType || 'outOf');
   const [maxScore, setMaxScore] = useState(existingComment?.maxScore?.toString() || '100');
-  const [comments, setComments] = useState<{ [key in RatingKey]: string[] }>({
-    excellent: existingComment?.comments.excellent || [],
-    good: existingComment?.comments.good || [],
-    satisfactory: existingComment?.comments.satisfactory || [],
-    needsImprovement: existingComment?.comments.needsImprovement || [],
-    notCompleted: existingComment?.comments.notCompleted || [],
-  });
+  const initial = buildInitialState(existingComment);
+  const [headings, setHeadings] = useState<string[]>(initial.headings);
+  const [comments, setComments] = useState<Record<string, string[]>>(initial.comments);
   const [showBatchInput, setShowBatchInput] = useState<string | null>(null);
   const [batchText, setBatchText] = useState('');
   const [separator, setSeparator] = useState('double-line');
@@ -41,7 +59,38 @@ function AssessmentCommentBuilder({ onSave, onCancel, existingComment }: Assessm
   const [splittingKey, setSplittingKey] = useState<{ group: string; idx: number } | null>(null);
   const [splitSelectedText, setSplitSelectedText] = useState('');
 
-  const handleBatchPaste = (rating: RatingKey) => {
+  const addHeading = () => {
+    const newHeading = `Performance Level ${headings.length + 1}`;
+    setHeadings([...headings, newHeading]);
+    setComments(prev => ({ ...prev, [newHeading]: [] }));
+  };
+
+  const removeHeading = (index: number) => {
+    const headingToRemove = headings[index];
+    const newHeadings = headings.filter((_, i) => i !== index);
+    const newComments = { ...comments };
+    delete newComments[headingToRemove];
+    setHeadings(newHeadings);
+    setComments(newComments);
+  };
+
+  const updateHeading = (index: number, value: string) => {
+    const oldHeading = headings[index];
+    const newHeadings = [...headings];
+    newHeadings[index] = value;
+    const newComments = { ...comments };
+    if (oldHeading !== value) {
+      newComments[value] = comments[oldHeading] || [];
+      delete newComments[oldHeading];
+    }
+    setHeadings(newHeadings);
+    setComments(newComments);
+    if (editingKey?.group === oldHeading) setEditingKey({ group: value, idx: editingKey.idx });
+    if (movingKey?.group === oldHeading) setMovingKey({ group: value, idx: movingKey.idx });
+    if (splittingKey?.group === oldHeading) setSplittingKey({ group: value, idx: splittingKey.idx });
+  };
+
+  const handleBatchPaste = (heading: string) => {
     if (batchText.trim()) {
       let newComments: string[] = [];
       switch (separator) {
@@ -54,44 +103,44 @@ function AssessmentCommentBuilder({ onSave, onCancel, existingComment }: Assessm
       newComments = newComments.map(c => c.trim()).filter(c => c.length > 0);
       if (newComments.length > 0) {
         const shouldReplace = window.confirm(`This will add ${newComments.length} new comments. Do you want to replace existing comments (OK) or add to them (Cancel)?`);
-        setComments(prev => ({ ...prev, [rating]: shouldReplace ? newComments : [...prev[rating].filter(c => c.trim()), ...newComments] }));
+        setComments(prev => ({ ...prev, [heading]: shouldReplace ? newComments : [...(prev[heading] || []).filter(c => c.trim()), ...newComments] }));
       }
     }
     setShowBatchInput(null); setBatchText('');
   };
 
   const addCommentOption = (group: string) => {
-    const idx = (comments[group as RatingKey] || []).length;
-    setComments(prev => ({ ...prev, [group]: [...(prev[group as RatingKey] || []), ''] }));
+    const idx = (comments[group] || []).length;
+    setComments(prev => ({ ...prev, [group]: [...(prev[group] || []), ''] }));
     setEditingKey({ group, idx }); setEditingValue('');
   };
 
   const removeCommentOption = (group: string, idx: number) => {
-    setComments(prev => ({ ...prev, [group]: (prev[group as RatingKey] || []).filter((_, i) => i !== idx) }));
+    setComments(prev => ({ ...prev, [group]: (prev[group] || []).filter((_, i) => i !== idx) }));
   };
 
   const handleSaveEdit = () => {
     if (!editingKey) return;
     const { group, idx } = editingKey;
     if (!editingValue.trim()) {
-      setComments(prev => ({ ...prev, [group]: (prev[group as RatingKey] || []).filter((_, i) => i !== idx) }));
+      setComments(prev => ({ ...prev, [group]: (prev[group] || []).filter((_, i) => i !== idx) }));
     } else {
-      setComments(prev => { const s = [...(prev[group as RatingKey] || [])]; s[idx] = editingValue.trim(); return { ...prev, [group]: s }; });
+      setComments(prev => { const s = [...(prev[group] || [])]; s[idx] = editingValue.trim(); return { ...prev, [group]: s }; });
     }
     setEditingKey(null); setEditingValue('');
   };
 
   const handleMoveComment = (fromGroup: string, fromIdx: number, toGroup: string) => {
-    const stmt = (comments[fromGroup as RatingKey] || [])[fromIdx];
+    const stmt = (comments[fromGroup] || [])[fromIdx];
     if (!stmt) return;
-    setComments(prev => ({ ...prev, [fromGroup]: (prev[fromGroup as RatingKey] || []).filter((_, i) => i !== fromIdx), [toGroup]: [...(prev[toGroup as RatingKey] || []), stmt] }));
+    setComments(prev => ({ ...prev, [fromGroup]: (prev[fromGroup] || []).filter((_, i) => i !== fromIdx), [toGroup]: [...(prev[toGroup] || []), stmt] }));
     setMovingKey(null);
   };
 
   const handleSplitComment = () => {
     if (!splittingKey || !splitSelectedText) return;
     const { group, idx } = splittingKey;
-    const original = (comments[group as RatingKey] || [])[idx];
+    const original = (comments[group] || [])[idx];
     if (!original) return;
     const charIdx = original.indexOf(splitSelectedText);
     if (charIdx === -1) return;
@@ -99,7 +148,7 @@ function AssessmentCommentBuilder({ onSave, onCancel, existingComment }: Assessm
     const after = original.slice(charIdx + splitSelectedText.length).trim();
     const remaining = [before, after].filter(Boolean).join(' ');
     setComments(prev => {
-      const s = [...(prev[group as RatingKey] || [])];
+      const s = [...(prev[group] || [])];
       if (remaining) { s[idx] = remaining; s.splice(idx + 1, 0, splitSelectedText); }
       else { s[idx] = splitSelectedText; }
       return { ...prev, [group]: s };
@@ -109,28 +158,13 @@ function AssessmentCommentBuilder({ onSave, onCancel, existingComment }: Assessm
 
   const handleSave = () => {
     if (!commentName.trim()) { alert('Please enter a name for this assessment comment'); return; }
-    const hasEmptyRatings = Object.entries(comments).some(([_, list]) => list.every(c => !c.trim()));
-    if (hasEmptyRatings) { alert('Please add at least one comment for each rating level'); return; }
-    // This editor only exposes the five fixed rating levels — but a section may have extra
-    // levels added/renamed via the report writer's "Edit Buttons" feature. Carry those straight
-    // through rather than silently deleting them.
-    const knownKeys = ['excellent', 'good', 'satisfactory', 'needsImprovement', 'notCompleted'];
-    const extraComments: Record<string, string[]> = {};
-    Object.entries(existingComment?.comments || {}).forEach(([key, value]) => {
-      if (!knownKeys.includes(key)) extraComments[key] = value as string[];
-    });
+    const hasEmptyRatings = headings.some(heading => !comments[heading] || comments[heading].every(c => !c.trim()));
+    if (hasEmptyRatings) { alert('Please add at least one comment for each performance level, or remove empty levels'); return; }
     const assessmentComment: AssessmentComment = {
       name: commentName.trim(),
       scoreType,
       maxScore: scoreType === 'outOf' ? parseInt(maxScore) || 100 : undefined,
-      comments: {
-        excellent: comments.excellent.filter(c => c.trim()),
-        good: comments.good.filter(c => c.trim()),
-        satisfactory: comments.satisfactory.filter(c => c.trim()),
-        needsImprovement: comments.needsImprovement.filter(c => c.trim()),
-        notCompleted: comments.notCompleted.filter(c => c.trim()),
-        ...extraComments,
-      }
+      comments: Object.fromEntries(headings.filter(h => h.trim()).map(h => [h, (comments[h] || []).filter(c => c.trim())])),
     };
     onSave(assessmentComment);
   };
@@ -174,22 +208,25 @@ function AssessmentCommentBuilder({ onSave, onCancel, existingComment }: Assessm
             <p style={{ color: '#1e40af', fontSize: '14px', margin: 0 }}>• Use [Score 1] to insert their assessment result (e.g. "15 out of 20" or "75%")</p>
           </div>
 
-          {ratingConfig.map(rating => {
-            const ratingComments = comments[rating.key] || [];
-            const otherRatings = ratingConfig.filter(r => r.key !== rating.key);
+          {headings.map((heading, hIdx) => {
+            const color = getColor(heading, hIdx);
+            const ratingComments = comments[heading] || [];
+            const otherHeadings = headings.filter(h => h !== heading);
             return (
-              <div key={rating.key} style={{ border: `2px solid ${rating.color}`, borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <h3 style={{ fontSize: '18px', fontWeight: '600', color: rating.color, margin: 0 }}>{rating.label}</h3>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={() => setShowBatchInput(rating.key)} style={{ backgroundColor: 'white', color: rating.color, border: `2px solid ${rating.color}`, borderRadius: '6px', padding: '8px 16px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>📋 Paste Multiple</button>
-                    <button onClick={() => addCommentOption(rating.key)} style={{ backgroundColor: rating.color, color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>+ Add Option</button>
-                  </div>
+              <div key={hIdx} style={{ border: `2px solid ${color}`, borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
+                <div style={{ marginBottom: '16px' }}>
+                  <input type="text" value={heading} onChange={e => updateHeading(hIdx, e.target.value)} style={{ fontSize: '18px', fontWeight: '600', color, border: 'none', backgroundColor: 'transparent', padding: '4px', borderBottom: `2px dashed ${color}`, marginBottom: '8px', width: '100%' }} placeholder="Performance Level Name" />
+                  {headings.length > 1 && <button onClick={() => removeHeading(hIdx)} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '14px', cursor: 'pointer' }}>Remove Performance Level</button>}
                 </div>
 
-                {showBatchInput === rating.key && (
+                <div style={{ marginBottom: '16px' }}>
+                  <button onClick={() => setShowBatchInput(heading)} style={{ backgroundColor: 'white', color, border: `2px solid ${color}`, borderRadius: '6px', padding: '8px 16px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', marginRight: '12px' }}>📋 Paste Multiple</button>
+                  <button onClick={() => addCommentOption(heading)} style={{ backgroundColor: color, color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>+ Add Option</button>
+                </div>
+
+                {showBatchInput === heading && (
                   <div style={{ backgroundColor: '#f0f9ff', border: '2px solid #3b82f6', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
-                    <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1e40af', margin: '0 0 8px 0' }}>Paste Multiple Comments for {rating.label}</h4>
+                    <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#1e40af', margin: '0 0 8px 0' }}>Paste Multiple Comments for {heading}</h4>
                     <div style={{ marginBottom: '16px' }}>
                       <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#1e40af', marginBottom: '8px' }}>How are your comments separated?</label>
                       <select value={separator} onChange={e => setSeparator(e.target.value)} style={{ padding: '8px 12px', border: '2px solid #bfdbfe', borderRadius: '6px', fontSize: '14px', backgroundColor: 'white', color: '#1e40af', fontWeight: '500' }}>
@@ -210,31 +247,31 @@ function AssessmentCommentBuilder({ onSave, onCancel, existingComment }: Assessm
                     <textarea value={batchText} onChange={e => setBatchText(e.target.value)} style={{ width: '100%', height: '200px', padding: '12px', border: '2px solid #bfdbfe', borderRadius: '6px', fontSize: '14px', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '12px' }} />
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                       <button onClick={() => { setShowBatchInput(null); setBatchText(''); }} style={{ backgroundColor: '#6b7280', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '14px', cursor: 'pointer' }}>Cancel</button>
-                      <button onClick={() => handleBatchPaste(rating.key)} disabled={!batchText.trim()} style={{ backgroundColor: batchText.trim() ? '#3b82f6' : '#d1d5db', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '14px', cursor: batchText.trim() ? 'pointer' : 'not-allowed' }}>Add Comments</button>
+                      <button onClick={() => handleBatchPaste(heading)} disabled={!batchText.trim()} style={{ backgroundColor: batchText.trim() ? '#3b82f6' : '#d1d5db', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '14px', cursor: batchText.trim() ? 'pointer' : 'not-allowed' }}>Add Comments</button>
                     </div>
                   </div>
                 )}
 
                 <div>
                   {ratingComments.map((comment, idx) => {
-                    const isEd = editingKey?.group === rating.key && editingKey?.idx === idx;
-                    const isMv = movingKey?.group === rating.key && movingKey?.idx === idx;
-                    const isSp = splittingKey?.group === rating.key && splittingKey?.idx === idx;
+                    const isEd = editingKey?.group === heading && editingKey?.idx === idx;
+                    const isMv = movingKey?.group === heading && movingKey?.idx === idx;
+                    const isSp = splittingKey?.group === heading && splittingKey?.idx === idx;
                     return (
-                      <div key={idx} style={{ backgroundColor: 'white', border: `1px solid ${isEd || isSp ? rating.color : '#e5e7eb'}`, borderRadius: '6px', marginBottom: '6px', overflow: 'hidden' }}>
+                      <div key={idx} style={{ backgroundColor: 'white', border: `1px solid ${isEd || isSp ? color : '#e5e7eb'}`, borderRadius: '6px', marginBottom: '6px', overflow: 'hidden' }}>
                         {isEd ? (
                           <div style={{ padding: '8px' }}>
-                            <textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus style={{ width: '100%', padding: '8px 10px', border: `1px solid ${rating.color}`, borderRadius: '4px', fontSize: '13px', minHeight: '60px', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' as const, marginBottom: '6px' }} />
+                            <textarea value={editingValue} onChange={e => setEditingValue(e.target.value)} autoFocus style={{ width: '100%', padding: '8px 10px', border: `1px solid ${color}`, borderRadius: '4px', fontSize: '13px', minHeight: '60px', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' as const, marginBottom: '6px' }} />
                             <div style={{ display: 'flex', gap: '6px' }}>
-                              <button onClick={() => { setEditingKey(null); setEditingValue(''); if (!comment.trim()) removeCommentOption(rating.key, idx); }} style={cancelBtn}>Cancel</button>
-                              <button onClick={handleSaveEdit} style={smallBtn(rating.color)}>Save</button>
+                              <button onClick={() => { setEditingKey(null); setEditingValue(''); if (!comment.trim()) removeCommentOption(heading, idx); }} style={cancelBtn}>Cancel</button>
+                              <button onClick={handleSaveEdit} style={smallBtn(color)}>Save</button>
                             </div>
                           </div>
                         ) : isMv ? (
                           <div style={{ padding: '8px' }}>
                             <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '6px' }}>Move to:</div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
-                              {otherRatings.map(r => <button key={r.key} onClick={() => handleMoveComment(rating.key, idx, r.key)} style={smallBtn(r.color)}>{r.label}</button>)}
+                              {otherHeadings.map(h => <button key={h} onClick={() => handleMoveComment(heading, idx, h)} style={smallBtn(getColor(h, headings.indexOf(h)))}>{h}</button>)}
                             </div>
                             <button onClick={() => setMovingKey(null)} style={cancelBtn}>Cancel</button>
                           </div>
@@ -245,17 +282,17 @@ function AssessmentCommentBuilder({ onSave, onCancel, existingComment }: Assessm
                             {splitSelectedText && <div style={{ fontSize: '12px', color: '#374151', backgroundColor: '#fef9c3', border: '1px solid #fde68a', borderRadius: '4px', padding: '6px 8px', marginBottom: '8px' }}>Split out: "<em>{splitSelectedText}</em>"</div>}
                             <div style={{ display: 'flex', gap: '6px' }}>
                               <button onClick={() => { setSplittingKey(null); setSplitSelectedText(''); }} style={cancelBtn}>Cancel</button>
-                              {splitSelectedText && <button onClick={handleSplitComment} style={smallBtn(rating.color)}>Split</button>}
+                              {splitSelectedText && <button onClick={handleSplitComment} style={smallBtn(color)}>Split</button>}
                             </div>
                           </div>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '8px 10px' }}>
                             <span style={{ flex: 1, fontSize: '13px', color: comment.trim() ? '#374151' : '#9ca3af', lineHeight: '1.5', textAlign: 'left' as const, fontStyle: comment.trim() ? 'normal' : 'italic' }}>{comment.trim() || 'Empty — click ✏️ to edit'}</span>
                             <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
-                              <button onClick={() => { setEditingKey({ group: rating.key, idx }); setEditingValue(comment); }} title="Edit" style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', padding: '2px 4px' }}>✏️</button>
-                              <button onClick={() => setMovingKey({ group: rating.key, idx })} title="Move" style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', padding: '2px 4px' }}>↔</button>
-                              <button onClick={() => { setSplittingKey({ group: rating.key, idx }); setSplitSelectedText(''); }} title="Split" style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', padding: '2px 4px' }}>✂</button>
-                              <button onClick={() => removeCommentOption(rating.key, idx)} title="Delete" style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '14px', padding: '2px 4px' }}>✕</button>
+                              <button onClick={() => { setEditingKey({ group: heading, idx }); setEditingValue(comment); }} title="Edit" style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', padding: '2px 4px' }}>✏️</button>
+                              {otherHeadings.length > 0 && <button onClick={() => setMovingKey({ group: heading, idx })} title="Move" style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', padding: '2px 4px' }}>↔</button>}
+                              <button onClick={() => { setSplittingKey({ group: heading, idx }); setSplitSelectedText(''); }} title="Split" style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '13px', padding: '2px 4px' }}>✂</button>
+                              <button onClick={() => removeCommentOption(heading, idx)} title="Delete" style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '14px', padding: '2px 4px' }}>✕</button>
                             </div>
                           </div>
                         )}
@@ -266,6 +303,10 @@ function AssessmentCommentBuilder({ onSave, onCancel, existingComment }: Assessm
               </div>
             );
           })}
+
+          <div style={{ marginBottom: '32px', textAlign: 'center' }}>
+            <button onClick={addHeading} style={{ backgroundColor: '#6366f1', color: 'white', border: 'none', borderRadius: '8px', padding: '12px 24px', fontSize: '16px', fontWeight: '500', cursor: 'pointer' }}>+ Add Another Performance Level</button>
+          </div>
 
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-end' }}>
             <button onClick={onCancel} style={{ backgroundColor: '#6b7280', color: 'white', padding: '16px 32px', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '500', cursor: 'pointer' }}>Cancel</button>
