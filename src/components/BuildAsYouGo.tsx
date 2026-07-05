@@ -64,7 +64,6 @@ const SECTION_COLORS: Record<string, string> = { 'standard-comment': '#10b981', 
 const SECTION_LABELS: Record<string, string> = { 'standard-comment': 'Fixed Statement', 'qualities': 'Qualities / Strengths', 'rated-comment': 'Rated Comment', 'assessment-comment': 'Assessment Score', 'personalised-comment': 'Personalised Comment', 'next-steps': 'Next Steps / Targets', 'optional-additional-comment': 'Optional Notes Box', 'new-line': 'Line Break' };
 const SUBJECT_ICONS: Record<string, string> = { 'PE': '🏃', 'English': '📖', 'Maths': '📐', 'Science': '🔬', 'History': '🏛️', 'Geography': '🌍', 'Modern Languages': '💬', 'Art & Design': '🎨', 'Music': '🎵', 'Generic': '📋' };
 const DEFAULT_RATED_BUTTONS = ['Excellent', 'Good', 'Satisfactory', 'Needs Improvement'];
-const RATED_KEYS = ['excellent', 'good', 'satisfactory', 'needsImprovement'];
 const MAX_STATEMENTS = 8;
 const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 const AUTOSAVE_KEY = 'buildAsYouGo_draft';
@@ -360,7 +359,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
       let data: any = {};
       if (s.type === 'standard-comment') data = { content: s.content || '' };
       else if (s.type === 'qualities') { const c: Record<string, string[]> = {}; s.buttons.forEach(b => { if (b.name) c[b.name] = b.statements; }); data = { comments: c }; }
-      else if (s.type === 'rated-comment') { const c: Record<string, string[]> = {}; const labels: Record<string, string> = {}; s.buttons.forEach((b, i) => { const key = RATED_KEYS[i] || b.name.toLowerCase().replace(/\s+/g, ''); c[key] = b.statements; if (b.name) labels[key] = b.name; }); data = { comments: c, labels }; }
+      else if (s.type === 'rated-comment') { const c: Record<string, string[]> = {}; s.buttons.forEach(b => { if (b.name) c[b.name] = b.statements; }); data = { comments: c }; }
       else if (s.type === 'assessment-comment') { const c: Record<string, string[]> = {}; s.buttons.forEach(b => { if (b.name) c[b.name] = b.statements; }); data = { comments: c, instruction: s.instruction || '' }; }
       else if (s.type === 'personalised-comment') { const c: Record<string, string[]> = {}; s.buttons.forEach(b => { if (b.name) c[b.name] = b.statements; }); data = { categories: c, instruction: '' }; }
       else if (s.type === 'next-steps') { const f: Record<string, string[]> = {}; s.buttons.forEach(b => { if (b.name) f[b.name] = b.statements; }); data = { focusAreas: f }; }
@@ -755,7 +754,7 @@ const handleSaveAndWrite = () => {
 
   if (screen === 'subject') return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column' }}>
-      <TopBar title="Template Wizard" />
+      {TopBar({ title: 'Template Wizard' })}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px' }}>
         <div style={{ maxWidth: '560px', width: '100%', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07)', padding: '40px 44px' }}>
           <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#111827', marginBottom: '8px' }}>Template Wizard</h2>
@@ -806,7 +805,7 @@ const handleSaveAndWrite = () => {
 
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <TopBar title="Template Wizard" />
+        {TopBar({ title: 'Template Wizard' })}
         <div style={{ flex: 1, display: 'flex', width: '100%', overflow: 'hidden', minHeight: 0 }}>
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '32px 24px' }}>
             <div style={{ maxWidth: '560px', width: '100%', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.07)', padding: '40px 44px' }}>
@@ -908,7 +907,7 @@ const handleSaveAndWrite = () => {
               )}
             </div>
           </div>
-          <ReportsPanel />
+          {ReportsPanel()}
         </div>
       </div>
     );
@@ -918,7 +917,7 @@ const handleSaveAndWrite = () => {
     const wAccent = SECTION_COLORS[question?.sectionType] || '#3b82f6';
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <TopBar />
+        {TopBar({})}
         <div style={{ flex: 1, display: 'flex', width: '100%', overflow: 'hidden', minHeight: 0 }}>
           <div style={{ flex: 1, overflowY: 'auto', padding: '32px 40px', minWidth: 0 }}>
             <div style={{ maxWidth: '560px', width: '100%', margin: '0 auto' }}>
@@ -1091,7 +1090,7 @@ const handleSaveAndWrite = () => {
               )}
             </div>
           </div>
-          {reportsPanelOpen && <ReportsPanel />}
+          {reportsPanelOpen && ReportsPanel()}
         </div>
       </div>
     );
