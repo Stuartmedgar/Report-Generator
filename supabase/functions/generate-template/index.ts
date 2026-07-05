@@ -314,17 +314,17 @@ For "qualities" sections:
 - DO NOT INCLUDE: overall progress/attainment sentences (rated-comment); specific test result sentences (assessment-comment); forward-looking target sentences (next-steps)
 - PERSONALISED-COMMENT BOUNDARY — CRITICAL: Any sentence that contains ANY of the following does NOT belong in qualities — it belongs in personalised-comment: (a) a specific named activity, sport, instrument, book, topic, or chosen unit that varies per pupil; (b) a specific date, month, year, or timed event (e.g. "in November", "in February", "last term", "next month"); (c) a specific assessment task, exam sitting, or performance event (e.g. "one-off performance", "written paper", "practical assessment"); (d) any sentence that would require an [Info 1] placeholder for an activity name or date. The qualities section must contain ONLY general character/personality statements that apply to any pupil in the subject regardless of their individual choices or circumstances. If you find yourself tempted to put a sentence in qualities that mentions football, badminton, a date, or a specific assessment event — stop: it is a personalised-comment.
 - Read each pupil's complete qualities sentences carefully before extracting anything
-- Identify where one qualities POINT ends and another begins — a new point starts when a sentence names the pupil or clearly introduces a new topic
-- Keep sentences belonging to the same point together as ONE complete option
+- SPLIT BY THEME, DEFAULT TO SEPARATE: judge sentence by sentence, not paragraph by paragraph. If a sentence introduces a different theme from the one before it (e.g. moves from effort to behaviour, from confidence to practical skill), it is a SEPARATE option — even if it appears in the same paragraph, immediately follows the previous sentence with no [Name], or is about the same pupil. ONLY combine sentences when one is a genuine continuation of the exact same theme as the sentence before it (e.g. the first sentence states the quality and the next elaborates on or gives the reason for that SAME quality) — never combine just because sentences are adjacent
 - Every option MUST start with [Name] — apply PRONOUN TO [Name] CONVERSION with verb agreement fixes
 - Apply POSSESSIVE PRONOUNS rule — never convert possessives to object pronouns
 - Apply NO SENTENCE FRAGMENTS — join continuation sentences to their preceding [Name] sentence
 - CRITICAL: Create a SEPARATE heading for each distinct topic area AND each distinct performance level within that topic. Apply the TOPIC SEPARATION rule — practical ability, attitude/personality, engagement/enthusiasm, maturity, confidence, focus/behaviour, theory challenges, and theory-practical mismatch are ALL different topic areas and each needs its own button(s). Never combine them.
+- CONSOLIDATE BY THEME, THEN SPLIT BY POLARITY — CRITICAL: first identify the small number of genuinely distinct themes running through ALL the statements. Every statement about the SAME theme goes under the SAME heading, however differently it is phrased in the source reports — do not scatter one theme across several near-duplicate headings. Then, within a theme, split by polarity: positive statements on that theme go in one heading, negative/struggling statements on that same theme go in a different heading. Never mix positive and negative statements about the same theme in one heading, and never create more than one positive or more than one negative heading for the same theme.
 - NAME-CONTENT ALIGNMENT CHECK: For every heading, read each statement in it against the heading name. Every statement must be a perfect example of what the heading name says. Move any statement that doesn't fit to a more appropriate heading.
 - STATEMENT TARGET: Aim for 3-5 tightly-matched statements per heading. Fewer, well-matched statements are better than more loosely-related ones.
 - Apply NO DUPLICATES — the same sentence must not appear under two different headings or twice under the same heading
-- Merge near-duplicate headings that cover the same ground AND the same topic area into one heading. Do NOT merge headings from different topic areas just because they have few statements.
-- A heading with only one or two statements may stand alone if no other heading covers the same specific topic and pupil type. Only merge into another heading if that heading is genuinely the same topic area.
+- FINAL MERGE PASS — CRITICAL: before returning, check every pair of headings. If two headings describe the same theme AND the same polarity — just phrased or named differently — merge them into one, combining their statements and removing duplicates. Do NOT merge headings that differ in theme or in polarity just because they have few statements.
+- A heading with only one or two statements may stand alone if no other heading covers the same specific theme and polarity. Only merge into another heading if that heading is genuinely the same theme and polarity.
 - NO CROSS-BUTTON DUPLICATES: Each statement appears under exactly one heading
 - STATEMENT CAP: If a heading would contain more than 5 statements, it almost certainly covers two different sub-topics or two different pupil types — split it. Only keep all statements together if they are truly minor wording variations of the exact same sentiment.
 - FINAL CHECK: Remove any sentence that already appears in the rated-comment section. Remove any sentence that references a specific sport, activity name, date, or assessment event — these belong in personalised-comment.
@@ -333,15 +333,16 @@ For "next-steps" sections:
 - ONLY extract sentences whose PRIMARY purpose is forward-looking — what the pupil should do, focus on, or improve going forward
 - DO NOT INCLUDE: current quality/character sentences (qualities); current overall progress sentences (rated-comment); past assessment result sentences (assessment-comment)
 - Read each pupil's complete next steps paragraph carefully before extracting anything
-- Identify where one next steps POINT ends and another begins
-- Keep all sentences belonging to the same point together as ONE complete option
+- SPLIT BY THEME, DEFAULT TO SEPARATE: judge sentence by sentence, not paragraph by paragraph. If a sentence introduces a different theme from the one before it, it is a SEPARATE option — even if it appears in the same paragraph, immediately follows the previous sentence, or is about the same pupil. ONLY combine sentences when one is a genuine continuation of the exact same theme as the sentence before it — never combine just because sentences are adjacent
 - Every option MUST start with [Name] — apply PRONOUN TO [Name] CONVERSION with verb agreement fixes
 - Apply POSSESSIVE PRONOUNS rule — never convert possessives to object pronouns
 - Apply NO SENTENCE FRAGMENTS — never extract a sentence beginning with "Continued", "Regular", "They should", "Attendance", "This", "A higher", "Making", "Taking", "Slowing", "Increasing" as a standalone option. Join it to the preceding [Name] sentence instead
 - CRITICAL: Create a SEPARATE heading for each genuinely distinct topic, with a name that signals the specific development area and its urgency or tone
+- CONSOLIDATE BY THEME — CRITICAL: identify the small number of genuinely distinct development themes running through ALL the statements. Every statement about the SAME theme goes under the SAME heading, however differently it is phrased in the source reports — do not scatter one theme across several near-duplicate headings.
 - Apply NO DUPLICATES — each sentence appears exactly once
 - NO CROSS-AREA DUPLICATES: Each statement appears under exactly one focus area
 - STATEMENT CAP: If a focus area would contain more than 6 statements, check whether they fall into two genuinely distinct sub-topics. If yes, split. If all are saying essentially the same thing, keep only the 5 most distinct versions
+- FINAL MERGE PASS — CRITICAL: before returning, check every pair of headings. If two headings describe the same theme — just phrased or named differently — merge them into one, combining their statements and removing duplicates.
 - FINAL CHECK: Remove any sentence that already appears in the qualities or rated-comment sections
 
 For "standard-comment" sections:
@@ -545,6 +546,23 @@ function mechanicalAssemble(params: { subject: string; yearGroup: string; builtS
 
 function normaliseForDedupe(text: string): string {
   return text.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+// The model is asked for JSON-only output but occasionally wraps it in prose or
+// markdown fences, or (rarely) truncates near the token limit. Strip fences, then
+// fall back to the outermost {...} substring before giving up.
+function parseModelJson(raw: string): any {
+  const stripped = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  try {
+    return JSON.parse(stripped);
+  } catch {
+    const first = stripped.indexOf("{");
+    const last = stripped.lastIndexOf("}");
+    if (first !== -1 && last > first) {
+      return JSON.parse(stripped.slice(first, last + 1));
+    }
+    throw new Error("Could not parse JSON from model response");
+  }
 }
 
 // Belt-and-braces guard against the model repeating an identical statement
@@ -819,7 +837,8 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
           headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
           body: JSON.stringify({
             model: "claude-sonnet-4-6",
-            max_tokens: 6000,
+            max_tokens: 8000,
+            temperature: 0,
             system: PERSONALISED_EXTRACT_SYSTEM,
             messages: [{
               role: "user",
@@ -844,7 +863,7 @@ IMPORTANT: Extract ONLY sentences that match the pattern of the highlighted exam
 
         const data = await response.json();
         const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
-        const parsed = JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
+        const parsed = parseModelJson(raw);
 
         return new Response(JSON.stringify({
           sectionName: parsed.sectionName || sectionName,
@@ -853,7 +872,8 @@ IMPORTANT: Extract ONLY sentences that match the pattern of the highlighted exam
           instruction: piInstruction,
         }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-      } catch {
+      } catch (e) {
+        console.error("Personalised comment extraction failed:", e);
         return new Response(JSON.stringify({ error: "Personalised comment extraction failed." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
@@ -867,8 +887,11 @@ IMPORTANT: Extract ONLY sentences that match the pattern of the highlighted exam
 
       qualities: `QUALITIES sentences — character, behaviour, attitude, effort, working style. Find every sentence describing personal qualities.
 
-CRITICAL — SENTENCE GROUPING:
-Before extracting, read each pupil's qualities sentences as a complete block. Identify where one qualities POINT ends and another begins — a new point starts when a sentence names the pupil ([Name]) or clearly introduces a new topic. Keep all sentences belonging to the same point together as ONE complete option string.
+CRITICAL — SPLIT BY THEME, DEFAULT TO SEPARATE:
+Read each pupil's qualities sentences as a complete block, then judge sentence by sentence, not paragraph by paragraph. For each sentence, ask: is it continuing the SAME specific theme as the sentence before it (e.g. both about work ethic, both about confidence, both about teamwork), or does it introduce a DIFFERENT theme (e.g. moves from effort to behaviour, from confidence to practical skill)?
+- DEFAULT TO SPLITTING. If a sentence introduces a different theme from the one before it, it is a SEPARATE option — even if it appears in the same paragraph, immediately follows the previous sentence, or is about the same pupil. Assign it to whichever heading matches its theme, or create a new heading if none fit.
+- ONLY COMBINE sentences when one is a genuine continuation of the exact same theme as the one before it — e.g. the first sentence states the quality and the next elaborates on or gives the reason for that SAME quality ("[Name] works hard in every lesson. This consistency has led to real improvement."). Combine because the second sentence refers back to the same theme, never just because the sentences are adjacent.
+- Two complete, independently-meaningful sentences about two different themes are always two separate options, even from the same pupil, even in the same paragraph, even with no [Name] between them.
 
 Every option MUST start with [Name] — apply PRONOUN TO [Name] CONVERSION with verb agreement fixes throughout.
 Apply POSSESSIVE PRONOUNS rule — never write "him work", "them confidence" etc.
@@ -877,16 +900,23 @@ Apply NO SENTENCE FRAGMENTS — a sentence starting with "Also,", "This", "Conti
 
 Apply NO DUPLICATES — the same sentence must not appear under two different headings.
 
+CRITICAL — CONSOLIDATE BY THEME, THEN SPLIT BY POLARITY:
+Before finalising headings, identify the small number of genuinely distinct THEMES running through all the statements (e.g. work ethic/effort, confidence, class participation, behaviour/focus, practical skill). Every statement about the SAME theme belongs under the SAME heading — do not create several separate headings for the same theme just because different pupils' reports phrase it slightly differently or pair it with different secondary details.
+Within a theme, split by POLARITY: if some statements describe the pupil doing well on that theme and others describe a struggle or lack on that same theme, these are TWO different headings (e.g. "Confident and capable" vs "Lacks confidence, needs encouragement") — never mix a positive and a negative statement about the same theme under one heading. But do not create more than one positive heading or more than one negative heading for the same theme — all positive statements on that theme go in the one positive heading, all negative statements on that theme go in the one negative heading.
+
 HEADING NAMES must signal both the topic AND the performance level or tone. Use names like "Strong work ethic — confident and capable", "Works hard but lacks confidence", "Enthusiastic — strong contributor", "Enthusiastic but inconsistent". Never use neutral topic names alone.
 
-Merge near-duplicate headings that cover the same ground into one heading. A heading with only one statement should be merged into a related heading rather than left isolated.
+Before returning, check every pair of headings: if two headings actually describe the same theme AND the same polarity — just phrased differently — merge them into one, combining their statements and removing duplicates. A heading with only one statement should be merged into a related heading of the same theme and polarity rather than left isolated.
 
 Group complete options by the quality or topic described. ${openerInstruction}`,
 
       development: `AREAS FOR DEVELOPMENT sentences. Find every developmental or improvement sentence.
 
-CRITICAL — SENTENCE GROUPING:
-Before extracting, read each pupil's development section as a complete block. Identify where one development POINT ends and another begins. Keep all sentences belonging to the same point together as ONE complete option string.
+CRITICAL — SPLIT BY THEME, DEFAULT TO SEPARATE:
+Read each pupil's development section as a complete block, then judge sentence by sentence, not paragraph by paragraph. For each sentence, ask: is it continuing the SAME specific development theme as the sentence before it, or does it introduce a DIFFERENT theme?
+- DEFAULT TO SPLITTING. If a sentence introduces a different theme from the one before it, it is a SEPARATE option — even if it appears in the same paragraph, immediately follows the previous sentence, or is about the same pupil. Assign it to whichever heading matches its theme, or create a new heading if none fit.
+- ONLY COMBINE sentences when one is a genuine continuation of the exact same theme — e.g. the first sentence names the development area and the next elaborates on that SAME area. Never combine just because the sentences are adjacent.
+- Two complete, independently-meaningful sentences about two different development themes are always two separate options, even from the same pupil, even in the same paragraph.
 
 Every option MUST start with [Name] — apply PRONOUN TO [Name] CONVERSION with verb agreement fixes.
 Apply POSSESSIVE PRONOUNS rule — never write "him work", "them confidence" etc.
@@ -895,12 +925,17 @@ Apply NO SENTENCE FRAGMENTS — sentences starting with "Also,", "This", "Contin
 
 Apply NO DUPLICATES.
 
+CRITICAL — CONSOLIDATE BY THEME: identify the small number of genuinely distinct development themes running through all the statements (e.g. exam technique, class participation, written work, attention to detail). Every statement about the SAME theme belongs under the SAME heading — do not create several separate headings for the same theme just because different pupils' reports phrase it slightly differently. Before returning, check every pair of headings: if two describe the same theme, merge them, combining statements and removing duplicates. A heading with only one statement should be merged into a related heading of the same theme rather than left isolated.
+
 Group complete options by TOPIC. ${openerInstruction}`,
 
       "next-steps": `NEXT STEPS sentences. Find every improvement suggestion at this position.
 
-CRITICAL — SENTENCE GROUPING:
-Before extracting, read each pupil's next steps section as a complete block. Identify where one next steps POINT ends and another begins. Keep all sentences belonging to the same point together as ONE complete option string.
+CRITICAL — SPLIT BY THEME, DEFAULT TO SEPARATE:
+Read each pupil's next steps section as a complete block, then judge sentence by sentence, not paragraph by paragraph. For each sentence, ask: is it continuing the SAME specific next-step theme as the sentence before it, or does it introduce a DIFFERENT theme?
+- DEFAULT TO SPLITTING. If a sentence introduces a different theme from the one before it, it is a SEPARATE option — even if it appears in the same paragraph, immediately follows the previous sentence, or is about the same pupil. Assign it to whichever heading matches its theme, or create a new heading if none fit.
+- ONLY COMBINE sentences when one is a genuine continuation of the exact same theme — e.g. the first sentence names the next step and the next elaborates on that SAME step. Never combine just because the sentences are adjacent.
+- Two complete, independently-meaningful sentences about two different next-step themes are always two separate options, even from the same pupil, even in the same paragraph.
 
 Every option MUST start with [Name] — apply PRONOUN TO [Name] CONVERSION with verb agreement fixes.
 Apply POSSESSIVE PRONOUNS rule — never write "him work", "them confidence" etc.
@@ -908,6 +943,8 @@ Apply POSSESSIVE PRONOUNS rule — never write "him work", "them confidence" etc
 Apply NO SENTENCE FRAGMENTS — sentences starting with "Also,", "This will", "Continued", "Regular", "Being", "A higher", "Making better", "Taking", "Slowing", "Increasing", "Attendance" must NEVER appear as standalone options. Join to the preceding [Name] sentence.
 
 Apply NO DUPLICATES.
+
+CRITICAL — CONSOLIDATE BY THEME: identify the small number of genuinely distinct next-step themes running through all the statements (e.g. exam technique, class participation, written work, attention to detail). Every statement about the SAME theme belongs under the SAME heading — do not create several separate headings for the same theme just because different pupils' reports phrase it slightly differently. Before returning, check every pair of headings: if two describe the same theme, merge them, combining statements and removing duplicates. A heading with only one statement should be merged into a related heading of the same theme rather than left isolated.
 
 Preserve any fixed opening phrase exactly (e.g. "Moving forward," must stay at the start of every option in its heading).
 Group complete options by topic. ${openerInstruction}`,
@@ -925,7 +962,8 @@ Group complete options by topic. ${openerInstruction}`,
         headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({
           model: "claude-sonnet-4-6",
-          max_tokens: 6000,
+          max_tokens: 8000,
+          temperature: 0,
           system: EXTRACT_ONLY_SYSTEM,
           messages: [{
             role: "user",
@@ -947,15 +985,19 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
         }),
       });
 
-      if (!response.ok) return new Response(JSON.stringify({ error: "API call failed" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (!response.ok) {
+        console.error("Extract-only API call failed:", response.status, await response.text());
+        return new Response(JSON.stringify({ error: "API call failed" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
 
       const data = await response.json();
       const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
-      const parsedResult = JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
+      const parsedResult = parseModelJson(raw);
       if (Array.isArray(parsedResult.headings)) parsedResult.headings = dedupeHeadings(parsedResult.headings);
       return new Response(JSON.stringify(parsedResult), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    } catch {
+    } catch (e) {
+      console.error("Extraction failed:", e);
       return new Response(JSON.stringify({ error: "Extraction failed." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
   }
