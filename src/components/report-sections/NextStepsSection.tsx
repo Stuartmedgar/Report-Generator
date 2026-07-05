@@ -175,7 +175,7 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
             </button>
           )}
           <HeaderStylePicker showHeader={data.showHeader !== false} headerStyle={data.headerStyle || section.data?.headerStyle || 'inline'} onChange={(show, style) => updateSectionData(section.id, { showHeader: show, headerStyle: style })} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div data-tour="exclude" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <input type="checkbox" checked={data.exclude || false}
               onChange={(e) => updateSectionData(section.id, { exclude: e.target.checked })}
               style={{ width: '14px', height: '14px', cursor: 'pointer' }} />
@@ -209,7 +209,7 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
       )}
 
       {/* Pronoun selector — Name or global pronoun */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+      <div data-tour="name-or-pronoun" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
         <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: '500' }}>Use:</span>
         {[{ value: '', label: 'Name' }, { value: globalPronoun || 'he', label: 'Pronoun' }].map(opt => (
           <button key={opt.value} onClick={() => updateSectionData(section.id, { pronounOverride: opt.value })}
@@ -306,7 +306,7 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
       {/* Edit toggle */}
       {hasSelectedSuggestion && !editingButtons && (
         <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: showEditSuggestion ? '12px' : '0' }}>
-          <button onClick={() => setShowEditSuggestion(!showEditSuggestion)}
+          <button data-tour="edit-comment" onClick={() => setShowEditSuggestion(!showEditSuggestion)}
             style={{ backgroundColor: showEditSuggestion ? '#06b6d4' : '#e5e7eb', color: showEditSuggestion ? 'white' : '#6b7280', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>
             {showEditSuggestion ? '- Edit Suggestion' : '+ Edit Suggestion'}
           </button>

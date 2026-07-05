@@ -175,7 +175,7 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
             </button>
           )}
           <HeaderStylePicker showHeader={data.showHeader !== false} headerStyle={data.headerStyle || section.data?.headerStyle || 'inline'} onChange={(show, style) => updateSectionData(section.id, { showHeader: show, headerStyle: style })} />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div data-tour="exclude" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <input type="checkbox" checked={data.exclude || false}
               onChange={(e) => updateSectionData(section.id, { exclude: e.target.checked })}
               style={{ width: '14px', height: '14px', cursor: 'pointer' }} />
@@ -211,7 +211,7 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
       )}
 
       {/* Pronoun selector — Name or global pronoun */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+      <div data-tour="name-or-pronoun" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
         <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: '500' }}>Use:</span>
         {[{ value: '', label: 'Name' }, { value: globalPronoun || 'he', label: 'Pronoun' }].map(opt => (
           <button key={opt.value} onClick={() => updateSectionData(section.id, { pronounOverride: opt.value })}
@@ -308,7 +308,7 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
       {/* Edit toggle */}
       {hasSelectedQuality && !editingButtons && (
         <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: showEditQuality ? '12px' : '0' }}>
-          <button onClick={() => setShowEditQuality(!showEditQuality)}
+          <button data-tour="edit-comment" onClick={() => setShowEditQuality(!showEditQuality)}
             style={{ backgroundColor: showEditQuality ? '#8b5cf6' : '#e5e7eb', color: showEditQuality ? 'white' : '#6b7280', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}>
             {showEditQuality ? '- Edit Quality' : '+ Edit Quality'}
           </button>

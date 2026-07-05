@@ -9,25 +9,39 @@ interface TourStep {
 
 const WRITING_STEPS: TourStep[] = [
   {
-    title: 'Writing reports — quick tour',
-    content: 'This covers the essentials for writing reports. Click Next to begin, or Skip to dismiss.',
-  },
-  {
     target: 'pronoun',
-    title: 'Set the pronoun',
+    title: 'Report pronoun',
     content: 'Choose He, She, or They for this student. All comment options switch to the right pronoun throughout the report automatically.',
     position: 'below',
   },
   {
     target: 'section',
     title: 'Choose a comment',
-    content: 'Click a button to select a comment for this section. The report preview on the right updates instantly. Click the same button again to deselect.',
+    content: '• Click a button to select a comment for this section.\n• The report preview on the right updates instantly.\n• Clicking the same button again selects a different statement on the same topic.\n• If you decide you no longer want a statement for this section, click Exclude.',
     position: 'below',
+  },
+  {
+    target: 'name-or-pronoun',
+    title: 'Name or Pronoun',
+    content: "To avoid repetition of names, you can choose to have he/she or they instead of the pupil's name for that statement.",
+    position: 'below',
+  },
+  {
+    target: 'edit-comment',
+    title: 'Edit Comment',
+    content: 'Click + Edit Comment to fine-tune the wording of the selected statement for this student, without changing the template.',
+    position: 'above',
+  },
+  {
+    target: 'add-section',
+    title: '+ Button',
+    content: 'Use the "for this student only" options in this menu to add an optional comment box, so you can write a personal comment for the student.',
+    position: 'above',
   },
   {
     target: 'preview',
     title: 'Live report preview',
-    content: 'Your report builds here as you make selections. You can also click directly into the preview text to make one-off edits for this student without changing the template.',
+    content: "Your report builds here as you make selections. The latest comment displays in blue so it's easy to see.",
     position: 'left',
   },
   {
@@ -38,7 +52,7 @@ const WRITING_STEPS: TourStep[] = [
   },
   {
     title: "That's the essentials!",
-    content: 'Use ? Help → Editing templates whenever you want to learn how to customise your template while you write.',
+    content: 'You can edit your template at any time while writing — changes are tracked and can be saved at the end. Use ? Help → Editing templates whenever you want a walkthrough of those features.',
   },
 ];
 
@@ -274,7 +288,7 @@ export function ReportWriterTour({ tourType, onDismiss }: Props) {
           <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827', flex: 1, paddingRight: '8px' }}>{current.title}</div>
           <div style={{ fontSize: '11px', color: '#6b7280', flexShrink: 0, backgroundColor: '#f3f4f6', padding: '2px 7px', borderRadius: '10px' }}>{step + 1} / {STEPS.length}</div>
         </div>
-        <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.65', marginBottom: '16px' }}>{current.content}</div>
+        <div style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.65', marginBottom: '16px', whiteSpace: 'pre-line' }}>{current.content}</div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <button onClick={onDismiss} style={{ background: 'none', border: 'none', fontSize: '12px', color: '#9ca3af', cursor: 'pointer', padding: 0 }}>Skip tour</button>
           <div style={{ display: 'flex', gap: '8px' }}>
