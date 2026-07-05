@@ -14,6 +14,7 @@ function StartReports() {
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [step, setStep] = useState<Step>('class');
+  const [templateView, setTemplateView] = useState<'options' | 'existing'>('options');
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
 
@@ -27,6 +28,7 @@ function StartReports() {
 
   const handleClassSelect = (cls: Class) => {
     setSelectedClass(cls);
+    setTemplateView('options');
     setStep('template');
   };
 
@@ -127,6 +129,24 @@ function StartReports() {
     textAlign: 'left',
   });
 
+  const bigBtnStyle = (color: string): React.CSSProperties => ({
+    backgroundColor: color,
+    color: 'white',
+    border: 'none',
+    padding: isMobile ? '32px 22px' : '40px 24px',
+    borderRadius: isMobile ? '12px' : '16px',
+    cursor: 'pointer',
+    textAlign: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    width: '100%',
+    boxSizing: 'border-box',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+  });
+
   const optionBtnStyle = (color: string): React.CSSProperties => ({
     backgroundColor: color,
     color: 'white',
@@ -213,9 +233,9 @@ function StartReports() {
     </div>
   );
 
-  // ─── Step 2: Select or Get Template ──────────────────────────────────────
+  // ─── Step 2a: Choose how to get a template ───────────────────────────────
 
-  const renderTemplateStep = () => (
+  const renderTemplateOptions = () => (
     <div>
       <div style={{ marginBottom: '28px' }}>
         <h1 style={{ fontSize: isMobile ? '26px' : '32px', fontWeight: '800', color: '#1e293b', margin: '0 0 8px 0' }}>
@@ -223,7 +243,59 @@ function StartReports() {
         </h1>
         <p style={{ fontSize: '15px', color: '#64748b', margin: 0 }}>
           Writing reports for <strong>{selectedClass?.name}</strong>.
-          {state.templates.length > 0 ? ' Select a template or create a new one.' : ' You need a template to get started.'}
+        </p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: isMobile ? '14px' : '20px' }}>
+
+        <button
+          onClick={() => navigate('/import-template', { state: { classId: selectedClass?.id } })}
+          style={{ ...bigBtnStyle('#8b5cf6'), boxShadow: '0 4px 14px rgba(139,92,246,0.35)' }}
+          onMouseEnter={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 24px rgba(139,92,246,0.45)'; } }}
+          onMouseLeave={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(139,92,246,0.35)'; } }}
+        >
+          <span style={{ fontSize: '30px' }}>⚡</span>
+          <span style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: '800' }}>AI Quick Build</span>
+          <span style={{ fontSize: '13px', fontWeight: '500', opacity: 0.88 }}>Paste your reports — AI builds a template in ~2 min</span>
+        </button>
+
+        <button
+          onClick={() => navigate('/create-template', { state: { method: 'build-as-you-go', classId: selectedClass?.id } })}
+          style={{ ...bigBtnStyle('#f59e0b'), boxShadow: '0 4px 14px rgba(245,158,11,0.35)' }}
+          onMouseEnter={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 24px rgba(245,158,11,0.45)'; } }}
+          onMouseLeave={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(245,158,11,0.35)'; } }}
+        >
+          <span style={{ fontSize: '30px' }}>🧱</span>
+          <span style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: '800' }}>Template Wizard</span>
+          <span style={{ fontSize: '13px', fontWeight: '500', opacity: 0.88 }}>Build your template section by section</span>
+        </button>
+
+        <button
+          onClick={() => setTemplateView('existing')}
+          style={{ ...bigBtnStyle('#3b82f6'), boxShadow: '0 4px 14px rgba(59,130,246,0.35)' }}
+          onMouseEnter={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 24px rgba(59,130,246,0.45)'; } }}
+          onMouseLeave={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(59,130,246,0.35)'; } }}
+        >
+          <span style={{ fontSize: '30px' }}>📁</span>
+          <span style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: '800' }}>Already Got a Template</span>
+          <span style={{ fontSize: '13px', fontWeight: '500', opacity: 0.88 }}>Use a saved template, import a file, or pick a prebuilt one</span>
+        </button>
+
+      </div>
+    </div>
+  );
+
+  // ─── Step 2b: Use an existing / imported / prebuilt template ────────────
+
+  const renderExistingTemplates = () => (
+    <div>
+      <div style={{ marginBottom: '28px' }}>
+        <h1 style={{ fontSize: isMobile ? '26px' : '32px', fontWeight: '800', color: '#1e293b', margin: '0 0 8px 0' }}>
+          Choose a Template
+        </h1>
+        <p style={{ fontSize: '15px', color: '#64748b', margin: 0 }}>
+          Writing reports for <strong>{selectedClass?.name}</strong>.
+          {state.templates.length > 0 ? ' Select a template below.' : ' You don’t have any saved templates yet.'}
         </p>
       </div>
 
@@ -277,39 +349,13 @@ function StartReports() {
         </div>
       )}
 
-      {/* Create / Get a template */}
+      {/* Get a template from elsewhere */}
       <div>
         <p style={{ fontSize: '13px', fontWeight: '600', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 10px 0' }}>
-          {state.templates.length > 0 ? 'Or Create a New Template' : 'Get a Template'}
+          {state.templates.length > 0 ? 'Or Get Another Template' : 'Get a Template'}
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
-
-          <button
-            onClick={() => navigate('/import-template', { state: { classId: selectedClass?.id } })}
-            style={{ ...optionBtnStyle('#8b5cf6'), marginBottom: 0 }}
-          >
-            <span style={{ fontSize: '22px', flexShrink: 0 }}>⚡</span>
-            <div>
-              <div style={{ fontWeight: '700' }}>AI Quick Build</div>
-              <div style={{ fontSize: '12px', opacity: 0.9, fontWeight: '400', marginTop: '2px' }}>
-                Paste your reports — AI builds a template in ~2 min
-              </div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => navigate('/create-template', { state: { method: 'quick-start' } })}
-            style={{ ...optionBtnStyle('#10b981'), marginBottom: 0 }}
-          >
-            <span style={{ fontSize: '22px', flexShrink: 0 }}>🚀</span>
-            <div>
-              <div style={{ fontWeight: '700' }}>Quick Start</div>
-              <div style={{ fontSize: '12px', opacity: 0.9, fontWeight: '400', marginTop: '2px' }}>
-                Pick your subject — instant pre-filled template
-              </div>
-            </div>
-          </button>
 
           <button
             onClick={handleImportClick}
@@ -325,14 +371,14 @@ function StartReports() {
           </button>
 
           <button
-            onClick={() => navigate('/create-template', { state: { method: 'build-as-you-go', classId: selectedClass?.id } })}
-            style={{ ...optionBtnStyle('#f59e0b'), marginBottom: 0 }}
+            onClick={() => navigate('/create-template', { state: { method: 'quick-start', classId: selectedClass?.id } })}
+            style={{ ...optionBtnStyle('#10b981'), marginBottom: 0 }}
           >
-            <span style={{ fontSize: '22px', flexShrink: 0 }}>🧱</span>
+            <span style={{ fontSize: '22px', flexShrink: 0 }}>🚀</span>
             <div>
-              <div style={{ fontWeight: '700' }}>Template Wizard</div>
+              <div style={{ fontWeight: '700' }}>Prebuilt Templates</div>
               <div style={{ fontSize: '12px', opacity: 0.9, fontWeight: '400', marginTop: '2px' }}>
-                Build your template section by section
+                Pick your subject — instant pre-filled template
               </div>
             </div>
           </button>
@@ -378,15 +424,19 @@ function StartReports() {
 
         {/* Step content */}
         {step === 'class' && renderClassStep()}
-        {step === 'template' && renderTemplateStep()}
+        {step === 'template' && templateView === 'options' && renderTemplateOptions()}
+        {step === 'template' && templateView === 'existing' && renderExistingTemplates()}
 
         {/* Back button on step 2 */}
         {step === 'template' && (
           <button
-            onClick={() => { setStep('class'); setSelectedClass(null); }}
+            onClick={() => {
+              if (templateView === 'existing') { setTemplateView('options'); return; }
+              setStep('class'); setSelectedClass(null);
+            }}
             style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '13px', cursor: 'pointer', padding: '16px 0 0 0', display: 'block' }}
           >
-            ← Change class
+            {templateView === 'existing' ? '← Back' : '← Change class'}
           </button>
         )}
 
