@@ -122,30 +122,40 @@ const AI_BUILDER_STEPS: TourStep[] = [
 
 const WIZARD_STEPS: TourStep[] = [
   {
-    title: "Your template is built — let's get it ready!",
-    content: 'Before you start writing, here are a few things worth setting up.',
-  },
-  {
     target: 'reorder',
-    title: 'Arrange sections in report order',
+    title: '1 of 6 — Reorder the sections',
     content: 'Use the ▲ ▼ arrows to move sections into the order you want them to appear in your reports. Get this right now and you won\'t need to think about it again.',
     position: 'right',
   },
   {
+    target: 'duplicate',
+    title: '2 of 6 — Duplicating sections',
+    content: '⧉ Duplicate creates an identical copy of a section — useful for subject-specific or pronoun variants, or for offering more than one comment in the same area.',
+    position: 'below',
+  },
+  {
+    target: 'section-title',
+    title: '3 of 6 — Renaming sections',
+    content: 'Click any section title to rename it. Type your new name and press Enter (or click away) to save. Clear names make writing reports faster.',
+    position: 'below',
+  },
+  {
     target: 'add-section',
-    title: 'Add line breaks and optional comments',
+    title: '4 of 6 — Add line breaks and optional additional comments',
     content: 'Click + to open the add menu. A ⏎ Line Break adds spacing between sections in the report. A 📝 Optional Comment Box adds a free-text field for one-off additions — both appear exactly where you place them.',
     position: 'above',
   },
   {
-    target: 'duplicate',
-    title: 'Duplicate and merge sections',
-    content: '⧉ Duplicate creates an identical copy of a section — useful for subject-specific or pronoun variants. ⇥ Merge into… combines all the buttons from one section into another, then removes the original.',
+    target: 'header-style',
+    title: '5 of 6 — Sort the format of the header, if wanted',
+    content: 'Tick Header to show a heading before each comment, then pick a style — inline or on its own line, normal or CAPS. Leave it unticked to skip headers altogether.',
     position: 'below',
   },
   {
-    title: "Ready to write your first report!",
-    content: 'Use ? Help → Writing reports for a walkthrough of the report-writing features.',
+    target: 'save-template',
+    title: '6 of 6 — Save your template',
+    content: 'Once you\'re happy with everything, click 💾 Save Template Now in the header bar. This saves all changes permanently and your template is ready to use for your whole class.',
+    position: 'below',
   },
 ];
 

@@ -14,7 +14,7 @@ const STYLES = [
 ];
 
 const HeaderStylePicker: React.FC<HeaderStylePickerProps> = ({ showHeader, headerStyle, onChange }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+  <div data-tour="header-style" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
     <input
       type="checkbox"
       checked={showHeader}

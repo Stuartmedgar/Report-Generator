@@ -376,7 +376,7 @@ const handleSaveAndWrite = () => {
     const newTemplateId = addTemplate({ name, sections });
     clearDraft();
     if (classId) {
-      sessionStorage.setItem('continueEditing', JSON.stringify({ classId, templateId: newTemplateId, studentIndex: 0, tourSource: 'ai-builder' }));
+      sessionStorage.setItem('continueEditing', JSON.stringify({ classId, templateId: newTemplateId, studentIndex: 0, tourSource: 'wizard' }));
       navigate('/write-reports');
     } else {
       navigate('/start');
