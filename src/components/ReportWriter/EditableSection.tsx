@@ -46,7 +46,7 @@ export const EditableSection: React.FC<EditableSectionProps> = ({
   const [menuAbove, setMenuAbove] = useState(true);
 
   const isSectionEditable = (type: string) =>
-    ['rated-comment', 'assessment-comment', 'personalised-comment', 'next-steps', 'qualities'].includes(type);
+    ['rated-comment', 'assessment-comment', 'personalised-comment', 'next-steps', 'qualities', 'standard-comment'].includes(type);
 
   const handleAddSection = (sectionType: string) => {
     onAddDynamicSection(sectionType, sectionIndex);

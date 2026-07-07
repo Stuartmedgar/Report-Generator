@@ -56,6 +56,10 @@ function shapeForPersonalisedBuilder(section: any) {
   return { name: section.name || '', instruction: section.data?.instruction || '', headings: Object.keys(categories), comments: categories };
 }
 
+function shapeForStandardBuilder(section: any) {
+  return { name: section.name || '', content: section.data?.content || '' };
+}
+
 // ─── BUILDER OVERLAY ─────────────────────────────────────────────────────────
 
 const BuilderOverlay: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -236,6 +240,7 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
     else if (section.type === 'personalised-comment') { setEditingSection({ section: { ...section, data: shapeForPersonalisedBuilder(section) }, index }); setShowPersonalisedCommentBuilder(true); }
     else if (section.type === 'next-steps') { setEditingSection({ section: { ...section, data: shapeForNextStepsBuilder(section) }, index }); setShowNextStepsCommentBuilder(true); }
     else if (section.type === 'qualities') { setEditingSection({ section: { ...section, data: shapeForQualitiesBuilder(section) }, index }); setShowQualitiesCommentBuilder(true); }
+    else if (section.type === 'standard-comment') { setEditingSection({ section: { ...section, data: shapeForStandardBuilder(section) }, index }); setShowStandardCommentBuilder(true); }
   };
 
   const closeAllBuilders = () => {
@@ -259,6 +264,7 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
       else if (original.type === 'next-steps') newData = { ...original.data, focusAreas: editedData.comments };
       else if (original.type === 'personalised-comment') newData = { ...original.data, instruction: editedData.instruction, categories: editedData.comments };
       else if (original.type === 'qualities') newData = { ...original.data, comments: editedData.comments };
+      else if (original.type === 'standard-comment') newData = { ...original.data, content: editedData.data.content };
       else newData = { ...original.data, ...editedData };
       const updatedSection = { ...original, name: editedData.name || original.name, data: newData };
       reportLogic.handleUpdateWorkingSection(editingSection.index, updatedSection);
@@ -566,9 +572,9 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
           <QualitiesCommentBuilder existingComment={editingSection ? editingSection.section.data : { name: '', headings: [], comments: {} }} onSave={addingSectionType ? handleSaveNewSection : handleSaveEditedSection} onCancel={closeAllBuilders} />
         </BuilderOverlay>
       )}
-      {showStandardCommentBuilder && addingSectionType === 'standard-comment' && (
+      {showStandardCommentBuilder && (editingSection || addingSectionType === 'standard-comment') && (
         <BuilderOverlay>
-          <StandardCommentBuilder existingComment={{ name: '', content: '' }} onSave={handleSaveNewSection} onCancel={closeAllBuilders} />
+          <StandardCommentBuilder existingComment={editingSection ? editingSection.section.data : { name: '', content: '' }} onSave={addingSectionType ? handleSaveNewSection : handleSaveEditedSection} onCancel={closeAllBuilders} />
         </BuilderOverlay>
       )}
     </div>

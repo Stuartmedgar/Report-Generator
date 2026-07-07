@@ -168,42 +168,35 @@ function PersonalisedCommentBuilder({ onSave, onCancel, existingComment }: Perso
             <input type="text" placeholder="e.g. Add pupil target grade, Enter student's extracurricular activity, Add personal learning goal..." value={instruction} onChange={e => setInstruction(e.target.value)} style={{ width: '100%', padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '16px', boxSizing: 'border-box' }} />
           </div>
 
-          <div style={{ marginBottom: '32px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div>
-                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#111827', margin: '0 0 4px 0' }}>Optional Headings</h3>
-                <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>Choose headings that differentiate your statements</p>
-              </div>
-              <button onClick={addHeading} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>+ Add Heading</button>
-            </div>
-            {headings.map((heading, index) => (
-              <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
-                <input type="text" value={heading} onChange={e => updateHeading(index, e.target.value)} placeholder="Enter heading name..." style={{ flex: 1, padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }} />
-                <button onClick={() => removeHeading(index)} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 12px', fontSize: '12px', cursor: 'pointer' }}>Remove</button>
-              </div>
-            ))}
-          </div>
-
           <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '16px', marginBottom: '32px' }}>
             <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1e40af', margin: '0 0 8px 0' }}>How to use placeholders:</h3>
             <p style={{ color: '#1e40af', fontSize: '14px', margin: '0 0 8px 0' }}>• Use [Name] to insert the student's name</p>
             <p style={{ color: '#1e40af', fontSize: '14px', margin: 0 }}>• Use [personalised information] to insert the custom information the teacher enters</p>
           </div>
 
-          {displayHeadings.map(heading => {
+          {displayHeadings.map((heading, hIdx) => {
             const otherHeadings = headings.filter(h => h !== heading);
             const showMove = headings.length > 1;
+            const isHeadless = headings.length === 0;
             return (
               <div key={heading} style={{ border: `2px solid ${color}`, borderRadius: '12px', padding: '24px', marginBottom: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <h3 style={{ fontSize: '18px', fontWeight: '600', color, margin: 0 }}>
-                    {heading === 'default' ? 'Comment Options' : heading}
-                    {heading === 'default' && headings.length === 0 && <span style={{ fontSize: '14px', fontWeight: '400', color: '#6b7280', marginLeft: '8px' }}>(No headings - teacher won't choose, random comment will be selected)</span>}
-                  </h3>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={() => setShowBatchInput(heading)} style={{ backgroundColor: 'white', color, border: `2px solid ${color}`, borderRadius: '6px', padding: '8px 16px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>📋 Paste Multiple</button>
-                    <button onClick={() => addCommentOption(heading)} style={{ backgroundColor: color, color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>+ Add Option</button>
-                  </div>
+                <div style={{ marginBottom: '16px' }}>
+                  {isHeadless ? (
+                    <div style={{ fontSize: '18px', fontWeight: '600', color, marginBottom: '8px' }}>
+                      Comment Options
+                      <span style={{ fontSize: '14px', fontWeight: '400', color: '#6b7280', marginLeft: '8px' }}>(No headings — teacher won't choose, a random comment will be selected)</span>
+                    </div>
+                  ) : (
+                    <>
+                      <input type="text" value={heading} onChange={e => updateHeading(hIdx, e.target.value)} style={{ fontSize: '18px', fontWeight: '600', color, border: 'none', backgroundColor: 'transparent', padding: '4px', borderBottom: `2px dashed ${color}`, marginBottom: '8px', width: '100%' }} placeholder="Heading Name" />
+                      <button onClick={() => removeHeading(hIdx)} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '14px', cursor: 'pointer' }}>Remove Heading</button>
+                    </>
+                  )}
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <button onClick={() => setShowBatchInput(heading)} style={{ backgroundColor: 'white', color, border: `2px solid ${color}`, borderRadius: '6px', padding: '8px 16px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', marginRight: '12px' }}>📋 Paste Multiple</button>
+                  <button onClick={() => addCommentOption(heading)} style={{ backgroundColor: color, color: 'white', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>+ Add Option</button>
                 </div>
 
                 {showBatchInput === heading && (
@@ -278,6 +271,12 @@ function PersonalisedCommentBuilder({ onSave, onCancel, existingComment }: Perso
               </div>
             );
           })}
+
+          <div style={{ marginBottom: '32px', textAlign: 'center' }}>
+            <button onClick={addHeading} style={{ backgroundColor: '#6366f1', color: 'white', border: 'none', borderRadius: '8px', padding: '12px 24px', fontSize: '16px', fontWeight: '500', cursor: 'pointer' }}>
+              {headings.length === 0 ? '+ Add a Heading' : '+ Add Another Heading'}
+            </button>
+          </div>
 
           <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-end' }}>
             <button onClick={onCancel} style={{ backgroundColor: '#6b7280', color: 'white', padding: '16px 32px', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '500', cursor: 'pointer' }}>Cancel</button>

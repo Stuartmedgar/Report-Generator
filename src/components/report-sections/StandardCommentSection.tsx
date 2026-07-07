@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TemplateSection } from '../../types';
 import InlineEditableTitle from './InlineEditableTitle';
 import HeaderStylePicker from './HeaderStylePicker';
@@ -20,20 +20,33 @@ const StandardCommentSection: React.FC<StandardCommentSectionProps> = ({
   onRenameSection,
   globalPronoun,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [replaceConfirmed, setReplaceConfirmed] = useState(false);
+  const [showEditComment, setShowEditComment] = useState(false);
+  const [editableComment, setEditableComment] = useState('');
 
-  const currentComment = data.comment || section.data?.content || '';
+  useEffect(() => {
+    setEditableComment(data.comment || section.data?.content || '');
+  }, [data.comment, section.data?.content]);
+
+  const actionBtnStyle = (color: string): React.CSSProperties => ({
+    backgroundColor: color, color: 'white', border: 'none', borderRadius: '4px',
+    padding: '4px 8px', fontSize: '11px', cursor: 'pointer', fontWeight: '500', whiteSpace: 'nowrap',
+  });
+
+  const handleSaveEditedComment = () => {
+    updateSectionData(section.id, { comment: editableComment });
+    setShowEditComment(false);
+  };
+
+  const handleCancelEditComment = () => {
+    setEditableComment(data.comment || section.data?.content || '');
+    setShowEditComment(false);
+  };
 
   const handleReplaceInTemplate = () => {
-    if (!onTemplateAction || !currentComment.trim()) return;
-    onTemplateAction({
-      type: 'replace',
-      sectionId: section.id,
-      commentText: currentComment,
-    });
-    setReplaceConfirmed(true);
-    setTimeout(() => setReplaceConfirmed(false), 2000);
+    if (!onTemplateAction) return;
+    onTemplateAction({ type: 'replace', sectionId: section.id, commentText: editableComment });
+    updateSectionData(section.id, { comment: editableComment });
+    setShowEditComment(false);
   };
 
   return (
@@ -44,61 +57,20 @@ const StandardCommentSection: React.FC<StandardCommentSectionProps> = ({
       marginBottom: '16px',
       backgroundColor: '#ecfdf5'
     }}>
-      {/* Compact Header with Preview */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: isExpanded ? '12px' : '0'
-      }}>
-        <div style={{ flex: 1 }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '4px'
-          }}>
-            <InlineEditableTitle name={section.name} defaultName="Standard Comment" color="#047857" onRename={onRenameSection ? (n) => onRenameSection(section.id, n) : undefined} />
-
-            {/* Header Options */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <HeaderStylePicker showHeader={data.showHeader !== false} headerStyle={data.headerStyle || section.data?.headerStyle || 'inline'} onChange={(show, style) => updateSectionData(section.id, { showHeader: show, headerStyle: style })} />
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <input
-                  type="checkbox"
-                  checked={data.exclude || false}
-                  onChange={(e) => updateSectionData(section.id, { exclude: e.target.checked })}
-                  style={{ width: '14px', height: '14px', cursor: 'pointer' }}
-                />
-                <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Exclude</span>
-              </div>
-
-              <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                style={{
-                  backgroundColor: isExpanded ? '#10b981' : '#e5e7eb',
-                  color: isExpanded ? 'white' : '#6b7280',
-                  border: 'none', borderRadius: '4px', padding: '4px 8px',
-                  fontSize: '12px', cursor: 'pointer', fontWeight: '500'
-                }}
-              >
-                {isExpanded ? 'Collapse' : 'Edit'}
-              </button>
-            </div>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+        <InlineEditableTitle name={section.name} defaultName="Standard Comment" color="#047857" onRename={onRenameSection ? (n) => onRenameSection(section.id, n) : undefined} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <HeaderStylePicker showHeader={data.showHeader !== false} headerStyle={data.headerStyle || section.data?.headerStyle || 'inline'} onChange={(show, style) => updateSectionData(section.id, { showHeader: show, headerStyle: style })} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <input
+              type="checkbox"
+              checked={data.exclude || false}
+              onChange={(e) => updateSectionData(section.id, { exclude: e.target.checked })}
+              style={{ width: '14px', height: '14px', cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500' }}>Exclude</span>
           </div>
-
-          {/* Compact Preview */}
-          {!isExpanded && (
-            <div style={{
-              fontSize: '12px', color: '#6b7280', fontStyle: 'italic',
-              backgroundColor: 'white', padding: '6px 8px',
-              borderRadius: '4px', border: '1px solid #d1d5db'
-            }}>
-              {(section.data?.content || 'Click Edit to add template content...').substring(0, 80)}
-              {(section.data?.content || '').length > 80 ? '...' : ''}
-            </div>
-          )}
         </div>
       </div>
 
@@ -118,42 +90,35 @@ const StandardCommentSection: React.FC<StandardCommentSectionProps> = ({
         ))}
       </div>
 
-      {/* Expandable Edit Area */}
-      {isExpanded && (
-        <div>
-          <textarea
-            value={currentComment}
-            onChange={(e) => updateSectionData(section.id, { comment: e.target.value })}
-            placeholder="Enter standard comment (use [Name] for student name)..."
-            style={{
-              width: '100%', minHeight: '60px', padding: '8px',
-              border: '1px solid #d1d5db', borderRadius: '6px',
-              resize: 'vertical', fontSize: '14px', outline: 'none',
-              boxSizing: 'border-box',
-            }}
-          />
-          <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px', fontStyle: 'italic', marginBottom: '8px' }}>
-            Tip: Use [Name] to insert student's name automatically
-          </div>
+      {/* Edit toggle — always visible since this statement is always on the report */}
+      <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: showEditComment ? '12px' : '0' }}>
+        <button data-tour="edit-comment" onClick={() => setShowEditComment(!showEditComment)}
+          style={{
+            backgroundColor: showEditComment ? '#10b981' : '#e5e7eb',
+            color: showEditComment ? 'white' : '#6b7280',
+            border: 'none', borderRadius: '4px', padding: '4px 8px',
+            fontSize: '12px', cursor: 'pointer', fontWeight: '500'
+          }}>
+          {showEditComment ? '- Edit Comment' : '+ Edit Comment'}
+        </button>
+      </div>
 
-          {/* Replace in template */}
-          {onTemplateAction && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <button
-                onClick={handleReplaceInTemplate}
-                style={{
-                  backgroundColor: replaceConfirmed ? '#10b981' : '#8b5cf6',
-                  color: 'white', border: 'none', borderRadius: '4px',
-                  padding: '4px 10px', fontSize: '11px', cursor: 'pointer', fontWeight: '500',
-                }}
-              >
-                {replaceConfirmed ? '✓ Saved to template' : 'Replace in template'}
-              </button>
-              <span style={{ fontSize: '11px', color: '#6b7280', fontStyle: 'italic' }}>
-                Updates this comment for all future students in this session
-              </span>
-            </div>
-          )}
+      {/* Edit panel */}
+      {showEditComment && (
+        <div style={{ backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '6px', padding: '8px' }}>
+          <textarea value={editableComment} onChange={(e) => setEditableComment(e.target.value)}
+            placeholder="Edit the comment to better suit this student..."
+            style={{ width: '100%', minHeight: '60px', padding: '6px', border: 'none', borderRadius: '4px', resize: 'vertical', fontSize: '14px', outline: 'none' }} />
+          <div style={{ fontSize: '11px', color: '#6b7280', fontStyle: 'italic', marginTop: '4px', marginBottom: '8px' }}>
+            Tip: Use [Name] to insert the student's name automatically
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            <button onClick={handleCancelEditComment} style={actionBtnStyle('#6b7280')}>Cancel</button>
+            <button onClick={handleSaveEditedComment} style={actionBtnStyle('#3b82f6')}>Save</button>
+            {onTemplateAction && (
+              <button onClick={handleReplaceInTemplate} style={actionBtnStyle('#8b5cf6')}>Replace in template</button>
+            )}
+          </div>
         </div>
       )}
     </div>
