@@ -7,11 +7,18 @@ import ClassSelection from '../components/WriteReports/ClassSelection';
 
 type Step = 'template-selection' | 'class-selection' | 'student-selection' | 'writing';
 
+// ─── Preview class used for the "Edit Template" flow — lets a teacher try out
+//     a template against a dummy student without touching real class/report data.
+const PREVIEW_STUDENT: Student = { id: 'preview-test-student', firstName: 'Test', lastName: 'Student' };
+function buildPreviewClass(): Class {
+  return { id: 'preview-test-class', name: 'Template Preview', students: [PREVIEW_STUDENT], createdAt: new Date().toISOString() };
+}
+
 // ─── Read sessionStorage synchronously before first render ───────────────────
 function getInitialState(
   classes: Class[],
   templates: Template[],
-  locationState?: { preselectedClassId?: string; preselectedTemplateId?: string; tourSource?: string } | null
+  locationState?: { preselectedClassId?: string; preselectedTemplateId?: string; tourSource?: string; templatePreview?: Template } | null
 ) {
   try {
     const raw = sessionStorage.getItem('continueEditing');
@@ -35,6 +42,18 @@ function getInitialState(
   } catch (_) {
     sessionStorage.removeItem('continueEditing');
   }
+  if (locationState?.templatePreview) {
+    return {
+      step: 'writing' as Step,
+      template: locationState.templatePreview,
+      classData: buildPreviewClass(),
+      students: [PREVIEW_STUDENT.id],
+      studentIndex: 0,
+      directNav: false,
+      tourSource: null,
+      isPreview: true,
+    };
+  }
   if (locationState?.preselectedClassId || locationState?.preselectedTemplateId) {
     const classData = locationState.preselectedClassId
       ? classes.find(c => c.id === locationState.preselectedClassId) ?? null
@@ -50,6 +69,7 @@ function getInitialState(
       studentIndex: 0,
       directNav: false,
       tourSource: locationState.tourSource || null,
+      isPreview: false,
     };
   }
   return {
@@ -60,6 +80,7 @@ function getInitialState(
     studentIndex: 0,
     directNav: false,
     tourSource: null,
+    isPreview: false,
   };
 }
 
@@ -72,7 +93,7 @@ function WriteReports() {
   const init = getInitialState(
     state.classes,
     state.templates,
-    location.state as { preselectedClassId?: string; preselectedTemplateId?: string; tourSource?: string } | null
+    location.state as { preselectedClassId?: string; preselectedTemplateId?: string; tourSource?: string; templatePreview?: Template } | null
   );
   const [currentStep, setCurrentStep] = useState<Step>(init.step);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(init.template);
@@ -81,6 +102,7 @@ function WriteReports() {
   const [resumeStudentIndex] = useState<number>(init.studentIndex);
   const [directNav] = useState<boolean>(init.directNav || false);
   const [tourSource] = useState<string | null>(init.tourSource || null);
+  const [isPreview] = useState<boolean>(init.isPreview || false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -121,8 +143,15 @@ function WriteReports() {
     setCurrentStep('template-selection');
   };
 
-  // ─── When arrived via direct nav (continueEditing), exit goes home ─────────
-  const handleBackFromWriting = directNav
+  // ─── When arrived via direct nav (continueEditing) or template preview,
+  //     exit goes back to where the teacher started rather than template-selection ──
+  const handleBackFromWriting = isPreview
+    ? () => {
+        if (window.confirm('Leave the report writer? Any unsaved changes will be lost.')) {
+          navigate('/manage-templates', { replace: true });
+        }
+      }
+    : directNav
     ? () => {
         if (window.confirm('Leave the report writer? Any unsaved changes will be lost.')) {
           navigate('/', { replace: true });
@@ -143,6 +172,8 @@ function WriteReports() {
         onBack={handleBackFromWriting}
         startStudentIndex={resumeStudentIndex}
         tourSource={tourSource as 'ai-builder' | 'wizard' | undefined}
+        disableReportSaving={isPreview}
+        exitPath={isPreview ? '/manage-templates' : '/view-reports'}
       />
     );
   }

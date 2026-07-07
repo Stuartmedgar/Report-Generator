@@ -22,6 +22,8 @@ interface ReportWriterProps {
   onBack: () => void;
   startStudentIndex?: number;
   tourSource?: 'ai-builder' | 'wizard';
+  disableReportSaving?: boolean;
+  exitPath?: string;
 }
 
 // ─── DATA SHAPERS ─────────────────────────────────────────────────────────────
@@ -79,7 +81,7 @@ const BuilderOverlay: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 
-function ReportWriter({ template, classData, students, onBack, startStudentIndex = 0, tourSource }: ReportWriterProps) {
+function ReportWriter({ template, classData, students, onBack, startStudentIndex = 0, tourSource, disableReportSaving = false, exitPath = '/view-reports' }: ReportWriterProps) {
   const navigate = useNavigate();
   const { updateTemplate } = useData();
   const [currentStudentIndex, setCurrentStudentIndex] = useState(startStudentIndex);
@@ -103,7 +105,7 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
 
   const currentStudent = students[currentStudentIndex];
 
-  const reportLogic = useReportLogic({ template, classData, currentStudent, dynamicSections, setDynamicSections });
+  const reportLogic = useReportLogic({ template, classData, currentStudent, dynamicSections, setDynamicSections, disableReportSaving });
   const currentSectionData = reportLogic.sectionData;
 
   useEffect(() => {
@@ -169,20 +171,20 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
     handleSaveReport: reportLogic.handleSaveReport,
     handleHome: () => navigate('/'),
     handleFinish: async () => {
-      if (reportLogic.hasUnsavedChanges) {
+      if (!disableReportSaving && reportLogic.hasUnsavedChanges) {
         const shouldSave = window.confirm('You have unsaved changes. Would you like to save before finishing?');
         if (shouldSave) reportLogic.handleSaveReport();
       }
       await promptSaveTemplate();
-      navigate('/view-reports');
+      navigate(exitPath);
     },
     handleViewAllReports: async () => {
-      if (reportLogic.hasUnsavedChanges) {
+      if (!disableReportSaving && reportLogic.hasUnsavedChanges) {
         const shouldSave = window.confirm('You have unsaved changes. Would you like to save before viewing reports?');
         if (shouldSave) reportLogic.handleSaveReport();
       }
       await promptSaveTemplate();
-      navigate('/view-reports');
+      navigate(exitPath);
     },
     handleSaveAsNewTemplate: reportLogic.handleSaveAsNewTemplate
   };
@@ -530,6 +532,7 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
               onViewAllReports={navigationHandlers.handleViewAllReports}
               pronounOverride={undefined}
               onPronounChange={undefined}
+              isPreview={disableReportSaving}
             />
           </div>
         </div>

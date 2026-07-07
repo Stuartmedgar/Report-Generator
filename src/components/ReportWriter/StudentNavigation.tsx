@@ -11,6 +11,7 @@ interface StudentNavigationProps {
   onViewAllReports: () => void;
   pronounOverride?: string;
   onPronounChange?: (pronoun: string) => void;
+  isPreview?: boolean;
 }
 
 export const StudentNavigation: React.FC<StudentNavigationProps> = ({
@@ -24,6 +25,7 @@ export const StudentNavigation: React.FC<StudentNavigationProps> = ({
   onViewAllReports,
   pronounOverride,
   onPronounChange,
+  isPreview = false,
 }) => {
   const pronounOptions = [
     { value: '', label: 'Name' },
@@ -95,13 +97,13 @@ export const StudentNavigation: React.FC<StudentNavigationProps> = ({
             onClick={onSaveReport}
             style={{ flex: 1, backgroundColor: '#10b981', color: 'white', padding: '12px 16px', border: 'none', borderRadius: '6px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' }}
           >
-            💾 Save Report
+            {isPreview ? '💾 Preview (not saved)' : '💾 Save Report'}
           </button>
           <button
             onClick={onViewAllReports}
             style={{ flex: 1, backgroundColor: '#6366f1', color: 'white', padding: '12px 16px', border: 'none', borderRadius: '6px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' }}
           >
-            📋 View All Reports
+            {isPreview ? '← Back to Templates' : '📋 View All Reports'}
           </button>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>

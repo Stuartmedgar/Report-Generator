@@ -7,6 +7,7 @@ interface UseReportLogicParams {
   currentStudent: any;
   dynamicSections: any[];
   setDynamicSections: React.Dispatch<React.SetStateAction<any[]>>;
+  disableReportSaving?: boolean;
 }
 
 // ─── PRONOUN SUBSTITUTION ─────────────────────────────────────────────────────
@@ -78,7 +79,8 @@ export const useReportLogic = ({
   classData,
   currentStudent,
   dynamicSections,
-  setDynamicSections
+  setDynamicSections,
+  disableReportSaving = false
 }: UseReportLogicParams) => {
   const { addReport, updateReport, getReport, addTemplate, updateTemplate } = useData();
   const [sectionData, setSectionData] = useState<Record<string, any>>({});
@@ -445,6 +447,10 @@ export const useReportLogic = ({
   // ─── SAVE REPORT ──────────────────────────────────────────────────────────
 
   const handleSaveReport = () => {
+    if (disableReportSaving) {
+      setHasUnsavedChanges(false);
+      return;
+    }
     const existingReport = getReport(currentStudent.id, template.id);
     let reportContent: string;
     let isManuallyEdited = false;

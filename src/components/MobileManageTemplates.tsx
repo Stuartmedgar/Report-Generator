@@ -9,24 +9,31 @@ export default function MobileManageTemplates() {
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Google Drive folder URL
-  const TEMPLATE_LIBRARY_URL = 'https://drive.google.com/drive/folders/1Kc0O9QSqpHCBUuDfcMcjk2gAfNtbPPnf?usp=drive_link';
-
   const handleEdit = (template: Template) => {
-    navigate('/create-template', { state: { editTemplate: template } });
+    navigate('/write-reports', { state: { templatePreview: template } });
   };
 
-  const handleDuplicate = (template: Template) => {
-    const duplicatedTemplate = {
-      ...template,
-      name: `${template.name} (Copy)`,
-      id: undefined,
-      createdAt: undefined
-    };
-    
-    const { id, createdAt, ...templateData } = duplicatedTemplate;
-    addTemplate(templateData);
-    alert(`Template "${template.name}" has been duplicated as "${duplicatedTemplate.name}"`);
+  // ─── Continue writing the most recently updated report, same behaviour as
+  //     the Home screen's "Continue Writing" button ───────────────────────────
+  const handleContinueReports = () => {
+    if (state.reports.length === 0) return;
+
+    const mostRecentReport = state.reports.reduce((latest, current) =>
+      new Date(current.updatedAt || current.createdAt) > new Date(latest.updatedAt || latest.createdAt)
+        ? current : latest
+    );
+
+    const classId = mostRecentReport.classId;
+    const classData = state.classes.find(c => c.id === classId);
+    if (!classData) { navigate('/no-reports'); return; }
+
+    const studentIndex = classData.students.findIndex(s => s.id === mostRecentReport.studentId);
+    sessionStorage.setItem('continueEditing', JSON.stringify({
+      classId,
+      templateId: mostRecentReport.templateId,
+      studentIndex: studentIndex >= 0 ? studentIndex : 0
+    }));
+    navigate('/write-reports');
   };
 
   const handleDelete = (template: Template) => {
@@ -61,10 +68,6 @@ export default function MobileManageTemplates() {
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
-  };
-
-  const handleBrowseTemplates = () => {
-    window.open(TEMPLATE_LIBRARY_URL, '_blank', 'noopener,noreferrer');
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -329,9 +332,32 @@ export default function MobileManageTemplates() {
           outline: none !important;
         }
         .mobile-manage-isolated .nav-btn.home { background: #6b7280 !important; }
-        .mobile-manage-isolated .nav-btn.create { background: #10b981 !important; }
-        .mobile-manage-isolated .nav-btn.browse { background: #8b5cf6 !important; }
-        
+
+        .mobile-manage-isolated .action-nav-btn {
+          color: white !important;
+          padding: 12px 14px !important;
+          margin: 0 !important;
+          border: none !important;
+          border-radius: 6px !important;
+          font-size: 13px !important;
+          font-weight: 600 !important;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+          text-decoration: none !important;
+          text-align: center !important;
+          display: block !important;
+          width: 100% !important;
+          height: auto !important;
+          cursor: pointer !important;
+          min-height: auto !important;
+          min-width: auto !important;
+          box-shadow: none !important;
+          outline: none !important;
+        }
+        .mobile-manage-isolated .action-nav-btn.ai-quick-build { background: #8b5cf6 !important; }
+        .mobile-manage-isolated .action-nav-btn.template-wizard { background: #f59e0b !important; }
+        .mobile-manage-isolated .action-nav-btn.start-reports { background: #10b981 !important; }
+        .mobile-manage-isolated .action-nav-btn.continue-reports { background: #3b82f6 !important; }
+
         .mobile-manage-isolated .action-btn {
           color: white !important;
           padding: 8px 12px !important;
@@ -354,7 +380,6 @@ export default function MobileManageTemplates() {
         }
         .mobile-manage-isolated .action-btn.edit { background: #3b82f6 !important; }
         .mobile-manage-isolated .action-btn.share { background: #10b981 !important; }
-        .mobile-manage-isolated .action-btn.copy { background: #f59e0b !important; }
         .mobile-manage-isolated .action-btn.delete { background: #ef4444 !important; }
       `}</style>
 
@@ -375,20 +400,27 @@ export default function MobileManageTemplates() {
           <p style={styles.subtitle}>Edit, share, and organize your templates</p>
         </div>
 
-        {/* Navigation - Simple HTML structure */}
-        <div style={{ padding: '16px', backgroundColor: '#fff', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-          <Link to="/" className="nav-btn home">
+        {/* Navigation */}
+        <div style={{ padding: '16px', backgroundColor: '#fff' }}>
+          <Link to="/" className="nav-btn home" style={{ marginBottom: '10px' }}>
             Back to Home
           </Link>
-          <Link to="/create-template" className="nav-btn create">
-            Create Template
-          </Link>
-          <button
-            onClick={handleBrowseTemplates}
-            className="nav-btn browse"
-          >
-            Browse Templates
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <button onClick={() => navigate('/import-template')} className="action-nav-btn ai-quick-build">
+              ⚡ Create Template — AI Quick Build
+            </button>
+            <button onClick={() => navigate('/create-template', { state: { method: 'build-as-you-go' } })} className="action-nav-btn template-wizard">
+              🧱 Create Template — Template Wizard
+            </button>
+            <button onClick={() => navigate('/start')} className="action-nav-btn start-reports">
+              🚀 Start New Reports
+            </button>
+            {state.reports.length > 0 && (
+              <button onClick={handleContinueReports} className="action-nav-btn continue-reports">
+                ▶️ Continue Reports
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Content */}
@@ -405,14 +437,11 @@ export default function MobileManageTemplates() {
                 <div style={styles.emptyIcon}>📝</div>
                 <h3 style={styles.emptyTitle}>No templates yet</h3>
                 <p style={styles.emptyText}>
-                  Get started by creating your first template or browse our library.
+                  Get started by creating your first template.
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <Link to="/create-template" className="action-btn">
+                  <button onClick={() => navigate('/import-template')} className="action-nav-btn ai-quick-build">
                     Create Your First Template
-                  </Link>
-                  <button onClick={handleBrowseTemplates} className="action-btn" style={{backgroundColor: '#8b5cf6 !important'}}>
-                    Browse Template Library
                   </button>
                   <button onClick={handleImportClick} className="action-btn" style={{backgroundColor: '#3b82f6 !important'}}>
                     Import Template
@@ -434,7 +463,7 @@ export default function MobileManageTemplates() {
                       {template.sections.length} sections • Created {new Date(template.createdAt).toLocaleDateString()}
                     </div>
                     
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '4px', marginTop: '12px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px', marginTop: '12px' }}>
                       <button
                         onClick={() => handleEdit(template)}
                         className="action-btn edit"
@@ -448,13 +477,6 @@ export default function MobileManageTemplates() {
                         style={{fontSize: '9px !important', padding: '4px 2px !important'}}
                       >
                         Share
-                      </button>
-                      <button
-                        onClick={() => handleDuplicate(template)}
-                        className="action-btn copy"
-                        style={{fontSize: '9px !important', padding: '4px 2px !important'}}
-                      >
-                        Duplicate
                       </button>
                       <button
                         onClick={() => handleDelete(template)}
