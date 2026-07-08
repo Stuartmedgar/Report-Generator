@@ -88,7 +88,7 @@ const EDITING_STEPS: TourStep[] = [
   {
     target: 'edit-comment',
     title: 'Edit Comment',
-    content: 'Click + Edit Comment to fine-tune the wording of the selected statement for this student, without changing the template. Type the changes you want in the editing box and click Save. You will see your changes in the preview.',
+    content: 'Click + Edit Comment to fine-tune the wording of the selected statement for this student, without changing the template. Type the changes you want in the editing box and click Save. You will see your changes in the preview.\n\nTry it now: click "Try it" below, select a comment on any section, then click + Edit Comment to open the editing box. Click "▶ Resume tour" to come back and leave the box open — the next few steps point at the buttons inside it.',
     position: 'above',
   },
   {
