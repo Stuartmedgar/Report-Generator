@@ -114,9 +114,9 @@ const StandardCommentSection: React.FC<StandardCommentSectionProps> = ({
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             <button onClick={handleCancelEditComment} style={actionBtnStyle('#6b7280')}>Cancel</button>
-            <button onClick={handleSaveEditedComment} style={actionBtnStyle('#3b82f6')}>Save</button>
+            <button data-tour="save-comment" onClick={handleSaveEditedComment} style={actionBtnStyle('#3b82f6')}>Save</button>
             {onTemplateAction && (
-              <button onClick={handleReplaceInTemplate} style={actionBtnStyle('#8b5cf6')}>Replace in template</button>
+              <button data-tour="replace-in-template" onClick={handleReplaceInTemplate} style={actionBtnStyle('#8b5cf6')}>Replace in template</button>
             )}
           </div>
         </div>

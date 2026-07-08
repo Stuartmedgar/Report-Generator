@@ -297,12 +297,12 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             <button onClick={handleCancelEditComment} style={actionBtnStyle('#6b7280')}>Cancel</button>
-            <button onClick={handleSaveEditedComment} style={actionBtnStyle('#10b981')}>Save</button>
+            <button data-tour="save-comment" onClick={handleSaveEditedComment} style={actionBtnStyle('#10b981')}>Save</button>
             {onTemplateAction && (
               <>
-                <button onClick={handleReplaceInTemplate} style={actionBtnStyle('#8b5cf6')}>Replace in template</button>
-                <button onClick={handleAddToButton} style={actionBtnStyle('#6366f1')}>Add to button</button>
-                <button onClick={() => setShowAddToNewModal(true)} style={actionBtnStyle('#f59e0b')}>Add to new button</button>
+                <button data-tour="replace-in-template" onClick={handleReplaceInTemplate} style={actionBtnStyle('#8b5cf6')}>Replace in template</button>
+                <button data-tour="add-to-button" onClick={handleAddToButton} style={actionBtnStyle('#6366f1')}>Add to button</button>
+                <button data-tour="add-to-new-button" onClick={() => setShowAddToNewModal(true)} style={actionBtnStyle('#f59e0b')}>Add to new button</button>
               </>
             )}
           </div>

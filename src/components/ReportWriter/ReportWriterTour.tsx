@@ -23,13 +23,13 @@ const WRITING_STEPS: TourStep[] = [
   {
     target: 'name-or-pronoun',
     title: 'Name or Pronoun',
-    content: "To avoid repetition of names, you can choose to have he/she or they instead of the pupil's name for that statement.",
+    content: "To avoid repetition of names, you can choose to have he/she/they instead of the pupil's name for that statement. The pronoun selected for the report will be used.",
     position: 'below',
   },
   {
     target: 'edit-comment',
     title: 'Edit Comment',
-    content: 'Click + Edit Comment to fine-tune the wording of the selected statement for this student, without changing the template.',
+    content: 'Click + Edit Comment to fine-tune the wording of the selected statement for this student, without changing the template. Type the changes you want in the editing box and click Save. You will see your changes in the preview.',
     position: 'above',
   },
   {
@@ -59,13 +59,73 @@ const WRITING_STEPS: TourStep[] = [
 const EDITING_STEPS: TourStep[] = [
   {
     title: 'Editing templates — quick tour',
-    content: 'You can edit your template at any time while writing — changes are tracked and can be saved at the end.',
+    content: 'You can edit your template at any time while writing — changes are tracked and can be saved at the end. This tour covers everything you can do to a section, from quick per-student tweaks to permanent template changes.',
+  },
+  {
+    target: 'add-section',
+    title: 'Adding a section',
+    content: "Click the + button to add a new section after this one. Choose from rated comments, qualities, next steps, assessment scores, personalised comments, standard fixed text, or a line break.",
+    position: 'above',
   },
   {
     target: 'section-actions',
-    title: 'Section action buttons',
-    content: 'The ✏️ pencil opens the full statement editor for this section — add, edit, split or remove individual statements. 🗑 permanently removes the section from your template.',
+    title: 'The pencil edit button',
+    content: 'Click the ✏️ pencil to open the full statement editor for this section — add, edit, split or remove individual statements in the template.',
     position: 'above',
+  },
+  {
+    target: 'header-style',
+    title: 'Header function',
+    content: 'Tick Header to show a heading before the comment, then choose a style — inline or on its own line, normal or CAPS. Leave it unticked to skip the header.',
+    position: 'below',
+  },
+  {
+    target: 'name-or-pronoun',
+    title: 'Name or Pronoun',
+    content: "To avoid repetition of names, you can choose to have he/she/they instead of the pupil's name for that statement. The pronoun selected for the report will be used.",
+    position: 'below',
+  },
+  {
+    target: 'edit-comment',
+    title: 'Edit Comment',
+    content: 'Click + Edit Comment to fine-tune the wording of the selected statement for this student, without changing the template. Type the changes you want in the editing box and click Save. You will see your changes in the preview.',
+    position: 'above',
+  },
+  {
+    target: 'save-comment',
+    title: 'Save',
+    content: 'The Save button saves your changes for that report — this student only. The template itself is not affected.',
+    position: 'above',
+  },
+  {
+    target: 'replace-in-template',
+    title: 'Replace in template',
+    content: 'The Replace in template button updates the comment in the template permanently.',
+    position: 'above',
+  },
+  {
+    target: 'add-to-button',
+    title: 'Add to button',
+    content: 'The Add to button saves your new comment separately to the button, alongside the existing options.',
+    position: 'above',
+  },
+  {
+    target: 'add-to-new-button',
+    title: 'Add to new button',
+    content: 'The Add to new button allows you to create a new button that the statement will be added to.',
+    position: 'above',
+  },
+  {
+    target: 'move-to',
+    title: 'Move to',
+    content: 'The Move to function allows you to change the button the comment is found under.',
+    position: 'above',
+  },
+  {
+    target: 'duplicate',
+    title: 'Duplicate and merge',
+    content: '⧉ Duplicate creates a copy of the section — useful for offering more than one comment in the same area. ⇥ Merge into… combines all the buttons from this section into another one, then removes this section.',
+    position: 'below',
   },
   {
     target: 'reorder',
@@ -74,14 +134,10 @@ const EDITING_STEPS: TourStep[] = [
     position: 'right',
   },
   {
-    target: 'add-section',
-    title: 'Add a section',
-    content: "The + button adds a new section after this one. You can add rated comments, qualities, next steps, assessment scores, personalised comments, standard fixed text, or a line break.",
-    position: 'above',
-  },
-  {
+    target: 'save-template',
     title: 'Saving template changes',
-    content: 'Any changes you make are tracked. A 💾 Save Template button appears in the header bar — click it to save changes to the template permanently, or skip it to discard.',
+    content: 'Any changes you make are tracked. Click 💾 Save Template in the header bar to save changes to the template permanently, or skip it to discard.',
+    position: 'below',
   },
   {
     title: "You're ready to edit!",

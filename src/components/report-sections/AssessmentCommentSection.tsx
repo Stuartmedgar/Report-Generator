@@ -396,19 +396,19 @@ const AssessmentCommentSection: React.FC<AssessmentCommentSectionProps> = ({
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             <button onClick={handleCancelEditComment} style={actionBtnStyle('#6b7280')}>Cancel</button>
-            <button onClick={handleSaveEditedComment} style={actionBtnStyle('#10b981')}>Save</button>
+            <button data-tour="save-comment" onClick={handleSaveEditedComment} style={actionBtnStyle('#10b981')}>Save</button>
             {onTemplateAction && (
               <>
-                <button onClick={handleReplaceInTemplate} style={actionBtnStyle('#8b5cf6')}>Replace in template</button>
-                <button onClick={handleAddToButton} style={actionBtnStyle('#6366f1')}>Add to button</button>
-                <button onClick={() => setShowAddToNewModal(true)} style={actionBtnStyle('#f59e0b')}>Add to new button</button>
+                <button data-tour="replace-in-template" onClick={handleReplaceInTemplate} style={actionBtnStyle('#8b5cf6')}>Replace in template</button>
+                <button data-tour="add-to-button" onClick={handleAddToButton} style={actionBtnStyle('#6366f1')}>Add to button</button>
+                <button data-tour="add-to-new-button" onClick={() => setShowAddToNewModal(true)} style={actionBtnStyle('#f59e0b')}>Add to new button</button>
               </>
             )}
           </div>
 
           {/* Move statement to another button */}
           {onTemplateAction && performanceButtons.filter(b => b !== data.performance).length > 0 && (
-            <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <div data-tour="move-to" style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '11px', color: '#6b7280' }}>Move to:</span>
               <select value={moveToArea} onChange={e => setMoveToArea(e.target.value)}
                 style={{ padding: '3px 6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px', flex: 1, minWidth: 0 }}>
