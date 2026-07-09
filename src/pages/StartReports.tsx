@@ -81,15 +81,6 @@ function StartReports() {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   };
 
-  const headerStyle: React.CSSProperties = {
-    backgroundColor: 'white',
-    borderBottom: '1px solid #e2e8f0',
-    padding: '12px 24px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  };
-
   const contentStyle: React.CSSProperties = {
     maxWidth: '720px',
     margin: '0 auto',
@@ -398,13 +389,6 @@ function StartReports() {
     <div style={containerStyle}>
 
       <PageNav />
-
-      {/* Header */}
-      <div style={headerStyle}>
-        <div style={{ width: '60px' }} />{/* spacer */}
-        <div style={{ fontSize: '15px', fontWeight: '700', color: '#1e293b' }}>Start Writing Reports</div>
-        <div style={{ width: '60px' }} />{/* spacer */}
-      </div>
 
       <div style={contentStyle}>
 
