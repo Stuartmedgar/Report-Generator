@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import PageNav from '../components/PageNav';
 
 interface ApprovalRequest {
   id: string;
@@ -153,12 +154,13 @@ export default function AdminDashboard() {
   return (
     <div style={{
       minHeight: '100vh',
-      backgroundColor: '#f8fafc',
-      padding: '40px 20px'
+      backgroundColor: '#f8fafc'
     }}>
+      <PageNav />
       <div style={{
         maxWidth: '1200px',
-        margin: '0 auto'
+        margin: '0 auto',
+        padding: '40px 20px'
       }}>
         {/* Header */}
         <div style={{
@@ -169,41 +171,22 @@ export default function AdminDashboard() {
           boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
         }}>
           <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
             marginBottom: '16px'
           }}>
-            <div>
-              <h1 style={{
-                fontSize: '32px',
-                fontWeight: '700',
-                color: '#1e293b',
-                marginBottom: '8px'
-              }}>
-                Admin Dashboard
-              </h1>
-              <p style={{
-                fontSize: '16px',
-                color: '#64748b'
-              }}>
-                Manage user approval requests
-              </p>
-            </div>
-            <Link
-              to="/"
-              style={{
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                padding: '12px 20px',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}
-            >
-              ← Back to Home
-            </Link>
+            <h1 style={{
+              fontSize: '32px',
+              fontWeight: '700',
+              color: '#1e293b',
+              marginBottom: '8px'
+            }}>
+              Admin Dashboard
+            </h1>
+            <p style={{
+              fontSize: '16px',
+              color: '#64748b'
+            }}>
+              Manage user approval requests
+            </p>
           </div>
         </div>
 

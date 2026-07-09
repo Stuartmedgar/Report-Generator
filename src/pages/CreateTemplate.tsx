@@ -12,6 +12,7 @@ import QualitiesCommentBuilder from '../components/QualitiesCommentBuilder';
 import MobileCreateTemplate from '../components/MobileCreateTemplate';
 import BuildAsYouGo from '../components/BuildAsYouGo';
 import QuickStartWizard from '../components/QuickStartWizard';
+import PageNav from '../components/PageNav';
 
 const CreateTemplate: React.FC = () => {
   const { state, addTemplate, updateTemplate } = useData();
@@ -234,6 +235,7 @@ const CreateTemplate: React.FC = () => {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+      <PageNav />
       <header style={{ backgroundColor: 'white', boxShadow: '0 1px 3px 0 rgba(0,0,0,0.1)', padding: '24px 32px', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>

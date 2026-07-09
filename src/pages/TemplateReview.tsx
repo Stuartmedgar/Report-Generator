@@ -1,8 +1,9 @@
 // src/pages/TemplateReview.tsx
 import React, { useState, useCallback } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { TemplateSection } from '../types';
+import PageNav from '../components/PageNav';
 
 interface ReviewTemplate {
   name: string;
@@ -146,11 +147,10 @@ export default function TemplateReview() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
 
+      <PageNav />
+
       <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '12px 24px', position: 'sticky', top: 0, zIndex: 10, flexShrink: 0 }}>
         <div style={{ maxWidth: '860px', margin: '0 auto', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          <Link to="/manage-templates" style={{ textDecoration: 'none' }}>
-            <button style={btnStyle('#f3f4f6', '#374151', '1px solid #d1d5db')}>← Back</button>
-          </Link>
           <div style={{ flex: 1, minWidth: 0 }}>
             <input
               type="text"
