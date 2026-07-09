@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { Class, Template } from '../types';
+import PageNav from '../components/PageNav';
 
 type Step = 'class' | 'template';
 
@@ -396,11 +397,11 @@ function StartReports() {
   return (
     <div style={containerStyle}>
 
+      <PageNav />
+
       {/* Header */}
       <div style={headerStyle}>
-        <Link to="/" style={{ textDecoration: 'none', color: '#64748b', fontSize: '14px', fontWeight: '500' }}>
-          ← Home
-        </Link>
+        <div style={{ width: '60px' }} />{/* spacer */}
         <div style={{ fontSize: '15px', fontWeight: '700', color: '#1e293b' }}>Start Writing Reports</div>
         <div style={{ width: '60px' }} />{/* spacer */}
       </div>

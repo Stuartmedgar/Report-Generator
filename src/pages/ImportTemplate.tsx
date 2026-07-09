@@ -586,7 +586,9 @@ export default function ImportTemplate() {
   // ─── LOADING SCREEN ───────────────────────────────────────────────────────
 
   if (isLoading) return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+      <PageNav />
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '48px 40px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: '400px' }}>
         <div style={{ fontSize: '48px', marginBottom: '20px' }}>{mainStep === 'generating' ? '🪄' : '🔍'}</div>
         <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#111827' }}>
@@ -598,6 +600,7 @@ export default function ImportTemplate() {
         </div>
         <style>{`@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}`}</style>
         <p style={{ margin: '20px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>This may take 15–30 seconds</p>
+      </div>
       </div>
     </div>
   );
@@ -611,6 +614,7 @@ export default function ImportTemplate() {
     const sectionTypeLabels: Record<string, string> = { 'rated-comment': 'Progress', 'qualities': 'Qualities', 'next-steps': 'Next Steps', 'standard-comment': 'Fixed text', 'personalised-comment': 'Personalised', 'assessment-comment': 'Assessment' };
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+        <PageNav />
         <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827' }}>{previewFinalName}</div>
@@ -663,6 +667,7 @@ export default function ImportTemplate() {
 
   if (mainStep === 'setup') return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column' }}>
+      <PageNav />
       <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151' }}>AI Quick Build</div>
         <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>← Back</button>
@@ -693,6 +698,7 @@ export default function ImportTemplate() {
 
   if (mainStep === 'paste') return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+      <PageNav />
       <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827' }}>{templateName}</div>
@@ -783,6 +789,7 @@ export default function ImportTemplate() {
     const canCopyLast = lastBuiltSection && (lastBuiltSection.type === 'qualities' || lastBuiltSection.type === 'next-steps');
     return (
       <div style={{ height: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <PageNav />
         <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, zIndex: 10, position: 'sticky', top: 0 }}>
           <button onClick={() => setMainStep('paste')} style={btnS}>← Back</button>
           <div style={{ flex: 1 }}>
@@ -791,7 +798,7 @@ export default function ImportTemplate() {
           </div>
           {builtSections.length > 0 && <button onClick={handleAssemble} style={{ ...btnG, padding: '10px 20px' }}>🪄 Generate Template</button>}
         </header>
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', height: 'calc(100vh - 65px)' }}>
+        <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
           <div style={{ flex: '1 1 55%', display: 'flex', flexDirection: 'column', borderRight: '2px solid #e5e7eb', overflow: 'hidden' }}>
             <div style={{ backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <div>
@@ -976,7 +983,9 @@ export default function ImportTemplate() {
 
   if (mainStep === 'variety') {
     if (isGeneratingVariety) return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+        <PageNav />
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '48px 40px', textAlign: 'center', maxWidth: '440px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
           <div style={{ fontSize: '48px', marginBottom: '20px' }}>✨</div>
           <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#111827' }}>Generating Variety Options</h2>
@@ -986,10 +995,12 @@ export default function ImportTemplate() {
           </div>
           <p style={{ margin: 0, fontSize: '12px', color: '#9ca3af' }}>{varietyProgress}% complete</p>
         </div>
+        </div>
       </div>
     );
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+        <PageNav />
         <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
           <button onClick={() => setMainStep('builder')} style={btnS}>← Back</button>
           <div style={{ flex: 1 }}>
@@ -1036,7 +1047,9 @@ export default function ImportTemplate() {
   // ─── STEP: GENERATING ────────────────────────────────────────────────────
 
   if (mainStep === 'generating') return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+      <PageNav />
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '48px 40px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', textAlign: 'center', maxWidth: '400px' }}>
         <div style={{ fontSize: '48px', marginBottom: '20px' }}>🪄</div>
         <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '700', color: '#111827' }}>Assembling Your Template</h2>
@@ -1045,6 +1058,7 @@ export default function ImportTemplate() {
           {[0,1,2].map(i => <div key={i} style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#3b82f6', animation: 'pulse 1.2s ease-in-out infinite', animationDelay: `${i*0.2}s` }} />)}
         </div>
         <style>{`@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}`}</style>
+      </div>
       </div>
     </div>
   );
