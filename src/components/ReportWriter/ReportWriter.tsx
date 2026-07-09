@@ -366,9 +366,9 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
       {/* Header */}
       <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '16px 20px', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
               <button onClick={onBack}
                 style={{
                   background: 'none', border: 'none', color: '#9ca3af',
@@ -409,8 +409,15 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
               </div>
             </div>
 
+            <h1 style={{
+              fontSize: '15px', fontWeight: '700', margin: 0, color: '#111827',
+              flex: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>
+              {template.name} — {currentStudent?.firstName} {currentStudent?.lastName}
+            </h1>
+
             {reportLogic.hasTemplateChanges && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                 <span style={{ fontSize: '12px', color: '#6b7280', fontStyle: 'italic' }}>Template has unsaved changes</span>
                 <button
                   data-tour="save-template"
@@ -421,9 +428,6 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
               </div>
             )}
           </div>
-          <h1 style={{ fontSize: '20px', fontWeight: '600', margin: 0, color: '#111827' }}>
-            {template.name} — {currentStudent?.firstName} {currentStudent?.lastName}
-          </h1>
         </div>
       </div>
 
