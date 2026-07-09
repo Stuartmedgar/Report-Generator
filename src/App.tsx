@@ -77,6 +77,13 @@ function Home() {
     }
   };
 
+  // ─── A class counts as "unfinished" when at least one report has been
+  //     started for it but not every student in the class has one yet.
+  const hasUnfinishedClass = state.classes.some(classData => {
+    const reportCount = state.reports.filter(r => r.classId === classData.id).length;
+    return reportCount > 0 && reportCount < classData.students.length;
+  });
+
   // ─── Find the most recently updated report across ALL classes,
   //     set sessionStorage the same way ClassManagement's orange button does,
   //     then navigate straight into the report writer.
@@ -189,13 +196,13 @@ function Home() {
           </p>
         </div>
 
-        {/* Two main buttons */}
+        {/* Main buttons */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+          gridTemplateColumns: hasUnfinishedClass && !isMobile ? '1fr 1fr' : '1fr',
           gap: isMobile ? '16px' : '24px',
           width: '100%',
-          maxWidth: isMobile ? '400px' : '700px'
+          maxWidth: hasUnfinishedClass ? (isMobile ? '400px' : '700px') : '340px'
         }}>
 
           {/* Start New Reports */}
@@ -238,47 +245,49 @@ function Home() {
             </span>
           </Link>
 
-          {/* Continue Writing */}
-          <button
-            onClick={handleContinueWriting}
-            style={{
-              backgroundColor: '#10b981',
-              color: 'white',
-              padding: isMobile ? '44px 24px' : '56px 28px',
-              borderRadius: isMobile ? '12px' : '16px',
-              border: 'none',
-              cursor: 'pointer',
-              textAlign: 'center',
-              boxShadow: '0 4px 14px rgba(16,185,129,0.35)',
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              width: '100%',
-              boxSizing: 'border-box'
-            }}
-            onMouseEnter={e => {
-              if (!isMobile) {
-                e.currentTarget.style.transform = 'translateY(-3px)';
-                e.currentTarget.style.boxShadow = '0 10px 24px rgba(16,185,129,0.45)';
-              }
-            }}
-            onMouseLeave={e => {
-              if (!isMobile) {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 14px rgba(16,185,129,0.35)';
-              }
-            }}
-          >
-            <span style={{ fontSize: isMobile ? '20px' : '24px', fontWeight: '800' }}>
-              Continue Writing
-            </span>
-            <span style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '500', opacity: 0.88 }}>
-              Pick up where you left off
-            </span>
-          </button>
+          {/* Continue Writing — only shown when a class has unfinished reports */}
+          {hasUnfinishedClass && (
+            <button
+              onClick={handleContinueWriting}
+              style={{
+                backgroundColor: '#10b981',
+                color: 'white',
+                padding: isMobile ? '44px 24px' : '56px 28px',
+                borderRadius: isMobile ? '12px' : '16px',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'center',
+                boxShadow: '0 4px 14px rgba(16,185,129,0.35)',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}
+              onMouseEnter={e => {
+                if (!isMobile) {
+                  e.currentTarget.style.transform = 'translateY(-3px)';
+                  e.currentTarget.style.boxShadow = '0 10px 24px rgba(16,185,129,0.45)';
+                }
+              }}
+              onMouseLeave={e => {
+                if (!isMobile) {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 14px rgba(16,185,129,0.35)';
+                }
+              }}
+            >
+              <span style={{ fontSize: isMobile ? '20px' : '24px', fontWeight: '800' }}>
+                Continue Writing
+              </span>
+              <span style={{ fontSize: isMobile ? '13px' : '14px', fontWeight: '500', opacity: 0.88 }}>
+                Pick up where you left off
+              </span>
+            </button>
+          )}
         </div>
 
         {/* Secondary nav links */}
