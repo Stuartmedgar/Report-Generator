@@ -90,6 +90,34 @@ const HelpStep = ({ text, tip }: { text: React.ReactNode; tip: string }) => {
 
 type Screen = 'subject' | 'wizard';
 
+type TipsTab = 'reports' | 'ai' | 'scratch';
+
+const QUICK_TIPS: Record<TipsTab, string[]> = {
+  reports: [
+    'Copy your reports into the paste panel provided.',
+    "Don't worry about the order sections appear in — you can freely reorder them later, during final editing.",
+    'Want more than one statement to appear in an area, e.g. pupil strengths? Build one section with all the statements, then duplicate it during final editing — each duplicate adds one more statement to the report.',
+    'Everything stays editable, both during final editing and later while writing each report.',
+  ],
+  ai: [
+    'Check the buttons and statements the AI creates before moving on — it can occasionally make mistakes or miss the mark, so review them against what you actually want.',
+    "You can edit anything the AI adds afterwards, so don't worry about getting it perfect first time.",
+  ],
+  scratch: [
+    "Plan your report's structure first. Most teachers' reports follow a consistent shape — for example: an opening statement about the course, a progress rating, a behaviour/effort rating, a strengths section, an assessment statement, then next steps.",
+    'Work through the wizard to build each section in that order.',
+    "Add just enough statements and buttons to get going — you can always add more later, including while you're writing reports.",
+    'For sections like strengths or next steps where you want more than one statement, build one section then duplicate it during final editing.',
+    "Write statements that stand alone — they'll be mixed in with others in the final report, so make sure each one makes sense by itself.",
+  ],
+};
+
+const QUICK_TIPS_LABELS: Record<TipsTab, string> = {
+  reports: 'Using previous reports',
+  ai: 'Using AI',
+  scratch: 'Starting from scratch',
+};
+
 const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onComplete, onCancel }) => {
   const navigate = useNavigate();
   const { addTemplate } = useData();
@@ -104,6 +132,9 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const [subject, setSubject] = useState('');
   const [localTemplateName, setLocalTemplateName] = useState(templateName || '');
   const [templateNameError, setTemplateNameError] = useState('');
+
+  const [showQuickTips, setShowQuickTips] = useState(false);
+  const [quickTipsTab, setQuickTipsTab] = useState<TipsTab>('reports');
 
   const [hasStandardComment, setHasStandardComment] = useState<boolean | string | null>(null);
   const [standardContent, setStandardContent] = useState('');
@@ -771,6 +802,51 @@ const handleSaveAndWrite = () => {
                 <span style={{ fontSize: '22px' }}>{SUBJECT_ICONS[s]}</span><span>{s}</span>
               </button>
             ))}
+          </div>
+
+          {/* Quick Tips — collapsed by default, split by how the teacher is building this template */}
+          <div style={{ marginTop: '28px', borderTop: '1px solid #f1f5f9', paddingTop: '18px' }}>
+            <button
+              onClick={() => setShowQuickTips(o => !o)}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            >
+              <span style={{ fontSize: '14px', fontWeight: '700', color: '#374151' }}>💡 Quick Tips</span>
+              <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: '600' }}>{showQuickTips ? '▲ Hide' : '▼ Show'}</span>
+            </button>
+
+            {showQuickTips && (
+              <div style={{ marginTop: '16px' }}>
+                <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '12px 14px', marginBottom: '14px', fontSize: '12.5px', color: '#1e3a8a', lineHeight: '1.6' }}>
+                  <strong>Remember</strong> — you only need to build your template once. Save it somewhere safe once it's complete and you can use it again and again, making future reports quick to complete.
+                </div>
+
+                <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
+                  {(Object.keys(QUICK_TIPS_LABELS) as TipsTab[]).map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setQuickTipsTab(tab)}
+                      style={{
+                        flex: 1, padding: '8px 6px', borderRadius: '6px',
+                        border: quickTipsTab === tab ? '2px solid #3b82f6' : '1px solid #e5e7eb',
+                        backgroundColor: quickTipsTab === tab ? '#eff6ff' : 'white',
+                        fontSize: '11.5px', fontWeight: '600', cursor: 'pointer',
+                        color: quickTipsTab === tab ? '#1d4ed8' : '#6b7280',
+                      }}
+                    >
+                      {QUICK_TIPS_LABELS[tab]}
+                    </button>
+                  ))}
+                </div>
+
+                <ol style={{ margin: '0 0 14px 0', paddingLeft: '18px', fontSize: '13px', color: '#374151', lineHeight: '1.7' }}>
+                  {QUICK_TIPS[quickTipsTab].map((tip, i) => <li key={i} style={{ marginBottom: '6px' }}>{tip}</li>)}
+                </ol>
+
+                <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '12px 14px', fontSize: '12.5px', color: '#78350f', lineHeight: '1.6' }}>
+                  💡 Pronouns are handled for you — write your statements normally and choose he/his, she/her or they/their when writing each report. If you'll often use they/them, it's easiest to write your statements with they/them from the start, since some verbs change form (e.g. "tries" → "try").
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
