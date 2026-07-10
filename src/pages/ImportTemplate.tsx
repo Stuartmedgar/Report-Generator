@@ -699,19 +699,7 @@ export default function ImportTemplate() {
   if (mainStep === 'paste') return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       <PageNav />
-      <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827' }}>{templateName}</div>
-          <div style={{ fontSize: '12px', color: '#6b7280' }}>{subject} · AI Quick Build</div>
-        </div>
-        <button onClick={() => setMainStep('setup')} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer' }}>← Back</button>
-      </div>
       <main style={{ maxWidth: '800px', margin: '0 auto', padding: '32px 24px' }}>
-        <div style={card}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div><label style={lbl}>Year Group (optional)</label><select value={yearGroup} onChange={e => setYearGroup(e.target.value)} style={inp}><option value="">Select...</option>{['S1','S2','S3','S4','S5','S6','Mixed'].map(y => <option key={y}>{y}</option>)}</select></div>
-          </div>
-        </div>
         <div style={card}>
           <h2 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: '600', color: '#111827' }}>Pronoun Set</h2>
           <p style={{ margin: '0 0 14px 0', fontSize: '13px', color: '#6b7280', lineHeight: '1.5' }}>
@@ -770,13 +758,6 @@ export default function ImportTemplate() {
         {error && <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px', marginBottom: '12px', color: '#b91c1c', fontSize: '14px' }}>⚠️ {error}</div>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <button onClick={handleQuickBuild} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px' }}>⚡ Quick Build with AI — 2 minutes</button>
-          <button onClick={() => {
-            if (!subject.trim()) { setError('Please enter the subject.'); return; }
-            if (!rawReportText.trim()) { setError('Please paste your reports.'); return; }
-            setError(null); setMainStep('builder');
-          }} style={{ ...btnS, width: '100%', padding: '16px', fontSize: '16px', textAlign: 'center' }}>
-            🪄 Guided Wizard — highlight section by section
-          </button>
         </div>
       </main>
     </div>
