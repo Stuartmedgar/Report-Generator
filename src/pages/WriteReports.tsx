@@ -100,7 +100,6 @@ function WriteReports() {
   const [selectedClass, setSelectedClass] = useState<Class | null>(init.classData);
   const [selectedStudents, setSelectedStudents] = useState<string[]>(init.students);
   const [resumeStudentIndex] = useState<number>(init.studentIndex);
-  const [directNav] = useState<boolean>(init.directNav || false);
   const [tourSource] = useState<string | null>(init.tourSource || null);
   const [isPreview] = useState<boolean>(init.isPreview || false);
 
@@ -143,21 +142,19 @@ function WriteReports() {
     setCurrentStep('template-selection');
   };
 
-  // ─── When arrived via direct nav (continueEditing) or template preview,
-  //     exit goes back to where the teacher started rather than template-selection ──
+  // ─── Exit always leaves the report writer entirely — to Manage Templates when
+  //     previewing a template edit, otherwise to the home page ──────────────────
   const handleBackFromWriting = isPreview
     ? () => {
         if (window.confirm('Leave the report writer? Any unsaved changes will be lost.')) {
           navigate('/manage-templates', { replace: true });
         }
       }
-    : directNav
-    ? () => {
+    : () => {
         if (window.confirm('Leave the report writer? Any unsaved changes will be lost.')) {
           navigate('/', { replace: true });
         }
-      }
-    : handleBackToTemplates;
+      };
 
   const studentsToWrite = selectedClass?.students.filter(s =>
     selectedStudents.includes(s.id)
