@@ -28,8 +28,8 @@ export default function Login() {
       console.error('Error details:', err);
       
       // Check for specific error types
-      if (err.message?.includes('not approved')) {
-        setError('Your account is pending admin approval. Please wait for an administrator to approve your account.');
+      if (err.message?.includes('verify your email')) {
+        setError('Please verify your email before logging in — check your inbox for the confirmation link we sent when you signed up.');
       } else if (err.message?.includes('Invalid login credentials')) {
         setError('Invalid email or password. Please check your credentials and try again.');
       } else {
@@ -282,7 +282,7 @@ export default function Login() {
             margin: 0,
             lineHeight: '1.6'
           }}>
-            Note: New accounts require admin approval before you can access the app.
+            Note: New accounts must verify their email before logging in.
           </p>
         </div>
       </div>

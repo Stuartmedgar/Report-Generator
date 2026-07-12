@@ -1,8 +1,47 @@
 // supabase/functions/generate-template/index.ts
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const GENERATION_CHAR_LIMIT = 60000;
+
+// Sonnet 4.6 pricing: $3/MTok input, $15/MTok output.
+const INPUT_COST_CENTS_PER_TOKEN = 0.0003;
+const OUTPUT_COST_CENTS_PER_TOKEN = 0.0015;
+
+function supabaseAdmin() {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) return null;
+  return createClient(url, key);
+}
+
+// Charges the user for one Anthropic call's actual usage — inserts an audit
+// row and decrements their credit balance via the atomic RPC. Called after
+// every successful Anthropic response so cost tracks real usage, not a flat
+// per-call estimate.
+async function chargeUsage(
+  admin: ReturnType<typeof createClient> | null,
+  userId: string | null,
+  mode: string,
+  model: string,
+  usage: { input_tokens?: number; output_tokens?: number } | undefined,
+) {
+  if (!admin || !userId || !usage) return;
+  const inputTokens = usage.input_tokens || 0;
+  const outputTokens = usage.output_tokens || 0;
+  const costCents = inputTokens * INPUT_COST_CENTS_PER_TOKEN + outputTokens * OUTPUT_COST_CENTS_PER_TOKEN;
+  const chargeCents = Math.max(1, Math.round(costCents));
+  try {
+    await admin.from("ai_usage_events").insert({
+      user_id: userId, mode, model,
+      input_tokens: inputTokens, output_tokens: outputTokens, cost_cents: costCents,
+    });
+    await admin.rpc("decrement_ai_credit", { p_user_id: userId, p_amount_cents: chargeCents });
+  } catch (e) {
+    console.error("chargeUsage failed:", e);
+  }
+}
 
 const KNOWLEDGE_BASE = `You are an expert at analysing teacher-written school reports and building report templates.
 
@@ -689,6 +728,28 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: "Invalid request body" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
+  // ─── AUTH + AI CREDIT GATE ────────────────────────────────────────────────
+  // "assemble" is purely mechanical (no Anthropic call) so it's exempt.
+  const admin = supabaseAdmin();
+  let userId: string | null = null;
+  const authHeader = req.headers.get("Authorization") || "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+
+  if (admin && token) {
+    const { data: userData } = await admin.auth.getUser(token);
+    userId = userData?.user?.id || null;
+  }
+
+  if (mode !== "assemble") {
+    if (!admin || !userId) {
+      return new Response(JSON.stringify({ error: "Not authenticated" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const { data: profile } = await admin.from("users").select("ai_credit_balance_cents").eq("id", userId).single();
+    if (!profile || (profile as any).ai_credit_balance_cents <= 0) {
+      return new Response(JSON.stringify({ error: "insufficient_credit" }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+  }
+
   const pronounCapital = pronounSet.split('/')[0].charAt(0).toUpperCase() + pronounSet.split('/')[0].slice(1);
   const pronounFull = ({ "he/his": "HE/HIM/HIS/HIMSELF", "she/her": "SHE/HER/HERS/HERSELF", "they/their": "THEY/THEM/THEIR/THEMSELVES" } as Record<string, string>)[pronounSet] || "THEY/THEM/THEIR/THEMSELVES";
 
@@ -722,6 +783,7 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
       if (!response.ok) return new Response(JSON.stringify({ error: "API call failed" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
       const data = await response.json();
+      await chargeUsage(admin, userId, "identify-sections", "claude-sonnet-4-6", data.usage);
       const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
       const parsed = JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
       return new Response(JSON.stringify(parsed), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -781,6 +843,7 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
       if (!response.ok) return new Response(JSON.stringify({ error: "API call failed" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
       const data = await response.json();
+      await chargeUsage(admin, userId, "auto-build", "claude-sonnet-4-6", data.usage);
       const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
       const parsed = JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
 
@@ -819,6 +882,7 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
         }),
       });
       const data = await response.json();
+      await chargeUsage(admin, userId, "rewrite", "claude-sonnet-4-6", data.usage);
       const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
       return new Response(JSON.stringify(JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim())), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } catch {
@@ -862,6 +926,7 @@ IMPORTANT: Extract ONLY sentences that match the pattern of the highlighted exam
         if (!response.ok) return new Response(JSON.stringify({ error: "API call failed" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
         const data = await response.json();
+        await chargeUsage(admin, userId, "extract-only", "claude-sonnet-4-6", data.usage);
         const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
         const parsed = parseModelJson(raw);
 
@@ -991,6 +1056,7 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
       }
 
       const data = await response.json();
+      await chargeUsage(admin, userId, "extract-only", "claude-sonnet-4-6", data.usage);
       const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
       const parsedResult = parseModelJson(raw);
       if (Array.isArray(parsedResult.headings)) parsedResult.headings = dedupeHeadings(parsedResult.headings);
@@ -1034,6 +1100,7 @@ Generate additional options only. Do not change or repeat the existing options.`
 
       if (!response.ok) return new Response(JSON.stringify({ error: "Failed to contact AI service" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       const data = await response.json();
+      await chargeUsage(admin, userId, "generate-variety", "claude-sonnet-4-6", data.usage);
       const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
       const cleaned = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
 
@@ -1063,6 +1130,7 @@ Generate additional options only. Do not change or repeat the existing options.`
         }),
       });
       const data = await response.json();
+      await chargeUsage(admin, userId, "refine", "claude-sonnet-4-6", data.usage);
       const raw = data.content.filter((b: { type: string }) => b.type === "text").map((b: { text: string }) => b.text).join("");
       const parsed = JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
       return new Response(JSON.stringify(parsed), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -1110,6 +1178,7 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
       if (!response.ok) return new Response(JSON.stringify({ error: "API call failed" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
       const data = await response.json();
+      await chargeUsage(admin, userId, "find-fixed", "claude-sonnet-4-6", data.usage);
       const raw = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("");
       const parsed = JSON.parse(raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim());
       if (Array.isArray(parsed.statements)) {
@@ -1170,6 +1239,7 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
       if (!response.ok) return new Response(JSON.stringify({ error: "API call failed" }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
       const data = await response.json();
+      await chargeUsage(admin, userId, "restructure", "claude-sonnet-4-6", data.usage);
       const restructuredText = data.content.filter((b: any) => b.type === "text").map((b: any) => b.text).join("").trim();
       return new Response(JSON.stringify({ restructuredText }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     } catch {

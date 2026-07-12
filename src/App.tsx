@@ -55,7 +55,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 // ─── HOME COMPONENT ───────────────────────────────────────────────────────────
 
 function Home() {
-  const { signOut } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const { state } = useData();
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
@@ -66,6 +66,12 @@ function Home() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // "/" is public now (no login wall just to land on the site) — logged-out
+  // visitors get bounced to the pricing/marketing page instead of /login.
+  if (!loading && !user) {
+    return <Navigate to="/pricing" replace />;
+  }
 
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to logout?')) {
@@ -424,12 +430,8 @@ function App() {
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/subscription/success" element={<SubscriptionSuccess />} />
 
-                {/* Protected Routes */}
-                <Route path="/" element={
-                  <ProtectedRoute>
-                    <Home />
-                  </ProtectedRoute>
-                } />
+                {/* Home — public route; redirects logged-out visitors to /pricing internally */}
+                <Route path="/" element={<Home />} />
 
                 {/* Single onboarding entry point — replaces /select-class, /step2, /get-template, /select-template, /pick-template */}
                 <Route path="/start" element={

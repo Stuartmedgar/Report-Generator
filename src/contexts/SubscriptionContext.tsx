@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { loadStripe, Stripe } from '@stripe/stripe-js';
+import { useAuth } from './AuthContext';
 
 // Types for subscription
 interface SubscriptionPlan {
@@ -45,28 +46,29 @@ const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     id: 'free',
     name: 'Free Plan',
     price: 0,
-    currency: 'USD',
+    currency: 'GBP',
     interval: 'month',
     stripePriceId: '',
     features: [
-      'Unlimited reports',
-      'All templates',
-      'All comment types',
-      'Community support'
+      'Unlimited template creation',
+      '$1 of AI credit for building templates',
+      'Write up to 5 reports',
+      'All comment types'
     ]
   },
   {
     id: 'teacher_pro_annual',
     name: 'Teacher Pro (Annual)',
     price: 12.99,
-    currency: 'USD',
+    currency: 'GBP',
     interval: 'year',
     stripePriceId: process.env.REACT_APP_STRIPE_PRICE_TEACHER_PRO_YEARLY || '',
     features: [
       'Everything in Free',
-      'PDF export',
-      'Priority support',
-      'Remove branding'
+      'Unlimited reports',
+      '$4 of AI credit for building templates',
+      'Template sharing',
+      'Priority support'
     ]
   }
 ];
@@ -76,6 +78,7 @@ interface SubscriptionProviderProps {
 }
 
 export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
+  const { user } = useAuth();
   const [subscription, setSubscription] = useState<SubscriptionData>({
     hasActiveSubscription: false,
     planId: 'free',
@@ -94,31 +97,17 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
     initStripe();
   }, []);
 
-  // Refresh subscription data
+  // Refresh subscription data — read directly off the user's profile row,
+  // which the Stripe webhook keeps in sync (see netlify/functions/webhook.js).
+  // No separate network call needed since AuthContext already loaded it.
   const refreshSubscription = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // For now, just simulate API call since we don't have user authentication yet
-      // In production, this would call your Netlify function to get subscription status
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For testing, assume free plan
-      setSubscription({
-        hasActiveSubscription: false,
-        planId: 'free',
-        status: 'none'
-      });
-      
-    } catch (err) {
-      console.error('Error refreshing subscription:', err);
-      setError('Failed to refresh subscription data');
-    } finally {
-      setIsLoading(false);
-    }
+    setError(null);
+    const plan = user?.app_metadata?.plan === 'pro' ? 'teacher_pro_annual' : 'free';
+    setSubscription({
+      hasActiveSubscription: plan === 'teacher_pro_annual',
+      planId: plan,
+      status: plan === 'teacher_pro_annual' ? 'active' : 'none',
+    });
   };
 
   // Create Stripe checkout session
@@ -131,6 +120,10 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
         throw new Error('Stripe is not initialized');
       }
 
+      if (!user) {
+        throw new Error('You must be logged in to upgrade.');
+      }
+
       // Call your Netlify function to create checkout session
       const response = await fetch('/.netlify/functions/create-checkout-session', {
         method: 'POST',
@@ -139,6 +132,7 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
         },
         body: JSON.stringify({
           priceId,
+          userId: user.id,
           successUrl: `${window.location.origin}/subscription-success?session_id={CHECKOUT_SESSION_ID}`,
           cancelUrl: `${window.location.origin}/pricing`,
         }),
@@ -195,10 +189,11 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
     }
   };
 
-  // Load subscription data on component mount
+  // Re-derive subscription state whenever the user profile (re)loads
   useEffect(() => {
     refreshSubscription();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.app_metadata?.plan]);
 
   // Get current plan based on subscription
   const currentPlan = SUBSCRIPTION_PLANS.find(plan => plan.id === subscription.planId) || SUBSCRIPTION_PLANS[0];

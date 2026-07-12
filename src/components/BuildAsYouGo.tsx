@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { TemplateSection, SectionType } from '../types';
 import { useData } from '../contexts/DataContext';
 import { SUBJECT_EXTRAS, SUBJECTS, STRENGTHS_ADDABLE_UNIVERSAL, STRENGTHS_ADDABLE_BY_SUBJECT, NEXT_STEPS_ADDABLE_UNIVERSAL, NEXT_STEPS_ADDABLE_BY_SUBJECT, DEVELOPMENT_ADDABLE_UNIVERSAL, DEVELOPMENT_ADDABLE_BY_SUBJECT, AddableButton } from '../data/starterComments';
-
-const SUPABASE_URL = 'https://wozbrojwuzktwrzngllh.supabase.co/functions/v1/generate-template';
+import { callGenerateTemplate, InsufficientCreditError } from '../services/aiTemplateService';
 
 interface BuildAsYouGoProps {
   templateName: string;
@@ -332,12 +331,12 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
       if (!restructuredReports) {
         setIsRestructuring(true);
         try {
-          const rRes = await fetch(SUPABASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'restructure', reportText: pastedReports, subject: subject || '' }) });
-          if (rRes.ok) {
-            const rData = await rRes.json();
-            if (rData.restructuredText) { setRestructuredReports(rData.restructuredText); reportTextForAI = rData.restructuredText; }
-          }
-        } catch { /* fail silently — use original */ }
+          const rData = await callGenerateTemplate({ mode: 'restructure', reportText: pastedReports, subject: subject || '' });
+          if (rData.restructuredText) { setRestructuredReports(rData.restructuredText); reportTextForAI = rData.restructuredText; }
+        } catch (err) {
+          if (err instanceof InsufficientCreditError) throw err;
+          // any other failure — fail silently, use original
+        }
         finally { setIsRestructuring(false); }
       } else {
         reportTextForAI = restructuredReports;
@@ -345,9 +344,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
 
       const positionType = activeType === 'next-steps' ? 'next-steps' : activeType === 'rated-comment' ? 'rating' : activeType === 'assessment-comment' ? 'assessment-comment' : activeType === 'personalised-comment' ? 'personalised-comment' : activeName === 'Areas for Development' ? 'next-steps' : 'qualities';
       const ratingLevels = isRated ? buttons.map(b => b.name).filter(Boolean) : undefined;
-      const response = await fetch(SUPABASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'extract-only', subject: subject || activeName, yearGroup: '', reportText: reportTextForAI, pronounSet: 'they/their', openerType: 'name', sectionName: activeName, positionType, selectedText: selectedTextForAI, scaleType: activeType === 'rated-comment' ? 'four-level' : 'own', ratingLevels }) });
-      if (!response.ok) throw new Error('failed');
-      const data = await response.json();
+      const data = await callGenerateTemplate({ mode: 'extract-only', subject: subject || activeName, yearGroup: '', reportText: reportTextForAI, pronounSet: 'they/their', openerType: 'name', sectionName: activeName, positionType, selectedText: selectedTextForAI, scaleType: activeType === 'rated-comment' ? 'four-level' : 'own', ratingLevels });
       const headings: { name: string; comments: string[] }[] = data.headings || [];
       if (headings.length === 0) { setAiError('No matching sentences found. Try selecting a specific example sentence from your reports first.'); setAiLoading(false); return; }
       setNamingButtonIndex(null);
@@ -378,7 +375,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
       });
       setHighlightedExamples([]);
       setAiUsedForSection(true);
-    } catch { setAiError('AI extraction failed. Please try again.'); }
+    } catch (err) { setAiError(err instanceof InsufficientCreditError ? err.message : 'AI extraction failed. Please try again.'); }
     finally { setAiLoading(false); }
   };
 
@@ -861,13 +858,11 @@ const handleSaveAndWrite = () => {
     const handleFindFixed = async () => {
       setAiLoading(true); setAiError(null);
       try {
-        const response = await fetch(SUPABASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'find-fixed', reportText: pastedReports, subject: subject || '' }) });
-        if (!response.ok) throw new Error('failed');
-        const data = await response.json();
+        const data = await callGenerateTemplate({ mode: 'find-fixed', reportText: pastedReports, subject: subject || '' });
         const candidates: string[] = data.statements || [];
         if (candidates.length === 0) { setAiError('No repeated fixed statements found. You can add them manually below.'); }
         else { setAiCandidates(candidates); setSelectedCandidates(new Set(candidates)); setHasStandardComment('candidates'); }
-      } catch { setAiError('AI scan failed. Please try again or add statements manually.'); }
+      } catch (err) { setAiError(err instanceof InsufficientCreditError ? err.message : 'AI scan failed. Please try again or add statements manually.'); }
       finally { setAiLoading(false); }
     };
     const confirmCandidates = () => {

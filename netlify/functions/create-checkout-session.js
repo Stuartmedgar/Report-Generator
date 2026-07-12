@@ -26,13 +26,21 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const { priceId, successUrl, cancelUrl } = JSON.parse(event.body);
+    const { priceId, successUrl, cancelUrl, userId } = JSON.parse(event.body);
 
     if (!priceId) {
       return {
         statusCode: 400,
         headers,
         body: JSON.stringify({ error: 'Price ID is required' }),
+      };
+    }
+
+    if (!userId) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'userId is required' }),
       };
     }
 
@@ -48,12 +56,15 @@ exports.handler = async (event, context) => {
       ],
       success_url: successUrl || `${process.env.URL}/subscription-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: cancelUrl || `${process.env.URL}/pricing`,
+      client_reference_id: userId,
       metadata: {
         created_at: new Date().toISOString(),
+        user_id: userId,
       },
       subscription_data: {
         metadata: {
           created_via: 'website',
+          user_id: userId,
         },
       },
     });

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { Template, Student } from '../../types';
 import { useReportLogic } from './hooks/useReportLogic';
 import { MobileReportWriter } from './MobileReportWriter';
@@ -14,6 +15,8 @@ import NextStepsCommentBuilder from '../NextStepsCommentBuilder';
 import QualitiesCommentBuilder from '../QualitiesCommentBuilder';
 import StandardCommentBuilder from '../StandardCommentBuilder';
 import { ReportWriterTour } from './ReportWriterTour';
+
+const FREE_PLAN_REPORT_LIMIT = 5;
 
 interface ReportWriterProps {
   template: Template;
@@ -87,7 +90,8 @@ const BuilderOverlay: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 function ReportWriter({ template, classData, students, onBack, startStudentIndex = 0, tourSource, disableReportSaving = false, exitPath = '/view-reports' }: ReportWriterProps) {
   const navigate = useNavigate();
-  const { updateTemplate } = useData();
+  const { updateTemplate, getReport, state: dataState } = useData();
+  const { user } = useAuth();
   const [currentStudentIndex, setCurrentStudentIndex] = useState(startStudentIndex);
   const [showSectionOptions, setShowSectionOptions] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -329,6 +333,37 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
     showQualitiesCommentBuilder, setShowQualitiesCommentBuilder,
     handleSaveEditedSection
   };
+
+  // Free-plan report cap — reports are counted the first time a teacher moves
+  // past a student (handleSaveReport, called from next/previous navigation),
+  // so this only blocks starting a genuinely NEW (uncounted) report.
+  const plan = user?.app_metadata?.plan || 'free';
+  const isPro = plan === 'pro';
+  const hasExistingReportForStudent = !!getReport(currentStudent.id, template.id);
+  const reportCapReached = !isPro && !hasExistingReportForStudent && dataState.reports.length >= FREE_PLAN_REPORT_LIMIT;
+
+  if (reportCapReached) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb', padding: '24px' }}>
+        <div style={{ maxWidth: '440px', textAlign: 'center', backgroundColor: 'white', borderRadius: '12px', padding: '32px', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b', marginBottom: '12px' }}>
+            You've reached your free plan's report limit
+          </h2>
+          <p style={{ fontSize: '15px', color: '#64748b', marginBottom: '24px', lineHeight: 1.6 }}>
+            Free accounts can write up to {FREE_PLAN_REPORT_LIMIT} reports. Upgrade to Pro for unlimited reports, unlimited AI credit, and template sharing.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <button onClick={() => navigate('/pricing')} style={{ padding: '10px 20px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
+              Upgrade to Pro
+            </button>
+            <button onClick={() => navigate(exitPath)} style={{ padding: '10px 20px', backgroundColor: 'white', color: '#374151', border: '1px solid #d1d5db', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
+              Back
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Mobile layout
   if (isMobile) {

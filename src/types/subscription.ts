@@ -30,14 +30,14 @@ export const PLANS: Plan[] = [
     price: 0,
     interval: 'month',
     features: [
-      'Unlimited reports',
-      'All templates',
-      'All comment types',
-      'Community support'
+      'Unlimited template creation',
+      '$1 of AI credit for building templates',
+      'Write up to 5 reports',
+      'All comment types'
     ],
     stripePriceId: '',
-    reportsLimit: undefined, // Unlimited for testing
-    templatesLimit: undefined, // Unlimited for testing
+    reportsLimit: 5,
+    templatesLimit: undefined, // Unlimited
     displayPrice: 'Free'
   },
   {
@@ -47,11 +47,10 @@ export const PLANS: Plan[] = [
     interval: 'year',
     features: [
       'Everything in Free',
-      'PDF export',
-      'Priority email support',
-      'Remove branding',
-      'Early access to new features',
-      '🔥 Early Adopter Special!'
+      'Unlimited reports',
+      '$4 of AI credit for building templates',
+      'Template sharing',
+      'Priority email support'
     ],
     stripePriceId: 'price_teacherpro_yearly',
     reportsLimit: undefined,

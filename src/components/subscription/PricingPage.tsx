@@ -1,10 +1,40 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSubscription } from '../../contexts/SubscriptionContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 export default function PricingPage() {
   const { currentPlan, createCheckoutSession, loading } = useSubscription();
+  const { user } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<string>('teacher_pro_annual');
+  const [promoCode, setPromoCode] = useState('');
+  const [promoStatus, setPromoStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [promoLoading, setPromoLoading] = useState(false);
+
+  const handleRedeemPromoCode = async () => {
+    if (!user) { setPromoStatus({ type: 'error', message: 'Log in to redeem a code.' }); return; }
+    if (!promoCode.trim()) return;
+    setPromoLoading(true);
+    setPromoStatus(null);
+    try {
+      const { error } = await supabase.rpc('redeem_promo_code', { p_code: promoCode.trim(), p_user_id: user.id });
+      if (error) throw error;
+      setPromoStatus({ type: 'success', message: 'Code redeemed! Your account has been updated.' });
+      setPromoCode('');
+    } catch (err: any) {
+      const messages: Record<string, string> = {
+        invalid_code: "That code doesn't exist.",
+        code_inactive: 'That code is no longer active.',
+        code_expired: 'That code has expired.',
+        code_exhausted: "That code has reached its redemption limit.",
+        already_redeemed: "You've already redeemed this code.",
+      };
+      setPromoStatus({ type: 'error', message: messages[err.message] || err.message || 'Could not redeem this code.' });
+    } finally {
+      setPromoLoading(false);
+    }
+  };
 
   const handleUpgrade = async (planId: string) => {
     if (loading) return;
@@ -26,10 +56,10 @@ export default function PricingPage() {
       displayPrice: 'Free Forever',
       description: 'Perfect for trying out the tool',
       features: [
-        'Unlimited report generation',
-        'All report templates',
-        'All comment types',
-        'Community support'
+        'Unlimited template creation',
+        '$1 of AI credit for building templates',
+        'Write up to 5 reports',
+        'All comment types'
       ],
       buttonText: 'Current Plan',
       buttonStyle: 'disabled',
@@ -44,11 +74,10 @@ export default function PricingPage() {
       popular: true,
       features: [
         'Everything in Free Plan',
-        'PDF export functionality',
-        'Priority customer support',
-        'Remove branding options',
-        'Advanced templates',
-        'Bulk export features'
+        'Unlimited reports',
+        '$4 of AI credit for building templates',
+        'Template sharing',
+        'Priority customer support'
       ],
       buttonText: 'Join Early Access List',
       buttonStyle: 'primary',
@@ -277,6 +306,43 @@ export default function PricingPage() {
             </button>
           </div>
         ))}
+      </div>
+
+      {/* Promo Code */}
+      <div style={{
+        maxWidth: '420px',
+        margin: '0 auto 60px auto',
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '24px',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+        textAlign: 'center'
+      }}>
+        <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b', marginBottom: '12px' }}>
+          Have a code?
+        </h3>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input
+            type="text"
+            value={promoCode}
+            onChange={(e) => setPromoCode(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleRedeemPromoCode(); }}
+            placeholder="Enter code"
+            style={{ flex: 1, padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}
+          />
+          <button
+            onClick={handleRedeemPromoCode}
+            disabled={promoLoading || !promoCode.trim()}
+            style={{ padding: '10px 18px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', fontSize: '14px', cursor: promoLoading ? 'not-allowed' : 'pointer', opacity: promoLoading ? 0.7 : 1 }}
+          >
+            {promoLoading ? '...' : 'Redeem'}
+          </button>
+        </div>
+        {promoStatus && (
+          <p style={{ marginTop: '10px', fontSize: '13px', color: promoStatus.type === 'success' ? '#059669' : '#dc2626' }}>
+            {promoStatus.message}
+          </p>
+        )}
       </div>
 
       {/* FAQ Section */}

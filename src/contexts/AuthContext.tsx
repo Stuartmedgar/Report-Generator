@@ -64,11 +64,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Check if user is approved in our users table
+  // Check if the user's email is verified and load their profile row
   const checkUserApproval = async (supabaseUser: SupabaseUser) => {
     try {
-      console.log('CheckApproval: Checking approval for user ID:', supabaseUser.id);
-      
+      console.log('CheckApproval: Checking email verification for user ID:', supabaseUser.id);
+
+      // Email verification (Supabase's own confirmation flow) is the login gate now —
+      // no more manual admin approval. This is already on the session, no DB round-trip needed.
+      if (!supabaseUser.email_confirmed_at) {
+        console.log('CheckApproval: Email not yet verified - setting user to null');
+        setUser(null);
+        throw new Error('Please verify your email before logging in. Check your inbox for a confirmation link.');
+      }
+
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -83,38 +91,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       console.log('CheckApproval: User data from database:', data);
-      console.log('CheckApproval: Approved status:', data?.is_approved);
-      console.log('CheckApproval: Approved type:', typeof data?.is_approved);
 
-      // Check if user is approved (using correct column name)
-      const isApproved = data && (data.is_approved === true || data.is_approved === 'true');
-      
-      if (isApproved) {
-        console.log('CheckApproval: User is APPROVED - setting user state');
-        // User is approved, set the user state
-        const mappedUser: User = {
-          id: supabaseUser.id,
-          email: supabaseUser.email || '',
-          user_metadata: {
-            full_name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
-            first_name: data.first_name,
-            last_name: data.last_name,
-          },
-          app_metadata: {
-            roles: data.role ? [data.role] : ['teacher'],
-            plan: 'full_access',
-          },
-          created_at: data.created_at,
-          updated_at: data.updated_at,
-        };
-        setUser(mappedUser);
-        console.log('CheckApproval: User state set successfully');
-      } else {
-        // User exists but not approved
-        console.log('CheckApproval: User NOT APPROVED - setting user to null');
-        setUser(null);
-        throw new Error('Your account is pending admin approval. Please wait for an administrator to approve your account.');
-      }
+      const mappedUser: User = {
+        id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        user_metadata: {
+          full_name: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
+          first_name: data.first_name,
+          last_name: data.last_name,
+        },
+        app_metadata: {
+          roles: data.role ? [data.role] : ['teacher'],
+          plan: data.plan || 'free',
+        },
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+      };
+      setUser(mappedUser);
+      console.log('CheckApproval: User state set successfully');
     } catch (error: any) {
       console.error('CheckApproval: Error in checkUserApproval:', error);
       setUser(null);
@@ -185,7 +179,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             first_name: firstName,
             last_name: lastName,
             role: 'teacher',
-            is_approved: false,
+            plan: 'free',
+            ai_credit_balance_cents: 100,
           });
 
         if (insertError) {
@@ -193,7 +188,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           throw insertError;
         }
 
-        console.log('SignUp: User signed up successfully. Awaiting admin approval.');
+        console.log('SignUp: User signed up successfully. Awaiting email verification.');
       }
     } catch (error: any) {
       console.error('SignUp: Error signing up:', error);

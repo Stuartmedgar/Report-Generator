@@ -1,4 +1,16 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { createClient } = require('@supabase/supabase-js');
+
+const PRO_PLAN_CREDIT_CENTS = 400; // $4.00
+
+function supabaseAdmin() {
+  // Reuses the site's existing REACT_APP_SUPABASE_URL if a bare SUPABASE_URL
+  // isn't set separately — same project, just avoids a duplicate Netlify var.
+  const url = process.env.SUPABASE_URL || process.env.REACT_APP_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key);
+}
 
 exports.handler = async (event, context) => {
   const headers = {
@@ -43,55 +55,60 @@ exports.handler = async (event, context) => {
   try {
     // Handle the event
     switch (stripeEvent.type) {
-      case 'checkout.session.completed':
+      case 'checkout.session.completed': {
         const session = stripeEvent.data.object;
-        console.log(`Payment successful for session: ${session.id}`);
-        
-        // Here you would typically:
-        // 1. Save subscription data to your database
-        // 2. Send confirmation email to customer
-        // 3. Update user's account status
-        
-        // For now, just log the successful payment
-        console.log('Subscription created:', {
-          customerId: session.customer,
-          subscriptionId: session.subscription,
-          customerEmail: session.customer_details?.email,
-        });
-        break;
+        const userId = session.client_reference_id || session.metadata?.user_id;
+        console.log(`Payment successful for session: ${session.id}, user: ${userId}`);
 
-      case 'customer.subscription.deleted':
+        const admin = supabaseAdmin();
+        if (admin && userId) {
+          const { error } = await admin
+            .from('users')
+            .update({
+              plan: 'pro',
+              stripe_customer_id: session.customer,
+              stripe_subscription_id: session.subscription,
+              subscription_status: 'active',
+              ai_credit_balance_cents: PRO_PLAN_CREDIT_CENTS,
+            })
+            .eq('id', userId);
+          if (error) console.error('Failed to persist checkout.session.completed:', error);
+        } else {
+          console.error('checkout.session.completed: missing admin client or userId — could not upgrade plan');
+        }
+        break;
+      }
+
+      case 'customer.subscription.deleted': {
         const subscription = stripeEvent.data.object;
         console.log(`Subscription canceled: ${subscription.id}`);
-        
-        // Handle subscription cancellation
-        // 1. Update user's account status
-        // 2. Send cancellation confirmation email
-        // 3. Optionally send feedback survey
-        
-        console.log('Subscription cancelled:', {
-          subscriptionId: subscription.id,
-          customerId: subscription.customer,
-          canceledAt: new Date(subscription.canceled_at * 1000),
-        });
-        break;
 
-      case 'invoice.payment_succeeded':
+        const admin = supabaseAdmin();
+        if (admin) {
+          const { error } = await admin
+            .from('users')
+            .update({ plan: 'free', subscription_status: 'canceled' })
+            .eq('stripe_subscription_id', subscription.id);
+          if (error) console.error('Failed to persist customer.subscription.deleted:', error);
+        }
+        break;
+      }
+
+      case 'invoice.payment_succeeded': {
         const invoice = stripeEvent.data.object;
         console.log(`Payment succeeded for invoice: ${invoice.id}`);
-        
-        // Handle successful payment
-        // 1. Extend user's subscription
-        // 2. Send payment confirmation email
-        // 3. Update usage limits if applicable
-        
-        console.log('Payment succeeded:', {
-          customerId: invoice.customer,
-          subscriptionId: invoice.subscription,
-          amount: invoice.amount_paid,
-          currency: invoice.currency,
-        });
+
+        // Renewal top-up — reset the Pro AI credit allowance for the new billing period.
+        const admin = supabaseAdmin();
+        if (admin && invoice.subscription) {
+          const { error } = await admin
+            .from('users')
+            .update({ subscription_status: 'active', ai_credit_balance_cents: PRO_PLAN_CREDIT_CENTS })
+            .eq('stripe_subscription_id', invoice.subscription);
+          if (error) console.error('Failed to persist invoice.payment_succeeded:', error);
+        }
         break;
+      }
 
       case 'invoice.payment_failed':
         const failedInvoice = stripeEvent.data.object;

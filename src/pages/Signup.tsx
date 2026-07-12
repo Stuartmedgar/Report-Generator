@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Signup() {
-  const navigate = useNavigate();
   const { signUp } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -12,6 +11,7 @@ export default function Signup() {
   const [lastName, setLastName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +37,7 @@ export default function Signup() {
 
     try {
       await signUp(email, password, firstName, lastName);
-      navigate('/login');
+      setSuccess(true);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -95,10 +95,25 @@ export default function Signup() {
             fontSize: '16px',
             color: '#64748b'
           }}>
-            Request access to the Report Generator
+            {success ? 'Almost there' : 'Start writing reports faster'}
           </p>
         </div>
 
+        {success ? (
+          <div style={{
+            backgroundColor: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            borderRadius: '8px',
+            padding: '20px',
+            fontSize: '15px',
+            color: '#1e40af',
+            lineHeight: 1.6
+          }}>
+            <strong>Check your email</strong> — we've sent a verification link to <strong>{email}</strong>.
+            Click it to activate your account, then come back and log in.
+          </div>
+        ) : (
+        <>
         {/* Error Message */}
         {error && (
           <div style={{
@@ -283,9 +298,10 @@ export default function Signup() {
           fontSize: '14px',
           color: '#1e40af'
         }}>
-          <strong>Note:</strong> Your account will need admin approval before you can log in. 
-          You'll receive confirmation once approved.
+          <strong>Free plan:</strong> $1 of AI credit for building templates, write up to 5 reports, unlimited template creation.
         </div>
+        </>
+        )}
 
         {/* Login Link */}
         <div style={{

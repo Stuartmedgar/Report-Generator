@@ -5,6 +5,7 @@ import { useData } from '../contexts/DataContext';
 import { TemplateSection } from '../types';
 import PageNav from '../components/PageNav';
 import { SUBJECTS } from '../data/starterComments';
+import { callGenerateTemplate, InsufficientCreditError } from '../services/aiTemplateService';
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 
@@ -24,8 +25,6 @@ interface BuiltSection {
 
 interface Heading { name: string; comments: string[]; }
 interface GeneratedTemplate { name: string; sections: TemplateSection[]; }
-
-const SUPABASE_URL = 'https://wozbrojwuzktwrzngllh.supabase.co/functions/v1/generate-template';
 
 function getPronounCapital(p: PronounSet) {
   return p.split('/')[0].charAt(0).toUpperCase() + p.split('/')[0].slice(1);
@@ -249,24 +248,16 @@ export default function ImportTemplate() {
   const ensureRestructured = async (): Promise<string> => {
     if (restructuredReports) return restructuredReports;
     try {
-      const res = await fetch(SUPABASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'restructure', reportText: rawReportText, subject: subject || '', reportStructure: getReportStructureText() }) });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.restructuredText) { setRestructuredReports(data.restructuredText); return data.restructuredText; }
-      }
-    } catch { /* fall back to raw */ }
+      const data = await callGenerateTemplate({ mode: 'restructure', reportText: rawReportText, subject: subject || '', reportStructure: getReportStructureText() });
+      if (data.restructuredText) { setRestructuredReports(data.restructuredText); return data.restructuredText; }
+    } catch (err) {
+      if (err instanceof InsufficientCreditError) throw err;
+      // any other failure — fall back to the raw, unrestructured text
+    }
     return rawReportText;
   };
 
-  const callApi = async (body: any) => {
-    const response = await fetch(SUPABASE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) throw new Error('API call failed');
-    return response.json();
-  };
+  const callApi = callGenerateTemplate;
 
   // ─── SPLIT SECTIONS ───────────────────────────────────────────────────────
 
@@ -396,7 +387,7 @@ export default function ImportTemplate() {
         setMainStep('preview');
       }
     } catch (err: any) {
-      setError('Quick build failed. Please try the guided wizard instead.');
+      setError(err instanceof InsufficientCreditError ? err.message : 'Quick build failed. Please try the guided wizard instead.');
     } finally {
       setIsLoading(false);
     }
@@ -471,7 +462,7 @@ export default function ImportTemplate() {
       };
       addSection(newSection);
     } catch (err: any) {
-      setError('Rewrite failed. Please try again.');
+      setError(err instanceof InsufficientCreditError ? err.message : 'Rewrite failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
