@@ -55,7 +55,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 // ─── HOME COMPONENT ───────────────────────────────────────────────────────────
 
 function Home() {
-  const { user, loading, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const { state } = useData();
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
@@ -66,12 +66,6 @@ function Home() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  // "/" is public now (no login wall just to land on the site) — logged-out
-  // visitors get bounced to the pricing/marketing page instead of /login.
-  if (!loading && !user) {
-    return <Navigate to="/pricing" replace />;
-  }
 
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to logout?')) {
@@ -150,25 +144,40 @@ function Home() {
               borderRadius: '10px', boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
               padding: '8px', minWidth: '180px', zIndex: 100
             }}>
-              <Link to="/manage-templates" style={{ display: 'block', padding: '10px 14px', color: '#374151', textDecoration: 'none', fontSize: '14px', borderRadius: '6px' }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-              >📝 Manage Templates</Link>
-              <Link to="/class-management" style={{ display: 'block', padding: '10px 14px', color: '#374151', textDecoration: 'none', fontSize: '14px', borderRadius: '6px' }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-              >👥 Your Classes</Link>
-              <Link to="/view-reports" style={{ display: 'block', padding: '10px 14px', color: '#374151', textDecoration: 'none', fontSize: '14px', borderRadius: '6px' }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-              >📋 View Reports</Link>
-              <div style={{ borderTop: '1px solid #f1f5f9', margin: '6px 0' }} />
-              <button
-                onClick={handleLogout}
-                style={{ display: 'block', width: '100%', padding: '10px 14px', color: '#ef4444', background: 'none', border: 'none', textAlign: 'left', fontSize: '14px', cursor: 'pointer', borderRadius: '6px' }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fff5f5'}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-              >Sign Out</button>
+              {user ? (
+                <>
+                  <Link to="/manage-templates" style={{ display: 'block', padding: '10px 14px', color: '#374151', textDecoration: 'none', fontSize: '14px', borderRadius: '6px' }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >📝 Manage Templates</Link>
+                  <Link to="/class-management" style={{ display: 'block', padding: '10px 14px', color: '#374151', textDecoration: 'none', fontSize: '14px', borderRadius: '6px' }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >👥 Your Classes</Link>
+                  <Link to="/view-reports" style={{ display: 'block', padding: '10px 14px', color: '#374151', textDecoration: 'none', fontSize: '14px', borderRadius: '6px' }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >📋 View Reports</Link>
+                  <div style={{ borderTop: '1px solid #f1f5f9', margin: '6px 0' }} />
+                  <button
+                    onClick={handleLogout}
+                    style={{ display: 'block', width: '100%', padding: '10px 14px', color: '#ef4444', background: 'none', border: 'none', textAlign: 'left', fontSize: '14px', cursor: 'pointer', borderRadius: '6px' }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fff5f5'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >Sign Out</button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login" style={{ display: 'block', padding: '10px 14px', color: '#374151', textDecoration: 'none', fontSize: '14px', borderRadius: '6px' }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >Log In</Link>
+                  <Link to="/signup" style={{ display: 'block', padding: '10px 14px', color: '#374151', textDecoration: 'none', fontSize: '14px', borderRadius: '6px' }}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >Sign Up Free</Link>
+                </>
+              )}
             </div>
           )}
         </div>
