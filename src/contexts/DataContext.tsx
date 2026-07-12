@@ -296,6 +296,40 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return `${key}_${userId}`;
   };
 
+  const ANONYMOUS_USER_ID = 'admin-test-2024-reportgenerator-com';
+  const LOCAL_STORAGE_KEYS = [
+    'reportTemplates', 'reportClasses', 'reportReports',
+    'savedRatedComments', 'savedStandardComments', 'savedAssessmentComments',
+    'savedPersonalisedComments', 'savedNextStepsComments', 'savedQualitiesComments'
+  ];
+
+  // A teacher can build templates and write reports with no account at all —
+  // that work is saved under the shared anonymous key. The moment they sign
+  // in for the first time, storage switches to a per-account key, which
+  // would otherwise make their existing work appear to vanish. Copy it
+  // across once, only when the account's own key is still empty so we never
+  // clobber data that's already tied to this account.
+  const claimAnonymousLocalData = () => {
+    const userId = getUserId();
+    if (userId === ANONYMOUS_USER_ID) return;
+
+    const accountHasData = LOCAL_STORAGE_KEYS.some(k => localStorage.getItem(`${k}_${userId}`));
+    if (accountHasData) return;
+
+    let claimed = false;
+    LOCAL_STORAGE_KEYS.forEach(k => {
+      const anonValue = localStorage.getItem(`${k}_${ANONYMOUS_USER_ID}`);
+      if (anonValue) {
+        localStorage.setItem(`${k}_${userId}`, anonValue);
+        claimed = true;
+      }
+    });
+    if (claimed) {
+      LOCAL_STORAGE_KEYS.forEach(k => localStorage.removeItem(`${k}_${ANONYMOUS_USER_ID}`));
+      console.log('Claimed anonymous local data into account', userId);
+    }
+  };
+
   // ─── CLOUD SYNC ───────────────────────────────────────────────────────────
 
   const syncFromCloud = async () => {
@@ -409,6 +443,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     try {
       isInitialLoadRef.current = true;
       dispatch({ type: 'SET_LOADING', payload: true });
+
+      if (user) {
+        claimAnonymousLocalData();
+      }
 
       // Always load from localStorage first for immediate display
       loadLocalData();

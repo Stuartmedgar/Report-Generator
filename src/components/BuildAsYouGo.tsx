@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { TemplateSection, SectionType } from '../types';
 import { useData } from '../contexts/DataContext';
 import { SUBJECT_EXTRAS, SUBJECTS, STRENGTHS_ADDABLE_UNIVERSAL, STRENGTHS_ADDABLE_BY_SUBJECT, NEXT_STEPS_ADDABLE_UNIVERSAL, NEXT_STEPS_ADDABLE_BY_SUBJECT, DEVELOPMENT_ADDABLE_UNIVERSAL, DEVELOPMENT_ADDABLE_BY_SUBJECT, AddableButton } from '../data/starterComments';
-import { callGenerateTemplate, InsufficientCreditError } from '../services/aiTemplateService';
+import { callGenerateTemplate, InsufficientCreditError, AuthRequiredError } from '../services/aiTemplateService';
 
 interface BuildAsYouGoProps {
   templateName: string;
@@ -167,6 +167,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
   const [movingStatementKey, setMovingStatementKey] = useState<{ buttonIdx: number; stmtIdx: number } | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [aiAuthRequired, setAiAuthRequired] = useState(false);
   const [activePlaceholder, setActivePlaceholder] = useState<string | null>(null);
   const [showPool, setShowPool] = useState(false);
   const [standardCandidateName, setStandardCandidateName] = useState('');
@@ -308,7 +309,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
 
   const handleAiFindInReports = async (sName?: string, sType?: string) => {
     if (!hasReports) return;
-    setAiLoading(true); setAiError(null);
+    setAiLoading(true); setAiError(null); setAiAuthRequired(false);
     const activeName = sName || sectionName || '';
     const activeType = sType || question?.sectionType || 'qualities';
     const isRated = activeType === 'rated-comment' || activeType === 'assessment-comment';
@@ -375,7 +376,10 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onCo
       });
       setHighlightedExamples([]);
       setAiUsedForSection(true);
-    } catch (err) { setAiError(err instanceof InsufficientCreditError ? err.message : 'AI extraction failed. Please try again.'); }
+    } catch (err) {
+      setAiAuthRequired(err instanceof AuthRequiredError);
+      setAiError(err instanceof AuthRequiredError || err instanceof InsufficientCreditError ? err.message : 'AI extraction failed. Please try again.');
+    }
     finally { setAiLoading(false); }
   };
 
@@ -772,7 +776,13 @@ const handleSaveAndWrite = () => {
           </div>
         )}
         {aiLoading && <div style={{ marginBottom: '16px', padding: '14px 16px', backgroundColor: '#faf5ff', border: '2px solid #8b5cf6', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}><div style={{ display: 'flex', gap: '4px' }}>{[0,1,2].map(i => <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#8b5cf6', animation: 'pulse 1.2s ease-in-out infinite', animationDelay: `${i * 0.2}s` }} />)}</div><div style={{ fontSize: '13px', color: '#7c3aed' }}>{isRestructuring ? 'Structuring your reports first (once only)...' : 'Searching your reports...'}</div><style>{`@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}`}</style></div>}
-        {aiError && <div style={{ marginBottom: '16px', padding: '10px 14px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '13px', color: '#b91c1c' }}>⚠️ {aiError}</div>}
+        {aiError && aiAuthRequired && (
+          <div style={{ marginBottom: '16px', padding: '14px 16px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', fontSize: '13px', color: '#1e40af', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+            <span>🔒 {aiError}</span>
+            <button onClick={() => navigate('/signup')} style={{ padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 600, fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Sign Up Free</button>
+          </div>
+        )}
+        {aiError && !aiAuthRequired && <div style={{ marginBottom: '16px', padding: '10px 14px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '13px', color: '#b91c1c' }}>⚠️ {aiError}</div>}
         {!hasReports && sType !== 'standard-comment' && <div style={{ marginBottom: '16px', padding: '12px 16px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', fontSize: '13px', color: '#78350f', lineHeight: '1.5' }}>💡 <strong>Have existing reports?</strong> Paste them in the right panel, select an example sentence, then click "Find in my reports" to auto-populate statements.</div>}
       </div>
     );
@@ -856,13 +866,16 @@ const handleSaveAndWrite = () => {
     // ── Step -1: Fixed / Standard Comment ──────────────────────────────────
     if (currentStep === -1) {
     const handleFindFixed = async () => {
-      setAiLoading(true); setAiError(null);
+      setAiLoading(true); setAiError(null); setAiAuthRequired(false);
       try {
         const data = await callGenerateTemplate({ mode: 'find-fixed', reportText: pastedReports, subject: subject || '' });
         const candidates: string[] = data.statements || [];
         if (candidates.length === 0) { setAiError('No repeated fixed statements found. You can add them manually below.'); }
         else { setAiCandidates(candidates); setSelectedCandidates(new Set(candidates)); setHasStandardComment('candidates'); }
-      } catch (err) { setAiError(err instanceof InsufficientCreditError ? err.message : 'AI scan failed. Please try again or add statements manually.'); }
+      } catch (err) {
+        setAiAuthRequired(err instanceof AuthRequiredError);
+        setAiError(err instanceof AuthRequiredError || err instanceof InsufficientCreditError ? err.message : 'AI scan failed. Please try again or add statements manually.');
+      }
       finally { setAiLoading(false); }
     };
     const confirmCandidates = () => {

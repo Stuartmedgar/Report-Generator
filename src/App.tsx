@@ -211,6 +211,26 @@ function Home() {
           </p>
         </div>
 
+        {/* Free-tier explainer — only shown to logged-out visitors, so the
+            AI sign-up prompt they'll hit later isn't a surprise */}
+        {!user && (
+          <div style={{
+            maxWidth: '480px',
+            margin: `0 0 ${isMobile ? '28px' : '36px'} 0`,
+            padding: '14px 18px',
+            backgroundColor: '#f0f9ff',
+            border: '1px solid #bae6fd',
+            borderRadius: '10px',
+            fontSize: isMobile ? '13px' : '14px',
+            color: '#075985',
+            textAlign: 'center',
+            lineHeight: 1.6
+          }}>
+            No account needed to build templates by hand or write your first 5 reports.
+            Free sign-up only kicks in if you want AI to help build a template from your existing reports.
+          </div>
+        )}
+
         {/* Main buttons */}
         <div style={{
           display: 'grid',
@@ -439,73 +459,33 @@ function App() {
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/subscription/success" element={<SubscriptionSuccess />} />
 
-                {/* Home — public route; redirects logged-out visitors to /pricing internally */}
+                {/* Home — public route */}
                 <Route path="/" element={<Home />} />
 
-                {/* Single onboarding entry point — replaces /select-class, /step2, /get-template, /select-template, /pick-template */}
-                <Route path="/start" element={
-                  <ProtectedRoute>
-                    <StartReports />
-                  </ProtectedRoute>
-                } />
+                {/*
+                  Free tier requires no account at all: manual template building,
+                  writing up to 5 reports, and managing classes/templates/reports
+                  all work anonymously off localStorage. Only the AI-powered
+                  actions (Quick Build, wizard AI extraction, etc.) require an
+                  account — gated inline at the point of use, not at the route.
+                */}
 
-                <Route path="/no-reports" element={
-                  <ProtectedRoute>
-                    <NoReports />
-                  </ProtectedRoute>
-                } />
+                {/* Single onboarding entry point — replaces /select-class, /step2, /get-template, /select-template, /pick-template */}
+                <Route path="/start" element={<StartReports />} />
+
+                <Route path="/no-reports" element={<NoReports />} />
 
                 {/* Core app routes */}
-                <Route path="/write-reports" element={
-                  <ProtectedRoute>
-                    <WriteReports />
-                  </ProtectedRoute>
-                } />
-                <Route path="/create-template" element={
-                  <ProtectedRoute>
-                    <CreateTemplate />
-                  </ProtectedRoute>
-                } />
-                <Route path="/manage-templates" element={
-                  <ProtectedRoute>
-                    <ManageTemplates />
-                  </ProtectedRoute>
-                } />
-                <Route path="/import-template" element={
-                  <ProtectedRoute>
-                    <ImportTemplate />
-                  </ProtectedRoute>
-                } />
-                <Route path="/template-review" element={
-                  <ProtectedRoute>
-                    <TemplateReview />
-                  </ProtectedRoute>
-                } />
-                <Route path="/class-management" element={
-                  <ProtectedRoute>
-                    <ClassManagement />
-                  </ProtectedRoute>
-                } />
-                <Route path="/view-reports" element={
-                  <ProtectedRoute>
-                    <ViewReports />
-                  </ProtectedRoute>
-                } />
-                <Route path="/view-reports/:classId" element={
-                  <ProtectedRoute>
-                    <ClassReports />
-                  </ProtectedRoute>
-                } />
-                <Route path="/view-reports/:classId/student/:studentId" element={
-                  <ProtectedRoute>
-                    <IndividualReportViewer />
-                  </ProtectedRoute>
-                } />
-                <Route path="/view-reports/:classId/all" element={
-                  <ProtectedRoute>
-                    <AllReportsViewer />
-                  </ProtectedRoute>
-                } />
+                <Route path="/write-reports" element={<WriteReports />} />
+                <Route path="/create-template" element={<CreateTemplate />} />
+                <Route path="/manage-templates" element={<ManageTemplates />} />
+                <Route path="/import-template" element={<ImportTemplate />} />
+                <Route path="/template-review" element={<TemplateReview />} />
+                <Route path="/class-management" element={<ClassManagement />} />
+                <Route path="/view-reports" element={<ViewReports />} />
+                <Route path="/view-reports/:classId" element={<ClassReports />} />
+                <Route path="/view-reports/:classId/student/:studentId" element={<IndividualReportViewer />} />
+                <Route path="/view-reports/:classId/all" element={<AllReportsViewer />} />
               </Routes>
             </div>
           </Router>

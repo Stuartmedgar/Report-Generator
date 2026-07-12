@@ -12,6 +12,13 @@ export class InsufficientCreditError extends Error {
   }
 }
 
+export class AuthRequiredError extends Error {
+  constructor() {
+    super('Sign up free to use AI-assisted building.');
+    this.name = 'AuthRequiredError';
+  }
+}
+
 export async function callGenerateTemplate(body: Record<string, any>): Promise<any> {
   const { data: { session } } = await supabase.auth.getSession();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -34,6 +41,9 @@ export async function callGenerateTemplate(body: Record<string, any>): Promise<a
 
   if (response.status === 402 || data?.error === 'insufficient_credit') {
     throw new InsufficientCreditError();
+  }
+  if (response.status === 401) {
+    throw new AuthRequiredError();
   }
   if (!response.ok) {
     throw new Error(data?.error || 'API call failed');

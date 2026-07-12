@@ -5,7 +5,7 @@ import { useData } from '../contexts/DataContext';
 import { TemplateSection } from '../types';
 import PageNav from '../components/PageNav';
 import { SUBJECTS } from '../data/starterComments';
-import { callGenerateTemplate, InsufficientCreditError } from '../services/aiTemplateService';
+import { callGenerateTemplate, InsufficientCreditError, AuthRequiredError } from '../services/aiTemplateService';
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 
@@ -136,6 +136,7 @@ export default function ImportTemplate() {
   const [builtSections, setBuiltSections] = useState<BuiltSection[]>([]);
   const [generatedTemplate, setGeneratedTemplate] = useState<GeneratedTemplate | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [authRequired, setAuthRequired] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [restructuredReports, setRestructuredReports] = useState<string | null>(null);
@@ -357,6 +358,7 @@ export default function ImportTemplate() {
     if (!subject.trim()) { setError('Please enter the subject.'); return; }
     if (!rawReportText.trim()) { setError('Please paste your reports.'); return; }
     setError(null);
+    setAuthRequired(false);
     setIsLoading(true);
     setLoadingMessage(restructuredReports ? 'Reading your reports and identifying sections...' : 'Structuring your reports...');
     try {
@@ -387,7 +389,8 @@ export default function ImportTemplate() {
         setMainStep('preview');
       }
     } catch (err: any) {
-      setError(err instanceof InsufficientCreditError ? err.message : 'Quick build failed. Please try the guided wizard instead.');
+      setAuthRequired(err instanceof AuthRequiredError);
+      setError(err instanceof AuthRequiredError || err instanceof InsufficientCreditError ? err.message : 'Quick build failed. Please try the guided wizard instead.');
     } finally {
       setIsLoading(false);
     }
@@ -407,6 +410,7 @@ export default function ImportTemplate() {
   const handleExtractAndAdd = async (positionType: string, openerType: OpenerType, sectionName: string, scaleType?: string) => {
     if (!selectedText) { setError('Please highlight some text from your reports first.'); return; }
     setError(null);
+    setAuthRequired(false);
     setIsLoading(true);
     setLoadingMessage(restructuredReports ? `Reading all reports to extract ${sectionName} sentences...` : 'Structuring your reports (once only)...');
     try {
@@ -432,6 +436,7 @@ export default function ImportTemplate() {
       };
       addSection(newSection);
     } catch (err: any) {
+      setAuthRequired(err instanceof AuthRequiredError);
       setError(err.message || 'Extraction failed. Please try again.');
     } finally {
       setIsLoading(false);
@@ -440,6 +445,8 @@ export default function ImportTemplate() {
 
   const handleCopySection = async (sourceSection: BuiltSection, openerType: OpenerType) => {
     setIsLoading(true);
+    setError(null);
+    setAuthRequired(false);
     setLoadingMessage(`Rewriting with ${openerType === 'pronoun' ? pronounCapital : '[Name]'}...`);
     try {
       const sourceForRewrite = {
@@ -462,7 +469,8 @@ export default function ImportTemplate() {
       };
       addSection(newSection);
     } catch (err: any) {
-      setError(err instanceof InsufficientCreditError ? err.message : 'Rewrite failed. Please try again.');
+      setAuthRequired(err instanceof AuthRequiredError);
+      setError(err instanceof AuthRequiredError || err instanceof InsufficientCreditError ? err.message : 'Rewrite failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -746,7 +754,13 @@ export default function ImportTemplate() {
             </div>
           )}
         </div>
-        {error && <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px', marginBottom: '12px', color: '#b91c1c', fontSize: '14px' }}>⚠️ {error}</div>}
+        {error && authRequired && (
+          <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '12px', marginBottom: '12px', color: '#1e40af', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+            <span>🔒 {error}</span>
+            <button onClick={() => navigate('/signup')} style={{ padding: '8px 16px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 600, fontSize: '13px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Sign Up Free</button>
+          </div>
+        )}
+        {error && !authRequired && <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px', marginBottom: '12px', color: '#b91c1c', fontSize: '14px' }}>⚠️ {error}</div>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <button onClick={handleQuickBuild} style={{ ...btnP, width: '100%', padding: '16px', fontSize: '16px' }}>⚡ Quick Build with AI — 2 minutes</button>
         </div>
@@ -799,7 +813,13 @@ export default function ImportTemplate() {
                 </>}
               </div>
             )}
-            {error && <div style={{ margin: '8px 12px 0', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '8px 12px', fontSize: '13px', color: '#b91c1c', flexShrink: 0 }}>⚠️ {error}</div>}
+            {error && authRequired && (
+              <div style={{ margin: '8px 12px 0', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '8px 12px', fontSize: '13px', color: '#1e40af', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                <span>🔒 {error}</span>
+                <button onClick={() => navigate('/signup')} style={{ padding: '6px 12px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 600, fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Sign Up Free</button>
+              </div>
+            )}
+            {error && !authRequired && <div style={{ margin: '8px 12px 0', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '8px 12px', fontSize: '13px', color: '#b91c1c', flexShrink: 0 }}>⚠️ {error}</div>}
             <div style={{ flex: 1, overflow: 'auto', padding: '12px' }}>
               {canCopyLast && (
                 <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
