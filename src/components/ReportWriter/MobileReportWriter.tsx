@@ -28,6 +28,7 @@ interface MobileReportWriterProps {
     handleFinish: () => void;
     handleViewAllReports: () => void;
     handleSaveAsNewTemplate: () => void;
+    handleAddStudent: (firstName: string, lastName: string) => void;
   };
   reportLogic: {
     setSectionData: any;
@@ -134,6 +135,17 @@ export const MobileReportWriter: React.FC<MobileReportWriterProps> = ({
             }}>
               Student {currentStudentIndex + 1} of {students.length} • Swipe for preview →
             </p>
+            <button
+              onClick={() => {
+                const firstName = window.prompt("New pupil's first name:");
+                if (!firstName || !firstName.trim()) return;
+                const lastName = window.prompt("New pupil's last name (shortened to 2 letters for privacy):") || '';
+                navigationHandlers.handleAddStudent(firstName, lastName);
+              }}
+              style={{ marginTop: '8px', padding: '6px 12px', backgroundColor: '#f8fafc', color: '#374151', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              + Add Pupil
+            </button>
           </div>
 
           {/* Clean Section Cards */}

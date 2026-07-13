@@ -18,6 +18,15 @@ import { ReportWriterTour } from './ReportWriterTour';
 
 const FREE_PLAN_REPORT_LIMIT = 5;
 
+// Same privacy policy as CreateClass.tsx — surnames stay local-only and are
+// shortened to 2 letters, whether the pupil was added upfront or mid-session.
+function truncateSurname(surname: string): string {
+  if (!surname || surname.length === 0) return '';
+  const truncated = surname.slice(0, 2);
+  if (truncated.length === 1) return truncated.charAt(0).toUpperCase();
+  return truncated.charAt(0).toUpperCase() + truncated.charAt(1).toLowerCase();
+}
+
 interface ReportWriterProps {
   template: Template;
   classData: any;
@@ -63,6 +72,67 @@ function shapeForStandardBuilder(section: any) {
   return { name: section.name || '', content: section.data?.content || '' };
 }
 
+// ─── ADD FIRST STUDENT SCREEN ─────────────────────────────────────────────────
+// Module-level (not nested in ReportWriter's render) so its inputs don't lose
+// focus on every keystroke — see the "inner component" gotcha in CLAUDE.md.
+
+const AddFirstStudentScreen: React.FC<{
+  onAdd: (firstName: string, lastName: string) => void;
+  onBack: () => void;
+}> = ({ onAdd, onBack }) => {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+
+  const handleSubmit = () => {
+    if (!firstName.trim()) return;
+    onAdd(firstName, lastName);
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb', padding: '24px' }}>
+      <div style={{ maxWidth: '420px', width: '100%', textAlign: 'center', backgroundColor: 'white', borderRadius: '12px', padding: '32px', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
+        <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b', marginBottom: '8px' }}>
+          Add your first pupil
+        </h2>
+        <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '20px', lineHeight: 1.6 }}>
+          This class doesn't have any pupils yet — add them one at a time as you write, or as many as you like right now.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
+          <input
+            type="text"
+            placeholder="First name"
+            value={firstName}
+            onChange={e => setFirstName(e.target.value)}
+            autoFocus
+            onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
+            style={{ padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
+          />
+          <input
+            type="text"
+            placeholder="Last name (shortened to 2 letters for privacy)"
+            value={lastName}
+            onChange={e => setLastName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
+            style={{ padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+          <button
+            onClick={handleSubmit}
+            disabled={!firstName.trim()}
+            style={{ padding: '10px 20px', backgroundColor: firstName.trim() ? '#10b981' : '#e2e8f0', color: firstName.trim() ? 'white' : '#94a3b8', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: firstName.trim() ? 'pointer' : 'not-allowed' }}
+          >
+            Add Pupil & Start Writing
+          </button>
+          <button onClick={onBack} style={{ padding: '10px 20px', backgroundColor: 'white', color: '#374151', border: '1px solid #d1d5db', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
+            Back
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── BUILDER OVERLAY ─────────────────────────────────────────────────────────
 
 const BuilderOverlay: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -88,10 +158,11 @@ const BuilderOverlay: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 
-function ReportWriter({ template, classData, students, onBack, startStudentIndex = 0, tourSource, disableReportSaving = false, exitPath = '/view-reports' }: ReportWriterProps) {
+function ReportWriter({ template, classData, students: initialStudents, onBack, startStudentIndex = 0, tourSource, disableReportSaving = false, exitPath = '/view-reports' }: ReportWriterProps) {
   const navigate = useNavigate();
-  const { updateTemplate, getReport, state: dataState } = useData();
+  const { updateTemplate, updateClass, getReport, state: dataState } = useData();
   const { user } = useAuth();
+  const [students, setStudents] = useState<Student[]>(initialStudents);
   const [currentStudentIndex, setCurrentStudentIndex] = useState(startStudentIndex);
   const [showSectionOptions, setShowSectionOptions] = useState<number | null>(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -115,6 +186,23 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
 
   const reportLogic = useReportLogic({ template, classData, currentStudent, dynamicSections, setDynamicSections, disableReportSaving });
   const currentSectionData = reportLogic.sectionData;
+
+  // Lets a teacher build the class roster as they go, instead of requiring
+  // the full pupil list upfront in Create Class. Persists to the class
+  // immediately and jumps straight to writing the new pupil's report.
+  const handleAddStudent = (firstName: string, lastName: string) => {
+    const trimmedFirst = firstName.trim();
+    if (!trimmedFirst) return;
+    const newStudent: Student = {
+      id: `${Date.now()}${Math.random().toString(36).slice(2, 9)}`,
+      firstName: trimmedFirst,
+      lastName: truncateSurname(lastName.trim()),
+    };
+    const updatedStudents = [...students, newStudent];
+    setStudents(updatedStudents);
+    updateClass({ ...classData, students: updatedStudents });
+    setCurrentStudentIndex(updatedStudents.length - 1);
+  };
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -194,7 +282,8 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
       await promptSaveTemplate();
       navigate(exitPath);
     },
-    handleSaveAsNewTemplate: reportLogic.handleSaveAsNewTemplate
+    handleSaveAsNewTemplate: reportLogic.handleSaveAsNewTemplate,
+    handleAddStudent
   };
 
   // Touch handlers
@@ -333,6 +422,12 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
     showQualitiesCommentBuilder, setShowQualitiesCommentBuilder,
     handleSaveEditedSection
   };
+
+  // No pupils yet — the class was created name-only, so let the teacher add
+  // their first pupil right here instead of forcing a trip back to Create Class.
+  if (students.length === 0) {
+    return <AddFirstStudentScreen onAdd={handleAddStudent} onBack={onBack} />;
+  }
 
   // Free-plan report cap — reports are counted the first time a teacher moves
   // past a student (handleSaveReport, called from next/previous navigation),
@@ -575,6 +670,7 @@ function ReportWriter({ template, classData, students, onBack, startStudentIndex
               onNextStudent={navigationHandlers.handleNextStudent}
               onFinish={navigationHandlers.handleFinish}
               onViewAllReports={navigationHandlers.handleViewAllReports}
+              onAddStudent={disableReportSaving ? undefined : navigationHandlers.handleAddStudent}
               pronounOverride={undefined}
               onPronounChange={undefined}
               isPreview={disableReportSaving}

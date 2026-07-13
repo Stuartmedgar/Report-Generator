@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 interface StudentNavigationProps {
   currentStudentIndex: number;
@@ -9,6 +9,7 @@ interface StudentNavigationProps {
   onNextStudent: () => void;
   onFinish: () => void;
   onViewAllReports: () => void;
+  onAddStudent?: (firstName: string, lastName: string) => void;
   pronounOverride?: string;
   onPronounChange?: (pronoun: string) => void;
   isPreview?: boolean;
@@ -23,10 +24,22 @@ export const StudentNavigation: React.FC<StudentNavigationProps> = ({
   onNextStudent,
   onFinish,
   onViewAllReports,
+  onAddStudent,
   pronounOverride,
   onPronounChange,
   isPreview = false,
 }) => {
+  const [showAddStudent, setShowAddStudent] = useState(false);
+  const [newFirstName, setNewFirstName] = useState('');
+  const [newLastName, setNewLastName] = useState('');
+
+  const handleAddStudentSubmit = () => {
+    if (!newFirstName.trim() || !onAddStudent) return;
+    onAddStudent(newFirstName, newLastName);
+    setNewFirstName('');
+    setNewLastName('');
+    setShowAddStudent(false);
+  };
   const pronounOptions = [
     { value: '', label: 'Name' },
     { value: 'he', label: 'He/His' },
@@ -121,6 +134,53 @@ export const StudentNavigation: React.FC<StudentNavigationProps> = ({
             {currentStudentIndex === studentsLength - 1 ? 'Finish' : 'Next →'}
           </button>
         </div>
+
+        {/* Add another pupil — builds the class roster as you go */}
+        {onAddStudent && (
+          showAddStudent ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
+              <input
+                type="text"
+                placeholder="First name"
+                value={newFirstName}
+                onChange={e => setNewFirstName(e.target.value)}
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Enter') handleAddStudentSubmit(); }}
+                style={{ padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+              />
+              <input
+                type="text"
+                placeholder="Last name (shortened to 2 letters)"
+                value={newLastName}
+                onChange={e => setNewLastName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleAddStudentSubmit(); }}
+                style={{ padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
+              />
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button
+                  onClick={handleAddStudentSubmit}
+                  disabled={!newFirstName.trim()}
+                  style={{ flex: 1, padding: '7px 10px', backgroundColor: newFirstName.trim() ? '#10b981' : '#e2e8f0', color: newFirstName.trim() ? 'white' : '#94a3b8', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: newFirstName.trim() ? 'pointer' : 'not-allowed' }}
+                >
+                  Add Pupil
+                </button>
+                <button
+                  onClick={() => { setShowAddStudent(false); setNewFirstName(''); setNewLastName(''); }}
+                  style={{ padding: '7px 10px', backgroundColor: 'white', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowAddStudent(true)}
+              style={{ padding: '8px 12px', backgroundColor: 'white', color: '#374151', border: '1px dashed #d1d5db', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              + Add Pupil
+            </button>
+          )
+        )}
       </div>
 
       {/* Progress */}

@@ -92,7 +92,6 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
 
   const handleCreateClass = () => {
     if (!className.trim()) { alert('Please enter a class name'); return; }
-    if (students.length === 0) { alert('Please add at least one student'); return; }
 
     const newClassId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
     const newClass = {
@@ -138,7 +137,7 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
             Create a Class
           </h1>
           <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>
-            Paste your class list and we'll set everything up for you.
+            Paste your class list now, or skip this and add pupils one at a time while you write reports.
           </p>
         </div>
 
@@ -289,20 +288,20 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
           {/* Create class button */}
           <button
             onClick={handleCreateClass}
-            disabled={!className.trim() || students.length === 0}
+            disabled={!className.trim()}
             style={{
-              backgroundColor: (className.trim() && students.length > 0) ? '#10b981' : '#e2e8f0',
-              color: (className.trim() && students.length > 0) ? 'white' : '#94a3b8',
+              backgroundColor: className.trim() ? '#10b981' : '#e2e8f0',
+              color: className.trim() ? 'white' : '#94a3b8',
               padding: '14px 32px', border: 'none', borderRadius: '12px',
               fontSize: '16px', fontWeight: '700',
-              cursor: (className.trim() && students.length > 0) ? 'pointer' : 'not-allowed',
+              cursor: className.trim() ? 'pointer' : 'not-allowed',
               width: '100%', transition: 'background-color 0.15s',
-              boxShadow: (className.trim() && students.length > 0) ? '0 4px 14px rgba(16,185,129,0.3)' : 'none'
+              boxShadow: className.trim() ? '0 4px 14px rgba(16,185,129,0.3)' : 'none'
             }}
-            onMouseEnter={e => { if (className.trim() && students.length > 0) (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#059669'; }}
-            onMouseLeave={e => { if (className.trim() && students.length > 0) (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#10b981'; }}
+            onMouseEnter={e => { if (className.trim()) (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#059669'; }}
+            onMouseLeave={e => { if (className.trim()) (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#10b981'; }}
           >
-            Create Class →
+            {students.length > 0 ? 'Create Class →' : 'Create Class (add pupils as you write) →'}
           </button>
 
         </div>
