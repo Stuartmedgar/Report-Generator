@@ -30,7 +30,7 @@ export default function ClassManagement() {
     })();
     if (classId) {
       sessionStorage.setItem('selectedClassId', classId);
-      navigate('/step2');
+      navigate('/start');
     }
   };
 
@@ -49,7 +49,7 @@ export default function ClassManagement() {
 
   const handleSelectClassForReports = (classId: string) => {
     sessionStorage.setItem('selectedClassId', classId);
-    navigate('/step2');
+    navigate('/start');
   };
 
   const handleContinueEditing = (classData: any) => {

@@ -25,6 +25,20 @@ function StartReports() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // If we were sent here after creating/picking a class elsewhere (e.g. the
+  // "Create New Class" flow on /class-management), jump straight to the
+  // template step for that class instead of making the teacher pick it again.
+  useEffect(() => {
+    const pendingClassId = sessionStorage.getItem('selectedClassId');
+    if (!pendingClassId) return;
+    const cls = state.classes.find(c => c.id === pendingClassId);
+    if (cls) {
+      sessionStorage.removeItem('selectedClassId');
+      handleClassSelect(cls);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.classes]);
+
   // ─── Handlers ────────────────────────────────────────────────────────────
 
   const handleClassSelect = (cls: Class) => {
