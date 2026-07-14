@@ -16,6 +16,7 @@ import QualitiesCommentBuilder from '../QualitiesCommentBuilder';
 import StandardCommentBuilder from '../StandardCommentBuilder';
 import { ReportWriterTour } from './ReportWriterTour';
 import { AddClassMenu } from './AddClassMenu';
+import { ParsedName } from '../../utils/parseClassList';
 
 const FREE_PLAN_REPORT_LIMIT = 5;
 
@@ -30,16 +31,6 @@ interface ReportWriterProps {
   tourSource?: 'ai-builder' | 'wizard';
   disableReportSaving?: boolean;
   exitPath?: string;
-}
-
-// Same "Class 1", "Class 2"... naming used when a class is first auto-created
-// (see WriteReports.tsx) — kept consistent so a class created mid-session
-// from here follows the same convention.
-function getDefaultClassName(existingClasses: Class[]): string {
-  const existingNames = new Set(existingClasses.map(c => c.name));
-  let n = 1;
-  while (existingNames.has(`Class ${n}`)) n++;
-  return `Class ${n}`;
 }
 
 // ─── DATA SHAPERS ─────────────────────────────────────────────────────────────
@@ -161,13 +152,17 @@ function ReportWriter({ template, classData, onClassChange, isNewClass = false, 
     updateClass({ ...classData, students: updated });
   };
 
-  // "+ Add Class" beside the pupil-name box — start a brand-new class (same
-  // default-naming + auto-rename-on-header convention as the very first
-  // class) or switch straight to one already set up.
-  const handleCreateNewClass = () => {
-    const blankStudent: Student = { id: `${Date.now()}${Math.random().toString(36).slice(2, 9)}`, firstName: '', lastName: '' };
-    const newClass = addClass({ name: getDefaultClassName(dataState.classes), students: [blankStudent] });
-    onClassChange(newClass, true);
+  // "+ Add Class" beside the pupil-name box — create a class from a name plus
+  // a pasted pupil list (same parsing/privacy behaviour as CreateClass.tsx),
+  // or switch straight to one already set up.
+  const handleCreateNewClass = (name: string, parsedStudents: ParsedName[]) => {
+    const newStudents: Student[] = parsedStudents.map((p, i) => ({
+      id: `${Date.now()}${Math.random().toString(36).slice(2, 9)}${i}`,
+      firstName: p.firstName,
+      lastName: p.lastName,
+    }));
+    const newClass = addClass({ name, students: newStudents });
+    onClassChange(newClass);
   };
 
   useEffect(() => {

@@ -7,6 +7,7 @@ import PersonalisedCommentBuilder from '../PersonalisedCommentBuilder';
 import NextStepsCommentBuilder from '../NextStepsCommentBuilder';
 import MobileSectionCard from './MobileSectionCard';
 import { AddClassMenu } from './AddClassMenu';
+import { ParsedName } from '../../utils/parseClassList';
 
 interface MobileReportWriterProps {
   template: Template;
@@ -32,7 +33,7 @@ interface MobileReportWriterProps {
   };
   onRenameCurrentPupil?: (firstName: string) => void;
   classes?: Class[];
-  onCreateNewClass?: () => void;
+  onCreateNewClass?: (name: string, students: ParsedName[]) => void;
   onLoadExistingClass?: (classData: Class) => void;
   reportLogic: {
     setSectionData: any;
