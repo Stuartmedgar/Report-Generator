@@ -2,18 +2,12 @@ import React, { useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { Student } from '../types';
 import PageNav from '../components/PageNav';
+import { parseClassListText } from '../utils/parseClassList';
 
 interface CreateClassProps {
   onComplete: (newClassId: string) => void;
   onCancel: () => void;
 }
-
-const truncateSurname = (surname: string): string => {
-  if (!surname || surname.length === 0) return '';
-  const truncated = surname.slice(0, 2);
-  if (truncated.length === 1) return truncated.charAt(0).toUpperCase();
-  return truncated.charAt(0).toUpperCase() + truncated.charAt(1).toLowerCase();
-};
 
 function CreateClass({ onComplete, onCancel }: CreateClassProps) {
   const [className, setClassName] = useState('');
@@ -27,53 +21,12 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
     if (!csvText.trim()) { alert('Please enter student data'); return; }
 
     try {
-      const lines = csvText.trim().split('\n');
-      const newStudents: Student[] = [];
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-
-        if (i === 0 && (line.toLowerCase().includes('first') || line.toLowerCase().includes('last'))) {
-          const headers = line.toLowerCase().split(',').map(h => h.trim());
-          const firstNameIndex = headers.findIndex(h => h.includes('first') || h.includes('given'));
-          const lastNameIndex = headers.findIndex(h => h.includes('last') || h.includes('sur') || h.includes('family'));
-          if (firstNameIndex >= 0 && lastNameIndex >= 0) {
-            for (let j = 1; j < lines.length; j++) {
-              const values = lines[j].split(',').map(v => v.trim());
-              if (values.length >= 2 && values[firstNameIndex] && values[lastNameIndex]) {
-                newStudents.push({
-                  id: Date.now().toString() + Math.random().toString(36).substr(2, 9) + j,
-                  firstName: values[firstNameIndex],
-                  lastName: truncateSurname(values[lastNameIndex])
-                });
-              }
-            }
-            break;
-          }
-        }
-
-        const nameParts = line.split(/\s+/);
-        if (nameParts.length >= 2) {
-          const firstName = nameParts[0];
-          const lastName = nameParts[nameParts.length - 1];
-          if (firstName && lastName) {
-            newStudents.push({
-              id: Date.now().toString() + Math.random().toString(36).substr(2, 9) + i,
-              firstName,
-              lastName: truncateSurname(lastName)
-            });
-          }
-        } else if (nameParts.length === 1 && nameParts[0]) {
-          const singleName = nameParts[0];
-          const useAsLastName = window.confirm(`Found single name "${singleName}". Use as Last Name (OK) or First Name (Cancel)?`);
-          newStudents.push({
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 9) + i,
-            firstName: useAsLastName ? '' : singleName,
-            lastName: useAsLastName ? truncateSurname(singleName) : ''
-          });
-        }
-      }
+      const parsed = parseClassListText(csvText);
+      const newStudents: Student[] = parsed.map((p, i) => ({
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9) + i,
+        firstName: p.firstName,
+        lastName: p.lastName,
+      }));
 
       if (newStudents.length > 0) {
         setStudents([...students, ...newStudents]);

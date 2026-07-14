@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { Template, Class } from '../../types';
@@ -6,11 +6,19 @@ import { Template, Class } from '../../types';
 interface ClassSelectionProps {
   selectedTemplate: Template;
   onClassSelect: (classData: Class) => void;
+  onCreateClass: (name: string) => void;
   onBack: () => void;
 }
 
-function ClassSelection({ selectedTemplate, onClassSelect, onBack }: ClassSelectionProps) {
+function ClassSelection({ selectedTemplate, onClassSelect, onCreateClass, onBack }: ClassSelectionProps) {
   const { state } = useData();
+  const [showNewClass, setShowNewClass] = useState(false);
+  const [newClassName, setNewClassName] = useState('');
+
+  const handleCreateClass = () => {
+    if (!newClassName.trim()) return;
+    onCreateClass(newClassName.trim());
+  };
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
@@ -158,7 +166,11 @@ function ClassSelection({ selectedTemplate, onClassSelect, onBack }: ClassSelect
           <div style={{
             padding: '16px',
             borderBottom: '1px solid #e5e7eb',
-            backgroundColor: '#f9fafb'
+            backgroundColor: '#f9fafb',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '8px'
           }}>
             <h3 style={{
               fontSize: '16px',
@@ -166,24 +178,71 @@ function ClassSelection({ selectedTemplate, onClassSelect, onBack }: ClassSelect
               color: '#111827',
               margin: 0
             }}>
-              Select a Class for your reports 
+              Select a Class for your reports
             </h3>
+            {!showNewClass && (
+              <button
+                onClick={() => setShowNewClass(true)}
+                style={{
+                  backgroundColor: '#10b981', color: 'white',
+                  padding: '6px 12px', border: 'none', borderRadius: '6px',
+                  fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                + New Class
+              </button>
+            )}
           </div>
-          
-          {state.classes.length === 0 ? (
-            <div style={{ 
-              textAlign: 'center', 
+
+          {showNewClass ? (
+            <div style={{ padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '600', color: '#374151' }}>Class Name</label>
+              <input
+                type="text"
+                placeholder="e.g., 8A English, Year 9 Science"
+                value={newClassName}
+                onChange={e => setNewClassName(e.target.value)}
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Enter') handleCreateClass(); }}
+                style={{ padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
+              />
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={handleCreateClass}
+                  disabled={!newClassName.trim()}
+                  style={{
+                    flex: 1, backgroundColor: newClassName.trim() ? '#10b981' : '#e2e8f0',
+                    color: newClassName.trim() ? 'white' : '#94a3b8',
+                    padding: '10px 16px', border: 'none', borderRadius: '8px',
+                    fontSize: '14px', fontWeight: '600', cursor: newClassName.trim() ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  Create Class
+                </button>
+                <button
+                  onClick={() => { setShowNewClass(false); setNewClassName(''); }}
+                  style={{ padding: '10px 16px', backgroundColor: 'white', color: '#374151', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : state.classes.length === 0 ? (
+            <div style={{
+              textAlign: 'center',
               padding: '32px 16px'
             }}>
-              <p style={{ 
-                color: '#6b7280', 
+              <p style={{
+                color: '#6b7280',
                 marginBottom: '16px',
                 fontSize: '14px'
               }}>
                 No classes found
               </p>
-              <Link to="/class-management" style={{ textDecoration: 'none' }}>
-                <button style={{
+              <button
+                onClick={() => setShowNewClass(true)}
+                style={{
                   backgroundColor: '#10b981',
                   color: 'white',
                   padding: '12px 20px',
@@ -194,8 +253,7 @@ function ClassSelection({ selectedTemplate, onClassSelect, onBack }: ClassSelect
                   cursor: 'pointer'
                 }}>
                   Create Your First Class
-                </button>
-              </Link>
+              </button>
             </div>
           ) : (
             state.classes.map((classData, index) => (
@@ -252,6 +310,7 @@ function ClassSelection({ selectedTemplate, onClassSelect, onBack }: ClassSelect
         </div>
 
         {/* Need Help Section */}
+{!showNewClass && (
 <div style={{
   backgroundColor: '#f0fdf4',
   border: '2px solid #10b981',
@@ -260,20 +319,20 @@ function ClassSelection({ selectedTemplate, onClassSelect, onBack }: ClassSelect
   textAlign: 'center',
   marginTop: '20px'
 }}>
-  <h3 style={{ 
-    fontSize: '16px', 
-    fontWeight: '600', 
+  <h3 style={{
+    fontSize: '16px',
+    fontWeight: '600',
     color: '#059669',
     margin: '0 0 8px 0'
   }}>
     Need Help?
   </h3>
-  <p style={{ 
-    color: '#059669', 
+  <p style={{
+    color: '#059669',
     fontSize: '14px',
     margin: '0 0 16px 0'
   }}>
-    Don't see your class above? Create a new class to get started.
+    Want to set up a whole class list in advance instead? Use the full Create Class page.
   </p>
   <div style={{
     display: 'flex',
@@ -297,6 +356,7 @@ function ClassSelection({ selectedTemplate, onClassSelect, onBack }: ClassSelect
     </Link>
   </div>
 </div>
+)}
       </main>
     </div>
   );

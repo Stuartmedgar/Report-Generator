@@ -7,7 +7,6 @@ import { callGenerateTemplate, InsufficientCreditError, AuthRequiredError } from
 
 interface BuildAsYouGoProps {
   templateName: string;
-  classId?: string;
   onComplete: (sections: TemplateSection[], name?: string) => void;
   onCancel: () => void;
 }
@@ -117,7 +116,7 @@ const QUICK_TIPS_LABELS: Record<TipsTab, string> = {
   scratch: 'Starting from scratch',
 };
 
-const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, classId, onComplete, onCancel }) => {
+const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, onCancel }) => {
   const navigate = useNavigate();
   const { addTemplate } = useData();
 
@@ -406,12 +405,8 @@ const handleSaveAndWrite = () => {
     const name = localTemplateName.trim() || 'My Template';
     const newTemplateId = addTemplate({ name, sections });
     clearDraft();
-    if (classId) {
-      sessionStorage.setItem('continueEditing', JSON.stringify({ classId, templateId: newTemplateId, studentIndex: 0, tourSource: 'wizard' }));
-      navigate('/write-reports');
-    } else {
-      navigate('/start');
-    }
+    sessionStorage.setItem('continueEditing', JSON.stringify({ templateId: newTemplateId, studentIndex: 0, tourSource: 'wizard' }));
+    navigate('/write-reports');
   };
 
   const TopBar = ({ title }: { title?: string }) => (

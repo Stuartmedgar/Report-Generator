@@ -4,6 +4,7 @@ import { useData } from '../contexts/DataContext';
 import { Template, Class, Student } from '../types';
 import ReportWriter from '../components/ReportWriter';
 import ClassSelection from '../components/WriteReports/ClassSelection';
+import DesktopClassSelection from '../components/WriteReports/DesktopClassSelection';
 
 type Step = 'template-selection' | 'class-selection' | 'student-selection' | 'writing';
 
@@ -25,14 +26,14 @@ function getInitialState(
     if (raw) {
       const { classId, templateId, studentIndex, tourSource } = JSON.parse(raw);
       const template = templates.find(t => t.id === templateId) || null;
-      const classData = classes.find(c => c.id === classId) || null;
-      if (template && classData) {
+      const classData = classId ? classes.find(c => c.id === classId) || null : null;
+      if (template) {
         sessionStorage.removeItem('continueEditing');
         return {
-          step: 'writing' as Step,
+          step: (classData ? 'writing' : 'class-selection') as Step,
           template,
           classData,
-          students: classData.students.map((s: Student) => s.id),
+          students: classData ? classData.students.map((s: Student) => s.id) : [] as string[],
           studentIndex: studentIndex >= 0 ? studentIndex : 0,
           directNav: true,
           tourSource: (tourSource as string) || null,
@@ -62,7 +63,7 @@ function getInitialState(
       ? templates.find(t => t.id === locationState.preselectedTemplateId) ?? null
       : null;
     return {
-      step: (classData && template ? 'writing' : 'template-selection') as Step,
+      step: (classData && template ? 'writing' : template ? 'class-selection' : 'template-selection') as Step,
       template,
       classData,
       students: classData && template ? classData.students.map((s: Student) => s.id) : [] as string[],
@@ -87,7 +88,7 @@ function getInitialState(
 function WriteReports() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { state } = useData();
+  const { state, addClass } = useData();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   const init = getInitialState(
@@ -125,6 +126,8 @@ function WriteReports() {
         setCurrentStep('writing');
       } else if (classData && !template) {
         setCurrentStep('template-selection');
+      } else if (template && !classData) {
+        setCurrentStep('class-selection');
       }
     }
   }, [location.state, state.classes, state.templates]);
@@ -135,11 +138,18 @@ function WriteReports() {
     setCurrentStep('writing');
   };
 
-  const handleBackToTemplates = () => {
-    setSelectedTemplate(null);
-    setSelectedClass(null);
+  // Creates a brand-new, pupil-less class right from the report writer —
+  // it then drops straight into ReportWriter's own "add your first pupil"
+  // screen (students.length === 0) rather than a separate Create Class page.
+  const handleCreateNewClass = (name: string) => {
+    const newClass = addClass({ name, students: [] });
+    setSelectedClass(newClass);
     setSelectedStudents([]);
-    setCurrentStep('template-selection');
+    setCurrentStep('writing');
+  };
+
+  const handleBackToTemplates = () => {
+    navigate('/start');
   };
 
   // ─── Exit always leaves the report writer entirely — to Manage Templates when
@@ -175,11 +185,19 @@ function WriteReports() {
     );
   }
 
-  if (isMobile && currentStep === 'class-selection' && selectedTemplate) {
-    return (
+  if (currentStep === 'class-selection' && selectedTemplate) {
+    return isMobile ? (
       <ClassSelection
         selectedTemplate={selectedTemplate}
         onClassSelect={handleClassSelect}
+        onCreateClass={handleCreateNewClass}
+        onBack={handleBackToTemplates}
+      />
+    ) : (
+      <DesktopClassSelection
+        selectedTemplate={selectedTemplate}
+        onClassSelect={handleClassSelect}
+        onCreateClass={handleCreateNewClass}
         onBack={handleBackToTemplates}
       />
     );

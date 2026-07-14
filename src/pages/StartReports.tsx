@@ -1,12 +1,10 @@
 // src/pages/StartReports.tsx
 // Replaces: StartReports, SelectClass, Step2Template, GetTemplate, SelectTemplate, PickTemplate
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { Class, Template } from '../types';
 import PageNav from '../components/PageNav';
-
-type Step = 'class' | 'template';
 
 function StartReports() {
   const { state, addTemplate, deleteTemplate } = useData();
@@ -14,7 +12,6 @@ function StartReports() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const [step, setStep] = useState<Step>('class');
   const [templateView, setTemplateView] = useState<'options' | 'existing'>('options');
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
@@ -44,13 +41,11 @@ function StartReports() {
   const handleClassSelect = (cls: Class) => {
     setSelectedClass(cls);
     setTemplateView('options');
-    setStep('template');
   };
 
   const handleTemplateSelect = (template: Template) => {
-    if (!selectedClass) return;
     sessionStorage.setItem('continueEditing', JSON.stringify({
-      classId: selectedClass.id,
+      classId: selectedClass?.id,
       templateId: template.id,
       studentIndex: 0,
     }));
@@ -101,14 +96,6 @@ function StartReports() {
     padding: isMobile ? '24px 16px' : '40px 24px',
   };
 
-  const stepIndicatorStyle = (active: boolean, done: boolean): React.CSSProperties => ({
-    width: '32px', height: '32px', borderRadius: '50%',
-    backgroundColor: done ? '#10b981' : active ? '#8b5cf6' : '#e2e8f0',
-    color: done || active ? 'white' : '#94a3b8',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: '14px', fontWeight: '700', flexShrink: 0,
-  });
-
   const cardStyle: React.CSSProperties = {
     backgroundColor: 'white',
     border: '1px solid #e5e7eb',
@@ -121,19 +108,6 @@ function StartReports() {
     transition: 'border-color 0.15s, box-shadow 0.15s',
     marginBottom: '8px',
   };
-
-  const primaryBtnStyle = (color: string): React.CSSProperties => ({
-    backgroundColor: color,
-    color: 'white',
-    padding: '12px 20px',
-    border: 'none',
-    borderRadius: '8px',
-    fontSize: '14px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    width: '100%',
-    textAlign: 'left',
-  });
 
   const bigBtnStyle = (color: string): React.CSSProperties => ({
     backgroundColor: color,
@@ -171,74 +145,6 @@ function StartReports() {
     marginBottom: '10px',
   });
 
-  // ─── Step 1: Select Class ─────────────────────────────────────────────────
-
-  const renderClassStep = () => (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px', gap: '12px' }}>
-        <div>
-          <h1 style={{ fontSize: isMobile ? '26px' : '32px', fontWeight: '800', color: '#1e293b', margin: '0 0 6px 0' }}>
-            Choose a Class
-          </h1>
-          <p style={{ fontSize: '15px', color: '#64748b', margin: 0 }}>
-            Select the class you want to write reports for.
-          </p>
-        </div>
-        <Link to="/class-management?create=true" style={{ textDecoration: 'none', flexShrink: 0 }}>
-          <button style={{
-            backgroundColor: '#8b5cf6', color: 'white',
-            padding: '10px 16px', border: 'none', borderRadius: '8px',
-            fontSize: '14px', fontWeight: '600', cursor: 'pointer',
-            whiteSpace: 'nowrap',
-          }}>
-            + New Class
-          </button>
-        </Link>
-      </div>
-
-      {state.classes.length === 0 ? (
-        <div style={{ backgroundColor: 'white', border: '2px dashed #d1d5db', borderRadius: '12px', padding: '40px 24px', textAlign: 'center' }}>
-          <div style={{ fontSize: '40px', marginBottom: '12px' }}>👥</div>
-          <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1e293b', margin: '0 0 8px 0' }}>No classes yet</h3>
-          <p style={{ fontSize: '14px', color: '#64748b', margin: '0 0 20px 0' }}>
-            Add your students to get started.
-          </p>
-          <Link to="/class-management?create=true" style={{ textDecoration: 'none' }}>
-            <button style={{ backgroundColor: '#8b5cf6', color: 'white', padding: '12px 24px', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}>
-              + Add a Class
-            </button>
-          </Link>
-        </div>
-      ) : (
-        <div>
-          {state.classes.map((cls) => (
-            <div
-              key={cls.id}
-              onClick={() => handleClassSelect(cls)}
-              style={cardStyle}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLDivElement).style.borderColor = '#8b5cf6';
-                (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 0 3px rgba(139,92,246,0.1)';
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLDivElement).style.borderColor = '#e5e7eb';
-                (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
-              }}
-            >
-              <div>
-                <div style={{ fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>{cls.name}</div>
-                <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '2px' }}>
-                  {cls.students.length} student{cls.students.length !== 1 ? 's' : ''}
-                </div>
-              </div>
-              <span style={{ color: '#cbd5e1', fontSize: '20px' }}>›</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
   // ─── Step 2a: Choose how to get a template ───────────────────────────────
 
   const renderTemplateOptions = () => (
@@ -248,7 +154,7 @@ function StartReports() {
           Choose a Template
         </h1>
         <p style={{ fontSize: '15px', color: '#64748b', margin: 0 }}>
-          Writing reports for <strong>{selectedClass?.name}</strong>.
+          {selectedClass ? <>Writing reports for <strong>{selectedClass.name}</strong>.</> : 'Pick how you\'d like to build it — you\'ll choose or create a class next.'}
         </p>
       </div>
 
@@ -300,8 +206,8 @@ function StartReports() {
           Choose a Template
         </h1>
         <p style={{ fontSize: '15px', color: '#64748b', margin: 0 }}>
-          Writing reports for <strong>{selectedClass?.name}</strong>.
-          {state.templates.length > 0 ? ' Select a template below.' : ' You don’t have any saved templates yet.'}
+          {selectedClass && <>Writing reports for <strong>{selectedClass.name}</strong>. </>}
+          {state.templates.length > 0 ? 'Select a template below.' : 'You don’t have any saved templates yet.'}
         </p>
       </div>
 
@@ -406,36 +312,17 @@ function StartReports() {
 
       <div style={contentStyle}>
 
-        {/* Step indicator */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '32px' }}>
-          <div style={stepIndicatorStyle(step === 'class', step === 'template')}>
-            {step === 'template' ? '✓' : '1'}
-          </div>
-          <span style={{ fontSize: '13px', fontWeight: '600', color: step === 'class' ? '#8b5cf6' : '#10b981' }}>
-            Class
-          </span>
-          <div style={{ flex: 1, height: '2px', backgroundColor: step === 'template' ? '#10b981' : '#e2e8f0', borderRadius: '2px', maxWidth: '60px' }} />
-          <div style={stepIndicatorStyle(step === 'template', false)}>2</div>
-          <span style={{ fontSize: '13px', fontWeight: '600', color: step === 'template' ? '#8b5cf6' : '#94a3b8' }}>
-            Template
-          </span>
-        </div>
-
         {/* Step content */}
-        {step === 'class' && renderClassStep()}
-        {step === 'template' && templateView === 'options' && renderTemplateOptions()}
-        {step === 'template' && templateView === 'existing' && renderExistingTemplates()}
+        {templateView === 'options' && renderTemplateOptions()}
+        {templateView === 'existing' && renderExistingTemplates()}
 
-        {/* Back button on step 2 */}
-        {step === 'template' && (
+        {/* Back button when viewing existing/imported/prebuilt templates */}
+        {templateView === 'existing' && (
           <button
-            onClick={() => {
-              if (templateView === 'existing') { setTemplateView('options'); return; }
-              setStep('class'); setSelectedClass(null);
-            }}
+            onClick={() => setTemplateView('options')}
             style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '13px', cursor: 'pointer', padding: '16px 0 0 0', display: 'block' }}
           >
-            {templateView === 'existing' ? '← Back' : '← Change class'}
+            ← Back
           </button>
         )}
 

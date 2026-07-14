@@ -15,17 +15,10 @@ import NextStepsCommentBuilder from '../NextStepsCommentBuilder';
 import QualitiesCommentBuilder from '../QualitiesCommentBuilder';
 import StandardCommentBuilder from '../StandardCommentBuilder';
 import { ReportWriterTour } from './ReportWriterTour';
+import { UploadClassList } from './UploadClassList';
+import { truncateSurname, ParsedName } from '../../utils/parseClassList';
 
 const FREE_PLAN_REPORT_LIMIT = 5;
-
-// Same privacy policy as CreateClass.tsx — surnames stay local-only and are
-// shortened to 2 letters, whether the pupil was added upfront or mid-session.
-function truncateSurname(surname: string): string {
-  if (!surname || surname.length === 0) return '';
-  const truncated = surname.slice(0, 2);
-  if (truncated.length === 1) return truncated.charAt(0).toUpperCase();
-  return truncated.charAt(0).toUpperCase() + truncated.charAt(1).toLowerCase();
-}
 
 interface ReportWriterProps {
   template: Template;
@@ -77,16 +70,33 @@ function shapeForStandardBuilder(section: any) {
 // focus on every keystroke — see the "inner component" gotcha in CLAUDE.md.
 
 const AddFirstStudentScreen: React.FC<{
-  onAdd: (firstName: string, lastName: string) => void;
+  onAdd: (firstName: string) => void;
+  onImportMany: (students: ParsedName[]) => void;
   onBack: () => void;
-}> = ({ onAdd, onBack }) => {
+}> = ({ onAdd, onImportMany, onBack }) => {
   const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [showUpload, setShowUpload] = useState(false);
 
   const handleSubmit = () => {
     if (!firstName.trim()) return;
-    onAdd(firstName, lastName);
+    onAdd(firstName);
   };
+
+  if (showUpload) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb', padding: '24px' }}>
+        <div style={{ maxWidth: '420px', width: '100%', backgroundColor: 'white', borderRadius: '12px', padding: '32px', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b', marginBottom: '8px', textAlign: 'center' }}>
+            Upload a class list
+          </h2>
+          <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px', textAlign: 'center' }}>
+            Surnames are shortened to 2 letters for privacy.
+          </p>
+          <UploadClassList onImport={onImportMany} onCancel={() => setShowUpload(false)} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb', padding: '24px' }}>
@@ -95,7 +105,7 @@ const AddFirstStudentScreen: React.FC<{
           Add your first pupil
         </h2>
         <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '20px', lineHeight: 1.6 }}>
-          This class doesn't have any pupils yet — add them one at a time as you write, or as many as you like right now.
+          This class doesn't have any pupils yet — add them one at a time as you write, or upload your whole class list at once.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
           <input
@@ -107,16 +117,8 @@ const AddFirstStudentScreen: React.FC<{
             onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
             style={{ padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
           />
-          <input
-            type="text"
-            placeholder="Last name (shortened to 2 letters for privacy)"
-            value={lastName}
-            onChange={e => setLastName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
-            style={{ padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
-          />
         </div>
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '16px' }}>
           <button
             onClick={handleSubmit}
             disabled={!firstName.trim()}
@@ -128,6 +130,12 @@ const AddFirstStudentScreen: React.FC<{
             Back
           </button>
         </div>
+        <button
+          onClick={() => setShowUpload(true)}
+          style={{ background: 'none', border: 'none', color: '#8b5cf6', fontSize: '13px', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+        >
+          Upload a class list instead
+        </button>
       </div>
     </div>
   );
@@ -190,18 +198,34 @@ function ReportWriter({ template, classData, students: initialStudents, onBack, 
   // Lets a teacher build the class roster as they go, instead of requiring
   // the full pupil list upfront in Create Class. Persists to the class
   // immediately and jumps straight to writing the new pupil's report.
-  const handleAddStudent = (firstName: string, lastName: string) => {
+  // Manual entry is first-name only — no dedup/disambiguation needed.
+  const handleAddStudent = (firstName: string) => {
     const trimmedFirst = firstName.trim();
     if (!trimmedFirst) return;
     const newStudent: Student = {
       id: `${Date.now()}${Math.random().toString(36).slice(2, 9)}`,
       firstName: trimmedFirst,
-      lastName: truncateSurname(lastName.trim()),
+      lastName: '',
     };
     const updatedStudents = [...students, newStudent];
     setStudents(updatedStudents);
     updateClass({ ...classData, students: updatedStudents });
     setCurrentStudentIndex(updatedStudents.length - 1);
+  };
+
+  // Bulk "upload a class list" path — keeps the existing truncated-surname
+  // privacy behaviour (same as CreateClass.tsx) since these come with surnames.
+  const handleAddStudents = (parsed: ParsedName[]) => {
+    if (parsed.length === 0) return;
+    const newStudents: Student[] = parsed.map((p, i) => ({
+      id: `${Date.now()}${Math.random().toString(36).slice(2, 9)}${i}`,
+      firstName: p.firstName,
+      lastName: truncateSurname(p.lastName),
+    }));
+    const updatedStudents = [...students, ...newStudents];
+    setStudents(updatedStudents);
+    updateClass({ ...classData, students: updatedStudents });
+    setCurrentStudentIndex(students.length);
   };
 
   useEffect(() => {
@@ -283,7 +307,8 @@ function ReportWriter({ template, classData, students: initialStudents, onBack, 
       navigate(exitPath);
     },
     handleSaveAsNewTemplate: reportLogic.handleSaveAsNewTemplate,
-    handleAddStudent
+    handleAddStudent,
+    handleAddStudents
   };
 
   // Touch handlers
@@ -426,7 +451,7 @@ function ReportWriter({ template, classData, students: initialStudents, onBack, 
   // No pupils yet — the class was created name-only, so let the teacher add
   // their first pupil right here instead of forcing a trip back to Create Class.
   if (students.length === 0) {
-    return <AddFirstStudentScreen onAdd={handleAddStudent} onBack={onBack} />;
+    return <AddFirstStudentScreen onAdd={handleAddStudent} onImportMany={handleAddStudents} onBack={onBack} />;
   }
 
   // Free-plan report cap — reports are counted the first time a teacher moves
@@ -671,6 +696,7 @@ function ReportWriter({ template, classData, students: initialStudents, onBack, 
               onFinish={navigationHandlers.handleFinish}
               onViewAllReports={navigationHandlers.handleViewAllReports}
               onAddStudent={disableReportSaving ? undefined : navigationHandlers.handleAddStudent}
+              onAddStudents={disableReportSaving ? undefined : navigationHandlers.handleAddStudents}
               pronounOverride={undefined}
               onPronounChange={undefined}
               isPreview={disableReportSaving}

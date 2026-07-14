@@ -214,7 +214,6 @@ const CreateTemplate: React.FC = () => {
     return (
       <BuildAsYouGo
         templateName={templateName}
-        classId={location.state?.classId}
         onComplete={(completedSections, wizardName) => {
   const template = {
     name: wizardName || templateName || 'My Template',

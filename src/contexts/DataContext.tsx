@@ -23,7 +23,7 @@ interface DataContextType {
   addTemplate: (template: Omit<Template, 'id' | 'createdAt'>) => string;
   updateTemplate: (template: Template) => void;
   deleteTemplate: (id: string) => void;
-  addClass: (cls: Omit<Class, 'id' | 'createdAt'>) => void;
+  addClass: (cls: Omit<Class, 'id' | 'createdAt'>) => Class;
   updateClass: (cls: Class) => void;
   deleteClass: (id: string) => void;
   addReport: (report: Omit<Report, 'id' | 'createdAt' | 'updatedAt'>) => void;
@@ -546,7 +546,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'DELETE_TEMPLATE', payload: id });
   };
 
-  const addClass = (cls: Omit<Class, 'id' | 'createdAt'>) => {
+  const addClass = (cls: Omit<Class, 'id' | 'createdAt'>): Class => {
     const newClass: Class = {
       ...cls,
       id: `class-${Date.now()}`,
@@ -554,6 +554,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     };
     console.log('Adding class:', newClass.name);
     dispatch({ type: 'ADD_CLASS', payload: newClass });
+    return newClass;
   };
 
   const updateClass = (cls: Class) => {

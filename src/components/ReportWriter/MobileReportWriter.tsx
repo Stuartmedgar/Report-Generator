@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Template, Student } from '../../types';
 import { ReportPreview } from './ReportPreview';
 import RatedCommentBuilder from '../RatedCommentBuilder';
@@ -6,6 +6,8 @@ import AssessmentCommentBuilder from '../AssessmentCommentBuilder';
 import PersonalisedCommentBuilder from '../PersonalisedCommentBuilder';
 import NextStepsCommentBuilder from '../NextStepsCommentBuilder';
 import MobileSectionCard from './MobileSectionCard';
+import { UploadClassList } from './UploadClassList';
+import { ParsedName } from '../../utils/parseClassList';
 
 interface MobileReportWriterProps {
   template: Template;
@@ -28,7 +30,8 @@ interface MobileReportWriterProps {
     handleFinish: () => void;
     handleViewAllReports: () => void;
     handleSaveAsNewTemplate: () => void;
-    handleAddStudent: (firstName: string, lastName: string) => void;
+    handleAddStudent: (firstName: string) => void;
+    handleAddStudents: (students: ParsedName[]) => void;
   };
   reportLogic: {
     setSectionData: any;
@@ -82,6 +85,8 @@ export const MobileReportWriter: React.FC<MobileReportWriterProps> = ({
   setShowSectionOptions,
   hasTemplateChanges
 }) => {
+  const [showUploadList, setShowUploadList] = useState(false);
+
   return (
     <div 
       data-mobile-writer
@@ -135,17 +140,33 @@ export const MobileReportWriter: React.FC<MobileReportWriterProps> = ({
             }}>
               Student {currentStudentIndex + 1} of {students.length} • Swipe for preview →
             </p>
-            <button
-              onClick={() => {
-                const firstName = window.prompt("New pupil's first name:");
-                if (!firstName || !firstName.trim()) return;
-                const lastName = window.prompt("New pupil's last name (shortened to 2 letters for privacy):") || '';
-                navigationHandlers.handleAddStudent(firstName, lastName);
-              }}
-              style={{ marginTop: '8px', padding: '6px 12px', backgroundColor: '#f8fafc', color: '#374151', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
-            >
-              + Add Pupil
-            </button>
+            {showUploadList ? (
+              <div style={{ marginTop: '10px', textAlign: 'left' }}>
+                <UploadClassList
+                  onImport={(newStudents) => { navigationHandlers.handleAddStudents(newStudents); setShowUploadList(false); }}
+                  onCancel={() => setShowUploadList(false)}
+                />
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '8px' }}>
+                <button
+                  onClick={() => {
+                    const firstName = window.prompt("New pupil's first name:");
+                    if (!firstName || !firstName.trim()) return;
+                    navigationHandlers.handleAddStudent(firstName);
+                  }}
+                  style={{ padding: '6px 12px', backgroundColor: '#f8fafc', color: '#374151', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  + Add Pupil
+                </button>
+                <button
+                  onClick={() => setShowUploadList(true)}
+                  style={{ padding: '6px 12px', backgroundColor: '#f8fafc', color: '#374151', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Upload List
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Clean Section Cards */}

@@ -132,8 +132,8 @@ export default function TemplateReview() {
       addTemplate({ name: template.name, sections: template.sections });
     }
     setSaved(true); setError(null);
-    if (!classId) { setTimeout(() => navigate('/start'), 300); return; }
-    sessionStorage.setItem('continueEditing', JSON.stringify({ classId, templateId, studentIndex: 0 }));
+    if (classId) sessionStorage.removeItem('selectedClassId');
+    sessionStorage.setItem('continueEditing', JSON.stringify({ classId: classId || undefined, templateId, studentIndex: 0 }));
     navigate('/write-reports');
   };
 
