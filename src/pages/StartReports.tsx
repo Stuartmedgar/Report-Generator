@@ -90,8 +90,10 @@ function StartReports() {
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   };
 
+  // The template-options grid gets a wider canvas so the "Recommended for"
+  // captions can sit in the space beside the buttons instead of below them.
   const contentStyle: React.CSSProperties = {
-    maxWidth: '720px',
+    maxWidth: !isMobile && templateView === 'options' ? '1300px' : '720px',
     margin: '0 auto',
     padding: isMobile ? '24px 16px' : '40px 24px',
   };
@@ -145,12 +147,12 @@ function StartReports() {
     marginBottom: '10px',
   });
 
-  // Wraps each big button together with its "Recommended for" caption in one
-  // bordered card, so it's unambiguous which button the text describes.
+  // Mobile: wraps each big button together with its "Recommended for" caption
+  // in one bordered card, stacked below the button.
   const optionCardStyle: React.CSSProperties = {
     border: '2px solid #e5e7eb',
-    borderRadius: isMobile ? '16px' : '20px',
-    padding: isMobile ? '12px' : '14px',
+    borderRadius: '16px',
+    padding: '12px',
     display: 'flex',
     flexDirection: 'column',
     gap: '10px',
@@ -166,6 +168,21 @@ function StartReports() {
     padding: '0 4px',
   };
 
+  // Desktop: caption sits in the space beside its button instead — a colored
+  // accent border on the inner edge (facing the button) ties the two together.
+  const sideCaptionStyle = (side: 'left' | 'right', accentColor: string): React.CSSProperties => ({
+    fontSize: '12px',
+    color: '#64748b',
+    margin: 0,
+    lineHeight: 1.6,
+    textAlign: side,
+    alignSelf: 'center',
+    borderRight: side === 'right' ? `3px solid ${accentColor}` : undefined,
+    borderLeft: side === 'left' ? `3px solid ${accentColor}` : undefined,
+    paddingRight: side === 'right' ? '16px' : undefined,
+    paddingLeft: side === 'left' ? '16px' : undefined,
+  });
+
   // ─── Step 2a: Choose how to get a template ───────────────────────────────
 
   const renderTemplateOptions = () => (
@@ -179,10 +196,10 @@ function StartReports() {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: isMobile ? '14px' : '20px' }}>
-
-        <div style={optionCardStyle}>
+      {(() => {
+        const quickStartBtn = (
           <button
+            key="quick-start"
             onClick={() => navigate('/create-template', { state: { method: 'quick-start', classId: selectedClass?.id } })}
             style={{ ...bigBtnStyle('#10b981'), boxShadow: '0 4px 14px rgba(16,185,129,0.35)' }}
             onMouseEnter={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 24px rgba(16,185,129,0.45)'; } }}
@@ -192,13 +209,12 @@ function StartReports() {
             <span style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: '800' }}>Quick Start</span>
             <span style={{ fontSize: '13px', fontWeight: '500', opacity: 0.88 }}>Pick your subject — instant pre-filled template</span>
           </button>
-          <p style={recommendedTextStyle}>
-            <strong style={{ color: '#475569' }}>Recommended for:</strong> teachers who want to start writing right now — pick a subject and get a ready-made template in seconds.
-          </p>
-        </div>
+        );
+        const quickStartCaption = <>teachers who want to start writing right now — pick a subject and get a ready-made template in seconds.</>;
 
-        <div style={optionCardStyle}>
+        const aiQuickBuildBtn = (
           <button
+            key="ai-quick-build"
             onClick={() => navigate('/import-template', { state: { classId: selectedClass?.id } })}
             style={{ ...bigBtnStyle('#8b5cf6'), boxShadow: '0 4px 14px rgba(139,92,246,0.35)' }}
             onMouseEnter={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 24px rgba(139,92,246,0.45)'; } }}
@@ -208,13 +224,12 @@ function StartReports() {
             <span style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: '800' }}>AI Quick Build</span>
             <span style={{ fontSize: '13px', fontWeight: '500', opacity: 0.88 }}>Paste your reports — AI builds a template in ~2 min</span>
           </button>
-          <p style={recommendedTextStyle}>
-            <strong style={{ color: '#475569' }}>Recommended for:</strong> teachers who already have reports written in their own words and want AI to turn them into a reusable template.
-          </p>
-        </div>
+        );
+        const aiQuickBuildCaption = <>teachers who already have reports written in their own words and want AI to turn them into a reusable template.</>;
 
-        <div style={optionCardStyle}>
+        const templateWizardBtn = (
           <button
+            key="template-wizard"
             onClick={() => navigate('/create-template', { state: { method: 'build-as-you-go', classId: selectedClass?.id } })}
             style={{ ...bigBtnStyle('#f59e0b'), boxShadow: '0 4px 14px rgba(245,158,11,0.35)' }}
             onMouseEnter={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 24px rgba(245,158,11,0.45)'; } }}
@@ -224,13 +239,12 @@ function StartReports() {
             <span style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: '800' }}>Template Wizard</span>
             <span style={{ fontSize: '13px', fontWeight: '500', opacity: 0.88 }}>Build your template section by section</span>
           </button>
-          <p style={recommendedTextStyle}>
-            <strong style={{ color: '#475569' }}>Recommended for:</strong> teachers who want full control, building every section themselves step by step.
-          </p>
-        </div>
+        );
+        const templateWizardCaption = <>teachers who want full control, building every section themselves step by step.</>;
 
-        <div style={optionCardStyle}>
+        const alreadyGotBtn = (
           <button
+            key="already-got"
             onClick={() => setTemplateView('existing')}
             style={{ ...bigBtnStyle('#3b82f6'), boxShadow: '0 4px 14px rgba(59,130,246,0.35)' }}
             onMouseEnter={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 24px rgba(59,130,246,0.45)'; } }}
@@ -240,12 +254,49 @@ function StartReports() {
             <span style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: '800' }}>Already Got a Template</span>
             <span style={{ fontSize: '13px', fontWeight: '500', opacity: 0.88 }}>Use a saved template, or import a file</span>
           </button>
-          <p style={recommendedTextStyle}>
-            <strong style={{ color: '#475569' }}>Recommended for:</strong> teachers reusing one of their own saved templates, or importing a template file from a colleague.
-          </p>
-        </div>
+        );
+        const alreadyGotCaption = <>teachers reusing one of their own saved templates, or importing a template file from a colleague.</>;
 
-      </div>
+        if (isMobile) {
+          return (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px' }}>
+              {[
+                [quickStartBtn, quickStartCaption],
+                [aiQuickBuildBtn, aiQuickBuildCaption],
+                [templateWizardBtn, templateWizardCaption],
+                [alreadyGotBtn, alreadyGotCaption],
+              ].map(([btn, caption], i) => (
+                <div key={i} style={optionCardStyle}>
+                  {btn}
+                  <p style={recommendedTextStyle}><strong style={{ color: '#475569' }}>Recommended for:</strong> {caption}</p>
+                </div>
+              ))}
+            </div>
+          );
+        }
+
+        // Desktop — 4 columns: [caption, button, button, caption] per row, so
+        // each caption sits in the space beside its button instead of below it.
+        return (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(150px, 1fr) 320px 320px minmax(150px, 1fr)',
+            columnGap: '24px',
+            rowGap: '28px',
+            alignItems: 'center',
+          }}>
+            <p style={sideCaptionStyle('right', '#10b981')}><strong style={{ color: '#475569' }}>Recommended for:</strong> {quickStartCaption}</p>
+            {quickStartBtn}
+            {aiQuickBuildBtn}
+            <p style={sideCaptionStyle('left', '#8b5cf6')}><strong style={{ color: '#475569' }}>Recommended for:</strong> {aiQuickBuildCaption}</p>
+
+            <p style={sideCaptionStyle('right', '#f59e0b')}><strong style={{ color: '#475569' }}>Recommended for:</strong> {templateWizardCaption}</p>
+            {templateWizardBtn}
+            {alreadyGotBtn}
+            <p style={sideCaptionStyle('left', '#3b82f6')}><strong style={{ color: '#475569' }}>Recommended for:</strong> {alreadyGotCaption}</p>
+          </div>
+        );
+      })()}
     </div>
   );
 
