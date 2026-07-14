@@ -67,6 +67,7 @@ const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 const AUTOSAVE_KEY = 'buildAsYouGo_draft';
 function saveDraft(n: string, s: AddedSection[]) { try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ templateName: n, sections: s, savedAt: Date.now() })); } catch (_) {} }
 function clearDraft() { try { localStorage.removeItem(AUTOSAVE_KEY); } catch (_) {} }
+const normalizeForDedupe = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 
 
 const HelpStep = ({ text, tip }: { text: React.ReactNode; tip: string }) => {
@@ -176,6 +177,8 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
   const [movingToNewName, setMovingToNewName] = useState('');
   const [splittingStatementKey, setSplittingStatementKey] = useState<{ buttonIdx: number; stmtIdx: number } | null>(null);
   const [splitSelectedText, setSplitSelectedText] = useState('');
+  const [editingHighlightedIndex, setEditingHighlightedIndex] = useState<number | null>(null);
+  const [editingHighlightedValue, setEditingHighlightedValue] = useState('');
   const statementInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { if (addedSections.length > 0) saveDraft(localTemplateName, addedSections); }, [addedSections, localTemplateName]);
@@ -248,6 +251,15 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
     });
     setSplittingStatementKey(null); setSplitSelectedText('');
   };
+  const handleSaveEditedHighlighted = () => {
+    if (editingHighlightedIndex === null || !editingHighlightedValue.trim()) return;
+    const idx = editingHighlightedIndex;
+    setHighlightedExamples(prev => prev.map((e, j) => j === idx ? editingHighlightedValue.trim() : e));
+    setEditingHighlightedIndex(null);
+  };
+  const handleSplitHighlighted = (i: number) => {
+    setHighlightedExamples(prev => { const u = [...prev]; u.splice(i, 1, u[i], u[i]); return u; });
+  };
 
   const resetWizardQuestion = (defaultName?: string) => {
     setPhase('ask'); setSectionName(defaultName ?? ''); setButtons([]); setActiveButtonIndex(0);
@@ -256,6 +268,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
     setHighlightedExamples([]); setShowPool(false);
     setAiUsedForSection(false); setShowInstructions(true); setMovingToNew(false); setMovingToNewName('');
     setSplittingStatementKey(null); setSplitSelectedText('');
+    setEditingHighlightedIndex(null); setEditingHighlightedValue('');
   };
   const advanceQuestion = () => {
     if (isLastQuestion) handleSaveAndWrite();
@@ -382,6 +395,70 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
     finally { setAiLoading(false); }
   };
 
+  // "Find Statements with AI" — same extraction call as handleAiFindInReports,
+  // but hands the results back as a flat, alphabetised, deduped list in
+  // highlightedExamples for the teacher to edit/split/assign themselves,
+  // instead of the AI deciding button groupings automatically.
+  const handleAiFindStatements = async (sName?: string, sType?: string) => {
+    if (!hasReports) return;
+    setAiLoading(true); setAiError(null); setAiAuthRequired(false);
+    const activeName = sName || sectionName || '';
+    const activeType = sType || question?.sectionType || 'qualities';
+    const isRated = activeType === 'rated-comment' || activeType === 'assessment-comment';
+    try {
+      let selectedTextForAI = highlightedExamples.join('\n');
+      if (!selectedTextForAI) {
+        const exampleLines: string[] = [];
+        buttons.forEach(b => { if (b.name && b.statements.length > 0) exampleLines.push(...b.statements.slice(0, 2)); });
+        if (exampleLines.length) {
+          selectedTextForAI = exampleLines.join('\n');
+        } else {
+          const qExamples = QUESTIONS.find(q => q.sectionType === activeType || q.id === activeType)?.examples || [];
+          if (qExamples.length) { selectedTextForAI = qExamples.join('\n'); }
+          else { setAiError('Select example sentences in the reports panel first.'); setAiLoading(false); return; }
+        }
+      }
+
+      let reportTextForAI = pastedReports;
+      if (!restructuredReports) {
+        setIsRestructuring(true);
+        try {
+          const rData = await callGenerateTemplate({ mode: 'restructure', reportText: pastedReports, subject: subject || '' });
+          if (rData.restructuredText) { setRestructuredReports(rData.restructuredText); reportTextForAI = rData.restructuredText; }
+        } catch (err) {
+          if (err instanceof InsufficientCreditError) throw err;
+        }
+        finally { setIsRestructuring(false); }
+      } else {
+        reportTextForAI = restructuredReports;
+      }
+
+      const positionType = activeType === 'next-steps' ? 'next-steps' : activeType === 'rated-comment' ? 'rating' : activeType === 'assessment-comment' ? 'assessment-comment' : activeType === 'personalised-comment' ? 'personalised-comment' : activeName === 'Areas for Development' ? 'next-steps' : 'qualities';
+      const ratingLevels = isRated ? buttons.map(b => b.name).filter(Boolean) : undefined;
+      const data = await callGenerateTemplate({ mode: 'extract-only', subject: subject || activeName, yearGroup: '', reportText: reportTextForAI, pronounSet: 'they/their', openerType: 'name', sectionName: activeName, positionType, selectedText: selectedTextForAI, scaleType: activeType === 'rated-comment' ? 'four-level' : 'own', ratingLevels });
+      const headings: { name: string; comments: string[] }[] = data.headings || [];
+      const found = headings.flatMap(h => h.comments);
+      if (found.length === 0) { setAiError('No matching sentences found. Try selecting a specific example sentence from your reports first.'); setAiLoading(false); return; }
+
+      const existingStatements = new Set(buttons.flatMap(b => b.statements).map(normalizeForDedupe));
+      setHighlightedExamples(prev => {
+        const seen = new Set(prev.map(normalizeForDedupe));
+        const merged = [...prev];
+        found.forEach(stmt => {
+          const key = normalizeForDedupe(stmt);
+          if (seen.has(key) || existingStatements.has(key)) return;
+          seen.add(key);
+          merged.push(stmt);
+        });
+        return merged.sort((a, b) => a.localeCompare(b));
+      });
+    } catch (err) {
+      setAiAuthRequired(err instanceof AuthRequiredError);
+      setAiError(err instanceof AuthRequiredError || err instanceof InsufficientCreditError ? err.message : 'AI search failed. Please try again.');
+    }
+    finally { setAiLoading(false); }
+  };
+
 
   const handleCancel = () => { if (addedSections.length > 0 || screen === 'wizard') { if (!window.confirm('Are you sure? Your progress will be lost.')) return; } onCancel(); };
 
@@ -442,8 +519,8 @@ const handleSaveAndWrite = () => {
           <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
             {showReadingView
               ? currentSectionLabel
-                ? `Highlight sentences from the "${currentSectionLabel}" section, then click "Find in my reports" →`
-                : 'Highlight example sentences, then click "Find in my reports" →'
+                ? `Highlight sentences from the "${currentSectionLabel}" section, then use an AI button →`
+                : 'Highlight example sentences, then use an AI button →'
               : 'Paste your reports here — they stay on your device and are never stored'}
           </div>
         </div>
@@ -584,24 +661,40 @@ const handleSaveAndWrite = () => {
             </div>
             {activePlaceholder && <p style={{ fontSize: '11px', color: '#92400e', margin: '0 0 10px 0' }}>Click any word to replace it with {activePlaceholder}</p>}
             {highlightedExamples.map((ex, i) => (
-              <div key={i} style={{ backgroundColor: 'white', border: '1px solid #fde68a', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                <div style={{ flex: 1, fontSize: '13px', lineHeight: '1.7', wordBreak: 'break-word', textAlign: 'left' }}>
-                  {activePlaceholder ? renderHighlightedTokens(ex, i) : <span style={{ color: '#374151' }}>{ex}</span>}
-                </div>
-                <select
-                  value=""
-                  onChange={e => handleAssignHighlight(ex, i, e.target.value)}
-                  style={{ width: '155px', flexShrink: 0, fontSize: '12px', padding: '5px 6px', border: '1px solid #fde68a', borderRadius: '6px', backgroundColor: '#fffbeb', color: '#78350f', cursor: 'pointer' }}
-                >
-                  <option value="">— assign —</option>
-                  {buttons.map((b, bi) => b.name ? (
-                    <option key={bi} value={String(bi)} disabled={b.statements.length >= MAX_STATEMENTS}>
-                      {b.name}{b.statements.length >= MAX_STATEMENTS ? ' (full)' : ''}
-                    </option>
-                  ) : null)}
-                  <option value="new">+ New button</option>
-                </select>
-                <button onClick={() => setHighlightedExamples(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '16px', flexShrink: 0, lineHeight: 1, padding: '2px 0' }}>✕</button>
+              <div key={i} style={{ backgroundColor: 'white', border: `1px solid ${editingHighlightedIndex === i ? '#f59e0b' : '#fde68a'}`, borderRadius: '8px', padding: '10px 12px', marginBottom: '8px' }}>
+                {editingHighlightedIndex === i ? (
+                  <div>
+                    <textarea value={editingHighlightedValue} onChange={e => setEditingHighlightedValue(e.target.value)} autoFocus style={{ ...txa, minHeight: '60px', marginBottom: '6px', borderColor: '#f59e0b' }} />
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button onClick={() => setEditingHighlightedIndex(null)} style={{ ...secondaryBtn, padding: '4px 10px', fontSize: '12px' }}>Cancel</button>
+                      <button onClick={handleSaveEditedHighlighted} style={smallBtn('#f59e0b')}>Save</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <div style={{ flex: 1, fontSize: '13px', lineHeight: '1.7', wordBreak: 'break-word', textAlign: 'left' }}>
+                      {activePlaceholder ? renderHighlightedTokens(ex, i) : <span style={{ color: '#374151' }}>{ex}</span>}
+                    </div>
+                    <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
+                      <button onClick={() => { setEditingHighlightedIndex(i); setEditingHighlightedValue(ex); }} title="Edit" style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '13px', padding: '2px 4px' }}>✏️</button>
+                      <button onClick={() => handleSplitHighlighted(i)} title="Split into two" style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '13px', padding: '2px 4px' }}>✂</button>
+                    </div>
+                    <select
+                      value=""
+                      onChange={e => handleAssignHighlight(ex, i, e.target.value)}
+                      style={{ width: '155px', flexShrink: 0, fontSize: '12px', padding: '5px 6px', border: '1px solid #fde68a', borderRadius: '6px', backgroundColor: '#fffbeb', color: '#78350f', cursor: 'pointer' }}
+                    >
+                      <option value="">— assign —</option>
+                      {buttons.map((b, bi) => b.name ? (
+                        <option key={bi} value={String(bi)} disabled={b.statements.length >= MAX_STATEMENTS}>
+                          {b.name}{b.statements.length >= MAX_STATEMENTS ? ' (full)' : ''}
+                        </option>
+                      ) : null)}
+                      <option value="new">+ New button</option>
+                    </select>
+                    <button onClick={() => setHighlightedExamples(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#a16207', cursor: 'pointer', fontSize: '16px', flexShrink: 0, lineHeight: 1, padding: '2px 0' }}>✕</button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -761,13 +854,22 @@ const handleSaveAndWrite = () => {
         {hasReports && !aiLoading && sType !== 'standard-comment' && (
           <div style={{ marginBottom: '16px' }}>
             <div style={{ height: '1px', backgroundColor: '#f3f4f6', margin: '4px 0 14px' }} />
-            <button onClick={() => handleAiFindInReports(sName, sType)} style={{ width: '100%', padding: '12px 16px', backgroundColor: highlightedExamples.length > 0 ? '#fffbeb' : '#faf5ff', border: `2px solid ${highlightedExamples.length > 0 ? '#f59e0b' : '#8b5cf6'}`, borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }} onMouseEnter={e => { e.currentTarget.style.backgroundColor = highlightedExamples.length > 0 ? '#fef3c7' : '#f3e8ff'; }} onMouseLeave={e => { e.currentTarget.style.backgroundColor = highlightedExamples.length > 0 ? '#fffbeb' : '#faf5ff'; }}>
-              <span style={{ fontSize: '20px' }}>🔍</span>
-              <div style={{ textAlign: 'left' }}>
-                <div style={{ fontSize: '14px', fontWeight: '700', color: highlightedExamples.length > 0 ? '#b45309' : '#7c3aed' }}>Find in my reports</div>
-                <div style={{ fontSize: '12px', color: '#9ca3af' }}>{highlightedExamples.length > 0 ? `AI will search for sentences matching your ${highlightedExamples.length} selected example${highlightedExamples.length > 1 ? 's' : ''}` : 'Highlight example sentences in your reports first, or click to search automatically'}</div>
-              </div>
-            </button>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button onClick={() => handleAiFindInReports(sName, sType)} style={{ flex: '1 1 240px', padding: '12px 16px', backgroundColor: highlightedExamples.length > 0 ? '#fffbeb' : '#faf5ff', border: `2px solid ${highlightedExamples.length > 0 ? '#f59e0b' : '#8b5cf6'}`, borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }} onMouseEnter={e => { e.currentTarget.style.backgroundColor = highlightedExamples.length > 0 ? '#fef3c7' : '#f3e8ff'; }} onMouseLeave={e => { e.currentTarget.style.backgroundColor = highlightedExamples.length > 0 ? '#fffbeb' : '#faf5ff'; }}>
+                <span style={{ fontSize: '20px' }}>🪄</span>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: '14px', fontWeight: '700', color: highlightedExamples.length > 0 ? '#b45309' : '#7c3aed' }}>Create Section with AI</div>
+                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>AI builds buttons and fills them with statements for you</div>
+                </div>
+              </button>
+              <button onClick={() => handleAiFindStatements(sName, sType)} style={{ flex: '1 1 240px', padding: '12px 16px', backgroundColor: '#eff6ff', border: '2px solid #3b82f6', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }} onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#dbeafe'; }} onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#eff6ff'; }}>
+                <span style={{ fontSize: '20px' }}>🔍</span>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontSize: '14px', fontWeight: '700', color: '#1d4ed8' }}>Find Statements with AI</div>
+                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>AI finds matching statements — you edit, split and assign them yourself</div>
+                </div>
+              </button>
+            </div>
           </div>
         )}
         {aiLoading && <div style={{ marginBottom: '16px', padding: '14px 16px', backgroundColor: '#faf5ff', border: '2px solid #8b5cf6', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}><div style={{ display: 'flex', gap: '4px' }}>{[0,1,2].map(i => <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#8b5cf6', animation: 'pulse 1.2s ease-in-out infinite', animationDelay: `${i * 0.2}s` }} />)}</div><div style={{ fontSize: '13px', color: '#7c3aed' }}>{isRestructuring ? 'Structuring your reports first (once only)...' : 'Searching your reports...'}</div><style>{`@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}`}</style></div>}
@@ -778,7 +880,7 @@ const handleSaveAndWrite = () => {
           </div>
         )}
         {aiError && !aiAuthRequired && <div style={{ marginBottom: '16px', padding: '10px 14px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '13px', color: '#b91c1c' }}>⚠️ {aiError}</div>}
-        {!hasReports && sType !== 'standard-comment' && <div style={{ marginBottom: '16px', padding: '12px 16px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', fontSize: '13px', color: '#78350f', lineHeight: '1.5' }}>💡 <strong>Have existing reports?</strong> Paste them in the right panel, select an example sentence, then click "Find in my reports" to auto-populate statements.</div>}
+        {!hasReports && sType !== 'standard-comment' && <div style={{ marginBottom: '16px', padding: '12px 16px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', fontSize: '13px', color: '#78350f', lineHeight: '1.5' }}>💡 <strong>Have existing reports?</strong> Paste them in the right panel, then use "Create Section with AI" or "Find Statements with AI" to get started.</div>}
       </div>
     );
   };
@@ -1071,14 +1173,14 @@ const handleSaveAndWrite = () => {
                         ) : hasReports ? (
                           question.sectionType === 'rated-comment' ? (<>
                             <HelpStep text="1. Select your rating statements by highlighting them in the reports" tip="Click and drag to highlight a sentence in the reports panel on the right — it will appear as a captured statement ready to assign." />
-                            <HelpStep text={<>2. If using AI: highlight a few examples, then click <strong>Find in my reports</strong> below</>} tip="Select 2–3 statements from the reports panel, then click Find in my reports — the AI will find more like them." />
+                            <HelpStep text={<>2. If using AI: highlight a few examples, then click <strong>Create Section with AI</strong> or <strong>Find Statements with AI</strong> below</>} tip="Select 2–3 statements from the reports panel — Create Section with AI builds buttons and fills them in automatically, Find Statements with AI just finds matching statements for you to sort yourself." />
                             <HelpStep text="3. Otherwise select as many statements needed to get started. (You can add more when writing reports)" tip="Highlight as many as you want now. You can always highlight more later while writing reports." />
                             <HelpStep text={<>4. Replace pupil names: click <strong>[Name]</strong> in the orange box, then click any pupil names to replace</>} tip="Click [Name] in the orange placeholder bar, then click the pupil's name in the statement to swap it out." />
                             <HelpStep text={<>5. Rename a button by clicking on it and typing — use <strong>+ Add</strong> to add more or ✕ to delete one</>} tip="Click the button label itself to rename it. Use + Add to create extra performance levels if needed." />
                             <HelpStep text={<>6. When finished: <strong>Save section</strong></>} tip="Save section adds it to your template. Use the Duplicate button below to add a second linked rated section if needed." />
                           </>) : question.sectionType === 'assessment-comment' ? (<>
                             <HelpStep text="1. Select your assessment statements by highlighting them in the reports" tip="Click and drag to highlight a sentence in the reports panel on the right — it will appear as a captured statement ready to assign." />
-                            <HelpStep text={<>2. If using AI: highlight a few examples, then click <strong>Find in my reports</strong> below</>} tip="Select 2–3 statements from the reports panel, then click Find in my reports — the AI will find more like them." />
+                            <HelpStep text={<>2. If using AI: highlight a few examples, then click <strong>Create Section with AI</strong> or <strong>Find Statements with AI</strong> below</>} tip="Select 2–3 statements from the reports panel — Create Section with AI builds buttons and fills them in automatically, Find Statements with AI just finds matching statements for you to sort yourself." />
                             <HelpStep text="3. Otherwise select as many statements needed to get started. (You can add more when writing reports)" tip="Highlight as many as you want now. You can always highlight more later while writing reports." />
                             <HelpStep text={<>4. Replace pupil names: click <strong>[Name]</strong> in the orange box, then click any pupil names to replace</>} tip="Click [Name] in the orange placeholder bar, then click the pupil's name in the statement to swap it out." />
                             <HelpStep text={<>5. Replace assessment scores: click <strong>[Score 1]</strong> in the orange box, then click the number to be replaced</>} tip="Click [Score 1] in the orange placeholder bar, then click the actual score number in the statement to swap it." />
@@ -1088,7 +1190,7 @@ const handleSaveAndWrite = () => {
                             <HelpStep text={<>9. When finished: <strong>Save section</strong></>} tip="Save section adds it to your template. Use the Duplicate button below to add a second assessment section if needed." />
                           </>) : question.sectionType === 'personalised-comment' ? (<>
                             <HelpStep text="1. Select your personalised statements by highlighting them in the reports" tip="Click and drag to highlight a sentence in the reports panel on the right — it will appear as a captured statement ready to assign." />
-                            <HelpStep text={<>2. If using AI: highlight a few examples, then click <strong>Find in my reports</strong> below</>} tip="Select 2–3 statements from the reports panel, then click Find in my reports — the AI will find more like them." />
+                            <HelpStep text={<>2. If using AI: highlight a few examples, then click <strong>Create Section with AI</strong> or <strong>Find Statements with AI</strong> below</>} tip="Select 2–3 statements from the reports panel — Create Section with AI builds buttons and fills them in automatically, Find Statements with AI just finds matching statements for you to sort yourself." />
                             <HelpStep text="3. Otherwise select as many statements needed to get started. (You can add more when writing reports)" tip="Highlight as many as you want now. You can always highlight more later while writing reports." />
                             <HelpStep text={<>4. Replace pupil names: click <strong>[Name]</strong> in the orange box, then click any pupil names to replace</>} tip="Click [Name] in the orange placeholder bar, then click the pupil's name in the statement to swap it out." />
                             <HelpStep text={<>5. Use <strong>[Info 1]</strong> to replace the specific detail — click it in the orange box, then click the words to be replaced</>} tip="Click [Info 1] in the orange placeholder bar, then click the word(s) in the statement you want to replace with personal info." />
@@ -1096,7 +1198,7 @@ const handleSaveAndWrite = () => {
                             <HelpStep text={<>7. When finished: <strong>Save section</strong></>} tip="Save section adds it to your template. Use the Duplicate button below to add a second personalised section if needed." />
                           </>) : (<>
                             <HelpStep text="1. Select your statements by highlighting them in the reports" tip="Click and drag to highlight a sentence in the reports panel on the right — it will appear as a captured statement ready to assign." />
-                            <HelpStep text={<>2. If using AI: highlight a few examples, then click <strong>Find in my reports</strong> below</>} tip="Select 2–3 statements from the reports panel, then click Find in my reports — the AI will find more like them." />
+                            <HelpStep text={<>2. If using AI: highlight a few examples, then click <strong>Create Section with AI</strong> or <strong>Find Statements with AI</strong> below</>} tip="Select 2–3 statements from the reports panel — Create Section with AI builds buttons and fills them in automatically, Find Statements with AI just finds matching statements for you to sort yourself." />
                             <HelpStep text="3. Or highlight as many statements as you want manually — you can add more whilst writing reports" tip="You don't need to add every statement now — highlight a good starting set and add more when you're writing reports." />
                             <HelpStep text={<>4. Replace pupil names: click <strong>[Name]</strong> in the orange box, then click any pupil names to replace</>} tip="Click [Name] in the orange placeholder bar, then click the pupil's name in the statement to swap it out." />
                             <HelpStep text={<>5. Assign each statement to a button — click <strong>+ New button</strong> to create one first</>} tip="Create a button with a descriptive name, then highlight a statement and assign it. Repeat for each button." />
