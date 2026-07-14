@@ -3,10 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { Template, Class, Student } from '../types';
 import ReportWriter from '../components/ReportWriter';
-import ClassSelection from '../components/WriteReports/ClassSelection';
-import DesktopClassSelection from '../components/WriteReports/DesktopClassSelection';
 
-type Step = 'template-selection' | 'class-selection' | 'student-selection' | 'writing';
+type Step = 'template-selection' | 'writing';
 
 // ─── Preview class used for the "Edit Template" flow — lets a teacher try out
 //     a template against a dummy student without touching real class/report data.
@@ -30,7 +28,7 @@ function getInitialState(
       if (template) {
         sessionStorage.removeItem('continueEditing');
         return {
-          step: (classData ? 'writing' : 'class-selection') as Step,
+          step: 'writing' as Step,
           template,
           classData,
           students: classData ? classData.students.map((s: Student) => s.id) : [] as string[],
@@ -63,10 +61,10 @@ function getInitialState(
       ? templates.find(t => t.id === locationState.preselectedTemplateId) ?? null
       : null;
     return {
-      step: (classData && template ? 'writing' : template ? 'class-selection' : 'template-selection') as Step,
+      step: (template ? 'writing' : 'template-selection') as Step,
       template,
       classData,
-      students: classData && template ? classData.students.map((s: Student) => s.id) : [] as string[],
+      students: classData ? classData.students.map((s: Student) => s.id) : [] as string[],
       studentIndex: 0,
       directNav: false,
       tourSource: locationState.tourSource || null,
@@ -88,8 +86,7 @@ function getInitialState(
 function WriteReports() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { state, addClass } = useData();
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const { state } = useData();
 
   const init = getInitialState(
     state.classes,
@@ -105,12 +102,6 @@ function WriteReports() {
   const [isPreview] = useState<boolean>(init.isPreview || false);
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
     const preselectedClassId = location.state?.preselectedClassId as string | undefined;
     const preselectedTemplateId = location.state?.preselectedTemplateId as string | undefined;
 
@@ -121,35 +112,22 @@ function WriteReports() {
       if (classData) setSelectedClass(classData);
       if (template) setSelectedTemplate(template);
 
-      if (classData && template) {
-        setSelectedStudents(classData.students.map((s: Student) => s.id));
+      if (template) {
+        if (classData) setSelectedStudents(classData.students.map((s: Student) => s.id));
         setCurrentStep('writing');
-      } else if (classData && !template) {
+      } else if (classData) {
         setCurrentStep('template-selection');
-      } else if (template && !classData) {
-        setCurrentStep('class-selection');
       }
     }
   }, [location.state, state.classes, state.templates]);
 
-  const handleClassSelect = (classData: Class) => {
+  // Called from the report writer's own class picker — either an existing
+  // class was loaded, or a brand-new one was just created (addClass already
+  // called by the picker). Keeping this state here (rather than in
+  // ReportWriter) is what lets the resume/"continue writing" flow work.
+  const handleClassChange = (classData: Class) => {
     setSelectedClass(classData);
     setSelectedStudents(classData.students.map((s: Student) => s.id));
-    setCurrentStep('writing');
-  };
-
-  // Creates a brand-new, pupil-less class right from the report writer —
-  // it then drops straight into ReportWriter's own "add your first pupil"
-  // screen (students.length === 0) rather than a separate Create Class page.
-  const handleCreateNewClass = (name: string) => {
-    const newClass = addClass({ name, students: [] });
-    setSelectedClass(newClass);
-    setSelectedStudents([]);
-    setCurrentStep('writing');
-  };
-
-  const handleBackToTemplates = () => {
-    navigate('/start');
   };
 
   // ─── Exit always leaves the report writer entirely — to Manage Templates when
@@ -170,35 +148,19 @@ function WriteReports() {
     selectedStudents.includes(s.id)
   ) || [];
 
-  if (currentStep === 'writing' && selectedTemplate && selectedClass) {
+  if (currentStep === 'writing' && selectedTemplate) {
     return (
       <ReportWriter
+        key={selectedClass?.id || 'no-class'}
         template={selectedTemplate}
         classData={selectedClass}
+        onClassChange={handleClassChange}
         students={studentsToWrite}
         onBack={handleBackFromWriting}
         startStudentIndex={resumeStudentIndex}
         tourSource={tourSource as 'ai-builder' | 'wizard' | undefined}
         disableReportSaving={isPreview}
         exitPath={isPreview ? '/manage-templates' : '/view-reports'}
-      />
-    );
-  }
-
-  if (currentStep === 'class-selection' && selectedTemplate) {
-    return isMobile ? (
-      <ClassSelection
-        selectedTemplate={selectedTemplate}
-        onClassSelect={handleClassSelect}
-        onCreateClass={handleCreateNewClass}
-        onBack={handleBackToTemplates}
-      />
-    ) : (
-      <DesktopClassSelection
-        selectedTemplate={selectedTemplate}
-        onClassSelect={handleClassSelect}
-        onCreateClass={handleCreateNewClass}
-        onBack={handleBackToTemplates}
       />
     );
   }
