@@ -15,15 +15,14 @@ import NextStepsCommentBuilder from '../NextStepsCommentBuilder';
 import QualitiesCommentBuilder from '../QualitiesCommentBuilder';
 import StandardCommentBuilder from '../StandardCommentBuilder';
 import { ReportWriterTour } from './ReportWriterTour';
-import { UploadClassList } from './UploadClassList';
-import { truncateSurname, ParsedName } from '../../utils/parseClassList';
 
 const FREE_PLAN_REPORT_LIMIT = 5;
 
 interface ReportWriterProps {
   template: Template;
-  classData: Class | null;
+  classData: Class;
   onClassChange: (classData: Class) => void;
+  isNewClass?: boolean;
   students: Student[];
   onBack: () => void;
   startStudentIndex?: number;
@@ -66,211 +65,6 @@ function shapeForStandardBuilder(section: any) {
   return { name: section.name || '', content: section.data?.content || '' };
 }
 
-// ─── CLASS PICKER ──────────────────────────────────────────────────────────
-// Lets a teacher name/create a class or load a previously built one, right
-// from the report writer — no separate "Choose a Class" page. Module-level
-// for the same input-focus reason as the other screens below.
-
-const ClassPicker: React.FC<{
-  classData: Class | null;
-  classes: Class[];
-  onClassChange: (classData: Class) => void;
-}> = ({ classData, classes, onClassChange }) => {
-  const { addClass } = useData();
-  const [name, setName] = useState(classData?.name || '');
-  const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<'menu' | 'load'>('menu');
-
-  useEffect(() => {
-    setName(classData?.name || '');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [classData?.id]);
-
-  const handleCreate = () => {
-    if (!name.trim()) return;
-    const newClass = addClass({ name: name.trim(), students: [] });
-    onClassChange(newClass);
-    setOpen(false);
-    setMode('menu');
-  };
-
-  return (
-    <div style={{ position: 'relative', display: 'flex', gap: '8px', alignItems: 'center' }}>
-      <input
-        type="text"
-        placeholder="Class name"
-        value={name}
-        onChange={e => setName(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') handleCreate(); }}
-        style={{ padding: '8px 12px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '14px', outline: 'none', width: '220px', boxSizing: 'border-box' }}
-      />
-      <button
-        onClick={() => { setOpen(o => !o); setMode('menu'); }}
-        style={{ padding: '8px 14px', backgroundColor: '#8b5cf6', color: 'white', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
-      >
-        + Add Class
-      </button>
-
-      {open && (
-        <>
-          <div style={{ position: 'fixed', inset: 0, zIndex: 98 }} onClick={() => setOpen(false)} />
-          <div style={{ position: 'absolute', top: 'calc(100% + 6px)', left: 0, backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '8px', boxShadow: '0 8px 20px rgba(0,0,0,0.12)', padding: '8px', minWidth: '260px', zIndex: 99 }}>
-            {mode === 'menu' ? (
-              <>
-                <button
-                  onClick={handleCreate}
-                  disabled={!name.trim()}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', borderRadius: '6px', background: 'none', fontSize: '13px', fontWeight: 600, cursor: name.trim() ? 'pointer' : 'not-allowed', color: name.trim() ? '#1e293b' : '#9ca3af' }}
-                >
-                  ➕ Create new class{name.trim() ? ` "${name.trim()}"` : ''}
-                </button>
-                <button
-                  onClick={() => setMode('load')}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', borderRadius: '6px', background: 'none', fontSize: '13px', fontWeight: 600, cursor: 'pointer', color: '#1e293b' }}
-                >
-                  📂 Load an existing class
-                </button>
-              </>
-            ) : (
-              <div style={{ maxHeight: '240px', overflowY: 'auto' }}>
-                {classes.length === 0 ? (
-                  <div style={{ padding: '10px 12px', fontSize: '13px', color: '#9ca3af' }}>No saved classes yet.</div>
-                ) : classes.map(cls => (
-                  <button
-                    key={cls.id}
-                    onClick={() => { onClassChange(cls); setOpen(false); setMode('menu'); }}
-                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 12px', border: 'none', borderRadius: '6px', background: 'none', fontSize: '13px', cursor: 'pointer', color: '#1e293b' }}
-                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f8fafc'; }}
-                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                  >
-                    {cls.name} <span style={{ color: '#9ca3af', fontWeight: 400 }}>· {cls.students.length} pupil{cls.students.length !== 1 ? 's' : ''}</span>
-                  </button>
-                ))}
-                <button
-                  onClick={() => setMode('menu')}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', border: 'none', background: 'none', fontSize: '12px', color: '#94a3b8', cursor: 'pointer' }}
-                >
-                  ← Back
-                </button>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-    </div>
-  );
-};
-
-// ─── NO CLASS SCREEN ───────────────────────────────────────────────────────
-// Shown as soon as the report writer mounts with a template but no class yet
-// — replaces the old standalone "Choose a Class" page.
-
-const NoClassScreen: React.FC<{
-  template: Template;
-  classes: Class[];
-  onClassChange: (classData: Class) => void;
-  onBack: () => void;
-}> = ({ template, classes, onClassChange, onBack }) => (
-  <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
-    <div style={{ backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '16px 20px' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', padding: 0 }}>
-          ⌂ Exit to Home
-        </button>
-      </div>
-    </div>
-    <div style={{ minHeight: 'calc(100vh - 61px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-      <div style={{ maxWidth: '440px', width: '100%', textAlign: 'center', backgroundColor: 'white', borderRadius: '12px', padding: '32px', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
-        <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b', marginBottom: '8px' }}>
-          Choose a class
-        </h2>
-        <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '20px', lineHeight: 1.6 }}>
-          Writing reports with <strong>{template.name}</strong>. Type a name for a new class, or load one you've already set up.
-        </p>
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <ClassPicker classData={null} classes={classes} onClassChange={onClassChange} />
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-// ─── ADD FIRST STUDENT SCREEN ─────────────────────────────────────────────────
-// Module-level (not nested in ReportWriter's render) so its inputs don't lose
-// focus on every keystroke — see the "inner component" gotcha in CLAUDE.md.
-
-const AddFirstStudentScreen: React.FC<{
-  onAdd: (firstName: string) => void;
-  onImportMany: (students: ParsedName[]) => void;
-  onBack: () => void;
-}> = ({ onAdd, onImportMany, onBack }) => {
-  const [firstName, setFirstName] = useState('');
-  const [showUpload, setShowUpload] = useState(false);
-
-  const handleSubmit = () => {
-    if (!firstName.trim()) return;
-    onAdd(firstName);
-  };
-
-  if (showUpload) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb', padding: '24px' }}>
-        <div style={{ maxWidth: '420px', width: '100%', backgroundColor: 'white', borderRadius: '12px', padding: '32px', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
-          <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b', marginBottom: '8px', textAlign: 'center' }}>
-            Upload a class list
-          </h2>
-          <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px', textAlign: 'center' }}>
-            Surnames are shortened to 2 letters for privacy.
-          </p>
-          <UploadClassList onImport={onImportMany} onCancel={() => setShowUpload(false)} />
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb', padding: '24px' }}>
-      <div style={{ maxWidth: '420px', width: '100%', textAlign: 'center', backgroundColor: 'white', borderRadius: '12px', padding: '32px', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
-        <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b', marginBottom: '8px' }}>
-          Add your first pupil
-        </h2>
-        <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '20px', lineHeight: 1.6 }}>
-          This class doesn't have any pupils yet — add them one at a time as you write, or upload your whole class list at once.
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
-          <input
-            type="text"
-            placeholder="First name"
-            value={firstName}
-            onChange={e => setFirstName(e.target.value)}
-            autoFocus
-            onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
-            style={{ padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
-          />
-        </div>
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginBottom: '16px' }}>
-          <button
-            onClick={handleSubmit}
-            disabled={!firstName.trim()}
-            style={{ padding: '10px 20px', backgroundColor: firstName.trim() ? '#10b981' : '#e2e8f0', color: firstName.trim() ? 'white' : '#94a3b8', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: firstName.trim() ? 'pointer' : 'not-allowed' }}
-          >
-            Add Pupil & Start Writing
-          </button>
-          <button onClick={onBack} style={{ padding: '10px 20px', backgroundColor: 'white', color: '#374151', border: '1px solid #d1d5db', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
-            Back
-          </button>
-        </div>
-        <button
-          onClick={() => setShowUpload(true)}
-          style={{ background: 'none', border: 'none', color: '#8b5cf6', fontSize: '13px', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
-        >
-          Upload a class list instead
-        </button>
-      </div>
-    </div>
-  );
-};
-
 // ─── BUILDER OVERLAY ─────────────────────────────────────────────────────────
 
 const BuilderOverlay: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -296,7 +90,7 @@ const BuilderOverlay: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 // ─── COMPONENT ────────────────────────────────────────────────────────────────
 
-function ReportWriter({ template, classData, onClassChange, students: initialStudents, onBack, startStudentIndex = 0, tourSource, disableReportSaving = false, exitPath = '/view-reports' }: ReportWriterProps) {
+function ReportWriter({ template, classData, onClassChange, isNewClass = false, students: initialStudents, onBack, startStudentIndex = 0, tourSource, disableReportSaving = false, exitPath = '/view-reports' }: ReportWriterProps) {
   const navigate = useNavigate();
   const { updateTemplate, updateClass, getReport, state: dataState } = useData();
   const { user } = useAuth();
@@ -319,43 +113,41 @@ function ReportWriter({ template, classData, onClassChange, students: initialStu
   const [dynamicSections, setDynamicSections] = useState<any[]>([]);
   const [activeTour, setActiveTour] = useState<'writing' | 'editing' | 'ai-builder' | 'wizard' | null>(null);
   const [helpMenuOpen, setHelpMenuOpen] = useState(false);
+  const [editingClassName, setEditingClassName] = useState(false);
+  const [classNameDraft, setClassNameDraft] = useState(classData.name);
 
   const currentStudent = students[currentStudentIndex];
 
   const reportLogic = useReportLogic({ template, classData, currentStudent, dynamicSections, setDynamicSections, disableReportSaving });
   const currentSectionData = reportLogic.sectionData;
 
-  // Lets a teacher build the class roster as they go, instead of requiring
-  // the full pupil list upfront in Create Class. Persists to the class
-  // immediately and jumps straight to writing the new pupil's report.
-  // Manual entry is first-name only — no dedup/disambiguation needed.
-  const handleAddStudent = (firstName: string) => {
-    const trimmedFirst = firstName.trim();
-    if (!trimmedFirst || !classData) return;
-    const newStudent: Student = {
-      id: `${Date.now()}${Math.random().toString(36).slice(2, 9)}`,
-      firstName: trimmedFirst,
-      lastName: '',
-    };
-    const updatedStudents = [...students, newStudent];
-    setStudents(updatedStudents);
-    updateClass({ ...classData, students: updatedStudents });
-    setCurrentStudentIndex(updatedStudents.length - 1);
+  // A freshly auto-created class ("Class 1" etc.) opens straight into rename
+  // mode — the teacher's first action is naming it, not hunting for a button.
+  useEffect(() => {
+    if (isNewClass && !disableReportSaving) setEditingClassName(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleRenameClass = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === classData.name) return;
+    const updated = { ...classData, name: trimmed };
+    updateClass(updated);
+    onClassChange(updated);
   };
 
-  // Bulk "upload a class list" path — keeps the existing truncated-surname
-  // privacy behaviour (same as CreateClass.tsx) since these come with surnames.
-  const handleAddStudents = (parsed: ParsedName[]) => {
-    if (parsed.length === 0 || !classData) return;
-    const newStudents: Student[] = parsed.map((p, i) => ({
-      id: `${Date.now()}${Math.random().toString(36).slice(2, 9)}${i}`,
-      firstName: p.firstName,
-      lastName: truncateSurname(p.lastName),
-    }));
-    const updatedStudents = [...students, ...newStudents];
-    setStudents(updatedStudents);
-    updateClass({ ...classData, students: updatedStudents });
-    setCurrentStudentIndex(students.length);
+  const commitClassName = () => {
+    if (classNameDraft.trim()) handleRenameClass(classNameDraft);
+    else setClassNameDraft(classData.name);
+    setEditingClassName(false);
+  };
+
+  // The pupil-name box above the pronoun section edits the current student
+  // directly — there's no separate roster to manage.
+  const handleRenameCurrentPupil = (firstName: string) => {
+    const updated = students.map((s, i) => i === currentStudentIndex ? { ...s, firstName } : s);
+    setStudents(updated);
+    updateClass({ ...classData, students: updated });
   };
 
   useEffect(() => {
@@ -420,13 +212,16 @@ function ReportWriter({ template, classData, onClassChange, students: initialStu
     },
     handleSaveReport: reportLogic.handleSaveReport,
     handleHome: () => navigate('/'),
-    handleFinish: async () => {
-      if (!disableReportSaving && reportLogic.hasUnsavedChanges) {
-        const shouldSave = window.confirm('You have unsaved changes. Would you like to save before finishing?');
-        if (shouldSave) reportLogic.handleSaveReport();
-      }
-      await promptSaveTemplate();
-      navigate(exitPath);
+    // Saves the current pupil's report, then opens a fresh blank pupil slot
+    // to write straight into — no "Finish"/exit step in between.
+    handleSaveAndNext: () => {
+      if (!disableReportSaving && reportLogic.hasUnsavedChanges) reportLogic.handleSaveReport();
+      const newStudent: Student = { id: `${Date.now()}${Math.random().toString(36).slice(2, 9)}`, firstName: '', lastName: '' };
+      const updatedStudents = [...students, newStudent];
+      setStudents(updatedStudents);
+      updateClass({ ...classData, students: updatedStudents });
+      setCurrentStudentIndex(updatedStudents.length - 1);
+      reportLogic.setHasUnsavedChanges(false);
     },
     handleViewAllReports: async () => {
       if (!disableReportSaving && reportLogic.hasUnsavedChanges) {
@@ -437,8 +232,6 @@ function ReportWriter({ template, classData, onClassChange, students: initialStu
       navigate(exitPath);
     },
     handleSaveAsNewTemplate: reportLogic.handleSaveAsNewTemplate,
-    handleAddStudent,
-    handleAddStudents
   };
 
   // Touch handlers
@@ -578,18 +371,6 @@ function ReportWriter({ template, classData, onClassChange, students: initialStu
     handleSaveEditedSection
   };
 
-  // No class chosen yet — pick or create one right here instead of a
-  // separate "Choose a Class" page.
-  if (!classData) {
-    return <NoClassScreen template={template} classes={dataState.classes} onClassChange={onClassChange} onBack={onBack} />;
-  }
-
-  // Class exists but has no pupils yet — let the teacher add their first
-  // pupil right here instead of forcing a trip back to Create Class.
-  if (students.length === 0) {
-    return <AddFirstStudentScreen onAdd={handleAddStudent} onImportMany={handleAddStudents} onBack={onBack} />;
-  }
-
   // Free-plan report cap — reports are counted the first time a teacher moves
   // past a student (handleSaveReport, called from next/previous navigation),
   // so this only blocks starting a genuinely NEW (uncounted) report.
@@ -629,6 +410,7 @@ function ReportWriter({ template, classData, onClassChange, students: initialStu
         currentStudentIndex={currentStudentIndex} currentStudent={currentStudent}
         currentSectionData={currentSectionData} activeTab={activeTab} setActiveTab={setActiveTab}
         touchHandlers={touchHandlers} navigationHandlers={navigationHandlers}
+        onRenameCurrentPupil={disableReportSaving ? undefined : handleRenameCurrentPupil}
         reportLogic={{
           setSectionData: reportLogic.setSectionData,
           setHasUnsavedChanges: reportLogic.setHasUnsavedChanges,
@@ -700,12 +482,36 @@ function ReportWriter({ template, classData, onClassChange, students: initialStu
               </div>
             </div>
 
-            <h1 style={{
-              fontSize: '15px', fontWeight: '700', margin: 0, color: '#111827',
-              flex: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>
-              {classData.name} — {currentStudent?.firstName} {currentStudent?.lastName}
-            </h1>
+            {editingClassName && !disableReportSaving ? (
+              <input
+                autoFocus
+                value={classNameDraft}
+                onChange={e => setClassNameDraft(e.target.value)}
+                onFocus={e => e.target.select()}
+                onBlur={commitClassName}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') commitClassName();
+                  if (e.key === 'Escape') { setClassNameDraft(classData.name); setEditingClassName(false); }
+                }}
+                style={{
+                  fontSize: '15px', fontWeight: '700', color: '#111827', textAlign: 'center',
+                  border: '2px solid #8b5cf6', borderRadius: '6px', padding: '3px 10px', outline: 'none',
+                  flex: 1, maxWidth: '280px', margin: '0 auto', display: 'block',
+                }}
+              />
+            ) : (
+              <h1
+                onClick={() => !disableReportSaving && setEditingClassName(true)}
+                title={disableReportSaving ? undefined : 'Click to rename class'}
+                style={{
+                  fontSize: '15px', fontWeight: '700', margin: 0, color: '#111827',
+                  flex: 1, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  cursor: disableReportSaving ? 'default' : 'pointer',
+                }}
+              >
+                {classData.name}{currentStudent?.firstName ? ` — ${currentStudent.firstName}` : ''}
+              </h1>
+            )}
 
             {reportLogic.hasTemplateChanges && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
@@ -727,9 +533,20 @@ function ReportWriter({ template, classData, onClassChange, students: initialStu
 
         {/* Left Column - Sections */}
         <div style={{ flex: 1 }}>
-          {/* Current class — switch to a different class or create a new one mid-session */}
+          {/* Pupil name — no pre-built roster, just type who this report is for */}
           <div style={{ marginBottom: '12px' }}>
-            <ClassPicker classData={classData} classes={dataState.classes} onClassChange={onClassChange} />
+            <input
+              type="text"
+              placeholder="Pupil's first name"
+              value={currentStudent?.firstName || ''}
+              onChange={e => handleRenameCurrentPupil(e.target.value)}
+              disabled={disableReportSaving}
+              style={{
+                width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px',
+                fontSize: '15px', fontWeight: 600, outline: 'none', boxSizing: 'border-box',
+                backgroundColor: disableReportSaving ? '#f3f4f6' : 'white',
+              }}
+            />
           </div>
 
           {/* Global pronoun selector above first section */}
@@ -834,10 +651,8 @@ function ReportWriter({ template, classData, onClassChange, students: initialStu
               onSaveReport={navigationHandlers.handleSaveReport}
               onPreviousStudent={navigationHandlers.handlePreviousStudent}
               onNextStudent={navigationHandlers.handleNextStudent}
-              onFinish={navigationHandlers.handleFinish}
+              onSaveAndNext={navigationHandlers.handleSaveAndNext}
               onViewAllReports={navigationHandlers.handleViewAllReports}
-              onAddStudent={disableReportSaving ? undefined : navigationHandlers.handleAddStudent}
-              onAddStudents={disableReportSaving ? undefined : navigationHandlers.handleAddStudents}
               pronounOverride={undefined}
               onPronounChange={undefined}
               isPreview={disableReportSaving}

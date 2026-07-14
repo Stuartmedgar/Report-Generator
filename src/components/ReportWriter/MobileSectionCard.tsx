@@ -11,7 +11,7 @@ interface MobileSectionCardProps {
     handleNextStudent: () => void;
     handleSaveReport: () => void;
     handleHome: () => void;
-    handleFinish: () => void;
+    handleSaveAndNext: () => void;
   };
   currentStudentIndex?: number;
   studentsLength?: number;
@@ -144,10 +144,10 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
           ← Previous
         </button>
         <button
-          onClick={currentStudentIndex === studentsLength - 1 ? navigationHandlers.handleFinish : navigationHandlers.handleNextStudent}
+          onClick={currentStudentIndex === studentsLength - 1 ? navigationHandlers.handleSaveAndNext : navigationHandlers.handleNextStudent}
           style={{
             flex: 1,
-            backgroundColor: currentStudentIndex === studentsLength - 1 ? '#ef4444' : '#3b82f6',
+            backgroundColor: currentStudentIndex === studentsLength - 1 ? '#10b981' : '#3b82f6',
             color: 'white',
             padding: '12px 16px',
             border: 'none',
@@ -157,7 +157,7 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
             fontWeight: '600'
           }}
         >
-          {currentStudentIndex === studentsLength - 1 ? '✅ Finish' : 'Next →'}
+          {currentStudentIndex === studentsLength - 1 ? '💾 Save & Next' : 'Next →'}
         </button>
       </div>
     );

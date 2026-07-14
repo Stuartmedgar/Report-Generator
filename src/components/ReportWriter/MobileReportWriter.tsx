@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Template, Student } from '../../types';
 import { ReportPreview } from './ReportPreview';
 import RatedCommentBuilder from '../RatedCommentBuilder';
@@ -6,8 +6,6 @@ import AssessmentCommentBuilder from '../AssessmentCommentBuilder';
 import PersonalisedCommentBuilder from '../PersonalisedCommentBuilder';
 import NextStepsCommentBuilder from '../NextStepsCommentBuilder';
 import MobileSectionCard from './MobileSectionCard';
-import { UploadClassList } from './UploadClassList';
-import { ParsedName } from '../../utils/parseClassList';
 
 interface MobileReportWriterProps {
   template: Template;
@@ -27,12 +25,11 @@ interface MobileReportWriterProps {
     handleNextStudent: () => void;
     handleSaveReport: () => void;
     handleHome: () => void;
-    handleFinish: () => void;
+    handleSaveAndNext: () => void;
     handleViewAllReports: () => void;
     handleSaveAsNewTemplate: () => void;
-    handleAddStudent: (firstName: string) => void;
-    handleAddStudents: (students: ParsedName[]) => void;
   };
+  onRenameCurrentPupil?: (firstName: string) => void;
   reportLogic: {
     setSectionData: any;
     setHasUnsavedChanges: any;
@@ -78,6 +75,7 @@ export const MobileReportWriter: React.FC<MobileReportWriterProps> = ({
   setActiveTab,
   touchHandlers,
   navigationHandlers,
+  onRenameCurrentPupil,
   reportLogic,
   editingState,
   dynamicSectionHandlers,
@@ -85,8 +83,6 @@ export const MobileReportWriter: React.FC<MobileReportWriterProps> = ({
   setShowSectionOptions,
   hasTemplateChanges
 }) => {
-  const [showUploadList, setShowUploadList] = useState(false);
-
   return (
     <div 
       data-mobile-writer
@@ -125,48 +121,34 @@ export const MobileReportWriter: React.FC<MobileReportWriterProps> = ({
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
             textAlign: 'center'
           }}>
-            <h2 style={{
-              fontSize: '16px',
+            <div style={{
+              fontSize: '12px',
               fontWeight: '600',
-              margin: 0,
-              color: '#111827'
+              color: '#8b5cf6',
+              margin: '0 0 6px 0',
+              textTransform: 'uppercase',
+              letterSpacing: '0.03em',
             }}>
-              {currentStudent?.firstName} {currentStudent?.lastName}
-            </h2>
+              {classData?.name}
+            </div>
+            <input
+              type="text"
+              placeholder="Pupil's first name"
+              value={currentStudent?.firstName || ''}
+              onChange={e => onRenameCurrentPupil?.(e.target.value)}
+              disabled={!onRenameCurrentPupil}
+              style={{
+                width: '100%', textAlign: 'center', fontSize: '16px', fontWeight: '600', color: '#111827',
+                border: '2px solid #e5e7eb', borderRadius: '8px', padding: '8px 10px', outline: 'none', boxSizing: 'border-box',
+              }}
+            />
             <p style={{
               fontSize: '12px',
               color: '#6b7280',
-              margin: '2px 0 0 0'
+              margin: '6px 0 0 0'
             }}>
-              Student {currentStudentIndex + 1} of {students.length} • Swipe for preview →
+              Pupil {currentStudentIndex + 1} of {students.length} • Swipe for preview →
             </p>
-            {showUploadList ? (
-              <div style={{ marginTop: '10px', textAlign: 'left' }}>
-                <UploadClassList
-                  onImport={(newStudents) => { navigationHandlers.handleAddStudents(newStudents); setShowUploadList(false); }}
-                  onCancel={() => setShowUploadList(false)}
-                />
-              </div>
-            ) : (
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '8px' }}>
-                <button
-                  onClick={() => {
-                    const firstName = window.prompt("New pupil's first name:");
-                    if (!firstName || !firstName.trim()) return;
-                    navigationHandlers.handleAddStudent(firstName);
-                  }}
-                  style={{ padding: '6px 12px', backgroundColor: '#f8fafc', color: '#374151', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  + Add Pupil
-                </button>
-                <button
-                  onClick={() => setShowUploadList(true)}
-                  style={{ padding: '6px 12px', backgroundColor: '#f8fafc', color: '#374151', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Upload List
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Clean Section Cards */}

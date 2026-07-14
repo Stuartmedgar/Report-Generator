@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useData } from '../contexts/DataContext';
 import { Template, Class, Student } from '../types';
@@ -11,6 +11,19 @@ type Step = 'template-selection' | 'writing';
 const PREVIEW_STUDENT: Student = { id: 'preview-test-student', firstName: 'Test', lastName: 'Student' };
 function buildPreviewClass(): Class {
   return { id: 'preview-test-class', name: 'Template Preview', students: [PREVIEW_STUDENT], createdAt: new Date().toISOString() };
+}
+
+function makeBlankStudent(): Student {
+  return { id: `${Date.now()}${Math.random().toString(36).slice(2, 9)}`, firstName: '', lastName: '' };
+}
+
+// First name-less default a fresh class gets — "Class 1", "Class 2", etc. —
+// so a teacher never has to name anything before they can start writing.
+function getDefaultClassName(existingClasses: Class[]): string {
+  const existingNames = new Set(existingClasses.map(c => c.name));
+  let n = 1;
+  while (existingNames.has(`Class ${n}`)) n++;
+  return `Class ${n}`;
 }
 
 // ─── Read sessionStorage synchronously before first render ───────────────────
@@ -86,7 +99,7 @@ function getInitialState(
 function WriteReports() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { state } = useData();
+  const { state, addClass, updateClass } = useData();
 
   const init = getInitialState(
     state.classes,
@@ -100,6 +113,7 @@ function WriteReports() {
   const [resumeStudentIndex] = useState<number>(init.studentIndex);
   const [tourSource] = useState<string | null>(init.tourSource || null);
   const [isPreview] = useState<boolean>(init.isPreview || false);
+  const [isNewClass, setIsNewClass] = useState(false);
 
   useEffect(() => {
     const preselectedClassId = location.state?.preselectedClassId as string | undefined;
@@ -121,10 +135,34 @@ function WriteReports() {
     }
   }, [location.state, state.classes, state.templates]);
 
-  // Called from the report writer's own class picker — either an existing
-  // class was loaded, or a brand-new one was just created (addClass already
-  // called by the picker). Keeping this state here (rather than in
-  // ReportWriter) is what lets the resume/"continue writing" flow work.
+  // No setup screens: as soon as a template is chosen with no class ready to
+  // write into (nothing selected yet, or an existing class with zero pupils),
+  // silently create what's needed — a default-named class and/or one
+  // blank-name pupil — so the report writer always mounts ready to write.
+  const autoSeededRef = useRef(false);
+  useEffect(() => {
+    if (currentStep !== 'writing' || !selectedTemplate) return;
+    if (selectedClass && selectedClass.students.length > 0) return;
+    if (autoSeededRef.current) return;
+    autoSeededRef.current = true;
+
+    const blankStudent = makeBlankStudent();
+    if (!selectedClass) {
+      const newClass = addClass({ name: getDefaultClassName(state.classes), students: [blankStudent] });
+      setSelectedClass(newClass);
+      setSelectedStudents([blankStudent.id]);
+      setIsNewClass(true);
+    } else {
+      const updated = { ...selectedClass, students: [...selectedClass.students, blankStudent] };
+      updateClass(updated);
+      setSelectedClass(updated);
+      setSelectedStudents([blankStudent.id]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, selectedTemplate, selectedClass]);
+
+  // Called when the report writer renames the class (via the header) — keeps
+  // this state in sync so resume/"continue writing" flows still work.
   const handleClassChange = (classData: Class) => {
     setSelectedClass(classData);
     setSelectedStudents(classData.students.map((s: Student) => s.id));
@@ -148,13 +186,14 @@ function WriteReports() {
     selectedStudents.includes(s.id)
   ) || [];
 
-  if (currentStep === 'writing' && selectedTemplate) {
+  if (currentStep === 'writing' && selectedTemplate && selectedClass && selectedClass.students.length > 0) {
     return (
       <ReportWriter
-        key={selectedClass?.id || 'no-class'}
+        key={selectedClass.id}
         template={selectedTemplate}
         classData={selectedClass}
         onClassChange={handleClassChange}
+        isNewClass={isNewClass}
         students={studentsToWrite}
         onBack={handleBackFromWriting}
         startStudentIndex={resumeStudentIndex}
@@ -163,6 +202,12 @@ function WriteReports() {
         exitPath={isPreview ? '/manage-templates' : '/view-reports'}
       />
     );
+  }
+
+  // Template resolved but the auto-seed effect above hasn't landed yet —
+  // nothing meaningful to render for a moment rather than a broken screen.
+  if (currentStep === 'writing' && selectedTemplate) {
+    return null;
   }
 
   // ─── No continueEditing or preselected state — redirect to onboarding flow ──

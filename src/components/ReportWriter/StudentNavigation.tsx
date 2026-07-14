@@ -1,6 +1,4 @@
-import React, { useState } from 'react';
-import { UploadClassList } from './UploadClassList';
-import { ParsedName } from '../../utils/parseClassList';
+import React from 'react';
 
 interface StudentNavigationProps {
   currentStudentIndex: number;
@@ -9,10 +7,8 @@ interface StudentNavigationProps {
   onSaveReport: () => void;
   onPreviousStudent: () => void;
   onNextStudent: () => void;
-  onFinish: () => void;
+  onSaveAndNext: () => void;
   onViewAllReports: () => void;
-  onAddStudent?: (firstName: string) => void;
-  onAddStudents?: (students: ParsedName[]) => void;
   pronounOverride?: string;
   onPronounChange?: (pronoun: string) => void;
   isPreview?: boolean;
@@ -25,24 +21,12 @@ export const StudentNavigation: React.FC<StudentNavigationProps> = ({
   onSaveReport,
   onPreviousStudent,
   onNextStudent,
-  onFinish,
+  onSaveAndNext,
   onViewAllReports,
-  onAddStudent,
-  onAddStudents,
   pronounOverride,
   onPronounChange,
   isPreview = false,
 }) => {
-  const [showAddStudent, setShowAddStudent] = useState(false);
-  const [showUpload, setShowUpload] = useState(false);
-  const [newFirstName, setNewFirstName] = useState('');
-
-  const handleAddStudentSubmit = () => {
-    if (!newFirstName.trim() || !onAddStudent) return;
-    onAddStudent(newFirstName);
-    setNewFirstName('');
-    setShowAddStudent(false);
-  };
   const pronounOptions = [
     { value: '', label: 'Name' },
     { value: 'he', label: 'He/His' },
@@ -131,68 +115,12 @@ export const StudentNavigation: React.FC<StudentNavigationProps> = ({
             ← Previous
           </button>
           <button
-            onClick={currentStudentIndex === studentsLength - 1 ? onFinish : onNextStudent}
-            style={{ flex: 1, backgroundColor: currentStudentIndex === studentsLength - 1 ? '#ef4444' : '#3b82f6', color: 'white', padding: '10px 16px', border: 'none', borderRadius: '6px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' }}
+            onClick={currentStudentIndex === studentsLength - 1 ? onSaveAndNext : onNextStudent}
+            style={{ flex: 1, backgroundColor: currentStudentIndex === studentsLength - 1 ? '#10b981' : '#3b82f6', color: 'white', padding: '10px 16px', border: 'none', borderRadius: '6px', fontSize: '14px', cursor: 'pointer', fontWeight: '600' }}
           >
-            {currentStudentIndex === studentsLength - 1 ? 'Finish' : 'Next →'}
+            {currentStudentIndex === studentsLength - 1 ? '💾 Save & Next Pupil' : 'Next →'}
           </button>
         </div>
-
-        {/* Add another pupil — builds the class roster as you go */}
-        {onAddStudent && (
-          showUpload ? (
-            <div style={{ padding: '10px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-              <UploadClassList
-                onImport={(students) => { onAddStudents?.(students); setShowUpload(false); }}
-                onCancel={() => setShowUpload(false)}
-              />
-            </div>
-          ) : showAddStudent ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-              <input
-                type="text"
-                placeholder="First name"
-                value={newFirstName}
-                onChange={e => setNewFirstName(e.target.value)}
-                autoFocus
-                onKeyDown={e => { if (e.key === 'Enter') handleAddStudentSubmit(); }}
-                style={{ padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }}
-              />
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <button
-                  onClick={handleAddStudentSubmit}
-                  disabled={!newFirstName.trim()}
-                  style={{ flex: 1, padding: '7px 10px', backgroundColor: newFirstName.trim() ? '#10b981' : '#e2e8f0', color: newFirstName.trim() ? 'white' : '#94a3b8', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: newFirstName.trim() ? 'pointer' : 'not-allowed' }}
-                >
-                  Add Pupil
-                </button>
-                <button
-                  onClick={() => { setShowAddStudent(false); setNewFirstName(''); }}
-                  style={{ padding: '7px 10px', backgroundColor: 'white', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <button
-                onClick={() => setShowAddStudent(true)}
-                style={{ flex: 1, padding: '8px 12px', backgroundColor: 'white', color: '#374151', border: '1px dashed #d1d5db', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
-              >
-                + Add Pupil
-              </button>
-              {onAddStudents && (
-                <button
-                  onClick={() => setShowUpload(true)}
-                  style={{ flex: 1, padding: '8px 12px', backgroundColor: 'white', color: '#374151', border: '1px dashed #d1d5db', borderRadius: '6px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Upload List
-                </button>
-              )}
-            </div>
-          )
-        )}
       </div>
 
       {/* Progress */}
