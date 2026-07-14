@@ -1,11 +1,12 @@
 import React from 'react';
-import { Template, Student } from '../../types';
+import { Template, Student, Class } from '../../types';
 import { ReportPreview } from './ReportPreview';
 import RatedCommentBuilder from '../RatedCommentBuilder';
 import AssessmentCommentBuilder from '../AssessmentCommentBuilder';
 import PersonalisedCommentBuilder from '../PersonalisedCommentBuilder';
 import NextStepsCommentBuilder from '../NextStepsCommentBuilder';
 import MobileSectionCard from './MobileSectionCard';
+import { AddClassMenu } from './AddClassMenu';
 
 interface MobileReportWriterProps {
   template: Template;
@@ -30,6 +31,9 @@ interface MobileReportWriterProps {
     handleSaveAsNewTemplate: () => void;
   };
   onRenameCurrentPupil?: (firstName: string) => void;
+  classes?: Class[];
+  onCreateNewClass?: () => void;
+  onLoadExistingClass?: (classData: Class) => void;
   reportLogic: {
     setSectionData: any;
     setHasUnsavedChanges: any;
@@ -76,6 +80,9 @@ export const MobileReportWriter: React.FC<MobileReportWriterProps> = ({
   touchHandlers,
   navigationHandlers,
   onRenameCurrentPupil,
+  classes = [],
+  onCreateNewClass,
+  onLoadExistingClass,
   reportLogic,
   editingState,
   dynamicSectionHandlers,
@@ -131,17 +138,22 @@ export const MobileReportWriter: React.FC<MobileReportWriterProps> = ({
             }}>
               {classData?.name}
             </div>
-            <input
-              type="text"
-              placeholder="Pupil's first name"
-              value={currentStudent?.firstName || ''}
-              onChange={e => onRenameCurrentPupil?.(e.target.value)}
-              disabled={!onRenameCurrentPupil}
-              style={{
-                width: '100%', textAlign: 'center', fontSize: '16px', fontWeight: '600', color: '#111827',
-                border: '2px solid #e5e7eb', borderRadius: '8px', padding: '8px 10px', outline: 'none', boxSizing: 'border-box',
-              }}
-            />
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="text"
+                placeholder="Pupil's first name"
+                value={currentStudent?.firstName || ''}
+                onChange={e => onRenameCurrentPupil?.(e.target.value)}
+                disabled={!onRenameCurrentPupil}
+                style={{
+                  flex: 1, textAlign: 'center', fontSize: '16px', fontWeight: '600', color: '#111827',
+                  border: '2px solid #e5e7eb', borderRadius: '8px', padding: '8px 10px', outline: 'none', boxSizing: 'border-box',
+                }}
+              />
+              {onCreateNewClass && onLoadExistingClass && (
+                <AddClassMenu classes={classes} onCreateNew={onCreateNewClass} onLoadExisting={onLoadExistingClass} />
+              )}
+            </div>
             <p style={{
               fontSize: '12px',
               color: '#6b7280',

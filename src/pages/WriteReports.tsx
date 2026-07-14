@@ -161,11 +161,13 @@ function WriteReports() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep, selectedTemplate, selectedClass]);
 
-  // Called when the report writer renames the class (via the header) — keeps
-  // this state in sync so resume/"continue writing" flows still work.
-  const handleClassChange = (classData: Class) => {
+  // Called when the report writer renames the class (via the header), or the
+  // teacher creates/loads a different class via the "+ Add Class" menu —
+  // keeps this state in sync so resume/"continue writing" flows still work.
+  const handleClassChange = (classData: Class, isNew?: boolean) => {
     setSelectedClass(classData);
     setSelectedStudents(classData.students.map((s: Student) => s.id));
+    setIsNewClass(!!isNew);
   };
 
   // ─── Exit always leaves the report writer entirely — to Manage Templates when

@@ -15,13 +15,14 @@ import NextStepsCommentBuilder from '../NextStepsCommentBuilder';
 import QualitiesCommentBuilder from '../QualitiesCommentBuilder';
 import StandardCommentBuilder from '../StandardCommentBuilder';
 import { ReportWriterTour } from './ReportWriterTour';
+import { AddClassMenu } from './AddClassMenu';
 
 const FREE_PLAN_REPORT_LIMIT = 5;
 
 interface ReportWriterProps {
   template: Template;
   classData: Class;
-  onClassChange: (classData: Class) => void;
+  onClassChange: (classData: Class, isNew?: boolean) => void;
   isNewClass?: boolean;
   students: Student[];
   onBack: () => void;
@@ -29,6 +30,16 @@ interface ReportWriterProps {
   tourSource?: 'ai-builder' | 'wizard';
   disableReportSaving?: boolean;
   exitPath?: string;
+}
+
+// Same "Class 1", "Class 2"... naming used when a class is first auto-created
+// (see WriteReports.tsx) — kept consistent so a class created mid-session
+// from here follows the same convention.
+function getDefaultClassName(existingClasses: Class[]): string {
+  const existingNames = new Set(existingClasses.map(c => c.name));
+  let n = 1;
+  while (existingNames.has(`Class ${n}`)) n++;
+  return `Class ${n}`;
 }
 
 // ─── DATA SHAPERS ─────────────────────────────────────────────────────────────
@@ -92,7 +103,7 @@ const BuilderOverlay: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 function ReportWriter({ template, classData, onClassChange, isNewClass = false, students: initialStudents, onBack, startStudentIndex = 0, tourSource, disableReportSaving = false, exitPath = '/view-reports' }: ReportWriterProps) {
   const navigate = useNavigate();
-  const { updateTemplate, updateClass, getReport, state: dataState } = useData();
+  const { updateTemplate, updateClass, addClass, getReport, state: dataState } = useData();
   const { user } = useAuth();
   const [students, setStudents] = useState<Student[]>(initialStudents);
   const [currentStudentIndex, setCurrentStudentIndex] = useState(startStudentIndex);
@@ -148,6 +159,15 @@ function ReportWriter({ template, classData, onClassChange, isNewClass = false, 
     const updated = students.map((s, i) => i === currentStudentIndex ? { ...s, firstName } : s);
     setStudents(updated);
     updateClass({ ...classData, students: updated });
+  };
+
+  // "+ Add Class" beside the pupil-name box — start a brand-new class (same
+  // default-naming + auto-rename-on-header convention as the very first
+  // class) or switch straight to one already set up.
+  const handleCreateNewClass = () => {
+    const blankStudent: Student = { id: `${Date.now()}${Math.random().toString(36).slice(2, 9)}`, firstName: '', lastName: '' };
+    const newClass = addClass({ name: getDefaultClassName(dataState.classes), students: [blankStudent] });
+    onClassChange(newClass, true);
   };
 
   useEffect(() => {
@@ -411,6 +431,9 @@ function ReportWriter({ template, classData, onClassChange, isNewClass = false, 
         currentSectionData={currentSectionData} activeTab={activeTab} setActiveTab={setActiveTab}
         touchHandlers={touchHandlers} navigationHandlers={navigationHandlers}
         onRenameCurrentPupil={disableReportSaving ? undefined : handleRenameCurrentPupil}
+        classes={disableReportSaving ? [] : dataState.classes.filter(c => c.id !== classData.id)}
+        onCreateNewClass={disableReportSaving ? undefined : handleCreateNewClass}
+        onLoadExistingClass={disableReportSaving ? undefined : (cls: Class) => onClassChange(cls)}
         reportLogic={{
           setSectionData: reportLogic.setSectionData,
           setHasUnsavedChanges: reportLogic.setHasUnsavedChanges,
@@ -534,7 +557,7 @@ function ReportWriter({ template, classData, onClassChange, isNewClass = false, 
         {/* Left Column - Sections */}
         <div style={{ flex: 1 }}>
           {/* Pupil name — no pre-built roster, just type who this report is for */}
-          <div style={{ marginBottom: '12px' }}>
+          <div style={{ marginBottom: '12px', display: 'flex', gap: '8px' }}>
             <input
               type="text"
               placeholder="Pupil's first name"
@@ -542,11 +565,18 @@ function ReportWriter({ template, classData, onClassChange, isNewClass = false, 
               onChange={e => handleRenameCurrentPupil(e.target.value)}
               disabled={disableReportSaving}
               style={{
-                width: '100%', padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px',
+                flex: 1, padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '8px',
                 fontSize: '15px', fontWeight: 600, outline: 'none', boxSizing: 'border-box',
                 backgroundColor: disableReportSaving ? '#f3f4f6' : 'white',
               }}
             />
+            {!disableReportSaving && (
+              <AddClassMenu
+                classes={dataState.classes.filter(c => c.id !== classData.id)}
+                onCreateNew={handleCreateNewClass}
+                onLoadExisting={(cls) => onClassChange(cls)}
+              />
+            )}
           </div>
 
           {/* Global pronoun selector above first section */}
