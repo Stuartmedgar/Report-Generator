@@ -179,6 +179,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
   const [splitSelectedText, setSplitSelectedText] = useState('');
   const [editingHighlightedIndex, setEditingHighlightedIndex] = useState<number | null>(null);
   const [editingHighlightedValue, setEditingHighlightedValue] = useState('');
+  const [personalisedInfoHint, setPersonalisedInfoHint] = useState('');
   const statementInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { if (addedSections.length > 0) saveDraft(localTemplateName, addedSections); }, [addedSections, localTemplateName]);
@@ -269,6 +270,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
     setAiUsedForSection(false); setShowInstructions(true); setMovingToNew(false); setMovingToNewName('');
     setSplittingStatementKey(null); setSplitSelectedText('');
     setEditingHighlightedIndex(null); setEditingHighlightedValue('');
+    setPersonalisedInfoHint('');
   };
   const advanceQuestion = () => {
     if (isLastQuestion) handleSaveAndWrite();
@@ -357,7 +359,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
 
       const positionType = activeType === 'next-steps' ? 'next-steps' : activeType === 'rated-comment' ? 'rating' : activeType === 'assessment-comment' ? 'assessment-comment' : activeType === 'personalised-comment' ? 'personalised-comment' : activeName === 'Areas for Development' ? 'next-steps' : 'qualities';
       const ratingLevels = isRated ? buttons.map(b => b.name).filter(Boolean) : undefined;
-      const data = await callGenerateTemplate({ mode: 'extract-only', subject: subject || activeName, yearGroup: '', reportText: reportTextForAI, pronounSet: 'they/their', openerType: 'name', sectionName: activeName, positionType, selectedText: selectedTextForAI, scaleType: activeType === 'rated-comment' ? 'four-level' : 'own', ratingLevels });
+      const data = await callGenerateTemplate({ mode: 'extract-only', subject: subject || activeName, yearGroup: '', reportText: reportTextForAI, pronounSet: 'they/their', openerType: 'name', sectionName: activeName, positionType, selectedText: selectedTextForAI, scaleType: activeType === 'rated-comment' ? 'four-level' : 'own', ratingLevels, personalisedInfoHint: activeType === 'personalised-comment' ? personalisedInfoHint : undefined });
       const headings: { name: string; comments: string[] }[] = data.headings || [];
       if (headings.length === 0) { setAiError('No matching sentences found. Try selecting a specific example sentence from your reports first.'); setAiLoading(false); return; }
       setNamingButtonIndex(null);
@@ -435,7 +437,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
 
       const positionType = activeType === 'next-steps' ? 'next-steps' : activeType === 'rated-comment' ? 'rating' : activeType === 'assessment-comment' ? 'assessment-comment' : activeType === 'personalised-comment' ? 'personalised-comment' : activeName === 'Areas for Development' ? 'next-steps' : 'qualities';
       const ratingLevels = isRated ? buttons.map(b => b.name).filter(Boolean) : undefined;
-      const data = await callGenerateTemplate({ mode: 'extract-only', subject: subject || activeName, yearGroup: '', reportText: reportTextForAI, pronounSet: 'they/their', openerType: 'name', sectionName: activeName, positionType, selectedText: selectedTextForAI, scaleType: activeType === 'rated-comment' ? 'four-level' : 'own', ratingLevels });
+      const data = await callGenerateTemplate({ mode: 'extract-only', subject: subject || activeName, yearGroup: '', reportText: reportTextForAI, pronounSet: 'they/their', openerType: 'name', sectionName: activeName, positionType, selectedText: selectedTextForAI, scaleType: activeType === 'rated-comment' ? 'four-level' : 'own', ratingLevels, personalisedInfoHint: activeType === 'personalised-comment' ? personalisedInfoHint : undefined });
       const headings: { name: string; comments: string[] }[] = data.headings || [];
       const found = headings.flatMap(h => h.comments);
       if (found.length === 0) { setAiError('No matching sentences found. Try selecting a specific example sentence from your reports first.'); setAiLoading(false); return; }
@@ -854,6 +856,23 @@ const handleSaveAndWrite = () => {
         {hasReports && !aiLoading && sType !== 'standard-comment' && (
           <div style={{ marginBottom: '16px' }}>
             <div style={{ height: '1px', backgroundColor: '#f3f4f6', margin: '4px 0 14px' }} />
+            {sType === 'personalised-comment' && (
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
+                  What should [Info 1] be replaced with? <span style={{ fontWeight: '400', color: '#9ca3af' }}>(optional — helps the AI stay precise)</span>
+                </label>
+                <input
+                  type="text"
+                  value={personalisedInfoHint}
+                  onChange={e => setPersonalisedInfoHint(e.target.value)}
+                  placeholder="e.g. reading, writing, talking, listening — or sport, musical instrument, target grade..."
+                  style={{ ...inp, fontSize: '13px' }}
+                />
+                <p style={{ fontSize: '11px', color: '#9ca3af', margin: '6px 0 0 0', lineHeight: '1.4' }}>
+                  Tell the AI exactly what kind of detail varies per pupil here. Without this it can guess wrong — for example mixing up a skill area (reading/writing/talking/listening) with a separate level or score in the same sentence.
+                </p>
+              </div>
+            )}
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <button onClick={() => handleAiFindInReports(sName, sType)} style={{ flex: '1 1 240px', padding: '12px 16px', backgroundColor: highlightedExamples.length > 0 ? '#fffbeb' : '#faf5ff', border: `2px solid ${highlightedExamples.length > 0 ? '#f59e0b' : '#8b5cf6'}`, borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }} onMouseEnter={e => { e.currentTarget.style.backgroundColor = highlightedExamples.length > 0 ? '#fef3c7' : '#f3e8ff'; }} onMouseLeave={e => { e.currentTarget.style.backgroundColor = highlightedExamples.length > 0 ? '#fffbeb' : '#faf5ff'; }}>
                 <span style={{ fontSize: '20px' }}>🪄</span>

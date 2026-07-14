@@ -702,7 +702,8 @@ serve(async (req) => {
   let mode, subject, yearGroup, reportText, pronounSet, openerType,
       sectionName, builtSections, existingTemplate, refineText,
       sourceSection, scaleType, positionType, selectedText, existingHeadings,
-      piInstruction, reportStructure: string, ratingLevels: string[] | null;
+      piInstruction, reportStructure: string, ratingLevels: string[] | null,
+      personalisedInfoHint: string;
 
   try {
     const body = await req.json();
@@ -724,6 +725,7 @@ serve(async (req) => {
     piInstruction = body.piInstruction || "";
     reportStructure = body.reportStructure || "";
     ratingLevels = body.ratingLevels || null;
+    personalisedInfoHint = body.personalisedInfoHint || "";
   } catch {
     return new Response(JSON.stringify({ error: "Invalid request body" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
@@ -895,6 +897,9 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
     if (!selectedText && !reportText) return new Response(JSON.stringify({ error: "selectedText and reportText are required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     if (positionType === "personalised-comment") {
+      const infoHintBlock = personalisedInfoHint
+        ? `\nWHAT [Info] SHOULD REPRESENT: ${personalisedInfoHint}\nOnly replace this specific kind of detail with [Info 1] / [Info 2]. If a sentence contains a DIFFERENT kind of varying detail (for example a score, grade, or level) that does not match this description, leave it exactly as written in the sentence — do not turn it into an [Info] placeholder, and do not treat it as a second distinct detail. Only the detail matching the teacher's description above should ever become [Info 1] or [Info 2].\n`
+        : "";
       try {
         const response = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
@@ -909,7 +914,7 @@ ${reportText.substring(0, GENERATION_CHAR_LIMIT)}`,
               content: `Subject: ${subject}
 Year Group: ${yearGroup || "Not specified"}
 Section name: ${sectionName}
-
+${infoHintBlock}
 TEACHER'S HIGHLIGHTED SELECTION — these are the exact examples to match. Study them carefully. Only extract sentences from the full reports that follow the same pattern as these examples.
 ${selectedText}
 
