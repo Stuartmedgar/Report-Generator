@@ -145,6 +145,27 @@ function StartReports() {
     marginBottom: '10px',
   });
 
+  // Wraps each big button together with its "Recommended for" caption in one
+  // bordered card, so it's unambiguous which button the text describes.
+  const optionCardStyle: React.CSSProperties = {
+    border: '2px solid #e5e7eb',
+    borderRadius: isMobile ? '16px' : '20px',
+    padding: isMobile ? '12px' : '14px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    backgroundColor: 'white',
+  };
+
+  const recommendedTextStyle: React.CSSProperties = {
+    fontSize: '12px',
+    color: '#64748b',
+    margin: 0,
+    lineHeight: 1.5,
+    textAlign: 'center',
+    padding: '0 4px',
+  };
+
   // ─── Step 2a: Choose how to get a template ───────────────────────────────
 
   const renderTemplateOptions = () => (
@@ -158,40 +179,71 @@ function StartReports() {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: isMobile ? '14px' : '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: isMobile ? '14px' : '20px' }}>
 
-        <button
-          onClick={() => navigate('/import-template', { state: { classId: selectedClass?.id } })}
-          style={{ ...bigBtnStyle('#8b5cf6'), boxShadow: '0 4px 14px rgba(139,92,246,0.35)' }}
-          onMouseEnter={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 24px rgba(139,92,246,0.45)'; } }}
-          onMouseLeave={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(139,92,246,0.35)'; } }}
-        >
-          <span style={{ fontSize: '30px' }}>⚡</span>
-          <span style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: '800' }}>AI Quick Build</span>
-          <span style={{ fontSize: '13px', fontWeight: '500', opacity: 0.88 }}>Paste your reports — AI builds a template in ~2 min</span>
-        </button>
+        <div style={optionCardStyle}>
+          <button
+            onClick={() => navigate('/create-template', { state: { method: 'quick-start', classId: selectedClass?.id } })}
+            style={{ ...bigBtnStyle('#10b981'), boxShadow: '0 4px 14px rgba(16,185,129,0.35)' }}
+            onMouseEnter={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 24px rgba(16,185,129,0.45)'; } }}
+            onMouseLeave={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(16,185,129,0.35)'; } }}
+          >
+            <span style={{ fontSize: '30px' }}>🚀</span>
+            <span style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: '800' }}>Quick Start</span>
+            <span style={{ fontSize: '13px', fontWeight: '500', opacity: 0.88 }}>Pick your subject — instant pre-filled template</span>
+          </button>
+          <p style={recommendedTextStyle}>
+            <strong style={{ color: '#475569' }}>Recommended for:</strong> teachers who want to start writing right now — pick a subject and get a ready-made template in seconds.
+          </p>
+        </div>
 
-        <button
-          onClick={() => navigate('/create-template', { state: { method: 'build-as-you-go', classId: selectedClass?.id } })}
-          style={{ ...bigBtnStyle('#f59e0b'), boxShadow: '0 4px 14px rgba(245,158,11,0.35)' }}
-          onMouseEnter={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 24px rgba(245,158,11,0.45)'; } }}
-          onMouseLeave={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(245,158,11,0.35)'; } }}
-        >
-          <span style={{ fontSize: '30px' }}>🧱</span>
-          <span style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: '800' }}>Template Wizard</span>
-          <span style={{ fontSize: '13px', fontWeight: '500', opacity: 0.88 }}>Build your template section by section</span>
-        </button>
+        <div style={optionCardStyle}>
+          <button
+            onClick={() => navigate('/import-template', { state: { classId: selectedClass?.id } })}
+            style={{ ...bigBtnStyle('#8b5cf6'), boxShadow: '0 4px 14px rgba(139,92,246,0.35)' }}
+            onMouseEnter={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 24px rgba(139,92,246,0.45)'; } }}
+            onMouseLeave={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(139,92,246,0.35)'; } }}
+          >
+            <span style={{ fontSize: '30px' }}>⚡</span>
+            <span style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: '800' }}>AI Quick Build</span>
+            <span style={{ fontSize: '13px', fontWeight: '500', opacity: 0.88 }}>Paste your reports — AI builds a template in ~2 min</span>
+          </button>
+          <p style={recommendedTextStyle}>
+            <strong style={{ color: '#475569' }}>Recommended for:</strong> teachers who already have reports written in their own words and want AI to turn them into a reusable template.
+          </p>
+        </div>
 
-        <button
-          onClick={() => setTemplateView('existing')}
-          style={{ ...bigBtnStyle('#3b82f6'), boxShadow: '0 4px 14px rgba(59,130,246,0.35)' }}
-          onMouseEnter={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 24px rgba(59,130,246,0.45)'; } }}
-          onMouseLeave={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(59,130,246,0.35)'; } }}
-        >
-          <span style={{ fontSize: '30px' }}>📁</span>
-          <span style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: '800' }}>Already Got a Template</span>
-          <span style={{ fontSize: '13px', fontWeight: '500', opacity: 0.88 }}>Use a saved template, import a file, or pick a prebuilt one</span>
-        </button>
+        <div style={optionCardStyle}>
+          <button
+            onClick={() => navigate('/create-template', { state: { method: 'build-as-you-go', classId: selectedClass?.id } })}
+            style={{ ...bigBtnStyle('#f59e0b'), boxShadow: '0 4px 14px rgba(245,158,11,0.35)' }}
+            onMouseEnter={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 24px rgba(245,158,11,0.45)'; } }}
+            onMouseLeave={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(245,158,11,0.35)'; } }}
+          >
+            <span style={{ fontSize: '30px' }}>🧱</span>
+            <span style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: '800' }}>Template Wizard</span>
+            <span style={{ fontSize: '13px', fontWeight: '500', opacity: 0.88 }}>Build your template section by section</span>
+          </button>
+          <p style={recommendedTextStyle}>
+            <strong style={{ color: '#475569' }}>Recommended for:</strong> teachers who want full control, building every section themselves step by step.
+          </p>
+        </div>
+
+        <div style={optionCardStyle}>
+          <button
+            onClick={() => setTemplateView('existing')}
+            style={{ ...bigBtnStyle('#3b82f6'), boxShadow: '0 4px 14px rgba(59,130,246,0.35)' }}
+            onMouseEnter={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 24px rgba(59,130,246,0.45)'; } }}
+            onMouseLeave={e => { if (!isMobile) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(59,130,246,0.35)'; } }}
+          >
+            <span style={{ fontSize: '30px' }}>📁</span>
+            <span style={{ fontSize: isMobile ? '18px' : '20px', fontWeight: '800' }}>Already Got a Template</span>
+            <span style={{ fontSize: '13px', fontWeight: '500', opacity: 0.88 }}>Use a saved template, or import a file</span>
+          </button>
+          <p style={recommendedTextStyle}>
+            <strong style={{ color: '#475569' }}>Recommended for:</strong> teachers reusing one of their own saved templates, or importing a template file from a colleague.
+          </p>
+        </div>
 
       </div>
     </div>
@@ -264,10 +316,10 @@ function StartReports() {
       {/* Get a template from elsewhere */}
       <div>
         <p style={{ fontSize: '13px', fontWeight: '600', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 10px 0' }}>
-          {state.templates.length > 0 ? 'Or Get Another Template' : 'Get a Template'}
+          {state.templates.length > 0 ? 'Or Import a Template' : 'Import a Template'}
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '10px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '10px' }}>
 
           <button
             onClick={handleImportClick}
@@ -278,19 +330,6 @@ function StartReports() {
               <div style={{ fontWeight: '700' }}>Import File</div>
               <div style={{ fontSize: '12px', opacity: 0.9, fontWeight: '400', marginTop: '2px' }}>
                 Import a .json template from a colleague
-              </div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => navigate('/create-template', { state: { method: 'quick-start', classId: selectedClass?.id } })}
-            style={{ ...optionBtnStyle('#10b981'), marginBottom: 0 }}
-          >
-            <span style={{ fontSize: '22px', flexShrink: 0 }}>🚀</span>
-            <div>
-              <div style={{ fontWeight: '700' }}>Prebuilt Templates</div>
-              <div style={{ fontSize: '12px', opacity: 0.9, fontWeight: '400', marginTop: '2px' }}>
-                Pick your subject — instant pre-filled template
               </div>
             </div>
           </button>
