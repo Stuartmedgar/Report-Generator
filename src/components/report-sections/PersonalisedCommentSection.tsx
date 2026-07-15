@@ -51,6 +51,8 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
   const [addToNewButtonName, setAddToNewButtonName] = useState('');
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [mergeTargetId, setMergeTargetId] = useState('');
+  const [draggedCategory, setDraggedCategory] = useState<string | null>(null);
+  const [dragOverCategory, setDragOverCategory] = useState<string | null>(null);
 
   useEffect(() => {
     if (data.selectedComment) {
@@ -125,13 +127,17 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
     (s: any) => s.type === 'personalised-comment' && s.id !== section.id
   );
 
-  const handleMoveButtonOrder = (index: number, direction: -1 | 1) => {
-    if (!onTemplateAction) return;
-    const newIndex = index + direction;
-    if (newIndex < 0 || newIndex >= categories.length) return;
+  const handleDropReorder = (targetCategory: string) => {
+    if (!onTemplateAction || !draggedCategory || draggedCategory === targetCategory) { setDraggedCategory(null); setDragOverCategory(null); return; }
     const reordered = [...categories];
-    [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+    const fromIndex = reordered.indexOf(draggedCategory);
+    const toIndex = reordered.indexOf(targetCategory);
+    if (fromIndex === -1 || toIndex === -1) { setDraggedCategory(null); setDragOverCategory(null); return; }
+    reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, draggedCategory);
     onTemplateAction({ type: 'reorder-button' as any, sectionId: section.id, orderedButtons: reordered });
+    setDraggedCategory(null);
+    setDragOverCategory(null);
   };
 
   const categories = section.data?.headings || Object.keys(section.data?.categories || section.data?.comments || {});
@@ -245,28 +251,33 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
 
       {/* Category buttons + add new */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', marginBottom: '12px', alignItems: 'center' }}>
-        {categories.map((category: string, categoryIndex: number) => (
-          <div key={category} style={{ display: 'flex', alignItems: 'center', gap: '2px', marginRight: '4px' }}>
+        {categories.map((category: string) => (
+          <div key={category}
+            draggable={!!onTemplateAction && categories.length > 1}
+            onDragStart={() => setDraggedCategory(category)}
+            onDragOver={e => { if (onTemplateAction && categories.length > 1) { e.preventDefault(); setDragOverCategory(category); } }}
+            onDragLeave={() => setDragOverCategory(prev => prev === category ? null : prev)}
+            onDrop={e => { e.preventDefault(); handleDropReorder(category); }}
+            onDragEnd={() => { setDraggedCategory(null); setDragOverCategory(null); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '2px', marginRight: '4px', borderRadius: '6px',
+              opacity: draggedCategory === category ? 0.4 : 1,
+              outline: dragOverCategory === category && draggedCategory && draggedCategory !== category ? '2px dashed #f59e0b' : 'none',
+              outlineOffset: '2px',
+            }}>
+            {onTemplateAction && categories.length > 1 && <span title="Drag to reorder" style={{ cursor: 'grab', color: '#d97706', fontSize: '12px', padding: '0 3px' }}>⠿</span>}
             <button onClick={() => handleCategoryChange(category)}
               style={{
                 backgroundColor: data.category === category ? '#f59e0b' : 'white',
                 color: data.category === category ? 'white' : '#f59e0b',
                 border: '2px solid #f59e0b',
-                borderRadius: onTemplateAction && categories.length > 1 ? '6px 0 0 6px' : '6px',
+                borderRadius: '6px',
                 padding: '6px 12px',
-                fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                fontSize: '12px', fontWeight: '600', cursor: onTemplateAction && categories.length > 1 ? 'grab' : 'pointer',
                 transition: 'all 0.2s ease', whiteSpace: 'nowrap'
               }}>
               {category}
             </button>
-            {onTemplateAction && categories.length > 1 && (
-              <>
-                <button onClick={() => handleMoveButtonOrder(categoryIndex, -1)} disabled={categoryIndex === 0} title="Move left"
-                  style={{ backgroundColor: '#fef3c7', color: '#d97706', border: '2px solid #f59e0b', borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: categoryIndex === 0 ? 'default' : 'pointer', opacity: categoryIndex === 0 ? 0.35 : 1 }}>◀</button>
-                <button onClick={() => handleMoveButtonOrder(categoryIndex, 1)} disabled={categoryIndex === categories.length - 1} title="Move right"
-                  style={{ backgroundColor: '#fef3c7', color: '#d97706', border: '2px solid #f59e0b', borderLeft: 'none', borderRadius: '0 6px 6px 0', padding: '6px 5px', fontSize: '10px', cursor: categoryIndex === categories.length - 1 ? 'default' : 'pointer', opacity: categoryIndex === categories.length - 1 ? 0.35 : 1 }}>▶</button>
-              </>
-            )}
           </div>
         ))}
         {onAddButton && (

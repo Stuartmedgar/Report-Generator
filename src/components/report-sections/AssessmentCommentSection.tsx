@@ -49,6 +49,8 @@ const AssessmentCommentSection: React.FC<AssessmentCommentSectionProps> = ({
   const [moveToArea, setMoveToArea] = useState('');
   const [editingButtons, setEditingButtons] = useState(false);
   const [moveAllTarget, setMoveAllTarget] = useState('');
+  const [draggedButton, setDraggedButton] = useState<string | null>(null);
+  const [dragOverButton, setDragOverButton] = useState<string | null>(null);
 
   useEffect(() => {
     if (data.selectedComment) {
@@ -167,13 +169,17 @@ const AssessmentCommentSection: React.FC<AssessmentCommentSectionProps> = ({
     setMoveAllTarget('');
   };
 
-  const handleMoveButtonOrder = (index: number, direction: -1 | 1) => {
-    if (!onTemplateAction) return;
-    const newIndex = index + direction;
-    if (newIndex < 0 || newIndex >= performanceButtons.length) return;
+  const handleDropReorder = (targetButton: string) => {
+    if (!onTemplateAction || !draggedButton || draggedButton === targetButton) { setDraggedButton(null); setDragOverButton(null); return; }
     const reordered = [...performanceButtons];
-    [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+    const fromIndex = reordered.indexOf(draggedButton);
+    const toIndex = reordered.indexOf(targetButton);
+    if (fromIndex === -1 || toIndex === -1) { setDraggedButton(null); setDragOverButton(null); return; }
+    reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, draggedButton);
     onTemplateAction({ type: 'reorder-button' as any, sectionId: section.id, orderedButtons: reordered });
+    setDraggedButton(null);
+    setDragOverButton(null);
   };
 
   const hasSelectedComment = data.selectedComment && data.performance && data.performance !== 'no-comment';
@@ -322,23 +328,32 @@ const AssessmentCommentSection: React.FC<AssessmentCommentSectionProps> = ({
               )}
             </div>
           ) : (
-            <div key={btn} style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+            <div key={btn}
+              draggable={editingButtons}
+              onDragStart={() => setDraggedButton(btn)}
+              onDragOver={e => { if (editingButtons) { e.preventDefault(); setDragOverButton(btn); } }}
+              onDragLeave={() => setDragOverButton(prev => prev === btn ? null : prev)}
+              onDrop={e => { e.preventDefault(); handleDropReorder(btn); }}
+              onDragEnd={() => { setDraggedButton(null); setDragOverButton(null); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '2px', borderRadius: '6px',
+                opacity: draggedButton === btn ? 0.4 : 1,
+                outline: dragOverButton === btn && draggedButton && draggedButton !== btn ? `2px dashed ${getButtonColor(idx)}` : 'none',
+                outlineOffset: '2px',
+              }}>
+              {editingButtons && <span title="Drag to reorder" style={{ cursor: 'grab', color: getButtonColor(idx), fontSize: '12px', padding: '0 3px' }}>⠿</span>}
               <button onClick={() => handlePerformanceChange(btn)}
                 style={{
                   backgroundColor: data.performance === btn ? getButtonColor(idx) : 'white',
                   color: data.performance === btn ? 'white' : getButtonColor(idx),
                   border: `2px solid ${getButtonColor(idx)}`,
                   borderRadius: editingButtons ? '6px 0 0 6px' : '6px', padding: '6px 12px',
-                  fontSize: '12px', fontWeight: '600', cursor: editingButtons ? 'default' : 'pointer', whiteSpace: 'nowrap'
+                  fontSize: '12px', fontWeight: '600', cursor: editingButtons ? 'grab' : 'pointer', whiteSpace: 'nowrap'
                 }}>
                 {btn}
               </button>
               {editingButtons && (
                 <>
-                  <button onClick={() => handleMoveButtonOrder(idx, -1)} disabled={idx === 0} title="Move left"
-                    style={{ backgroundColor: '#f3e8ff', color: getButtonColor(idx), border: `2px solid ${getButtonColor(idx)}`, borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.35 : 1 }}>◀</button>
-                  <button onClick={() => handleMoveButtonOrder(idx, 1)} disabled={idx === performanceButtons.length - 1} title="Move right"
-                    style={{ backgroundColor: '#f3e8ff', color: getButtonColor(idx), border: `2px solid ${getButtonColor(idx)}`, borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: idx === performanceButtons.length - 1 ? 'default' : 'pointer', opacity: idx === performanceButtons.length - 1 ? 0.35 : 1 }}>▶</button>
                   <button onClick={() => { setRenamingButton(btn); setRenameValue(btn); setMoveAllTarget(''); }} title="Rename button"
                     style={{ backgroundColor: '#f3e8ff', color: getButtonColor(idx), border: `2px solid ${getButtonColor(idx)}`, borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: 'pointer' }}>✏</button>
                   <button onClick={() => handleDeleteButton(btn)} title="Delete button"

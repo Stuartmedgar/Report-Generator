@@ -47,6 +47,8 @@ const RatedCommentSection: React.FC<RatedCommentSectionProps> = ({
   const [moveToArea, setMoveToArea] = useState('');
   const [editingButtons, setEditingButtons] = useState(false);
   const [moveAllTarget, setMoveAllTarget] = useState('');
+  const [draggedKey, setDraggedKey] = useState<string | null>(null);
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (data.selectedComment) {
@@ -154,13 +156,17 @@ const RatedCommentSection: React.FC<RatedCommentSectionProps> = ({
     setMoveAllTarget('');
   };
 
-  const handleMoveButtonOrder = (index: number, direction: -1 | 1) => {
-    if (!onTemplateAction) return;
-    const newIndex = index + direction;
-    if (newIndex < 0 || newIndex >= ratingKeys.length) return;
+  const handleDropReorder = (targetKey: string) => {
+    if (!onTemplateAction || !draggedKey || draggedKey === targetKey) { setDraggedKey(null); setDragOverKey(null); return; }
     const reordered = [...ratingKeys];
-    [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+    const fromIndex = reordered.indexOf(draggedKey);
+    const toIndex = reordered.indexOf(targetKey);
+    if (fromIndex === -1 || toIndex === -1) { setDraggedKey(null); setDragOverKey(null); return; }
+    reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, draggedKey);
     onTemplateAction({ type: 'reorder-button' as any, sectionId: section.id, orderedButtons: reordered });
+    setDraggedKey(null);
+    setDragOverKey(null);
   };
 
   const hasSelectedComment = data.selectedComment && data.rating && data.rating !== 'no-comment';
@@ -216,7 +222,7 @@ const RatedCommentSection: React.FC<RatedCommentSectionProps> = ({
 
       {/* Rating Buttons */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px', alignItems: 'center' }}>
-        {ratings.map((rating, ratingIndex) => (
+        {ratings.map((rating) => (
           renamingButton === rating.value ? (
             <div key={rating.value} style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -242,23 +248,32 @@ const RatedCommentSection: React.FC<RatedCommentSectionProps> = ({
               )}
             </div>
           ) : (
-            <div key={rating.value} style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+            <div key={rating.value}
+              draggable={editingButtons}
+              onDragStart={() => setDraggedKey(rating.value)}
+              onDragOver={e => { if (editingButtons) { e.preventDefault(); setDragOverKey(rating.value); } }}
+              onDragLeave={() => setDragOverKey(prev => prev === rating.value ? null : prev)}
+              onDrop={e => { e.preventDefault(); handleDropReorder(rating.value); }}
+              onDragEnd={() => { setDraggedKey(null); setDragOverKey(null); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '2px', borderRadius: '6px',
+                opacity: draggedKey === rating.value ? 0.4 : 1,
+                outline: dragOverKey === rating.value && draggedKey && draggedKey !== rating.value ? `2px dashed ${rating.color}` : 'none',
+                outlineOffset: '2px',
+              }}>
+              {editingButtons && <span title="Drag to reorder" style={{ cursor: 'grab', color: rating.color, fontSize: '12px', padding: '0 3px' }}>⠿</span>}
               <button onClick={() => handleRatingChange(rating.value)}
                 style={{
                   backgroundColor: data.rating === rating.value ? rating.color : 'white',
                   color: data.rating === rating.value ? 'white' : rating.color,
                   border: `2px solid ${rating.color}`,
                   borderRadius: editingButtons ? '6px 0 0 6px' : '6px', padding: '6px 12px', fontSize: '12px',
-                  fontWeight: '600', cursor: editingButtons ? 'default' : 'pointer', transition: 'all 0.2s ease', whiteSpace: 'nowrap'
+                  fontWeight: '600', cursor: editingButtons ? 'grab' : 'pointer', transition: 'all 0.2s ease', whiteSpace: 'nowrap'
                 }}>
                 {rating.label}
               </button>
               {editingButtons && (
                 <>
-                  <button onClick={() => handleMoveButtonOrder(ratingIndex, -1)} disabled={ratingIndex === 0} title="Move left"
-                    style={{ backgroundColor: '#eff6ff', color: rating.color, border: `2px solid ${rating.color}`, borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: ratingIndex === 0 ? 'default' : 'pointer', opacity: ratingIndex === 0 ? 0.35 : 1 }}>◀</button>
-                  <button onClick={() => handleMoveButtonOrder(ratingIndex, 1)} disabled={ratingIndex === ratings.length - 1} title="Move right"
-                    style={{ backgroundColor: '#eff6ff', color: rating.color, border: `2px solid ${rating.color}`, borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: ratingIndex === ratings.length - 1 ? 'default' : 'pointer', opacity: ratingIndex === ratings.length - 1 ? 0.35 : 1 }}>▶</button>
                   <button onClick={() => { setRenamingButton(rating.value); setRenameValue(rating.label); setMoveAllTarget(''); }} title="Rename button"
                     style={{ backgroundColor: '#eff6ff', color: rating.color, border: `2px solid ${rating.color}`, borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: 'pointer' }}>✏</button>
                   <button onClick={() => handleDeleteButton(rating.value)} title="Delete button"
