@@ -138,6 +138,15 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
     setMoveAllTarget('');
   };
 
+  const handleMoveButtonOrder = (index: number, direction: -1 | 1) => {
+    if (!onTemplateAction) return;
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= focusAreas.length) return;
+    const reordered = [...focusAreas];
+    [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+    onTemplateAction({ type: 'reorder-button' as any, sectionId: section.id, orderedButtons: reordered });
+  };
+
   const mergeTargets = (workingTemplateSections || []).filter(
     (s: any) => s.type === 'next-steps' && s.id !== section.id
   );
@@ -226,7 +235,7 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
 
       {/* Focus area buttons + add new */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px', alignItems: 'center' }}>
-        {focusAreas.map((focusArea: string) => (
+        {focusAreas.map((focusArea: string, focusIndex: number) => (
           renamingButton === focusArea ? (
             <div key={focusArea} style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -266,6 +275,10 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
               </button>
               {editingButtons && (
                 <>
+                  <button onClick={() => handleMoveButtonOrder(focusIndex, -1)} disabled={focusIndex === 0} title="Move left"
+                    style={{ backgroundColor: '#cffafe', color: '#0891b2', border: '2px solid #06b6d4', borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: focusIndex === 0 ? 'default' : 'pointer', opacity: focusIndex === 0 ? 0.35 : 1 }}>◀</button>
+                  <button onClick={() => handleMoveButtonOrder(focusIndex, 1)} disabled={focusIndex === focusAreas.length - 1} title="Move right"
+                    style={{ backgroundColor: '#cffafe', color: '#0891b2', border: '2px solid #06b6d4', borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: focusIndex === focusAreas.length - 1 ? 'default' : 'pointer', opacity: focusIndex === focusAreas.length - 1 ? 0.35 : 1 }}>▶</button>
                   <button onClick={() => { setRenamingButton(focusArea); setRenameValue(focusArea); setMoveAllTarget(''); }} title="Rename button"
                     style={{ backgroundColor: '#cffafe', color: '#0891b2', border: '2px solid #06b6d4', borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: 'pointer' }}>✏</button>
                   <button onClick={() => handleDeleteButton(focusArea)} title="Delete button"

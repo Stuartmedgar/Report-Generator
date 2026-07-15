@@ -180,6 +180,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
   const [editingHighlightedIndex, setEditingHighlightedIndex] = useState<number | null>(null);
   const [editingHighlightedValue, setEditingHighlightedValue] = useState('');
   const [personalisedInfoHint, setPersonalisedInfoHint] = useState('');
+  const [personalisedInstruction, setPersonalisedInstruction] = useState('');
   const statementInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { if (addedSections.length > 0) saveDraft(localTemplateName, addedSections); }, [addedSections, localTemplateName]);
@@ -271,6 +272,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
     setSplittingStatementKey(null); setSplitSelectedText('');
     setEditingHighlightedIndex(null); setEditingHighlightedValue('');
     setPersonalisedInfoHint('');
+    setPersonalisedInstruction('');
   };
   const advanceQuestion = () => {
     if (isLastQuestion) handleSaveAndWrite();
@@ -302,7 +304,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
   };
   const handleWizardAddSection = () => {
     const name = sectionName.trim() || question.defaultName;
-    const newSection: AddedSection = { id: editingSectionId || makeId(), type: question.sectionType, name, buttons: question.hasButtons ? buttons : [], content: '', instruction: '', showHeader: false };
+    const newSection: AddedSection = { id: editingSectionId || makeId(), type: question.sectionType, name, buttons: question.hasButtons ? buttons : [], content: '', instruction: personalisedInstruction.trim(), showHeader: false };
     if (editingSectionId) { setAddedSections(prev => prev.map(s => s.id === editingSectionId ? { ...newSection, showHeader: s.showHeader } : s)); setEditingSectionId(null); setPhase('added'); }
     else { setAddedSections(prev => [...prev, newSection]); setPhase('added'); }
   };
@@ -310,7 +312,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
   const handleWizardAddSectionAndDuplicate = () => {
     const name = sectionName.trim() || question.defaultName;
     const btns = question.hasButtons ? buttons : [];
-    const section1: AddedSection = { id: editingSectionId || makeId(), type: question.sectionType, name, buttons: btns, content: '', instruction: '', showHeader: false };
+    const section1: AddedSection = { id: editingSectionId || makeId(), type: question.sectionType, name, buttons: btns, content: '', instruction: personalisedInstruction.trim(), showHeader: false };
     const section2: AddedSection = { ...section1, id: makeId() };
     if (editingSectionId) {
       setAddedSections(prev => [...prev.map(s => s.id === editingSectionId ? { ...section1, showHeader: s.showHeader } : s), section2]);
@@ -471,7 +473,7 @@ const BuildAsYouGo: React.FC<BuildAsYouGoProps> = ({ templateName, onComplete, o
       else if (s.type === 'qualities') { const c: Record<string, string[]> = {}; s.buttons.forEach(b => { if (b.name) c[b.name] = b.statements; }); data = { comments: c }; }
       else if (s.type === 'rated-comment') { const c: Record<string, string[]> = {}; s.buttons.forEach(b => { if (b.name) c[b.name] = b.statements; }); data = { comments: c }; }
       else if (s.type === 'assessment-comment') { const c: Record<string, string[]> = {}; s.buttons.forEach(b => { if (b.name) c[b.name] = b.statements; }); data = { comments: c, instruction: s.instruction || '' }; }
-      else if (s.type === 'personalised-comment') { const c: Record<string, string[]> = {}; s.buttons.forEach(b => { if (b.name) c[b.name] = b.statements; }); data = { categories: c, instruction: '' }; }
+      else if (s.type === 'personalised-comment') { const c: Record<string, string[]> = {}; s.buttons.forEach(b => { if (b.name) c[b.name] = b.statements; }); data = { categories: c, instruction: s.instruction || '' }; }
       else if (s.type === 'next-steps') { const f: Record<string, string[]> = {}; s.buttons.forEach(b => { if (b.name) f[b.name] = b.statements; }); data = { focusAreas: f }; }
       return { id: s.id, type: s.type, name: s.name, showHeader: s.showHeader || false, data };
     });
@@ -649,6 +651,20 @@ const handleSaveAndWrite = () => {
 
     return (
       <div>
+        {sType === 'personalised-comment' && (
+          <div style={{ marginBottom: '20px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '10px', padding: '14px 16px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
+              Instruction for teacher <span style={{ fontWeight: '400', color: '#9ca3af' }}>(shown when writing each report, prompting what to type in place of [Info 1])</span>
+            </label>
+            <input
+              type="text"
+              value={personalisedInstruction}
+              onChange={e => setPersonalisedInstruction(e.target.value)}
+              placeholder="e.g. Enter this pupil's chosen sport"
+              style={inp}
+            />
+          </div>
+        )}
         {highlightedExamples.length > 0 && sType !== 'standard-comment' && (
           <div style={{ marginBottom: '20px', backgroundColor: '#fefce8', border: `1px solid ${activePlaceholder ? '#f59e0b' : '#fde68a'}`, borderRadius: '10px', padding: '14px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: activePlaceholder ? '6px' : '12px' }}>

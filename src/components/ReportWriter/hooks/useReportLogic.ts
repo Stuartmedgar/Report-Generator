@@ -165,7 +165,7 @@ export const useReportLogic = ({
   // ─── TEMPLATE ACTION HANDLER ──────────────────────────────────────────────
 
   const handleTemplateAction = useCallback((action: {
-    type: 'replace' | 'add-to-button' | 'add-to-new-button' | 'rename-button' | 'delete-button' | 'move-statement';
+    type: 'replace' | 'add-to-button' | 'add-to-new-button' | 'rename-button' | 'delete-button' | 'move-statement' | 'reorder-button';
     sectionId: string;
     commentText?: string;
     buttonName?: string;
@@ -175,11 +175,30 @@ export const useReportLogic = ({
     fromButton?: string;
     toButton?: string;
     statement?: string;
+    orderedButtons?: string[];
   }) => {
     setWorkingTemplate((prev: any) => {
       const updatedSections = prev.sections.map((section: any) => {
         if (section.id !== action.sectionId) return section;
         const newData = { ...section.data };
+
+        if (action.type === 'reorder-button' && action.orderedButtons) {
+          newData.headings = action.orderedButtons;
+          return { ...section, data: newData };
+        }
+
+        // Keep an existing explicit order (headings) in sync with rename/delete/add,
+        // otherwise a stale headings array would keep showing the old button name,
+        // keep showing a deleted button, or hide a newly added one.
+        if (section.data?.headings) {
+          if (action.type === 'rename-button' && action.oldButtonName && action.newButtonName) {
+            newData.headings = section.data.headings.map((h: string) => h === action.oldButtonName ? action.newButtonName : h);
+          } else if (action.type === 'delete-button' && action.buttonName) {
+            newData.headings = section.data.headings.filter((h: string) => h !== action.buttonName);
+          } else if (action.type === 'add-to-new-button' && action.newButtonName) {
+            newData.headings = [...section.data.headings, action.newButtonName];
+          }
+        }
 
         if (section.type === 'standard-comment' && action.type === 'replace') {
           newData.content = action.commentText;
@@ -322,6 +341,9 @@ export const useReportLogic = ({
           newData.categories = { ...newData.categories, [buttonName]: [firstOption] };
         } else if (section.type === 'rated-comment' || section.type === 'assessment-comment') {
           newData.comments = { ...newData.comments, [buttonName]: [firstOption] };
+        }
+        if (section.data?.headings) {
+          newData.headings = [...section.data.headings, buttonName];
         }
         return { ...section, data: newData };
       });

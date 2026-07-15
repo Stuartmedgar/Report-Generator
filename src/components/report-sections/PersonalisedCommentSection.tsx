@@ -125,6 +125,15 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
     (s: any) => s.type === 'personalised-comment' && s.id !== section.id
   );
 
+  const handleMoveButtonOrder = (index: number, direction: -1 | 1) => {
+    if (!onTemplateAction) return;
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= categories.length) return;
+    const reordered = [...categories];
+    [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+    onTemplateAction({ type: 'reorder-button' as any, sectionId: section.id, orderedButtons: reordered });
+  };
+
   const categories = section.data?.headings || Object.keys(section.data?.categories || section.data?.comments || {});
   const hasSelectedComment = data.selectedComment && data.category;
   const selectedComment = data.customEditedComment || data.selectedComment || '';
@@ -235,18 +244,30 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
       )}
 
       {/* Category buttons + add new */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px', alignItems: 'center' }}>
-        {categories.map((category: string) => (
-          <button key={category} onClick={() => handleCategoryChange(category)}
-            style={{
-              backgroundColor: data.category === category ? '#f59e0b' : 'white',
-              color: data.category === category ? 'white' : '#f59e0b',
-              border: '2px solid #f59e0b', borderRadius: '6px', padding: '6px 12px',
-              fontSize: '12px', fontWeight: '600', cursor: 'pointer',
-              transition: 'all 0.2s ease', whiteSpace: 'nowrap'
-            }}>
-            {category}
-          </button>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', marginBottom: '12px', alignItems: 'center' }}>
+        {categories.map((category: string, categoryIndex: number) => (
+          <div key={category} style={{ display: 'flex', alignItems: 'center', gap: '2px', marginRight: '4px' }}>
+            <button onClick={() => handleCategoryChange(category)}
+              style={{
+                backgroundColor: data.category === category ? '#f59e0b' : 'white',
+                color: data.category === category ? 'white' : '#f59e0b',
+                border: '2px solid #f59e0b',
+                borderRadius: onTemplateAction && categories.length > 1 ? '6px 0 0 6px' : '6px',
+                padding: '6px 12px',
+                fontSize: '12px', fontWeight: '600', cursor: 'pointer',
+                transition: 'all 0.2s ease', whiteSpace: 'nowrap'
+              }}>
+              {category}
+            </button>
+            {onTemplateAction && categories.length > 1 && (
+              <>
+                <button onClick={() => handleMoveButtonOrder(categoryIndex, -1)} disabled={categoryIndex === 0} title="Move left"
+                  style={{ backgroundColor: '#fef3c7', color: '#d97706', border: '2px solid #f59e0b', borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: categoryIndex === 0 ? 'default' : 'pointer', opacity: categoryIndex === 0 ? 0.35 : 1 }}>◀</button>
+                <button onClick={() => handleMoveButtonOrder(categoryIndex, 1)} disabled={categoryIndex === categories.length - 1} title="Move right"
+                  style={{ backgroundColor: '#fef3c7', color: '#d97706', border: '2px solid #f59e0b', borderLeft: 'none', borderRadius: '0 6px 6px 0', padding: '6px 5px', fontSize: '10px', cursor: categoryIndex === categories.length - 1 ? 'default' : 'pointer', opacity: categoryIndex === categories.length - 1 ? 0.35 : 1 }}>▶</button>
+              </>
+            )}
+          </div>
         ))}
         {onAddButton && (
           <button onClick={() => setShowNewButtonModal(true)} title="Add a new button to this section"

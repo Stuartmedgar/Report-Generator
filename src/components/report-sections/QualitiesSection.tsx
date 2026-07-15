@@ -138,6 +138,15 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
     setMoveAllTarget('');
   };
 
+  const handleMoveButtonOrder = (index: number, direction: -1 | 1) => {
+    if (!onTemplateAction) return;
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= qualityAreas.length) return;
+    const reordered = [...qualityAreas];
+    [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+    onTemplateAction({ type: 'reorder-button' as any, sectionId: section.id, orderedButtons: reordered });
+  };
+
   const mergeTargets = (workingTemplateSections || []).filter(
     (s: any) => s.type === 'qualities' && s.id !== section.id
   );
@@ -228,7 +237,7 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
 
       {/* Quality buttons + add new */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px', alignItems: 'center' }}>
-        {qualityAreas.map((area: string) => (
+        {qualityAreas.map((area: string, areaIndex: number) => (
           renamingButton === area ? (
             <div key={area} style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -268,6 +277,10 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
               </button>
               {editingButtons && (
                 <>
+                  <button onClick={() => handleMoveButtonOrder(areaIndex, -1)} disabled={areaIndex === 0} title="Move left"
+                    style={{ backgroundColor: '#ede9fe', color: '#7c3aed', border: '2px solid #8b5cf6', borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: areaIndex === 0 ? 'default' : 'pointer', opacity: areaIndex === 0 ? 0.35 : 1 }}>◀</button>
+                  <button onClick={() => handleMoveButtonOrder(areaIndex, 1)} disabled={areaIndex === qualityAreas.length - 1} title="Move right"
+                    style={{ backgroundColor: '#ede9fe', color: '#7c3aed', border: '2px solid #8b5cf6', borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: areaIndex === qualityAreas.length - 1 ? 'default' : 'pointer', opacity: areaIndex === qualityAreas.length - 1 ? 0.35 : 1 }}>▶</button>
                   <button onClick={() => { setRenamingButton(area); setRenameValue(area); setMoveAllTarget(''); }} title="Rename button"
                     style={{ backgroundColor: '#ede9fe', color: '#7c3aed', border: '2px solid #8b5cf6', borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: 'pointer' }}>✏</button>
                   <button onClick={() => handleDeleteButton(area)} title="Delete button"

@@ -58,7 +58,7 @@ const AssessmentCommentSection: React.FC<AssessmentCommentSectionProps> = ({
 
   // Performance buttons — now free-form (teacher's own names from section.data.comments keys)
   // Falls back to legacy fixed names if template was built the old way
-  const performanceButtons = Object.keys(section.data?.comments || {});
+  const performanceButtons: string[] = section.data?.headings || Object.keys(section.data?.comments || {});
 
   const handlePerformanceChange = (performance: string) => {
     if (editingButtons) return;
@@ -165,6 +165,15 @@ const AssessmentCommentSection: React.FC<AssessmentCommentSectionProps> = ({
     if (data.performance === fromButton) updateSectionData(section.id, { performance: moveAllTarget, selectedComment: undefined, customEditedComment: undefined });
     setRenamingButton(null);
     setMoveAllTarget('');
+  };
+
+  const handleMoveButtonOrder = (index: number, direction: -1 | 1) => {
+    if (!onTemplateAction) return;
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= performanceButtons.length) return;
+    const reordered = [...performanceButtons];
+    [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+    onTemplateAction({ type: 'reorder-button' as any, sectionId: section.id, orderedButtons: reordered });
   };
 
   const hasSelectedComment = data.selectedComment && data.performance && data.performance !== 'no-comment';
@@ -326,6 +335,10 @@ const AssessmentCommentSection: React.FC<AssessmentCommentSectionProps> = ({
               </button>
               {editingButtons && (
                 <>
+                  <button onClick={() => handleMoveButtonOrder(idx, -1)} disabled={idx === 0} title="Move left"
+                    style={{ backgroundColor: '#f3e8ff', color: getButtonColor(idx), border: `2px solid ${getButtonColor(idx)}`, borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: idx === 0 ? 'default' : 'pointer', opacity: idx === 0 ? 0.35 : 1 }}>◀</button>
+                  <button onClick={() => handleMoveButtonOrder(idx, 1)} disabled={idx === performanceButtons.length - 1} title="Move right"
+                    style={{ backgroundColor: '#f3e8ff', color: getButtonColor(idx), border: `2px solid ${getButtonColor(idx)}`, borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: idx === performanceButtons.length - 1 ? 'default' : 'pointer', opacity: idx === performanceButtons.length - 1 ? 0.35 : 1 }}>▶</button>
                   <button onClick={() => { setRenamingButton(btn); setRenameValue(btn); setMoveAllTarget(''); }} title="Rename button"
                     style={{ backgroundColor: '#f3e8ff', color: getButtonColor(idx), border: `2px solid ${getButtonColor(idx)}`, borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: 'pointer' }}>✏</button>
                   <button onClick={() => handleDeleteButton(btn)} title="Delete button"

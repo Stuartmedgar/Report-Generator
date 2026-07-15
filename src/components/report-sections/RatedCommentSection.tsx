@@ -54,7 +54,7 @@ const RatedCommentSection: React.FC<RatedCommentSectionProps> = ({
     }
   }, [data.selectedComment, data.customEditedComment]);
 
-  const ratingKeys: string[] = Object.keys(section.data?.comments || {});
+  const ratingKeys: string[] = section.data?.headings || Object.keys(section.data?.comments || {});
   const getColor = (label: string, idx: number) => KNOWN_RATED_COLORS[label] || EXTRA_RATED_COLORS[idx % EXTRA_RATED_COLORS.length];
   const getLabel = (key: string) => (data.labels || section.data?.labels)?.[key] || DEFAULT_RATED_LABELS[key] || key;
   const ratings = ratingKeys.map((key, idx) => { const label = getLabel(key); return { value: key, label, color: getColor(label, idx) }; });
@@ -154,6 +154,15 @@ const RatedCommentSection: React.FC<RatedCommentSectionProps> = ({
     setMoveAllTarget('');
   };
 
+  const handleMoveButtonOrder = (index: number, direction: -1 | 1) => {
+    if (!onTemplateAction) return;
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= ratingKeys.length) return;
+    const reordered = [...ratingKeys];
+    [reordered[index], reordered[newIndex]] = [reordered[newIndex], reordered[index]];
+    onTemplateAction({ type: 'reorder-button' as any, sectionId: section.id, orderedButtons: reordered });
+  };
+
   const hasSelectedComment = data.selectedComment && data.rating && data.rating !== 'no-comment';
 
   const actionBtnStyle = (color: string): React.CSSProperties => ({
@@ -207,7 +216,7 @@ const RatedCommentSection: React.FC<RatedCommentSectionProps> = ({
 
       {/* Rating Buttons */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px', alignItems: 'center' }}>
-        {ratings.map((rating) => (
+        {ratings.map((rating, ratingIndex) => (
           renamingButton === rating.value ? (
             <div key={rating.value} style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -246,6 +255,10 @@ const RatedCommentSection: React.FC<RatedCommentSectionProps> = ({
               </button>
               {editingButtons && (
                 <>
+                  <button onClick={() => handleMoveButtonOrder(ratingIndex, -1)} disabled={ratingIndex === 0} title="Move left"
+                    style={{ backgroundColor: '#eff6ff', color: rating.color, border: `2px solid ${rating.color}`, borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: ratingIndex === 0 ? 'default' : 'pointer', opacity: ratingIndex === 0 ? 0.35 : 1 }}>◀</button>
+                  <button onClick={() => handleMoveButtonOrder(ratingIndex, 1)} disabled={ratingIndex === ratings.length - 1} title="Move right"
+                    style={{ backgroundColor: '#eff6ff', color: rating.color, border: `2px solid ${rating.color}`, borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: ratingIndex === ratings.length - 1 ? 'default' : 'pointer', opacity: ratingIndex === ratings.length - 1 ? 0.35 : 1 }}>▶</button>
                   <button onClick={() => { setRenamingButton(rating.value); setRenameValue(rating.label); setMoveAllTarget(''); }} title="Rename button"
                     style={{ backgroundColor: '#eff6ff', color: rating.color, border: `2px solid ${rating.color}`, borderLeft: 'none', padding: '6px 5px', fontSize: '10px', cursor: 'pointer' }}>✏</button>
                   <button onClick={() => handleDeleteButton(rating.value)} title="Delete button"
