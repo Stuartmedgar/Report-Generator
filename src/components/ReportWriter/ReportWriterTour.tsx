@@ -9,6 +9,18 @@ interface TourStep {
 
 const WRITING_STEPS: TourStep[] = [
   {
+    target: 'class-name',
+    title: 'Name your class',
+    content: 'Click the class name at the top to rename it — e.g. "S3 History" or "2B Maths". This is how you\'ll tell your classes apart later, so it\'s worth doing now.',
+    position: 'below',
+  },
+  {
+    target: 'pupil-name',
+    title: 'Add a pupil',
+    content: "Type the pupil's first name here to start their report. Use + Add Class beside it to create a new class by pasting in a list of names, or to load a class you've already made.",
+    position: 'below',
+  },
+  {
     target: 'pronoun',
     title: 'Report pronoun',
     content: 'Choose He, She, or They for this student. All comment options switch to the right pronoun throughout the report automatically.',
@@ -88,7 +100,7 @@ const EDITING_STEPS: TourStep[] = [
   {
     target: 'edit-comment',
     title: 'Edit Comment',
-    content: 'Click + Edit Comment to fine-tune the wording of the selected statement for this student, without changing the template. Type the changes you want in the editing box and click Save. You will see your changes in the preview.\n\nTry it now: click "Try it" below, select a comment on any section, then click + Edit Comment to open the editing box. Click "▶ Resume tour" to come back and leave the box open — the next few steps point at the buttons inside it.',
+    content: 'Click + Edit Comment to fine-tune the wording of the selected statement for this student, without changing the template. Type the changes you want in the editing box and click Save. You will see your changes in the preview.\n\nTry it now: the page stays clickable while this tour is open, so pick a comment on a Rated, Qualities, Next Steps, Assessment, or Personalised Information section (not a Standard Comment), then click + Edit Comment to open the box. Leave it open and click Next — the next few steps point at the buttons inside it.',
     position: 'above',
   },
   {

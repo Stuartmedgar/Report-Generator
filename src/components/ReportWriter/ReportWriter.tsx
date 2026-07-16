@@ -502,6 +502,7 @@ function ReportWriter({ template, classData, onClassChange, isNewClass = false, 
 
             {editingClassName && !disableReportSaving ? (
               <input
+                data-tour="class-name"
                 autoFocus
                 value={classNameDraft}
                 onChange={e => setClassNameDraft(e.target.value)}
@@ -519,6 +520,7 @@ function ReportWriter({ template, classData, onClassChange, isNewClass = false, 
               />
             ) : (
               <h1
+                data-tour="class-name"
                 onClick={() => !disableReportSaving && setEditingClassName(true)}
                 title={disableReportSaving ? undefined : 'Click to rename class'}
                 style={{
@@ -552,7 +554,7 @@ function ReportWriter({ template, classData, onClassChange, isNewClass = false, 
         {/* Left Column - Sections */}
         <div style={{ flex: 1 }}>
           {/* Pupil name — no pre-built roster, just type who this report is for */}
-          <div style={{ marginBottom: '12px', display: 'flex', gap: '8px' }}>
+          <div data-tour="pupil-name" style={{ marginBottom: '12px', display: 'flex', gap: '8px' }}>
             <input
               type="text"
               placeholder="Pupil's first name"
