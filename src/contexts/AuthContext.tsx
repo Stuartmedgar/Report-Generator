@@ -174,26 +174,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       if (data.user) {
-        console.log('SignUp: User created in auth, now creating in users table...');
-        
-        // Create user record in our users table (without full_name)
-        const { error: insertError } = await supabase
-          .from('users')
-          .insert({
-            id: data.user.id,
-            email: data.user.email,
-            first_name: firstName,
-            last_name: lastName,
-            role: 'teacher',
-            plan: 'free',
-            ai_credit_balance_cents: 100,
-          });
-
-        if (insertError) {
-          console.error('SignUp: Error creating user record:', insertError);
-          throw insertError;
-        }
-
+        // The public.users profile row is created server-side by the
+        // on_auth_user_created trigger (see migration 20260716220000) —
+        // it runs as part of the same transaction as the auth signup, so
+        // there's no client-side insert or session-timing dependency here.
         console.log('SignUp: User signed up successfully. Awaiting email verification.');
       }
     } catch (error: any) {
