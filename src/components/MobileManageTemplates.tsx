@@ -297,8 +297,20 @@ export default function MobileManageTemplates() {
       height: 'auto !important' as any,
       fontFamily: 'inherit !important' as any
     },
+    // Deliberately not display:none — iOS Safari silently refuses to open the
+    // picker for a programmatically-.click()'d input that isn't actually
+    // rendered, so it's shrunk to 1x1px and positioned off-screen instead.
     hiddenInput: {
-      display: 'none'
+      position: 'fixed' as const,
+      top: 0,
+      left: 0,
+      width: '1px',
+      height: '1px',
+      padding: 0,
+      margin: '-1px',
+      border: 0,
+      overflow: 'hidden' as const,
+      opacity: 0
     }
   };
 

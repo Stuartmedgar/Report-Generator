@@ -54,9 +54,7 @@ function StartReports() {
 
   const handleImportClick = () => fileInputRef.current?.click();
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const importTemplateFile = (file: File) => {
     if (!file.name.endsWith('.json')) { alert('Please select a valid template file (.json)'); return; }
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -79,7 +77,22 @@ function StartReports() {
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    importTemplateFile(file);
     event.target.value = '';
+  };
+
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+
+  const handleDropFile = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDraggingFile(false);
+    const file = event.dataTransfer.files?.[0];
+    if (file) importTemplateFile(file);
   };
 
   // ─── Styles ───────────────────────────────────────────────────────────────
@@ -385,11 +398,36 @@ function StartReports() {
             </div>
           </button>
 
+          {/* Fallback for when the OS file picker won't open (some browser/OS
+              setups silently block it) — dragging the file in bypasses the
+              native Open dialog entirely. */}
+          <div
+            onDragOver={e => { e.preventDefault(); setIsDraggingFile(true); }}
+            onDragLeave={() => setIsDraggingFile(false)}
+            onDrop={handleDropFile}
+            style={{
+              border: `2px dashed ${isDraggingFile ? '#3b82f6' : '#cbd5e1'}`,
+              borderRadius: '10px',
+              padding: '14px',
+              textAlign: 'center',
+              fontSize: '13px',
+              color: isDraggingFile ? '#3b82f6' : '#94a3b8',
+              backgroundColor: isDraggingFile ? '#eff6ff' : 'transparent',
+              transition: 'all 0.15s',
+            }}
+          >
+            {isDraggingFile ? 'Drop the .json file here' : "Or drag and drop a .json file here — use this if the button above doesn't open a file window"}
+          </div>
+
         </div>
       </div>
 
-      {/* Hidden file input for import */}
-      <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileSelect} style={{ display: 'none' }} />
+      {/* Hidden file input for import. Deliberately not display:none — iOS Safari
+          silently refuses to open the picker for a programmatically-.click()'d
+          input that isn't actually rendered, so it's shrunk to 1x1px and
+          positioned off-screen instead. */}
+      <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileSelect}
+        style={{ position: 'fixed', top: 0, left: 0, width: '1px', height: '1px', padding: 0, margin: '-1px', border: 0, overflow: 'hidden', opacity: 0 }} />
     </div>
   );
 
