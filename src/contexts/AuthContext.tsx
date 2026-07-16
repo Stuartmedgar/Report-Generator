@@ -92,6 +92,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       console.log('CheckApproval: User data from database:', data);
 
+      // Promo-granted Pro (pro_expires_at set) lapses back to free once the
+      // date passes, without needing a cron job to flip the plan column —
+      // Stripe-subscription Pro has no pro_expires_at, so it's unaffected.
+      const proExpired = data.pro_expires_at && new Date(data.pro_expires_at) < new Date();
+      const effectivePlan = data.plan === 'pro' && !proExpired ? 'pro' : 'free';
+
       const mappedUser: User = {
         id: supabaseUser.id,
         email: supabaseUser.email || '',
@@ -102,7 +108,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         },
         app_metadata: {
           roles: data.role ? [data.role] : ['teacher'],
-          plan: data.plan || 'free',
+          plan: effectivePlan,
         },
         created_at: data.created_at,
         updated_at: data.updated_at,
