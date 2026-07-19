@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 import UserProfile from './UserProfile';
 
 export default function AuthHeader() {
   const { user } = useAuth();
+  const { currentPlan } = useSubscription();
   const location = useLocation();
   const [showProfile, setShowProfile] = useState(false);
 
@@ -156,7 +158,7 @@ export default function AuthHeader() {
                 fontSize: '12px',
                 color: '#64748b'
               }}>
-                Full Access
+                {currentPlan.name}
               </div>
             </div>
 

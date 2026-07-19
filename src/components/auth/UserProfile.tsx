@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 
 export default function UserProfile() {
   const { user, signOut, updateProfile } = useAuth();
+  const { currentPlan, subscription } = useSubscription();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     first_name: user?.user_metadata?.first_name || '',
@@ -26,6 +29,9 @@ export default function UserProfile() {
   };
 
   if (!user) return null;
+
+  const proExpiresAt = user.app_metadata?.proExpiresAt;
+  const isPro = subscription.planId === 'teacher_pro_annual';
 
   return (
     <div style={{
@@ -58,6 +64,46 @@ export default function UserProfile() {
         }}>
           {user.email}
         </p>
+      </div>
+
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: isPro ? '#eff6ff' : '#f8fafc',
+        border: `1px solid ${isPro ? '#bfdbfe' : '#e2e8f0'}`,
+        borderRadius: '8px',
+        padding: '12px 14px',
+        marginBottom: '16px'
+      }}>
+        <div>
+          <p style={{
+            fontSize: '13px',
+            fontWeight: '600',
+            color: isPro ? '#1d4ed8' : '#1e293b',
+            marginBottom: '2px'
+          }}>
+            {currentPlan.name}
+          </p>
+          {proExpiresAt && (
+            <p style={{ fontSize: '12px', color: '#64748b' }}>
+              Until {new Date(proExpiresAt).toLocaleDateString()}
+            </p>
+          )}
+        </div>
+        {!isPro && (
+          <Link
+            to="/pricing"
+            style={{
+              fontSize: '13px',
+              fontWeight: '500',
+              color: '#3b82f6',
+              textDecoration: 'none'
+            }}
+          >
+            Upgrade
+          </Link>
+        )}
       </div>
 
       {isEditing ? (
@@ -147,7 +193,7 @@ export default function UserProfile() {
             color: '#1e293b',
             marginBottom: '4px'
           }}>
-            {user.user_metadata?.first_name || user.user_metadata?.last_name 
+            {user.user_metadata?.first_name || user.user_metadata?.last_name
               ? `${user.user_metadata?.first_name || ''} ${user.user_metadata?.last_name || ''}`.trim()
               : 'Teacher Account'
             }
@@ -167,6 +213,19 @@ export default function UserProfile() {
           </button>
         </div>
       )}
+
+      <div style={{ marginBottom: '16px' }}>
+        <Link
+          to="/pricing"
+          style={{
+            fontSize: '14px',
+            color: '#3b82f6',
+            textDecoration: 'underline'
+          }}
+        >
+          Have a promo code?
+        </Link>
+      </div>
 
       <div style={{
         borderTop: '1px solid #e2e8f0',

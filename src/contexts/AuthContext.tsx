@@ -14,6 +14,7 @@ interface User {
   app_metadata?: {
     roles?: string[];
     plan?: string;
+    proExpiresAt?: string;
   };
   created_at: string;
   updated_at: string;
@@ -109,6 +110,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         app_metadata: {
           roles: data.role ? [data.role] : ['teacher'],
           plan: effectivePlan,
+          proExpiresAt: effectivePlan === 'pro' ? data.pro_expires_at || undefined : undefined,
         },
         created_at: data.created_at,
         updated_at: data.updated_at,
