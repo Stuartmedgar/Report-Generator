@@ -5,7 +5,7 @@ import './App.css';
 // Context Providers
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider, useData } from './contexts/DataContext';
-import { SubscriptionProvider } from './contexts/SubscriptionContext';
+import { SubscriptionProvider, useSubscription } from './contexts/SubscriptionContext';
 
 // Import pages
 import WriteReports from './pages/WriteReports';
@@ -57,6 +57,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function Home() {
   const { user, signOut } = useAuth();
   const { state } = useData();
+  const { currentPlan, subscription } = useSubscription();
   const navigate = useNavigate();
   const [showMenu, setShowMenu] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -146,6 +147,20 @@ function Home() {
             }}>
               {user ? (
                 <>
+                  <div style={{ padding: '6px 14px 10px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: subscription.planId === 'teacher_pro_annual' ? '#1d4ed8' : '#1e293b' }}>
+                      {currentPlan.name}
+                    </div>
+                    {user.app_metadata?.proExpiresAt && (
+                      <div style={{ fontSize: '12px', color: '#64748b' }}>
+                        Until {new Date(user.app_metadata.proExpiresAt).toLocaleDateString()}
+                      </div>
+                    )}
+                    <Link to="/pricing" style={{ fontSize: '12px', color: '#3b82f6', textDecoration: 'none' }}>
+                      {subscription.planId === 'teacher_pro_annual' ? 'Manage plan' : 'Upgrade or enter a promo code'}
+                    </Link>
+                  </div>
+                  <div style={{ borderTop: '1px solid #f1f5f9', margin: '6px 0' }} />
                   <Link to="/manage-templates" style={{ display: 'block', padding: '10px 14px', color: '#374151', textDecoration: 'none', fontSize: '14px', borderRadius: '6px' }}
                     onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
                     onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
