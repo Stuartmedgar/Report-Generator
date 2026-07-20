@@ -235,7 +235,7 @@ function Home() {
             lineHeight: '1.1',
             margin: '0 0 12px 0'
           }}>
-            Ready to Report
+            ReportPilot
           </h1>
           <p style={{
             fontSize: isMobile ? '15px' : '17px',
@@ -243,7 +243,7 @@ function Home() {
             margin: '0 0 6px 0',
             fontWeight: '400'
           }}>
-            Helping teachers write high quality reports quickly
+            Helping teachers write high quality, personalised reports quickly
           </p>
           <p style={{
             fontSize: isMobile ? '14px' : '16px',
