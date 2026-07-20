@@ -9,6 +9,7 @@ export default function Signup() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [promoCode, setPromoCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -36,7 +37,7 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      await signUp(email, password, firstName, lastName);
+      await signUp(email, password, firstName, lastName, promoCode);
       setSuccess(true);
     } catch (err: any) {
       setError(err.message);
@@ -269,6 +270,35 @@ export default function Signup() {
             />
           </div>
 
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '8px'
+            }}>
+              Promo Code (optional)
+            </label>
+            <input
+              type="text"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value)}
+              placeholder="Have a code? Enter it here"
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '16px',
+                boxSizing: 'border-box'
+              }}
+            />
+            <p style={{ fontSize: '13px', color: '#64748b', marginTop: '6px' }}>
+              Applied automatically once you verify your email and log in.
+            </p>
+          </div>
+
           <button
             type="submit"
             disabled={loading}
@@ -298,7 +328,7 @@ export default function Signup() {
           fontSize: '14px',
           color: '#1e40af'
         }}>
-          <strong>Free plan:</strong> $1 of AI credit for building templates, write up to 5 reports, unlimited template creation.
+          <strong>Free plan:</strong> $1 of AI credit for building templates, write up to 5 reports, unlimited template creation. Have a promo code? Enter it above to unlock Pro straight away.
         </div>
         </>
         )}

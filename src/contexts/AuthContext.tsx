@@ -24,10 +24,12 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
+  signUp: (email: string, password: string, firstName: string, lastName: string, promoCode?: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateProfile: (userData: any) => Promise<void>;
+  promoRedemption: { type: 'success' | 'error'; message: string } | null;
+  clearPromoRedemption: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,9 +38,20 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+const PENDING_PROMO_CODE_KEY = 'pendingPromoCode';
+
+const PROMO_REDEMPTION_MESSAGES: Record<string, string> = {
+  invalid_code: "That code doesn't exist.",
+  code_inactive: 'That code is no longer active.',
+  code_expired: 'That code has expired.',
+  code_exhausted: 'That code has reached its redemption limit.',
+  already_redeemed: "You've already redeemed this code.",
+};
+
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [promoRedemption, setPromoRedemption] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
     // Check active sessions and sets the user
@@ -76,6 +89,35 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.log('CheckApproval: Email not yet verified - setting user to null');
         setUser(null);
         throw new Error('Please verify your email before logging in. Check your inbox for a confirmation link.');
+      }
+
+      // A promo code entered at signup can't be redeemed until the user has a
+      // real session (the RPC requires `authenticated`), which only exists
+      // after email verification — so it's applied here, on first successful
+      // login, rather than at signup time.
+      const pendingRaw = localStorage.getItem(PENDING_PROMO_CODE_KEY);
+      if (pendingRaw) {
+        try {
+          const pending = JSON.parse(pendingRaw);
+          if (pending?.email?.toLowerCase() === supabaseUser.email?.toLowerCase() && pending?.code) {
+            const { error: redeemError } = await supabase.rpc('redeem_promo_code', {
+              p_code: pending.code,
+              p_user_id: supabaseUser.id,
+            });
+            if (redeemError) {
+              setPromoRedemption({
+                type: 'error',
+                message: PROMO_REDEMPTION_MESSAGES[redeemError.message] || 'Could not redeem your promo code.',
+              });
+            } else {
+              setPromoRedemption({ type: 'success', message: 'Your promo code has been applied to your account.' });
+            }
+          }
+        } catch (promoErr) {
+          console.error('CheckApproval: Error redeeming pending promo code:', promoErr);
+        } finally {
+          localStorage.removeItem(PENDING_PROMO_CODE_KEY);
+        }
       }
 
       const { data, error } = await supabase
@@ -152,10 +194,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
+  const signUp = async (email: string, password: string, firstName: string, lastName: string, promoCode?: string) => {
     try {
       console.log('SignUp: Starting signup for', email);
-      
+
       // Sign up with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -181,6 +223,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // it runs as part of the same transaction as the auth signup, so
         // there's no client-side insert or session-timing dependency here.
         console.log('SignUp: User signed up successfully. Awaiting email verification.');
+
+        // Redemption requires an authenticated session, which doesn't exist
+        // yet at signup time — stash the code and redeem it on first login
+        // (see checkUserApproval) once email verification has happened.
+        if (promoCode?.trim()) {
+          localStorage.setItem(PENDING_PROMO_CODE_KEY, JSON.stringify({ code: promoCode.trim(), email }));
+        }
       }
     } catch (error: any) {
       console.error('SignUp: Error signing up:', error);
@@ -259,6 +308,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signOut,
     resetPassword,
     updateProfile,
+    promoRedemption,
+    clearPromoRedemption: () => setPromoRedemption(null),
   };
 
   return (

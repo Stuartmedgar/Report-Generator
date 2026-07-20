@@ -55,7 +55,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 // ─── HOME COMPONENT ───────────────────────────────────────────────────────────
 
 function Home() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, promoRedemption, clearPromoRedemption } = useAuth();
   const { state } = useData();
   const { currentPlan, subscription } = useSubscription();
   const navigate = useNavigate();
@@ -125,6 +125,35 @@ function Home() {
         padding: isMobile ? '40px 20px' : '60px 40px',
         position: 'relative',
       }}>
+
+        {promoRedemption && (
+          <div style={{
+            position: 'fixed',
+            top: '16px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 200,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            backgroundColor: promoRedemption.type === 'success' ? '#eff6ff' : '#fee2e2',
+            border: `1px solid ${promoRedemption.type === 'success' ? '#bfdbfe' : '#fecaca'}`,
+            color: promoRedemption.type === 'success' ? '#1e40af' : '#991b1b',
+            borderRadius: '10px',
+            padding: '12px 16px',
+            fontSize: '14px',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+            maxWidth: '90vw'
+          }}>
+            <span>{promoRedemption.message}</span>
+            <button
+              onClick={clearPromoRedemption}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontSize: '16px', lineHeight: 1 }}
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         {/* Menu button */}
         <div style={{ position: 'absolute', top: isMobile ? '16px' : '24px', right: isMobile ? '16px' : '24px' }}>
