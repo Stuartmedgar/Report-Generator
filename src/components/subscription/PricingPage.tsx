@@ -68,8 +68,7 @@ export default function PricingPage() {
     {
       id: 'teacher_pro_annual',
       name: 'Teacher Pro',
-      displayPrice: 'Coming Soon',
-      originalPrice: '$155.88/year',
+      displayPrice: '£12.99/year',
       description: 'Everything you need for professional report writing',
       popular: true,
       features: [
@@ -79,7 +78,7 @@ export default function PricingPage() {
         'Template sharing',
         'Priority customer support'
       ],
-      buttonText: 'Join Early Access List',
+      buttonText: 'Upgrade to Pro',
       buttonStyle: 'primary',
       stripePriceId: process.env.REACT_APP_STRIPE_PRICE_TEACHER_PRO_YEARLY
     }
@@ -207,27 +206,7 @@ export default function PricingPage() {
                 }}>
                   {plan.displayPrice}
                 </span>
-                {plan.originalPrice && (
-                  <div style={{
-                    fontSize: '14px',
-                    color: '#94a3b8',
-                    textDecoration: 'line-through',
-                    marginTop: '5px'
-                  }}>
-                    {plan.originalPrice}
-                  </div>
-                )}
               </div>
-              
-              {plan.id === 'teacher_pro_annual' && (
-                <p style={{
-                  fontSize: '14px',
-                  color: '#10b981',
-                  fontWeight: '600'
-                }}>
-                  Save $143/year vs monthly billing
-                </p>
-              )}
             </div>
 
             {/* Features */}
@@ -378,10 +357,10 @@ export default function PricingPage() {
           
           <div style={{ marginBottom: '24px' }}>
             <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1e293b', marginBottom: '8px' }}>
-              When will pricing be announced?
+              What do I get with Teacher Pro?
             </h3>
             <p style={{ color: '#64748b', lineHeight: '1.6' }}>
-              We're currently gathering feedback from teachers to ensure our pricing is fair and accessible. Join our early access list to be notified first.
+              Unlimited reports, extra AI credit for building templates, template sharing, and priority support — for £12.99/year.
             </p>
           </div>
           
