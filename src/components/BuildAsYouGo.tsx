@@ -525,7 +525,7 @@ const handleSaveAndWrite = () => {
               ? currentSectionLabel
                 ? `Highlight sentences from the "${currentSectionLabel}" section, then use an AI button →`
                 : 'Highlight example sentences, then use an AI button →'
-              : 'Paste your reports here — they stay on your device and are never stored'}
+              : 'Sent to our AI to help build your template, then discarded — never stored. Pupil names are fine to leave in, the AI removes them automatically.'}
           </div>
         </div>
         {highlightedExamples.length > 0 && (
@@ -547,7 +547,7 @@ const handleSaveAndWrite = () => {
                   <div style={{ fontSize: '12px', color: '#64748b' }}>Keep to one class worth of reports for best results</div>
                 </div>
               )}
-              <textarea ref={reportsPanelRef} value={pastedReports} onChange={e => setPastedReports(e.target.value)} onScroll={handleReportsPanelScroll} placeholder="Paste existing reports here — they stay on your device and are never stored." style={{ flex: 1, width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '12px', lineHeight: '1.7', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'inherit', color: '#374151' }} />
+              <textarea ref={reportsPanelRef} value={pastedReports} onChange={e => setPastedReports(e.target.value)} onScroll={handleReportsPanelScroll} placeholder="Paste existing reports here — sent to our AI to build your template, then discarded. Names are fine, they're removed automatically." style={{ flex: 1, width: '100%', padding: '10px', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '12px', lineHeight: '1.7', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'inherit', color: '#374151' }} />
             </>
           )}
         </div>

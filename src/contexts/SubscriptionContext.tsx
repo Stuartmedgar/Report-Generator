@@ -32,6 +32,7 @@ interface SubscriptionContextType {
   stripe: Stripe | null;
   createCheckoutSession: (priceId: string) => Promise<void>;
   cancelSubscription: (subscriptionId: string) => Promise<void>;
+  openBillingPortal: () => Promise<void>;
   refreshSubscription: () => Promise<void>;
 }
 
@@ -78,7 +79,7 @@ interface SubscriptionProviderProps {
 }
 
 export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [subscription, setSubscription] = useState<SubscriptionData>({
     hasActiveSubscription: false,
     planId: 'free',
@@ -97,18 +98,25 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
     initStripe();
   }, []);
 
-  // Refresh subscription data — read directly off the user's profile row,
-  // which the Stripe webhook keeps in sync (see netlify/functions/webhook.js).
-  // No separate network call needed since AuthContext already loaded it.
+  // Refresh subscription data — re-fetches the user's profile row (which the
+  // Stripe webhook keeps in sync, see netlify/functions/webhook.js) rather
+  // than trusting whatever was already in memory, so callers right after a
+  // checkout redirect see the plan the webhook just wrote, not a stale one.
   const refreshSubscription = async () => {
     setError(null);
+    await refreshUser();
+  };
+
+  // Derive the displayed subscription state from the user's profile plan
+  // whenever it changes (login, or after refreshSubscription re-fetches it).
+  useEffect(() => {
     const plan = user?.app_metadata?.plan === 'pro' ? 'teacher_pro_annual' : 'free';
     setSubscription({
       hasActiveSubscription: plan === 'teacher_pro_annual',
       planId: plan,
       status: plan === 'teacher_pro_annual' ? 'active' : 'none',
     });
-  };
+  }, [user?.app_metadata?.plan]);
 
   // Create Stripe checkout session
   const createCheckoutSession = async (priceId: string) => {
@@ -189,11 +197,40 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
     }
   };
 
-  // Re-derive subscription state whenever the user profile (re)loads
-  useEffect(() => {
-    refreshSubscription();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.app_metadata?.plan]);
+  // Redirect to Stripe's hosted Billing Portal — lets the user cancel, view
+  // invoices, and update their card without us building any of that UI.
+  const openBillingPortal = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      if (!user) {
+        throw new Error('You must be logged in to manage your subscription.');
+      }
+
+      const response = await fetch('/.netlify/functions/create-portal-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          returnUrl: window.location.href,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to open billing portal');
+      }
+
+      const { url } = await response.json();
+      window.location.href = url;
+    } catch (err: any) {
+      console.error('Error opening billing portal:', err);
+      setError(err.message || 'Failed to open billing portal');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Get current plan based on subscription
   const currentPlan = SUBSCRIPTION_PLANS.find(plan => plan.id === subscription.planId) || SUBSCRIPTION_PLANS[0];
@@ -208,6 +245,7 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
     stripe,
     createCheckoutSession,
     cancelSubscription,
+    openBillingPortal,
     refreshSubscription
   };
 

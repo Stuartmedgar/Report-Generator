@@ -22,6 +22,8 @@ import AdminDashboard from './pages/AdminDashboard';
 import ImportTemplate from './pages/ImportTemplate';
 import TemplateReview from './pages/TemplateReview';
 import StartReports from './pages/StartReports';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
 
 // Import subscription components
 import { PricingPage, SubscriptionSuccess } from './components/subscription';
@@ -502,6 +504,8 @@ function App() {
                 {/* Public Routes */}
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/subscription/success" element={<SubscriptionSuccess />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/terms" element={<Terms />} />
 
                 {/* Home — public route */}
                 <Route path="/" element={<Home />} />

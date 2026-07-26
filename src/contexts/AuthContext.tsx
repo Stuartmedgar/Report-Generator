@@ -28,6 +28,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateProfile: (userData: any) => Promise<void>;
+  refreshUser: () => Promise<void>;
   promoRedemption: { type: 'success' | 'error'; message: string } | null;
   clearPromoRedemption: () => void;
 }
@@ -248,6 +249,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  // Re-fetches the current user's public.users row — used after Stripe
+  // checkout so the app picks up a plan change the webhook just wrote,
+  // rather than waiting for the next natural auth-state event.
+  const refreshUser = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      await checkUserApproval(session.user);
+    }
+  };
+
   const resetPassword = async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -308,6 +319,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signOut,
     resetPassword,
     updateProfile,
+    refreshUser,
     promoRedemption,
     clearPromoRedemption: () => setPromoRedemption(null),
   };

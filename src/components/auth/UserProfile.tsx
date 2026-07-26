@@ -5,7 +5,7 @@ import { useSubscription } from '../../contexts/SubscriptionContext';
 
 export default function UserProfile() {
   const { user, signOut, updateProfile } = useAuth();
-  const { currentPlan, subscription } = useSubscription();
+  const { currentPlan, subscription, openBillingPortal, isLoading: subscriptionLoading } = useSubscription();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     first_name: user?.user_metadata?.first_name || '',
@@ -103,6 +103,23 @@ export default function UserProfile() {
           >
             Upgrade
           </Link>
+        )}
+        {isPro && (
+          <button
+            onClick={() => openBillingPortal()}
+            disabled={subscriptionLoading}
+            style={{
+              fontSize: '13px',
+              fontWeight: '500',
+              color: '#3b82f6',
+              background: 'none',
+              border: 'none',
+              cursor: subscriptionLoading ? 'not-allowed' : 'pointer',
+              padding: 0
+            }}
+          >
+            {subscriptionLoading ? 'Opening…' : 'Manage'}
+          </button>
         )}
       </div>
 

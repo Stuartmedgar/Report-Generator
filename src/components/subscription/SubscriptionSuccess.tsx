@@ -1,10 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useSubscription } from '../../contexts/SubscriptionContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
+
+const POLL_ATTEMPTS = 5;
+const POLL_DELAY_MS = 1500;
 
 export default function SubscriptionSuccess() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { refreshSubscription } = useSubscription();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,9 +24,22 @@ export default function SubscriptionSuccess() {
         setIsLoading(false);
         return;
       }
+      if (!user) {
+        setError('Please log in to view your subscription');
+        setIsLoading(false);
+        return;
+      }
 
       try {
-        // Refresh subscription status to get the latest data
+        // Stripe's webhook writes the plan upgrade asynchronously, and can
+        // land a moment after this redirect — poll briefly rather than
+        // trusting whatever was already in memory before checkout.
+        for (let attempt = 0; attempt < POLL_ATTEMPTS; attempt++) {
+          const { data } = await supabase.from('users').select('plan').eq('id', user.id).single();
+          if (data?.plan === 'pro') break;
+          await new Promise(resolve => setTimeout(resolve, POLL_DELAY_MS));
+        }
+
         await refreshSubscription();
         setIsLoading(false);
       } catch (err) {
@@ -31,7 +50,7 @@ export default function SubscriptionSuccess() {
     };
 
     handleSuccess();
-  }, [sessionId, refreshSubscription]);
+  }, [sessionId, user, refreshSubscription]);
 
   if (isLoading) {
     return (

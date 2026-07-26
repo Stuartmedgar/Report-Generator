@@ -317,6 +317,12 @@ export default function Signup() {
           >
             {loading ? 'Creating Account...' : 'Create Account'}
           </button>
+
+          <p style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center', marginTop: '14px', lineHeight: 1.5 }}>
+            By creating an account you agree to our{' '}
+            <Link to="/terms" style={{ color: '#3b82f6' }}>Terms of Service</Link> and{' '}
+            <Link to="/privacy" style={{ color: '#3b82f6' }}>Privacy Policy</Link>.
+          </p>
         </form>
 
         {/* Additional Info */}
