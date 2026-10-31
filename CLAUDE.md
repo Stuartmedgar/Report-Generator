@@ -54,6 +54,8 @@ npm run build
 - **Student/pupil data is stored in browser localStorage only** — never transmitted to servers
 - This is a deliberate GDPR advantage and competitive differentiator — do not change this
 - Only server-stored data: teacher email and subscription status (Supabase)
+- `DataContext.tsx` has **no cloud sync** of templates/classes/reports (removed Oct 2026 — it had been silently uploading pupil data). The old `supabaseOperations` helpers in `src/lib/supabase.ts` are unused — don't wire them back in
+- Saved reports keep only the pupil's own choices, never a copy of the template's comment bank (that filled localStorage and blanked the screen). `slimReport()` strips old bloated reports on load
 
 ### Database patterns
 - Always use **UPSERT** — never DELETE-then-INSERT (caused data loss bugs previously)
@@ -74,7 +76,9 @@ npm run build
 ```
 src/
   components/
-    ReportWriter.tsx        # Main report writing interface
+    ReportWriter/           # Main report writing interface (ReportWriter.tsx, hooks/useReportLogic.ts, MobileSectionCard.tsx)
+    report-sections/        # One component per section type in the writer
+    ErrorBoundary.tsx       # App-wide "Something went wrong" screen instead of a blank page
     CreateTemplate.tsx      # Template creation and editing
     ImportTemplate.tsx      # Importing templates (handles pronoun normalisation)
     ManageTemplates.tsx     # Template management, pronoun duplicate feature
@@ -114,6 +118,8 @@ supabase/
 - **Section boundary bleed:** AI misclassifies blended paragraphs without structural breaks. Encourage teachers to add explicit Assessment sections rather than trying to fix via prompts.
 - **Button/heading names** should signal topic AND performance level so teachers can select without reading every comment.
 - **8-statement-per-button limit** is enforced — do not remove this constraint.
+- **Template section data shapes differ by how the template was made.** Create Template stores next-steps and personalised buttons under `comments` + `headings`; Import / AI Quick Build / Build-as-you-go use `focusAreas` (next-steps) / `categories` (personalised). Standard comments are `data.comment` (Create Template) or `data.content` (others). Always read/write via `bankKey()` and `orderedButtonNames()` in `useReportLogic.ts` — writing to the wrong key splits the bank and makes buttons disappear.
+- **In-report template editing** (replace / add to button / add to new button / + button / move / rename / delete / reorder) edits a working copy; it's only stored on "Save Template Now" or the save prompt on exit / class switch. Mobile writer has no in-report template editing.
 
 ---
 
@@ -123,5 +129,4 @@ supabase/
 - Dedicated business email + business name decision
 - Sample onboarding video for new teachers
 - they/them pronoun template set
-- Live template improvement during report writing (Actions 1–5 designed)
 - Potential Firebase migration (deferred — evaluate if Supabase free-tier pausing becomes a problem)
