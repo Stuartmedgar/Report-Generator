@@ -46,16 +46,9 @@ function CreateClass({ onComplete, onCancel }: CreateClassProps) {
   const handleCreateClass = () => {
     if (!className.trim()) { alert('Please enter a class name'); return; }
 
-    const newClassId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-    const newClass = {
-      id: newClassId,
-      name: className.trim(),
-      students,
-      createdAt: new Date().toISOString()
-    };
-
-    addClass(newClass);
-    onComplete(newClassId);
+    // addClass assigns the stored id, so hand that one on (not a locally made one)
+    const newClass = addClass({ name: className.trim(), students });
+    onComplete(newClass.id);
   };
 
   return (

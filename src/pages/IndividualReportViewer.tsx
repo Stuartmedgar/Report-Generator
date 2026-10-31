@@ -6,7 +6,7 @@ import PageNav from '../components/PageNav';
 export default function IndividualReportViewer() {
   const { classId, studentId } = useParams<{ classId: string; studentId: string }>();
   const navigate = useNavigate();
-  const { state } = useData();
+  const { state, updateReport } = useData();
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState('');
 
@@ -53,9 +53,7 @@ export default function IndividualReportViewer() {
   };
 
   const handleSaveEdit = () => {
-    // Update the report content
-    // Note: You might want to add an updateReportContent function to your DataContext
-    alert('Edit functionality would save changes here');
+    updateReport({ ...report, content: editedContent, updatedAt: new Date().toISOString() });
     setIsEditing(false);
   };
 
