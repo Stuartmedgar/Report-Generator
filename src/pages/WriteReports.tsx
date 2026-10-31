@@ -192,7 +192,9 @@ function WriteReports() {
     return (
       <ReportWriter
         key={selectedClass.id}
-        template={selectedTemplate}
+        // Use the stored copy so template edits saved in the writer survive a
+        // class switch (which remounts it); previews aren't stored, so fall back.
+        template={state.templates.find(t => t.id === selectedTemplate.id) || selectedTemplate}
         classData={selectedClass}
         onClassChange={handleClassChange}
         isNewClass={isNewClass}

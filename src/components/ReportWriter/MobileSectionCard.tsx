@@ -1,4 +1,5 @@
 import React from 'react';
+import { orderedButtonNames } from './hooks/useReportLogic';
 
 interface MobileSectionCardProps {
   section: any;
@@ -603,7 +604,7 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
   };
 
   const renderPersonalisedComment = () => {
-    const categories = section.data?.headings || Object.keys(section.data?.categories || section.data?.comments || {});
+    const categories = orderedButtonNames(section);
     const instruction = section.data?.instruction || '';
     const selectedComment = data.customEditedComment || data.selectedComment || '';
     const placeholders = getInfoPlaceholders(selectedComment);
@@ -754,7 +755,7 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
   };
 
   const renderNextSteps = () => {
-    const focusAreas = section.data?.headings || Object.keys(section.data?.focusAreas || section.data?.comments || {});
+    const focusAreas = orderedButtonNames(section);
     
     return (
       <div>
@@ -790,7 +791,7 @@ const MobileSectionCard: React.FC<MobileSectionCardProps> = ({
   };
 
   const renderQualities = () => {
-    const qualityAreas = section.data?.headings || Object.keys(section.data?.comments || {});
+    const qualityAreas = orderedButtonNames(section);
     
     return (
       <div>

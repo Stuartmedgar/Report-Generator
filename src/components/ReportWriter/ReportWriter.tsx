@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Template, Student, Class } from '../../types';
-import { useReportLogic } from './hooks/useReportLogic';
+import { useReportLogic, bankKey, orderedButtonNames } from './hooks/useReportLogic';
 import { MobileReportWriter } from './MobileReportWriter';
 import { EditableSection } from './EditableSection';
 import { ReportPreview } from './ReportPreview';
@@ -50,21 +50,21 @@ function shapeForAssessmentBuilder(section: any) {
 
 function shapeForQualitiesBuilder(section: any) {
   const commentsObj = section.data?.comments || {};
-  return { name: section.name || '', headings: Object.keys(commentsObj), comments: commentsObj };
+  return { name: section.name || '', headings: orderedButtonNames(section), comments: commentsObj };
 }
 
 function shapeForNextStepsBuilder(section: any) {
-  const focusAreas = section.data?.focusAreas || section.data?.comments || {};
-  return { name: section.name || '', headings: Object.keys(focusAreas), comments: focusAreas };
+  const focusAreas = section.data?.[bankKey(section)] || {};
+  return { name: section.name || '', headings: orderedButtonNames(section), comments: focusAreas };
 }
 
 function shapeForPersonalisedBuilder(section: any) {
-  const categories = section.data?.categories || section.data?.comments || {};
-  return { name: section.name || '', instruction: section.data?.instruction || '', headings: Object.keys(categories), comments: categories };
+  const categories = section.data?.[bankKey(section)] || {};
+  return { name: section.name || '', instruction: section.data?.instruction || '', headings: orderedButtonNames(section), comments: categories };
 }
 
 function shapeForStandardBuilder(section: any) {
-  return { name: section.name || '', content: section.data?.content || '' };
+  return { name: section.name || '', content: section.data?.content ?? section.data?.comment ?? '' };
 }
 
 // ─── BUILDER OVERLAY ─────────────────────────────────────────────────────────
@@ -155,7 +155,9 @@ function ReportWriter({ template, classData, onClassChange, isNewClass = false, 
   // "+ Add Class" beside the pupil-name box — create a class from a name plus
   // a pasted pupil list (same parsing/privacy behaviour as CreateClass.tsx),
   // or switch straight to one already set up.
-  const handleCreateNewClass = (name: string, parsedStudents: ParsedName[]) => {
+  const handleCreateNewClass = async (name: string, parsedStudents: ParsedName[]) => {
+    // Switching class reloads the writer — offer to keep template edits first
+    await promptSaveTemplate();
     const newStudents: Student[] = parsedStudents.map((p, i) => ({
       id: `${Date.now()}${Math.random().toString(36).slice(2, 9)}${i}`,
       firstName: p.firstName,
@@ -212,6 +214,24 @@ function ReportWriter({ template, classData, onClassChange, isNewClass = false, 
     }
   };
 
+  const handleLoadExistingClass = async (cls: Class) => {
+    await promptSaveTemplate();
+    onClassChange(cls);
+  };
+
+  const handleExit = async () => {
+    await promptSaveTemplate();
+    onBack();
+  };
+
+  // Warn before a refresh or tab close throws away unsaved template edits
+  useEffect(() => {
+    if (!reportLogic.hasTemplateChanges) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [reportLogic.hasTemplateChanges]);
+
   // ─── NAVIGATION ───────────────────────────────────────────────────────────
 
   const navigationHandlers = {
@@ -226,7 +246,7 @@ function ReportWriter({ template, classData, onClassChange, isNewClass = false, 
       reportLogic.setHasUnsavedChanges(false);
     },
     handleSaveReport: reportLogic.handleSaveReport,
-    handleHome: () => navigate('/'),
+    handleHome: async () => { await promptSaveTemplate(); navigate('/'); },
     // Saves the current pupil's report, then opens a fresh blank pupil slot
     // to write straight into — no "Finish"/exit step in between.
     handleSaveAndNext: () => {
@@ -317,11 +337,20 @@ function ReportWriter({ template, classData, onClassChange, isNewClass = false, 
       let newData: any;
       if (original.type === 'rated-comment') newData = { ...original.data, comments: editedData.comments };
       else if (original.type === 'assessment-comment') newData = { ...original.data, comments: editedData.comments, scoreType: editedData.scoreType, maxScore: editedData.maxScore };
-      else if (original.type === 'next-steps') newData = { ...original.data, focusAreas: editedData.comments };
-      else if (original.type === 'personalised-comment') newData = { ...original.data, instruction: editedData.instruction, categories: editedData.comments };
+      else if (original.type === 'next-steps') newData = { ...original.data, [bankKey(original)]: editedData.comments };
+      else if (original.type === 'personalised-comment') newData = { ...original.data, instruction: editedData.instruction, [bankKey(original)]: editedData.comments };
       else if (original.type === 'qualities') newData = { ...original.data, comments: editedData.comments };
-      else if (original.type === 'standard-comment') newData = { ...original.data, content: editedData.data.content };
+      else if (original.type === 'standard-comment') {
+        newData = { ...original.data, content: editedData.data.content };
+        if ('comment' in original.data) newData.comment = editedData.data.content;
+      }
       else newData = { ...original.data, ...editedData };
+      // The editor can add, rename and remove buttons — take its order rather
+      // than keeping a stale headings list that would hide or blank buttons.
+      if (editedData.comments && original.type !== 'standard-comment') {
+        if (Array.isArray(editedData.headings)) newData.headings = editedData.headings.filter((h: string) => editedData.comments[h]);
+        else delete newData.headings;
+      }
       const updatedSection = { ...original, name: editedData.name || original.name, data: newData };
       reportLogic.handleUpdateWorkingSection(editingSection.index, updatedSection);
     }
@@ -428,7 +457,7 @@ function ReportWriter({ template, classData, onClassChange, isNewClass = false, 
         onRenameCurrentPupil={disableReportSaving ? undefined : handleRenameCurrentPupil}
         classes={disableReportSaving ? [] : dataState.classes.filter(c => c.id !== classData.id)}
         onCreateNewClass={disableReportSaving ? undefined : handleCreateNewClass}
-        onLoadExistingClass={disableReportSaving ? undefined : (cls: Class) => onClassChange(cls)}
+        onLoadExistingClass={disableReportSaving ? undefined : handleLoadExistingClass}
         reportLogic={{
           setSectionData: reportLogic.setSectionData,
           setHasUnsavedChanges: reportLogic.setHasUnsavedChanges,
@@ -460,7 +489,7 @@ function ReportWriter({ template, classData, onClassChange, isNewClass = false, 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-              <button onClick={onBack}
+              <button onClick={handleExit}
                 style={{
                   background: 'none', border: 'none', color: '#9ca3af',
                   fontSize: '13px', cursor: 'pointer', padding: 0
@@ -571,7 +600,7 @@ function ReportWriter({ template, classData, onClassChange, isNewClass = false, 
               <AddClassMenu
                 classes={dataState.classes.filter(c => c.id !== classData.id)}
                 onCreateNew={handleCreateNewClass}
-                onLoadExisting={(cls) => onClassChange(cls)}
+                onLoadExisting={handleLoadExistingClass}
               />
             )}
           </div>

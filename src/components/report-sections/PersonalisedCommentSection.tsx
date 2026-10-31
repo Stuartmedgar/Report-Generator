@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import InlineEditableTitle from './InlineEditableTitle';
 import HeaderStylePicker from './HeaderStylePicker';
+import { orderedButtonNames } from '../ReportWriter/hooks/useReportLogic';
 
 interface PersonalisedCommentSectionProps {
   section: any;
@@ -140,7 +141,7 @@ const PersonalisedCommentSection: React.FC<PersonalisedCommentSectionProps> = ({
     setDragOverCategory(null);
   };
 
-  const categories = section.data?.headings || Object.keys(section.data?.categories || section.data?.comments || {});
+  const categories = orderedButtonNames(section);
   const hasSelectedComment = data.selectedComment && data.category;
   const selectedComment = data.customEditedComment || data.selectedComment || '';
   const placeholders = getInfoPlaceholders(selectedComment);

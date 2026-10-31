@@ -74,6 +74,39 @@ function replaceNameWithCapital(text: string, replacement: string): string {
   });
 }
 
+// ─── COMMENT BANK LOCATION ────────────────────────────────────────────────────
+// Next Steps / Personalised sections built in Create Template keep their
+// statements under `comments`; imported and wizard-built ones use
+// `focusAreas` / `categories`. Always read and write whichever key the section
+// already uses, otherwise edits land in a second bank and buttons vanish.
+
+export function bankKey(section: any): string {
+  if (section.type === 'next-steps') {
+    return section.data?.focusAreas || !section.data?.comments ? 'focusAreas' : 'comments';
+  }
+  if (section.type === 'personalised-comment') {
+    return section.data?.categories || !section.data?.comments ? 'categories' : 'comments';
+  }
+  return 'comments';
+}
+
+// Button names in display order: explicit headings first (only those that
+// still exist), then any buttons the headings list doesn't know about.
+export function orderedButtonNames(section: any): string[] {
+  const bank = section.data?.[bankKey(section)] || {};
+  const keys = Object.keys(bank);
+  const headings: string[] = (section.data?.headings || []).filter((h: string) => keys.includes(h));
+  return [...headings, ...keys.filter(k => !headings.includes(k))];
+}
+
+const BUTTON_SECTION_TYPES = ['qualities', 'next-steps', 'personalised-comment', 'rated-comment', 'assessment-comment'];
+
+function selectedTextField(sectionType: string): string {
+  if (sectionType === 'next-steps') return 'selectedSuggestion';
+  if (sectionType === 'qualities') return 'selectedQuality';
+  return 'selectedComment';
+}
+
 export const useReportLogic = ({
   template,
   classData,
@@ -96,6 +129,11 @@ export const useReportLogic = ({
 
   const lastStudentIdRef = useRef<string | null>(null);
   const templateIdRef = useRef(template.id);
+  // Latest values for callbacks that are memoised with no dependencies
+  const sectionDataRef = useRef(sectionData);
+  sectionDataRef.current = sectionData;
+  const workingTemplateSectionsRef = useRef<any[]>(workingTemplate.sections);
+  workingTemplateSectionsRef.current = workingTemplate.sections;
 
   useEffect(() => {
     if (template.id !== templateIdRef.current) {
@@ -118,8 +156,10 @@ export const useReportLogic = ({
       } else {
         const initialData: Record<string, any> = {};
         workingTemplate.sections.forEach((section: any) => {
+          // Only per-pupil choices belong here — copying section.data stored the
+          // whole comment bank in every report and filled browser storage.
           const showHeader = section.data.showHeader !== undefined ? section.data.showHeader : false;
-          initialData[section.id] = { showHeader, ...section.data };
+          initialData[section.id] = { showHeader };
         });
         initialData['__student__'] = { pronounOverride: 'he' };
         setSectionData(initialData);
@@ -177,6 +217,10 @@ export const useReportLogic = ({
     statement?: string;
     orderedButtons?: string[];
   }) => {
+    // The statement this pupil was given, before any edit — used to replace or
+    // move the right statement rather than always the first one.
+    const pupilData = sectionDataRef.current[action.sectionId] || {};
+
     setWorkingTemplate((prev: any) => {
       const updatedSections = prev.sections.map((section: any) => {
         if (section.id !== action.sectionId) return section;
@@ -187,142 +231,102 @@ export const useReportLogic = ({
           return { ...section, data: newData };
         }
 
+        if (section.type === 'standard-comment') {
+          if (action.type === 'replace') {
+            newData.content = action.commentText;
+            if ('comment' in newData) newData.comment = action.commentText;
+          }
+          return { ...section, data: newData };
+        }
+
+        if (!BUTTON_SECTION_TYPES.includes(section.type)) return section;
+
+        const key = bankKey(section);
+        let comments: Record<string, string[]> = { ...(newData[key] || {}) };
         // Keep an existing explicit order (headings) in sync with rename/delete/add,
         // otherwise a stale headings array would keep showing the old button name,
         // keep showing a deleted button, or hide a newly added one.
-        if (section.data?.headings) {
-          if (action.type === 'rename-button' && action.oldButtonName && action.newButtonName) {
-            newData.headings = section.data.headings.map((h: string) => h === action.oldButtonName ? action.newButtonName : h);
-          } else if (action.type === 'delete-button' && action.buttonName) {
-            newData.headings = section.data.headings.filter((h: string) => h !== action.buttonName);
-          } else if (action.type === 'add-to-new-button' && action.newButtonName) {
-            newData.headings = [...section.data.headings, action.newButtonName];
-          }
-        }
+        let headings: string[] | undefined = section.data?.headings ? [...section.data.headings] : undefined;
+        const text = action.commentText;
+        const selectedText: string | undefined = pupilData[selectedTextField(section.type)];
 
-        if (section.type === 'standard-comment' && action.type === 'replace') {
-          newData.content = action.commentText;
-        }
-
-        if (section.type === 'qualities') {
-          if (action.type === 'rename-button' || action.type === 'delete-button') {
-            newData.comments = action.updatedComments || newData.comments;
-          } else if (action.type === 'move-statement' && action.fromButton && action.toButton && action.statement) {
-            const comments = { ...newData.comments };
-            comments[action.fromButton] = (comments[action.fromButton] || []).filter((s: string) => s !== action.statement);
-            if (comments[action.fromButton].length === 0) delete comments[action.fromButton];
-            comments[action.toButton] = [...(comments[action.toButton] || []), action.statement];
-            newData.comments = comments;
-          } else {
-            const comments = { ...newData.comments };
-            if (action.type === 'replace' && action.buttonName) {
-              const options = [...(comments[action.buttonName] || [])];
-              options[0] = action.commentText!;
-              comments[action.buttonName] = options;
-            } else if (action.type === 'add-to-button' && action.buttonName) {
-              comments[action.buttonName] = [...(comments[action.buttonName] || []), action.commentText!];
-            } else if (action.type === 'add-to-new-button' && action.newButtonName) {
-              comments[action.newButtonName] = [action.commentText!];
+        if (action.type === 'replace' && action.buttonName && text !== undefined) {
+          const options = [...(comments[action.buttonName] || [])];
+          const idx = selectedText ? options.indexOf(selectedText) : -1;
+          if (idx >= 0) options[idx] = text;
+          else options.push(text);
+          comments[action.buttonName] = options;
+        } else if (action.type === 'add-to-button' && action.buttonName && text !== undefined) {
+          comments[action.buttonName] = [...(comments[action.buttonName] || []), text];
+        } else if (action.type === 'add-to-new-button' && action.newButtonName && text !== undefined) {
+          // An existing name gets the statement added, never overwritten
+          comments[action.newButtonName] = [...(comments[action.newButtonName] || []), text];
+          if (headings && !headings.includes(action.newButtonName)) headings.push(action.newButtonName);
+        } else if (action.type === 'rename-button' && action.oldButtonName && action.newButtonName && action.oldButtonName !== action.newButtonName) {
+          const oldName = action.oldButtonName;
+          const newName = action.newButtonName;
+          const moved = comments[oldName] || [];
+          const existing = comments[newName];
+          // Rebuild in place so the button keeps its position; renaming onto an
+          // existing button combines the two instead of overwriting it.
+          const rebuilt: Record<string, string[]> = {};
+          Object.keys(comments).forEach(k => {
+            if (k === oldName) {
+              if (!existing) rebuilt[newName] = moved;
+            } else if (k === newName) {
+              rebuilt[k] = [...existing, ...moved.filter(s => !existing.includes(s))];
+            } else {
+              rebuilt[k] = comments[k];
             }
-            newData.comments = comments;
+          });
+          comments = rebuilt;
+          if (headings) {
+            headings = headings
+              .map(h => h === oldName ? newName : h)
+              .filter((h, i, a) => a.indexOf(h) === i);
           }
+          if (section.type === 'rated-comment' && newData.labels) {
+            const labels = { ...newData.labels };
+            delete labels[oldName];
+            newData.labels = labels;
+          }
+        } else if (action.type === 'delete-button' && action.buttonName) {
+          // "Move all to" sends the merged bank as updatedComments
+          if (action.updatedComments) comments = { ...action.updatedComments };
+          else delete comments[action.buttonName];
+          if (headings) headings = headings.filter(h => h !== action.buttonName);
+          if (section.type === 'rated-comment' && newData.labels) {
+            const labels = { ...newData.labels };
+            delete labels[action.buttonName];
+            newData.labels = labels;
+          }
+        } else if (action.type === 'move-statement' && action.fromButton && action.toButton && action.statement) {
+          const statement = action.statement;
+          // Remove the original wording too, in case it was edited before moving
+          comments[action.fromButton] = (comments[action.fromButton] || []).filter(s => s !== statement && s !== selectedText);
+          if (comments[action.fromButton].length === 0) {
+            delete comments[action.fromButton];
+            if (headings) headings = headings.filter(h => h !== action.fromButton);
+          }
+          const target = comments[action.toButton] || [];
+          comments[action.toButton] = target.includes(statement) ? target : [...target, statement];
         }
 
-        if (section.type === 'next-steps') {
-          if (action.type === 'rename-button' || action.type === 'delete-button') {
-            newData.focusAreas = action.updatedComments || newData.focusAreas;
-          } else if (action.type === 'move-statement' && action.fromButton && action.toButton && action.statement) {
-            const focusAreas = { ...newData.focusAreas };
-            focusAreas[action.fromButton] = (focusAreas[action.fromButton] || []).filter((s: string) => s !== action.statement);
-            if (focusAreas[action.fromButton].length === 0) delete focusAreas[action.fromButton];
-            focusAreas[action.toButton] = [...(focusAreas[action.toButton] || []), action.statement];
-            newData.focusAreas = focusAreas;
-          } else {
-            const focusAreas = { ...newData.focusAreas };
-            if (action.type === 'replace' && action.buttonName) {
-              const options = [...(focusAreas[action.buttonName] || [])];
-              options[0] = action.commentText!;
-              focusAreas[action.buttonName] = options;
-            } else if (action.type === 'add-to-button' && action.buttonName) {
-              focusAreas[action.buttonName] = [...(focusAreas[action.buttonName] || []), action.commentText!];
-            } else if (action.type === 'add-to-new-button' && action.newButtonName) {
-              focusAreas[action.newButtonName] = [action.commentText!];
-            }
-            newData.focusAreas = focusAreas;
-          }
-        }
-
-        if (section.type === 'personalised-comment') {
-          const categories = { ...newData.categories };
-          if (action.type === 'replace' && action.buttonName) {
-            const options = [...(categories[action.buttonName] || [])];
-            options[0] = action.commentText;
-            categories[action.buttonName] = options;
-          } else if (action.type === 'add-to-button' && action.buttonName) {
-            categories[action.buttonName] = [...(categories[action.buttonName] || []), action.commentText];
-          } else if (action.type === 'add-to-new-button' && action.newButtonName) {
-            categories[action.newButtonName] = [action.commentText];
-          }
-          newData.categories = categories;
-        }
-
-        if (section.type === 'rated-comment') {
-          if (action.type === 'rename-button' || action.type === 'delete-button') {
-            newData.comments = action.updatedComments || newData.comments;
-            if (newData.labels && action.oldButtonName) {
-              const labels = { ...newData.labels };
-              delete labels[action.oldButtonName];
-              newData.labels = labels;
-            }
-          } else if (action.type === 'move-statement' && action.fromButton && action.toButton && action.statement) {
-            const comments = { ...newData.comments };
-            comments[action.fromButton] = (comments[action.fromButton] || []).filter((s: string) => s !== action.statement);
-            if (comments[action.fromButton].length === 0) delete comments[action.fromButton];
-            comments[action.toButton] = [...(comments[action.toButton] || []), action.statement];
-            newData.comments = comments;
-          } else {
-            const comments = { ...newData.comments };
-            if (action.type === 'replace' && action.buttonName) {
-              const options = [...(comments[action.buttonName] || [])];
-              options[0] = action.commentText;
-              comments[action.buttonName] = options;
-            } else if (action.type === 'add-to-button' && action.buttonName) {
-              comments[action.buttonName] = [...(comments[action.buttonName] || []), action.commentText];
-            } else if (action.type === 'add-to-new-button' && action.newButtonName) {
-              comments[action.newButtonName] = [action.commentText];
-            }
-            newData.comments = comments;
-          }
-        }
-
-        if (section.type === 'assessment-comment') {
-          if (action.type === 'rename-button' || action.type === 'delete-button') {
-            newData.comments = action.updatedComments || newData.comments;
-          } else if (action.type === 'move-statement' && action.fromButton && action.toButton && action.statement) {
-            const comments = { ...newData.comments };
-            comments[action.fromButton] = (comments[action.fromButton] || []).filter((s: string) => s !== action.statement);
-            if (comments[action.fromButton].length === 0) delete comments[action.fromButton];
-            comments[action.toButton] = [...(comments[action.toButton] || []), action.statement];
-            newData.comments = comments;
-          } else {
-            const comments = { ...newData.comments };
-            if (action.type === 'replace' && action.buttonName) {
-              const options = [...(comments[action.buttonName] || [])];
-              options[0] = action.commentText;
-              comments[action.buttonName] = options;
-            } else if (action.type === 'add-to-button' && action.buttonName) {
-              comments[action.buttonName] = [...(comments[action.buttonName] || []), action.commentText];
-            } else if (action.type === 'add-to-new-button' && action.newButtonName) {
-              comments[action.newButtonName] = [action.commentText];
-            }
-            newData.comments = comments;
-          }
-        }
-
+        newData[key] = comments;
+        if (headings) newData.headings = headings;
         return { ...section, data: newData };
       });
       return { ...prev, sections: updatedSections };
     });
+
+    // Point this pupil at the replaced wording so a second Replace finds it
+    if (action.type === 'replace' && action.commentText !== undefined) {
+      setSectionData((prev: Record<string, any>) => {
+        const section = workingTemplateSectionsRef.current.find((s: any) => s.id === action.sectionId);
+        if (!section || !BUTTON_SECTION_TYPES.includes(section.type)) return prev;
+        return { ...prev, [action.sectionId]: { ...prev[action.sectionId], [selectedTextField(section.type)]: action.commentText } };
+      });
+    }
     setHasTemplateChanges(true);
   }, []);
 
@@ -331,18 +335,14 @@ export const useReportLogic = ({
   const handleAddButton = useCallback((sectionId: string, buttonName: string, firstOption: string) => {
     setWorkingTemplate((prev: any) => {
       const updatedSections = prev.sections.map((section: any) => {
-        if (section.id !== sectionId) return section;
+        if (section.id !== sectionId || !BUTTON_SECTION_TYPES.includes(section.type)) return section;
+        const key = bankKey(section);
         const newData = { ...section.data };
-        if (section.type === 'qualities') {
-          newData.comments = { ...newData.comments, [buttonName]: [firstOption] };
-        } else if (section.type === 'next-steps') {
-          newData.focusAreas = { ...newData.focusAreas, [buttonName]: [firstOption] };
-        } else if (section.type === 'personalised-comment') {
-          newData.categories = { ...newData.categories, [buttonName]: [firstOption] };
-        } else if (section.type === 'rated-comment' || section.type === 'assessment-comment') {
-          newData.comments = { ...newData.comments, [buttonName]: [firstOption] };
-        }
-        if (section.data?.headings) {
+        const bank = { ...(newData[key] || {}) };
+        // An existing name gets the statement added, never overwritten
+        bank[buttonName] = [...(bank[buttonName] || []), firstOption];
+        newData[key] = bank;
+        if (section.data?.headings && !section.data.headings.includes(buttonName)) {
           newData.headings = [...section.data.headings, buttonName];
         }
         return { ...section, data: newData };
@@ -397,8 +397,8 @@ export const useReportLogic = ({
         }
         mergedData.comments = targetComments;
       } else if (source.type === 'next-steps') {
-        const sourceFocusAreas = source.data?.focusAreas || {};
-        const targetFocusAreas = mergedData.focusAreas || {};
+        const sourceFocusAreas = source.data?.[bankKey(source)] || {};
+        const targetFocusAreas = mergedData[bankKey(target)] || {};
         for (const [key, options] of Object.entries(sourceFocusAreas)) {
           if (targetFocusAreas[key]) {
             const combined = [...targetFocusAreas[key], ...(options as string[])];
@@ -407,10 +407,10 @@ export const useReportLogic = ({
             targetFocusAreas[key] = options;
           }
         }
-        mergedData.focusAreas = targetFocusAreas;
+        mergedData[bankKey(target)] = targetFocusAreas;
       } else if (source.type === 'personalised-comment') {
-        const sourceCategories = source.data?.categories || {};
-        const targetCategories = mergedData.categories || {};
+        const sourceCategories = source.data?.[bankKey(source)] || {};
+        const targetCategories = mergedData[bankKey(target)] || {};
         for (const [key, options] of Object.entries(sourceCategories)) {
           if (targetCategories[key]) {
             const combined = [...targetCategories[key], ...(options as string[])];
@@ -419,7 +419,7 @@ export const useReportLogic = ({
             targetCategories[key] = options;
           }
         }
-        mergedData.categories = targetCategories;
+        mergedData[bankKey(target)] = targetCategories;
       }
 
       const updatedSections = prev.sections
@@ -706,7 +706,7 @@ export const useReportLogic = ({
           break;
 
         case 'standard-comment':
-          const standardContent = data.comment || section.data?.content;
+          const standardContent = data.comment || section.data?.content || section.data?.comment;
           if (standardContent && standardContent.trim()) {
             applyHeader(section.name);
             content += replaceNameWithCapital(standardContent, nameToken) + ' ';

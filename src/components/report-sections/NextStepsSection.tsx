@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import InlineEditableTitle from './InlineEditableTitle';
 import HeaderStylePicker from './HeaderStylePicker';
+import { orderedButtonNames } from '../ReportWriter/hooks/useReportLogic';
 
 interface NextStepsSectionProps {
   section: any;
@@ -157,7 +158,7 @@ const NextStepsSection: React.FC<NextStepsSectionProps> = ({
     (s: any) => s.type === 'next-steps' && s.id !== section.id
   );
 
-  const focusAreas = section.data?.headings || Object.keys(section.data?.focusAreas || section.data?.comments || {});
+  const focusAreas = orderedButtonNames(section);
   const hasSelectedSuggestion = data.selectedSuggestion && data.focusArea;
 
   const actionBtnStyle = (color: string): React.CSSProperties => ({

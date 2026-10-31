@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef, ReactNode } from 'react';
 import { Template, Class, Student, Report, RatedComment, StandardComment, AssessmentComment, PersonalisedComment, NextStepsComment, QualitiesComment } from '../types';
-import { supabaseOperations, setSupabaseUserContext } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 
 interface DataState {
@@ -276,14 +275,35 @@ function dataReducer(state: DataState, action: DataAction): DataState {
 
 const DataContext = createContext<DataContextType | null>(null);
 
+// Older reports stored a full copy of every section's comment bank inside
+// sectionData, which quickly filled the browser's storage quota. None of it is
+// needed once written — the bank always comes from the template — so drop it.
+const TEMPLATE_BANK_KEYS = ['comments', 'focusAreas', 'categories', 'headings', 'labels', 'ratings'];
+
+function slimReport(report: Report): Report {
+  const sectionData = (report as any).sectionData;
+  if (!sectionData) return report;
+  const slimmed: Record<string, any> = {};
+  Object.entries(sectionData).forEach(([id, data]) => {
+    if (data && typeof data === 'object') {
+      const copy: Record<string, any> = { ...(data as Record<string, any>) };
+      TEMPLATE_BANK_KEYS.forEach(k => delete copy[k]);
+      slimmed[id] = copy;
+    } else {
+      slimmed[id] = data;
+    }
+  });
+  return { ...report, sectionData: slimmed } as Report;
+}
+
 export function DataProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(dataReducer, initialState);
   const { user } = useAuth();
 
   // Track whether we're in the middle of initial load to prevent premature saves
   const isInitialLoadRef = useRef(true);
-  // Ref to debounce cloud sync without causing re-renders
-  const cloudSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Only alert once per session if the browser's storage quota is full
+  const storageFullAlertedRef = useRef(false);
 
   // Get user ID with fallback
   const getUserId = () => {
@@ -330,75 +350,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // ─── CLOUD SYNC ───────────────────────────────────────────────────────────
-
-  const syncFromCloud = async () => {
-    const userId = getUserId();
-    if (!userId || userId === 'anonymous-user') return;
-
-    try {
-      console.log('Syncing from cloud for user:', userId);
-      dispatch({ type: 'SET_SYNCING', payload: true });
-
-      const [cloudTemplates, cloudClasses, cloudReports] = await Promise.all([
-        supabaseOperations.getTemplates(userId),
-        supabaseOperations.getClasses(userId),
-        supabaseOperations.getReports(userId)
-      ]);
-
-      console.log(`Loaded from cloud - Templates: ${cloudTemplates.length}, Classes: ${cloudClasses.length}, Reports: ${cloudReports.length}`);
-
-      if (cloudTemplates.length > 0 || cloudClasses.length > 0 || cloudReports.length > 0) {
-        // Merge cloud data into current state (keep comment banks from local)
-        dispatch({
-          type: 'LOAD_DATA',
-          payload: {
-            ...state,
-            templates: cloudTemplates,
-            classes: cloudClasses,
-            reports: cloudReports,
-            isLoading: false,
-            isSyncing: false,
-            lastSyncTime: new Date()
-          }
-        });
-      } else {
-        console.log('No cloud data found, keeping local data');
-        dispatch({ type: 'SET_SYNCING', payload: false });
-      }
-    } catch (error) {
-      console.error('Error syncing from cloud:', error);
-      dispatch({ type: 'SET_SYNCING', payload: false });
-    }
-  };
-
-  const syncToCloud = async (currentState: DataState) => {
-    const userId = getUserId();
-    if (!userId || userId === 'anonymous-user') return;
-
-    if (
-      currentState.templates.length === 0 &&
-      currentState.classes.length === 0 &&
-      currentState.reports.length === 0
-    ) {
-      console.log('No data to sync to cloud');
-      return;
-    }
-
-    try {
-      console.log('Syncing to cloud for user:', userId);
-      // Note: we do NOT dispatch SET_SYNCING here to avoid triggering the save useEffect
-      await Promise.all([
-        supabaseOperations.saveTemplates(userId, currentState.templates),
-        supabaseOperations.saveClasses(userId, currentState.classes),
-        supabaseOperations.saveReports(userId, currentState.reports)
-      ]);
-      console.log('Synced to cloud successfully');
-      dispatch({ type: 'SET_LAST_SYNC_TIME', payload: new Date() });
-    } catch (error) {
-      console.error('Error syncing to cloud:', error);
-    }
-  };
+  // ─── NO CLOUD SYNC ────────────────────────────────────────────────────────
+  // Templates, classes (pupil names) and reports stay in this browser's
+  // localStorage only — they are never sent to Supabase (GDPR).
 
   // ─── LOAD DATA ────────────────────────────────────────────────────────────
 
@@ -419,7 +373,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const loadedState: DataState = {
         templates: savedTemplates ? JSON.parse(savedTemplates) : [],
         classes: savedClasses ? JSON.parse(savedClasses) : [],
-        reports: savedReports ? JSON.parse(savedReports) : [],
+        reports: savedReports ? JSON.parse(savedReports).map(slimReport) : [],
         savedRatedComments: savedRatedComments ? JSON.parse(savedRatedComments) : [],
         savedStandardComments: savedStandardComments ? JSON.parse(savedStandardComments) : [],
         savedAssessmentComments: savedAssessmentComments ? JSON.parse(savedAssessmentComments) : [],
@@ -450,11 +404,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       // Always load from localStorage first for immediate display
       loadLocalData();
-
-      // Then sync from cloud if logged in
-      if (user) {
-        await syncFromCloud();
-      }
     } catch (error) {
       console.error('Error loading data:', error);
       loadLocalData(); // Fallback to localStorage
@@ -483,34 +432,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
     console.log(`Saving to localStorage - Templates: ${state.templates.length}, Classes: ${state.classes.length}, Reports: ${state.reports.length}`);
 
-    localStorage.setItem(getStorageKey('reportTemplates'), JSON.stringify(state.templates));
-    localStorage.setItem(getStorageKey('reportClasses'), JSON.stringify(state.classes));
-    localStorage.setItem(getStorageKey('reportReports'), JSON.stringify(state.reports));
-    localStorage.setItem(getStorageKey('savedRatedComments'), JSON.stringify(state.savedRatedComments));
-    localStorage.setItem(getStorageKey('savedStandardComments'), JSON.stringify(state.savedStandardComments));
-    localStorage.setItem(getStorageKey('savedAssessmentComments'), JSON.stringify(state.savedAssessmentComments));
-    localStorage.setItem(getStorageKey('savedPersonalisedComments'), JSON.stringify(state.savedPersonalisedComments));
-    localStorage.setItem(getStorageKey('savedNextStepsComments'), JSON.stringify(state.savedNextStepsComments));
-    localStorage.setItem(getStorageKey('savedQualitiesComments'), JSON.stringify(state.savedQualitiesComments));
-
-    // Debounce cloud sync separately — pass current state snapshot via ref
-    // so the timeout always sees the latest data, and changing isSyncing
-    // doesn't re-trigger this effect.
-    if (user && !state.isSyncing) {
-      if (cloudSyncTimerRef.current) {
-        clearTimeout(cloudSyncTimerRef.current);
+    // An uncaught QuotaExceededError here would unmount the whole app and
+    // leave a blank screen — warn the teacher instead.
+    try {
+      localStorage.setItem(getStorageKey('reportTemplates'), JSON.stringify(state.templates));
+      localStorage.setItem(getStorageKey('reportClasses'), JSON.stringify(state.classes));
+      localStorage.setItem(getStorageKey('reportReports'), JSON.stringify(state.reports));
+      localStorage.setItem(getStorageKey('savedRatedComments'), JSON.stringify(state.savedRatedComments));
+      localStorage.setItem(getStorageKey('savedStandardComments'), JSON.stringify(state.savedStandardComments));
+      localStorage.setItem(getStorageKey('savedAssessmentComments'), JSON.stringify(state.savedAssessmentComments));
+      localStorage.setItem(getStorageKey('savedPersonalisedComments'), JSON.stringify(state.savedPersonalisedComments));
+      localStorage.setItem(getStorageKey('savedNextStepsComments'), JSON.stringify(state.savedNextStepsComments));
+      localStorage.setItem(getStorageKey('savedQualitiesComments'), JSON.stringify(state.savedQualitiesComments));
+    } catch (error) {
+      console.error('Error saving to localStorage:', error);
+      if (!storageFullAlertedRef.current) {
+        storageFullAlertedRef.current = true;
+        alert("Your browser's storage for this app is full, so your latest changes could not be saved. Please copy any reports you need, then delete old reports or classes you no longer use to free up space.");
       }
-      const snapshot = state; // capture current state for the closure
-      cloudSyncTimerRef.current = setTimeout(() => {
-        syncToCloud(snapshot);
-      }, 3000);
     }
-
-    return () => {
-      if (cloudSyncTimerRef.current) {
-        clearTimeout(cloudSyncTimerRef.current);
-      }
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     state.templates,
@@ -664,11 +604,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'DELETE_QUALITIES_COMMENT', payload: name });
   };
 
-  const syncData = async () => {
-    if (user) {
-      await syncFromCloud();
-    }
-  };
+  // Kept for the context interface — there is no cloud copy to sync from.
+  const syncData = async () => {};
 
   return (
     <DataContext.Provider value={{

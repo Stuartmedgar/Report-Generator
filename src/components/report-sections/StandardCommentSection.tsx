@@ -23,9 +23,12 @@ const StandardCommentSection: React.FC<StandardCommentSectionProps> = ({
   const [showEditComment, setShowEditComment] = useState(false);
   const [editableComment, setEditableComment] = useState('');
 
+  // Templates built in Create Template store the text as `comment`; others as `content`
+  const templateText = section.data?.content ?? section.data?.comment ?? '';
+
   useEffect(() => {
-    setEditableComment(data.comment || section.data?.content || '');
-  }, [data.comment, section.data?.content]);
+    setEditableComment(data.comment || templateText);
+  }, [data.comment, templateText]);
 
   const actionBtnStyle = (color: string): React.CSSProperties => ({
     backgroundColor: color, color: 'white', border: 'none', borderRadius: '4px',
@@ -38,7 +41,7 @@ const StandardCommentSection: React.FC<StandardCommentSectionProps> = ({
   };
 
   const handleCancelEditComment = () => {
-    setEditableComment(data.comment || section.data?.content || '');
+    setEditableComment(data.comment || templateText);
     setShowEditComment(false);
   };
 
@@ -92,7 +95,7 @@ const StandardCommentSection: React.FC<StandardCommentSectionProps> = ({
 
       {/* Edit toggle — always visible since this statement is always on the report */}
       <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: showEditComment ? '12px' : '0' }}>
-        <button data-tour="edit-comment" onClick={() => setShowEditComment(!showEditComment)}
+        <button onClick={() => setShowEditComment(!showEditComment)}
           style={{
             backgroundColor: showEditComment ? '#10b981' : '#e5e7eb',
             color: showEditComment ? 'white' : '#6b7280',
@@ -114,9 +117,9 @@ const StandardCommentSection: React.FC<StandardCommentSectionProps> = ({
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             <button onClick={handleCancelEditComment} style={actionBtnStyle('#6b7280')}>Cancel</button>
-            <button data-tour="save-comment" onClick={handleSaveEditedComment} style={actionBtnStyle('#3b82f6')}>Save</button>
+            <button onClick={handleSaveEditedComment} style={actionBtnStyle('#3b82f6')}>Save</button>
             {onTemplateAction && (
-              <button data-tour="replace-in-template" onClick={handleReplaceInTemplate} style={actionBtnStyle('#8b5cf6')}>Replace in template</button>
+              <button onClick={handleReplaceInTemplate} style={actionBtnStyle('#8b5cf6')}>Replace in template</button>
             )}
           </div>
         </div>

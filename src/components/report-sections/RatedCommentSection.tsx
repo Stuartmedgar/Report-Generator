@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import InlineEditableTitle from './InlineEditableTitle';
 import HeaderStylePicker from './HeaderStylePicker';
+import { orderedButtonNames } from '../ReportWriter/hooks/useReportLogic';
 
 interface RatedCommentSectionProps {
   section: any;
@@ -56,7 +57,7 @@ const RatedCommentSection: React.FC<RatedCommentSectionProps> = ({
     }
   }, [data.selectedComment, data.customEditedComment]);
 
-  const ratingKeys: string[] = section.data?.headings || Object.keys(section.data?.comments || {});
+  const ratingKeys: string[] = orderedButtonNames(section);
   const getColor = (label: string, idx: number) => KNOWN_RATED_COLORS[label] || EXTRA_RATED_COLORS[idx % EXTRA_RATED_COLORS.length];
   const getLabel = (key: string) => (data.labels || section.data?.labels)?.[key] || DEFAULT_RATED_LABELS[key] || key;
   const ratings = ratingKeys.map((key, idx) => { const label = getLabel(key); return { value: key, label, color: getColor(label, idx) }; });

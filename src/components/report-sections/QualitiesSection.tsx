@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import InlineEditableTitle from './InlineEditableTitle';
 import HeaderStylePicker from './HeaderStylePicker';
+import { orderedButtonNames } from '../ReportWriter/hooks/useReportLogic';
 
 interface QualitiesSectionProps {
   section: any;
@@ -157,7 +158,7 @@ const QualitiesSection: React.FC<QualitiesSectionProps> = ({
     (s: any) => s.type === 'qualities' && s.id !== section.id
   );
 
-  const qualityAreas = section.data?.headings || Object.keys(section.data?.comments || {});
+  const qualityAreas = orderedButtonNames(section);
   const hasSelectedQuality = data.selectedQuality && data.qualityArea;
 
   const actionBtnStyle = (color: string): React.CSSProperties => ({

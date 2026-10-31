@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import InlineEditableTitle from './InlineEditableTitle';
 import HeaderStylePicker from './HeaderStylePicker';
+import { orderedButtonNames } from '../ReportWriter/hooks/useReportLogic';
 
 interface AssessmentCommentSectionProps {
   section: any;
@@ -60,7 +61,7 @@ const AssessmentCommentSection: React.FC<AssessmentCommentSectionProps> = ({
 
   // Performance buttons — now free-form (teacher's own names from section.data.comments keys)
   // Falls back to legacy fixed names if template was built the old way
-  const performanceButtons: string[] = section.data?.headings || Object.keys(section.data?.comments || {});
+  const performanceButtons: string[] = orderedButtonNames(section);
 
   const handlePerformanceChange = (performance: string) => {
     if (editingButtons) return;
